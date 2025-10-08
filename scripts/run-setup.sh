@@ -2,4 +2,4 @@
 set -a
 source .env
 set +a
-node scripts/setup-database.js
+node scripts/setup-simple.js
