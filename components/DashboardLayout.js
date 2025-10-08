@@ -23,7 +23,7 @@ const navigation = [
   { name: 'Dashboard', icon: LayoutDashboard, id: 'dashboard' },
   { name: 'Users', icon: Users, id: 'users' },
   { name: 'Passports', icon: FileText, id: 'passports' },
-  { name: 'Reports', icon: BarChart, id: 'reports' },
+  { name: 'Reports', icon: BarChart3, id: 'reports' },
   { name: 'Audit Logs', icon: History, id: 'audit' },
   { name: 'Integrations', icon: Plug, id: 'integrations' },
   { name: 'Settings', icon: Settings, id: 'settings' },
