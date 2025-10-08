@@ -91,10 +91,40 @@ export async function GET(request) {
     if (path === '/students') {
       const { data: students, error } = await supabase
         .from('students')
-        .select('*, users(email), organizations(name)')
+        .select('*')
         .order('createdAt', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching students:', error)
+        return NextResponse.json({ error: 'Failed to fetch students' }, { status: 500 })
+      }
+      
+      // Manually fetch related data
+      if (students && students.length > 0) {
+        for (let student of students) {
+          if (student.userId) {
+            const { data: user } = await supabase
+              .from('users')
+              .select('email')
+              .eq('id', student.userId)
+              .maybeSingle()
+            if (user) {
+              student.users = user
+            }
+          }
+          if (student.universityId) {
+            const { data: org } = await supabase
+              .from('organizations')
+              .select('name')
+              .eq('id', student.universityId)
+              .maybeSingle()
+            if (org) {
+              student.organizations = org
+            }
+          }
+        }
+      }
+      
       return NextResponse.json(students || [])
     }
 
