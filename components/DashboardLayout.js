@@ -110,10 +110,10 @@ export default function DashboardLayout({ user, currentPage, onPageChange, onLog
                     setSidebarOpen(false)
                   }}
                   className={cn(
-                    "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                    "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-300 transform hover:scale-[1.02]",
                     isActive
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-gray-700 hover:bg-gray-100"
+                      ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25 scale-[1.02]"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-white/50 dark:hover:bg-slate-800/50 hover:shadow-md hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50"
                   )}
                 >
                   <Icon className="h-5 w-5" />
