@@ -684,7 +684,10 @@ export default function ReportsPage() {
           {/* Top Universities */}
           <Card className="neu-card">
             <CardHeader>
-              <CardTitle>🏆 Top Performing Universities</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-gold-600" />
+                Top Performing Universities
+              </CardTitle>
               <p className="text-sm text-muted-foreground">Universities ranked by performance metrics</p>
             </CardHeader>
             <CardContent>
