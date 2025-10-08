@@ -46,13 +46,7 @@ import {
   LineChart,
   Line,
   AreaChart,
-  Area,
-  FunnelChart,
-  Funnel,
-  LabelList,
-  Cell,
-  PieChart,
-  Pie
+  Area
 } from 'recharts'
 
 // Custom Tooltip Component
