@@ -1,0 +1,106 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { History, RefreshCw } from 'lucide-react'
+
+export default function AuditLogsPage() {
+  const [logs, setLogs] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchLogs()
+  }, [])
+
+  const fetchLogs = async () => {
+    try {
+      const response = await fetch('/api/audit-logs')
+      const data = await response.json()
+      setLogs(data)
+    } catch (error) {
+      console.error('Error fetching logs:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getActionBadge = (action) => {
+    const colors = {
+      login: 'bg-blue-100 text-blue-700',
+      verify_passport: 'bg-green-100 text-green-700',
+      reject_passport: 'bg-red-100 text-red-700',
+      suspend_user: 'bg-orange-100 text-orange-700',
+      activate_user: 'bg-green-100 text-green-700',
+      delete_user: 'bg-red-100 text-red-700'
+    }
+    return colors[action] || 'bg-gray-100 text-gray-700'
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Audit Logs</h2>
+          <p className="text-muted-foreground">Track all system activities and changes</p>
+        </div>
+        <Button onClick={fetchLogs} variant="outline">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Refresh
+        </Button>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <History className="h-5 w-5" />
+            <span className="font-semibold">Recent Activity</span>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {logs.length > 0 ? (
+              logs.map((log) => (
+                <div key={log.id} className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2" />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge className={getActionBadge(log.action)}>
+                        {log.action.replace(/_/g, ' ')}
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">
+                        {log.users?.email || 'System'}
+                      </span>
+                    </div>
+                    <p className="text-sm">
+                      Target: <span className="font-medium">{log.target || 'N/A'}</span>
+                    </p>
+                    {log.ip && (
+                      <p className="text-xs text-muted-foreground mt-1">IP: {log.ip}</p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(log.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-center text-muted-foreground py-8">No audit logs found</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
