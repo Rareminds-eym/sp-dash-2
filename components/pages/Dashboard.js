@@ -10,9 +10,27 @@ import {
   CheckCircle2, 
   Building2,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Activity,
+  Sparkles
 } from 'lucide-react'
-import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { 
+  LineChart, 
+  Line, 
+  AreaChart, 
+  Area, 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer, 
+  Legend,
+  PieChart,
+  Pie,
+  Cell
+} from 'recharts'
 
 export default function Dashboard({ user }) {
   const [metrics, setMetrics] = useState(null)
