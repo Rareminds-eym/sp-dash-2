@@ -620,6 +620,13 @@ class BackendTester:
         self.test_verifications_endpoint()
         self.test_audit_logs_endpoint()
         
+        print("\n📈 TESTING NEW ANALYTICS APIS...")
+        self.test_university_reports_analytics()
+        self.test_recruiter_metrics_analytics()
+        self.test_placement_conversion_analytics()
+        self.test_state_heatmap_analytics()
+        self.test_ai_insights_analytics()
+        
         print("\n🔐 TESTING ACTION APIS...")
         # Test login first to get user ID
         login_success = self.test_login_endpoint()
