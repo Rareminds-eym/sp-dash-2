@@ -75,13 +75,15 @@ export default function DashboardLayout({ user, currentPage, onPageChange, onLog
       )}>
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-between p-6 border-b">
+          <div className="flex items-center justify-between p-6 border-b border-white/20 dark:border-slate-700/50">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/25 transform hover:scale-105 transition-transform duration-200">
                 <span className="text-white text-lg font-bold">RM</span>
               </div>
               <div>
-                <h1 className="font-bold text-lg">Rareminds</h1>
+                <h1 className="font-bold text-lg bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+                  Rareminds
+                </h1>
                 <p className="text-xs text-muted-foreground">Control Panel</p>
               </div>
             </div>
