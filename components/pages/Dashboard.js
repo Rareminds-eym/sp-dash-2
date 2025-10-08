@@ -152,22 +152,29 @@ export default function Dashboard({ user }) {
         {kpiCards.map((card, index) => {
           const Icon = card.icon
           return (
-            <Card key={index} className="overflow-hidden">
+            <Card 
+              key={index} 
+              className="group overflow-hidden bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-white/20 dark:border-slate-700/50 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-2xl hover:shadow-slate-300/50 dark:hover:shadow-slate-800/50 transition-all duration-500 hover:scale-[1.02] hover:-translate-y-1"
+            >
               <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className={`${card.color} p-3 rounded-lg`}>
-                    <Icon className="h-6 w-6 text-white" />
+                <div className="flex items-center justify-between mb-6">
+                  <div className={`${card.color} p-4 rounded-2xl shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                    <Icon className="h-7 w-7 text-white" />
                   </div>
-                  <div className={`flex items-center gap-1 text-sm font-medium ${
-                    card.trend === 'up' ? 'text-green-600' : 'text-red-600'
+                  <div className={`flex items-center gap-2 text-sm font-semibold px-3 py-1 rounded-full ${
+                    card.trend === 'up' 
+                      ? 'text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/30' 
+                      : 'text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-900/30'
                   }`}>
                     {card.trend === 'up' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
                     {card.change}
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">{card.title}</p>
-                  <p className="text-3xl font-bold">{card.value}</p>
+                  <p className="text-sm text-muted-foreground mb-2 font-medium">{card.title}</p>
+                  <p className="text-4xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent group-hover:scale-105 transition-transform duration-300 origin-left">
+                    {card.value}
+                  </p>
                 </div>
               </CardContent>
             </Card>
