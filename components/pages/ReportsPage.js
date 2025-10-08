@@ -22,7 +22,17 @@ import {
   UserCheck,
   Award,
   Target,
-  Briefcase
+  Briefcase,
+  BarChart3,
+  Activity,
+  PieChart,
+  Globe,
+  Brain,
+  Rocket,
+  Star,
+  Trophy,
+  Zap,
+  TrendingDown
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import {
