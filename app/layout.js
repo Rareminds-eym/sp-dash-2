@@ -1,4 +1,5 @@
 import './globals.css'
+import { ThemeProvider } from '@/components/providers/ThemeProvider'
 
 export const metadata = {
   title: 'Rareminds Control - Super Admin Dashboard',
@@ -9,7 +10,14 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="antialiased">
-        {children}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange={false}
+        >
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   )
