@@ -125,24 +125,26 @@ export default function DashboardLayout({ user, currentPage, onPageChange, onLog
           </nav>
 
           {/* User info */}
-          <div className="p-4 border-t">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                <Shield className="h-5 w-5 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{user.email}</p>
-                <span className={cn(
-                  "inline-block text-xs px-2 py-0.5 rounded-full font-medium",
-                  getRoleBadgeColor(user.role)
-                )}>
-                  {getRoleLabel(user.role)}
-                </span>
+          <div className="p-4 border-t border-white/20 dark:border-slate-700/50">
+            <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 mb-3">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/25">
+                  <Shield className="h-5 w-5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{user.email}</p>
+                  <span className={cn(
+                    "inline-block text-xs px-3 py-1 rounded-full font-medium shadow-sm",
+                    getRoleBadgeColor(user.role)
+                  )}>
+                    {getRoleLabel(user.role)}
+                  </span>
+                </div>
               </div>
             </div>
             <Button
               variant="outline"
-              className="w-full"
+              className="w-full bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800/50 transition-all duration-300"
               onClick={onLogout}
             >
               <LogOut className="h-4 w-4 mr-2" />
