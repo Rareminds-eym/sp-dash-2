@@ -174,11 +174,31 @@ export async function GET(request) {
     if (path === '/verifications') {
       const { data: verifications, error } = await supabase
         .from('verifications')
-        .select('*, users(email)')
+        .select('*')
         .order('createdAt', { ascending: false })
         .limit(50)
 
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching verifications:', error)
+        return NextResponse.json({ error: 'Failed to fetch verifications' }, { status: 500 })
+      }
+      
+      // Manually fetch user emails
+      if (verifications && verifications.length > 0) {
+        for (let verification of verifications) {
+          if (verification.performedBy) {
+            const { data: user } = await supabase
+              .from('users')
+              .select('email')
+              .eq('id', verification.performedBy)
+              .maybeSingle()
+            if (user) {
+              verification.users = user
+            }
+          }
+        }
+      }
+      
       return NextResponse.json(verifications || [])
     }
 
