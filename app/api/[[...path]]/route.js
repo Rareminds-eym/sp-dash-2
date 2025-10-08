@@ -52,18 +52,21 @@ export async function GET(request) {
         .select('*')
         .order('createdAt', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching users:', error)
+        return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
+      }
       
       // Manually fetch organization names if needed
       if (users && users.length > 0) {
         for (let user of users) {
           if (user.organizationId) {
-            const { data: org } = await supabase
+            const { data: org, error: orgError } = await supabase
               .from('organizations')
               .select('name')
               .eq('id', user.organizationId)
-              .single()
-            if (org) {
+              .maybeSingle()
+            if (!orgError && org) {
               user.organizations = org
             }
           }
