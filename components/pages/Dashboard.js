@@ -1,36 +1,31 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { 
-  GraduationCap, 
-  Users, 
-  Award, 
-  TrendingUp, 
-  CheckCircle2, 
-  Building2,
-  ArrowUp,
-  ArrowDown,
-  Activity,
-  Sparkles,
-  BarChart3
+import {
+    Activity,
+    ArrowDown,
+    ArrowUp,
+    Award,
+    BarChart3,
+    Building2,
+    CheckCircle2,
+    GraduationCap,
+    Sparkles,
+    TrendingUp,
+    Users
 } from 'lucide-react'
-import { 
-  LineChart, 
-  Line, 
-  AreaChart, 
-  Area, 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
-  Legend,
-  PieChart,
-  Pie,
-  Cell
+import { useEffect, useState } from 'react'
+import {
+    Bar,
+    BarChart,
+    CartesianGrid,
+    Legend,
+    Line,
+    LineChart,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis
 } from 'recharts'
 
 // Custom Tooltip Component

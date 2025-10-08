@@ -1,23 +1,23 @@
 'use client'
 
-import { useState } from 'react'
-import { 
-  LayoutDashboard, 
-  Users, 
-  FileText, 
-  BarChart3, 
-  History, 
-  Settings, 
-  Plug,
-  LogOut,
-  Menu,
-  X,
-  Shield,
-  ChevronRight
-} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { cn } from '@/lib/utils'
+import {
+    BarChart3,
+    ChevronRight,
+    FileText,
+    History,
+    LayoutDashboard,
+    LogOut,
+    Menu,
+    Plug,
+    Settings,
+    Shield,
+    Users,
+    X
+} from 'lucide-react'
+import { useState } from 'react'
 
 const navigation = [
   { name: 'Dashboard', icon: LayoutDashboard, id: 'dashboard' },
