@@ -132,10 +132,41 @@ export async function GET(request) {
     if (path === '/passports') {
       const { data: passports, error } = await supabase
         .from('skill_passports')
-        .select('*, students(profile, users(email))')
+        .select('*')
         .order('createdAt', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching passports:', error)
+        return NextResponse.json({ error: 'Failed to fetch passports' }, { status: 500 })
+      }
+      
+      // Manually fetch related data
+      if (passports && passports.length > 0) {
+        for (let passport of passports) {
+          if (passport.studentId) {
+            const { data: student } = await supabase
+              .from('students')
+              .select('*')
+              .eq('id', passport.studentId)
+              .maybeSingle()
+            if (student) {
+              // Get user email for student
+              if (student.userId) {
+                const { data: user } = await supabase
+                  .from('users')
+                  .select('email')
+                  .eq('id', student.userId)
+                  .maybeSingle()
+                if (user) {
+                  student.users = user
+                }
+              }
+              passport.students = student
+            }
+          }
+        }
+      }
+      
       return NextResponse.json(passports || [])
     }
 
