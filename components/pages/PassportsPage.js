@@ -1,22 +1,22 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Search, CheckCircle2, XCircle, Award, RefreshCw } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
+import { Award, CheckCircle2, RefreshCw, Search, XCircle } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 export default function PassportsPage({ currentUser }) {
   const [passports, setPassports] = useState([])
@@ -104,12 +104,12 @@ export default function PassportsPage({ currentUser }) {
 
   const getStatusBadge = (status) => {
     const colors = {
-      verified: 'bg-green-100 text-green-700',
-      pending: 'bg-yellow-100 text-yellow-700',
-      rejected: 'bg-red-100 text-red-700',
-      suspended: 'bg-gray-100 text-gray-700'
+      verified: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+      pending: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+      rejected: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+      suspended: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
     }
-    return colors[status] || 'bg-gray-100 text-gray-700'
+    return colors[status] || 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
   }
 
   if (loading) {
@@ -151,13 +151,13 @@ export default function PassportsPage({ currentUser }) {
           <div className="space-y-4">
             {filteredPassports.length > 0 ? (
               filteredPassports.map((passport) => (
-                <div key={passport.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div key={passport.id} className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors dark:bg-gray-800/50 dark:hover:bg-gray-800">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
                       <Award className="h-6 w-6 text-white" />
                     </div>
                     <div>
-                      <p className="font-medium">
+                      <p className="font-medium dark:text-white">
                         {passport.students?.profile?.name || passport.students?.users?.email || 'Unknown Student'}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
@@ -176,7 +176,7 @@ export default function PassportsPage({ currentUser }) {
                       {passport.skills && passport.skills.length > 0 && (
                         <div className="flex gap-1 mt-2">
                           {passport.skills.map((skill, idx) => (
-                            <span key={idx} className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded">
+                            <span key={idx} className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded dark:bg-blue-900/30 dark:text-blue-400">
                               {skill}
                             </span>
                           ))}
@@ -191,7 +191,7 @@ export default function PassportsPage({ currentUser }) {
                           variant="outline"
                           size="sm"
                           onClick={() => handleAction(passport, 'verify')}
-                          className="text-green-600 hover:text-green-700"
+                          className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
                         >
                           <CheckCircle2 className="h-4 w-4 mr-2" />
                           Verify
@@ -200,7 +200,7 @@ export default function PassportsPage({ currentUser }) {
                           variant="outline"
                           size="sm"
                           onClick={() => handleAction(passport, 'reject')}
-                          className="text-red-600 hover:text-red-700"
+                          className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                         >
                           <XCircle className="h-4 w-4 mr-2" />
                           Reject

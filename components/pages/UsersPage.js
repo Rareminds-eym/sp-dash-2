@@ -1,28 +1,28 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { 
-  Search, 
-  UserCheck, 
-  UserX, 
-  Shield, 
-  RefreshCw 
-} from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
+import {
+    RefreshCw,
+    Search,
+    Shield,
+    UserCheck,
+    UserX
+} from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 export default function UsersPage({ currentUser }) {
   const [users, setUsers] = useState([])
@@ -110,11 +110,11 @@ export default function UsersPage({ currentUser }) {
 
   const getRoleBadge = (role) => {
     const colors = {
-      super_admin: 'bg-purple-100 text-purple-700',
-      admin: 'bg-blue-100 text-blue-700',
-      manager: 'bg-green-100 text-green-700'
+      super_admin: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+      admin: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+      manager: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
     }
-    return colors[role] || 'bg-gray-100 text-gray-700'
+    return colors[role] || 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
   }
 
   const getRoleLabel = (role) => {
@@ -160,13 +160,13 @@ export default function UsersPage({ currentUser }) {
           <div className="space-y-4">
             {filteredUsers.length > 0 ? (
               filteredUsers.map((user) => (
-                <div key={user.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div key={user.id} className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors dark:bg-gray-800/50 dark:hover:bg-gray-800">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
                       <Shield className="h-6 w-6 text-white" />
                     </div>
                     <div>
-                      <p className="font-medium">{user.email}</p>
+                      <p className="font-medium dark:text-white">{user.email}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <Badge className={getRoleBadge(user.role)}>
                           {getRoleLabel(user.role)}
