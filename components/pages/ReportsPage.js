@@ -654,7 +654,10 @@ export default function ReportsPage() {
           {/* Most Sought Skills */}
           <Card className="neu-card">
             <CardHeader>
-              <CardTitle>⭐ Most Sought Skill Tags</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Star className="h-5 w-5 text-yellow-600" />
+                Most Sought Skill Tags
+              </CardTitle>
               <p className="text-sm text-muted-foreground">Popular job roles and their market rates</p>
             </CardHeader>
             <CardContent>
