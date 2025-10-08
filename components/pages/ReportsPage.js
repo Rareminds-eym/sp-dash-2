@@ -285,7 +285,10 @@ export default function ReportsPage() {
         {/* Recruiter Metrics Tab */}
         <TabsContent value="recruiters" className="space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold">📈 Recruiter Engagement Metrics</h3>
+            <h3 className="text-xl font-semibold flex items-center gap-2">
+              <Activity className="h-5 w-5 text-green-600" />
+              Recruiter Engagement Metrics
+            </h3>
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
