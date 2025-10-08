@@ -1,14 +1,14 @@
 import './globals.css'
 
 export const metadata = {
-  title: 'Next.js MongoDB Template',
-  description: 'A simple template with App Router, MongoDB, and shadcn/ui',
+  title: 'Rareminds Control - Super Admin Dashboard',
+  description: 'Complete RBAC dashboard for managing universities, students, and skill passports',
 }
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body>
+    <html lang="en" suppressHydrationWarning>
+      <body className="antialiased">
         {children}
       </body>
     </html>
