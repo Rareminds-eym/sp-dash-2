@@ -235,7 +235,7 @@ export default function Dashboard({ user }) {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={320}>
-              <AreaChart 
+              <LineChart 
                 data={trends.length > 0 ? trends : [
                   { date: '2025-01', employability: 75, aiVerification: 70 },
                   { date: '2025-02', employability: 78, aiVerification: 73 },
@@ -245,15 +245,13 @@ export default function Dashboard({ user }) {
                 margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
               >
                 <defs>
-                  <linearGradient id="colorEmploy" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.9}/>
-                    <stop offset="50%" stopColor="#8b5cf6" stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.1}/>
+                  <linearGradient id="lineEmploy" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#8b5cf6" />
+                    <stop offset="100%" stopColor="#a855f7" />
                   </linearGradient>
-                  <linearGradient id="colorAI" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.9}/>
-                    <stop offset="50%" stopColor="#3b82f6" stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                  <linearGradient id="lineAI" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#3b82f6" />
+                    <stop offset="100%" stopColor="#06b6d4" />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.3} />
@@ -270,25 +268,25 @@ export default function Dashboard({ user }) {
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend />
-                <Area 
+                <Line 
                   type="monotone" 
                   dataKey="employability" 
-                  stroke="#8b5cf6" 
-                  strokeWidth={3}
-                  fillOpacity={1} 
-                  fill="url(#colorEmploy)" 
+                  stroke="url(#lineEmploy)" 
+                  strokeWidth={4}
+                  dot={{ fill: '#8b5cf6', strokeWidth: 3, r: 6 }}
+                  activeDot={{ r: 8, stroke: '#8b5cf6', strokeWidth: 2, fill: '#ffffff' }}
                   name="Employability Index"
                 />
-                <Area 
+                <Line 
                   type="monotone" 
                   dataKey="aiVerification" 
-                  stroke="#3b82f6" 
-                  strokeWidth={3}
-                  fillOpacity={1} 
-                  fill="url(#colorAI)" 
+                  stroke="url(#lineAI)" 
+                  strokeWidth={4}
+                  dot={{ fill: '#3b82f6', strokeWidth: 3, r: 6 }}
+                  activeDot={{ r: 8, stroke: '#3b82f6', strokeWidth: 2, fill: '#ffffff' }}
                   name="AI Verification %"
                 />
-              </AreaChart>
+              </LineChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
