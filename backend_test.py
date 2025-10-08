@@ -374,6 +374,230 @@ class BackendTester:
         except Exception as e:
             self.log_result("Activate User API", False, f"Activate request failed: {str(e)}")
             return False
+
+    def test_university_reports_analytics(self):
+        """Test GET /api/analytics/university-reports - University-wise analytics"""
+        try:
+            response = requests.get(f"{self.base_url}/analytics/university-reports")
+            if response.status_code == 200:
+                data = response.json()
+                if isinstance(data, list):
+                    if len(data) > 0:
+                        # Check required fields in university reports
+                        required_fields = ['universityId', 'universityName', 'state', 'enrollmentCount', 
+                                         'totalPassports', 'verifiedPassports', 'completionRate', 'verificationRate']
+                        sample_report = data[0]
+                        has_all_fields = all(field in sample_report for field in required_fields)
+                        
+                        if has_all_fields:
+                            self.log_result("University Reports Analytics", True, 
+                                          f"University reports returned {len(data)} universities with all required fields", 
+                                          data[:2] if data else [])
+                        else:
+                            missing_fields = [field for field in required_fields if field not in sample_report]
+                            self.log_result("University Reports Analytics", False, 
+                                          f"Missing required fields: {missing_fields}")
+                        return has_all_fields
+                    else:
+                        self.log_result("University Reports Analytics", True, 
+                                      "University reports returned empty array (no universities in DB)")
+                        return True
+                else:
+                    self.log_result("University Reports Analytics", False, 
+                                  "University reports should return an array")
+                    return False
+            else:
+                self.log_result("University Reports Analytics", False, 
+                              f"University reports returned status {response.status_code}")
+                return False
+        except Exception as e:
+            self.log_result("University Reports Analytics", False, 
+                          f"University reports request failed: {str(e)}")
+            return False
+
+    def test_recruiter_metrics_analytics(self):
+        """Test GET /api/analytics/recruiter-metrics - Recruiter engagement metrics"""
+        try:
+            response = requests.get(f"{self.base_url}/analytics/recruiter-metrics")
+            if response.status_code == 200:
+                data = response.json()
+                if isinstance(data, dict):
+                    # Check required fields in recruiter metrics
+                    required_fields = ['totalSearches', 'profileViews', 'contactAttempts', 
+                                     'shortlisted', 'hireIntents', 'searchTrends', 'topSkillsSearched']
+                    has_all_fields = all(field in data for field in required_fields)
+                    
+                    if has_all_fields:
+                        # Validate nested structures
+                        trends_valid = isinstance(data.get('searchTrends'), list)
+                        skills_valid = isinstance(data.get('topSkillsSearched'), list)
+                        
+                        if trends_valid and skills_valid:
+                            self.log_result("Recruiter Metrics Analytics", True, 
+                                          "Recruiter metrics returned all required fields with valid structure", 
+                                          {k: v for k, v in data.items() if k not in ['searchTrends', 'topSkillsSearched']})
+                        else:
+                            self.log_result("Recruiter Metrics Analytics", False, 
+                                          f"Invalid nested structure - trends: {trends_valid}, skills: {skills_valid}")
+                        return has_all_fields and trends_valid and skills_valid
+                    else:
+                        missing_fields = [field for field in required_fields if field not in data]
+                        self.log_result("Recruiter Metrics Analytics", False, 
+                                      f"Missing required fields: {missing_fields}")
+                        return False
+                else:
+                    self.log_result("Recruiter Metrics Analytics", False, 
+                                  "Recruiter metrics should return an object")
+                    return False
+            else:
+                self.log_result("Recruiter Metrics Analytics", False, 
+                              f"Recruiter metrics returned status {response.status_code}")
+                return False
+        except Exception as e:
+            self.log_result("Recruiter Metrics Analytics", False, 
+                          f"Recruiter metrics request failed: {str(e)}")
+            return False
+
+    def test_placement_conversion_analytics(self):
+        """Test GET /api/analytics/placement-conversion - Placement conversion funnel"""
+        try:
+            response = requests.get(f"{self.base_url}/analytics/placement-conversion")
+            if response.status_code == 200:
+                data = response.json()
+                if isinstance(data, dict):
+                    # Check required fields in placement conversion
+                    required_fields = ['conversionFunnel', 'monthlyConversions']
+                    has_all_fields = all(field in data for field in required_fields)
+                    
+                    if has_all_fields:
+                        # Validate nested structures
+                        funnel_valid = isinstance(data.get('conversionFunnel'), list)
+                        monthly_valid = isinstance(data.get('monthlyConversions'), list)
+                        
+                        if funnel_valid and monthly_valid:
+                            funnel_count = len(data.get('conversionFunnel', []))
+                            monthly_count = len(data.get('monthlyConversions', []))
+                            self.log_result("Placement Conversion Analytics", True, 
+                                          f"Placement conversion returned funnel with {funnel_count} stages and {monthly_count} months", 
+                                          {'funnel_stages': funnel_count, 'monthly_data': monthly_count})
+                        else:
+                            self.log_result("Placement Conversion Analytics", False, 
+                                          f"Invalid nested structure - funnel: {funnel_valid}, monthly: {monthly_valid}")
+                        return has_all_fields and funnel_valid and monthly_valid
+                    else:
+                        missing_fields = [field for field in required_fields if field not in data]
+                        self.log_result("Placement Conversion Analytics", False, 
+                                      f"Missing required fields: {missing_fields}")
+                        return False
+                else:
+                    self.log_result("Placement Conversion Analytics", False, 
+                                  "Placement conversion should return an object")
+                    return False
+            else:
+                self.log_result("Placement Conversion Analytics", False, 
+                              f"Placement conversion returned status {response.status_code}")
+                return False
+        except Exception as e:
+            self.log_result("Placement Conversion Analytics", False, 
+                          f"Placement conversion request failed: {str(e)}")
+            return False
+
+    def test_state_heatmap_analytics(self):
+        """Test GET /api/analytics/state-heatmap - Enhanced state-wise heat map"""
+        try:
+            response = requests.get(f"{self.base_url}/analytics/state-heatmap")
+            if response.status_code == 200:
+                data = response.json()
+                if isinstance(data, list):
+                    if len(data) > 0:
+                        # Check required fields in state heatmap
+                        required_fields = ['state', 'universities', 'students', 'verifiedPassports', 
+                                         'engagementScore', 'employabilityIndex']
+                        sample_state = data[0]
+                        has_all_fields = all(field in sample_state for field in required_fields)
+                        
+                        if has_all_fields:
+                            # Validate data types
+                            numeric_fields = ['universities', 'students', 'verifiedPassports', 
+                                            'engagementScore', 'employabilityIndex']
+                            valid_types = all(isinstance(sample_state.get(field), (int, float)) 
+                                            for field in numeric_fields)
+                            
+                            if valid_types:
+                                self.log_result("State Heatmap Analytics", True, 
+                                              f"State heatmap returned {len(data)} states with all required fields and valid types", 
+                                              data[:2] if data else [])
+                            else:
+                                self.log_result("State Heatmap Analytics", False, 
+                                              "Invalid data types in numeric fields")
+                            return has_all_fields and valid_types
+                        else:
+                            missing_fields = [field for field in required_fields if field not in sample_state]
+                            self.log_result("State Heatmap Analytics", False, 
+                                          f"Missing required fields: {missing_fields}")
+                            return False
+                    else:
+                        self.log_result("State Heatmap Analytics", True, 
+                                      "State heatmap returned empty array (no states in DB)")
+                        return True
+                else:
+                    self.log_result("State Heatmap Analytics", False, 
+                                  "State heatmap should return an array")
+                    return False
+            else:
+                self.log_result("State Heatmap Analytics", False, 
+                              f"State heatmap returned status {response.status_code}")
+                return False
+        except Exception as e:
+            self.log_result("State Heatmap Analytics", False, 
+                          f"State heatmap request failed: {str(e)}")
+            return False
+
+    def test_ai_insights_analytics(self):
+        """Test GET /api/analytics/ai-insights - AI-powered insights"""
+        try:
+            response = requests.get(f"{self.base_url}/analytics/ai-insights")
+            if response.status_code == 200:
+                data = response.json()
+                if isinstance(data, dict):
+                    # Check required fields in AI insights
+                    required_fields = ['emergingSkills', 'soughtSkillTags', 'topUniversities']
+                    has_all_fields = all(field in data for field in required_fields)
+                    
+                    if has_all_fields:
+                        # Validate nested structures
+                        skills_valid = isinstance(data.get('emergingSkills'), list)
+                        tags_valid = isinstance(data.get('soughtSkillTags'), list)
+                        unis_valid = isinstance(data.get('topUniversities'), list)
+                        
+                        if skills_valid and tags_valid and unis_valid:
+                            skills_count = len(data.get('emergingSkills', []))
+                            tags_count = len(data.get('soughtSkillTags', []))
+                            unis_count = len(data.get('topUniversities', []))
+                            self.log_result("AI Insights Analytics", True, 
+                                          f"AI insights returned {skills_count} emerging skills, {tags_count} skill tags, {unis_count} universities", 
+                                          {'emerging_skills': skills_count, 'skill_tags': tags_count, 'top_universities': unis_count})
+                        else:
+                            self.log_result("AI Insights Analytics", False, 
+                                          f"Invalid nested structure - skills: {skills_valid}, tags: {tags_valid}, unis: {unis_valid}")
+                        return has_all_fields and skills_valid and tags_valid and unis_valid
+                    else:
+                        missing_fields = [field for field in required_fields if field not in data]
+                        self.log_result("AI Insights Analytics", False, 
+                                      f"Missing required fields: {missing_fields}")
+                        return False
+                else:
+                    self.log_result("AI Insights Analytics", False, 
+                                  "AI insights should return an object")
+                    return False
+            else:
+                self.log_result("AI Insights Analytics", False, 
+                              f"AI insights returned status {response.status_code}")
+                return False
+        except Exception as e:
+            self.log_result("AI Insights Analytics", False, 
+                          f"AI insights request failed: {str(e)}")
+            return False
     
     def run_all_tests(self):
         """Run all backend API tests"""
