@@ -622,7 +622,10 @@ export default function ReportsPage() {
           {/* Emerging Skills */}
           <Card className="neu-card">
             <CardHeader>
-              <CardTitle>🚀 Top Emerging Skill Clusters</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Rocket className="h-5 w-5 text-purple-600" />
+                Top Emerging Skill Clusters
+              </CardTitle>
               <p className="text-sm text-muted-foreground">Skills showing highest growth in demand</p>
             </CardHeader>
             <CardContent>
