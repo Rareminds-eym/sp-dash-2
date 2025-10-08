@@ -49,10 +49,27 @@ export async function GET(request) {
     if (path === '/users') {
       const { data: users, error } = await supabase
         .from('users')
-        .select('*, organizations(name)')
+        .select('*')
         .order('createdAt', { ascending: false })
 
       if (error) throw error
+      
+      // Manually fetch organization names if needed
+      if (users && users.length > 0) {
+        for (let user of users) {
+          if (user.organizationId) {
+            const { data: org } = await supabase
+              .from('organizations')
+              .select('name')
+              .eq('id', user.organizationId)
+              .single()
+            if (org) {
+              user.organizations = org
+            }
+          }
+        }
+      }
+      
       return NextResponse.json(users || [])
     }
 
