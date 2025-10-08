@@ -217,7 +217,10 @@ export default function ReportsPage() {
         {/* University Reports Tab */}
         <TabsContent value="university" className="space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold">📊 University-wise Reports</h3>
+            <h3 className="text-xl font-semibold flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-blue-600" />
+              University-wise Reports
+            </h3>
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
