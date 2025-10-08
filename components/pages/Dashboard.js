@@ -13,7 +13,7 @@ import {
   ArrowDown,
   Activity,
   Sparkles,
-  BarChart
+  BarChart3
 } from 'lucide-react'
 import { 
   LineChart, 
