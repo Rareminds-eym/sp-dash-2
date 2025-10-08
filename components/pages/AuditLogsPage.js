@@ -28,14 +28,14 @@ export default function AuditLogsPage() {
 
   const getActionBadge = (action) => {
     const colors = {
-      login: 'bg-blue-100 text-blue-700',
-      verify_passport: 'bg-green-100 text-green-700',
-      reject_passport: 'bg-red-100 text-red-700',
-      suspend_user: 'bg-orange-100 text-orange-700',
-      activate_user: 'bg-green-100 text-green-700',
-      delete_user: 'bg-red-100 text-red-700'
+      login: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+      verify_passport: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+      reject_passport: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+      suspend_user: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
+      activate_user: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+      delete_user: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
     }
-    return colors[action] || 'bg-gray-100 text-gray-700'
+    return colors[action] || 'bg-gray-100 text-gray-700 dark:bg-gray-700/30 dark:text-gray-300'
   }
 
   if (loading) {
@@ -70,26 +70,26 @@ export default function AuditLogsPage() {
           <div className="space-y-4">
             {logs.length > 0 ? (
               logs.map((log) => (
-                <div key={log.id} className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
+                <div key={log.id} className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg dark:bg-gray-800/50 dark:hover:bg-gray-800">
                   <div className="w-2 h-2 bg-blue-500 rounded-full mt-2" />
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <Badge className={getActionBadge(log.action)}>
                         {log.action.replace(/_/g, ' ')}
                       </Badge>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-sm text-muted-foreground dark:text-gray-300">
                         {log.users?.email || 'System'}
                       </span>
                     </div>
-                    <p className="text-sm">
+                    <p className="text-sm dark:text-white">
                       Target: <span className="font-medium">{log.target || 'N/A'}</span>
                     </p>
                     {log.ip && (
-                      <p className="text-xs text-muted-foreground mt-1">IP: {log.ip}</p>
+                      <p className="text-xs text-muted-foreground mt-1 dark:text-gray-400">IP: {log.ip}</p>
                     )}
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground dark:text-gray-400">
                       {new Date(log.createdAt).toLocaleString()}
                     </p>
                   </div>
