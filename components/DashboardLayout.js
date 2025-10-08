@@ -5,7 +5,7 @@ import {
   LayoutDashboard, 
   Users, 
   FileText, 
-  BarChart, 
+  BarChart3, 
   History, 
   Settings, 
   Plug,
