@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { History, RefreshCw } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 export default function AuditLogsPage() {
   const [logs, setLogs] = useState([])

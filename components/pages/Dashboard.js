@@ -2,30 +2,29 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-    Activity,
-    ArrowDown,
-    ArrowUp,
-    Award,
-    BarChart3,
-    Building2,
-    CheckCircle2,
-    GraduationCap,
-    Sparkles,
-    TrendingUp,
-    Users
+  Activity,
+  ArrowDown,
+  ArrowUp,
+  Award,
+  BarChart3,
+  Building2,
+  CheckCircle2,
+  GraduationCap,
+  Sparkles,
+  TrendingUp,
+  Users
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import {
-    Bar,
-    BarChart,
-    CartesianGrid,
-    Legend,
-    Line,
-    LineChart,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
 } from 'recharts'
 
 // Custom Tooltip Component
@@ -216,72 +215,136 @@ export default function Dashboard({ user }) {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Trends Chart */}
-        <Card className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-white/20 dark:border-slate-700/50 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-2xl transition-all duration-500">
+        {/* Employability Index Chart */}
+        <Card className="bg-slate-900/95 backdrop-blur-xl border-slate-700/50 shadow-xl shadow-slate-900/50 hover:shadow-2xl transition-all duration-500">
           <CardHeader className="pb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl shadow-lg">
-                <TrendingUp className="h-5 w-5 text-white" />
-              </div>
-              <CardTitle className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 dark:from-purple-400 dark:to-blue-400 bg-clip-text text-transparent">
-                Performance Trends
-              </CardTitle>
-            </div>
+            <CardTitle className="text-xl font-bold text-white">
+              Employability Index Trend
+            </CardTitle>
+            <p className="text-sm text-slate-400 mt-1">Monthly employability scores across all universities</p>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={320}>
-              <LineChart 
+              <AreaChart 
                 data={trends.length > 0 ? trends : [
-                  { date: '2025-01', employability: 75, aiVerification: 70 },
-                  { date: '2025-02', employability: 78, aiVerification: 73 },
-                  { date: '2025-03', employability: 80, aiVerification: 76 },
-                  { date: '2025-04', employability: 82, aiVerification: 78 },
+                  { date: 'Jan', employability: 73 },
+                  { date: 'Feb', employability: 72 },
+                  { date: 'Mar', employability: 74 },
+                  { date: 'Apr', employability: 78 },
+                  { date: 'May', employability: 80 },
+                  { date: 'Jun', employability: 85 },
+                  { date: 'Jul', employability: 90 },
+                  { date: 'Aug', employability: 82 },
+                  { date: 'Sep', employability: 75 },
+                  { date: 'Oct', employability: 78 },
+                  { date: 'Nov', employability: 82 },
+                  { date: 'Dec', employability: 80 },
                 ]}
-                margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
               >
                 <defs>
-                  <linearGradient id="lineEmploy" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#8b5cf6" />
-                    <stop offset="100%" stopColor="#a855f7" />
-                  </linearGradient>
-                  <linearGradient id="lineAI" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#3b82f6" />
-                    <stop offset="100%" stopColor="#06b6d4" />
+                  <linearGradient id="colorEmploy" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#6366f1" stopOpacity={0.6}/>
+                    <stop offset="100%" stopColor="#6366f1" stopOpacity={0.05}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.3} />
+                <CartesianGrid 
+                  strokeDasharray="4 4" 
+                  stroke="#475569" 
+                  opacity={0.2}
+                  vertical={true}
+                  horizontal={true}
+                />
                 <XAxis 
                   dataKey="date" 
-                  tick={{ fontSize: 12, fill: '#64748b' }}
+                  tick={{ fontSize: 12, fill: '#94a3b8' }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis 
-                  tick={{ fontSize: 12, fill: '#64748b' }}
+                  tick={{ fontSize: 12, fill: '#94a3b8' }}
+                  axisLine={false}
+                  tickLine={false}
+                  domain={[0, 100]}
+                  ticks={[0, 25, 50, 75, 100]}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Area 
+                  type="monotone" 
+                  dataKey="employability" 
+                  stroke="#818cf8" 
+                  strokeWidth={2}
+                  fill="url(#colorEmploy)"
+                  name="Employability Index"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* AI Verification Chart */}
+        <Card className="bg-slate-900/95 backdrop-blur-xl border-slate-700/50 shadow-xl shadow-slate-900/50 hover:shadow-2xl transition-all duration-500">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-xl font-bold text-white">
+              AI Verification Trend
+            </CardTitle>
+            <p className="text-sm text-slate-400 mt-1">Monthly AI verification percentage across all verifications</p>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={320}>
+              <AreaChart 
+                data={trends.length > 0 ? trends : [
+                  { date: 'Jan', aiVerification: 68 },
+                  { date: 'Feb', aiVerification: 70 },
+                  { date: 'Mar', aiVerification: 72 },
+                  { date: 'Apr', aiVerification: 75 },
+                  { date: 'May', aiVerification: 77 },
+                  { date: 'Jun', aiVerification: 82 },
+                  { date: 'Jul', aiVerification: 87 },
+                  { date: 'Aug', aiVerification: 80 },
+                  { date: 'Sep', aiVerification: 73 },
+                  { date: 'Oct', aiVerification: 76 },
+                  { date: 'Nov', aiVerification: 80 },
+                  { date: 'Dec', aiVerification: 78 },
+                ]}
+                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id="colorAI" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#6366f1" stopOpacity={0.6}/>
+                    <stop offset="100%" stopColor="#6366f1" stopOpacity={0.05}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid 
+                  strokeDasharray="4 4" 
+                  stroke="#475569" 
+                  opacity={0.2}
+                  vertical={true}
+                  horizontal={true}
+                />
+                <XAxis 
+                  dataKey="date" 
+                  tick={{ fontSize: 12, fill: '#94a3b8' }}
                   axisLine={false}
                   tickLine={false}
                 />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="employability" 
-                  stroke="url(#lineEmploy)" 
-                  strokeWidth={4}
-                  dot={{ fill: '#8b5cf6', strokeWidth: 3, r: 6 }}
-                  activeDot={{ r: 8, stroke: '#8b5cf6', strokeWidth: 2, fill: '#ffffff' }}
-                  name="Employability Index"
+                <YAxis 
+                  tick={{ fontSize: 12, fill: '#94a3b8' }}
+                  axisLine={false}
+                  tickLine={false}
+                  domain={[0, 100]}
+                  ticks={[0, 25, 50, 75, 100]}
                 />
-                <Line 
+                <Tooltip content={<CustomTooltip />} />
+                <Area 
                   type="monotone" 
                   dataKey="aiVerification" 
-                  stroke="url(#lineAI)" 
-                  strokeWidth={4}
-                  dot={{ fill: '#3b82f6', strokeWidth: 3, r: 6 }}
-                  activeDot={{ r: 8, stroke: '#3b82f6', strokeWidth: 2, fill: '#ffffff' }}
+                  stroke="#818cf8" 
+                  strokeWidth={2}
+                  fill="url(#colorAI)"
                   name="AI Verification %"
                 />
-              </LineChart>
+              </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
