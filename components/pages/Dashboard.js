@@ -95,8 +95,19 @@ export default function Dashboard({ user }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex flex-col items-center justify-center h-96 space-y-4">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-blue-200 dark:border-blue-800 rounded-full animate-spin">
+            <div className="absolute top-0 left-0 w-16 h-16 border-4 border-transparent border-t-blue-600 rounded-full animate-spin"></div>
+          </div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Sparkles className="h-6 w-6 text-blue-600 animate-pulse" />
+          </div>
+        </div>
+        <div className="text-center">
+          <p className="text-lg font-semibold text-slate-700 dark:text-slate-300">Loading Dashboard</p>
+          <p className="text-sm text-slate-500 dark:text-slate-500">Fetching your data...</p>
+        </div>
       </div>
     )
   }
