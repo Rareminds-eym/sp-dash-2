@@ -336,39 +336,60 @@ export default function Dashboard({ user }) {
       </div>
 
       {/* Recent Verifications */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Verifications</CardTitle>
+      <Card className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-white/20 dark:border-slate-700/50 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50">
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg">
+              <Activity className="h-5 w-5 text-white" />
+            </div>
+            <CardTitle className="text-xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">
+              Recent Verifications
+            </CardTitle>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {recentVerifications.length > 0 ? (
-              recentVerifications.map((verification) => (
-                <div key={verification.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${
-                      verification.action === 'verify' ? 'bg-green-100' :
-                      verification.action === 'reject' ? 'bg-red-100' :
-                      verification.action === 'suspend' ? 'bg-orange-100' :
-                      'bg-blue-100'
+              recentVerifications.map((verification, index) => (
+                <div 
+                  key={verification.id} 
+                  className="group flex items-center justify-between p-4 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-white/20 dark:border-slate-700/50 shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`p-3 rounded-2xl shadow-lg transition-transform duration-300 group-hover:scale-110 ${
+                      verification.action === 'verify' ? 'bg-gradient-to-br from-green-500 to-emerald-600' :
+                      verification.action === 'reject' ? 'bg-gradient-to-br from-red-500 to-rose-600' :
+                      verification.action === 'suspend' ? 'bg-gradient-to-br from-orange-500 to-amber-600' :
+                      'bg-gradient-to-br from-blue-500 to-indigo-600'
                     }`}>
-                      <CheckCircle2 className="h-5 w-5" />
+                      <CheckCircle2 className="h-5 w-5 text-white" />
                     </div>
                     <div>
-                      <p className="font-medium">{verification.action.charAt(0).toUpperCase() + verification.action.slice(1)} - {verification.targetTable}</p>
-                      <p className="text-sm text-muted-foreground">{verification.note}</p>
+                      <p className="font-semibold text-slate-900 dark:text-white">
+                        {verification.action.charAt(0).toUpperCase() + verification.action.slice(1)} - {verification.targetTable}
+                      </p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">{verification.note}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-muted-foreground">{verification.users?.email || 'System'}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                      {verification.users?.email || 'System'}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-500">
                       {new Date(verification.createdAt).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
               ))
             ) : (
-              <p className="text-center text-muted-foreground py-8">No recent verifications</p>
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-gradient-to-br from-gray-400 to-gray-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                  <Activity className="h-8 w-8 text-white opacity-50" />
+                </div>
+                <p className="text-slate-600 dark:text-slate-400 text-lg font-medium">No recent verifications</p>
+                <p className="text-slate-500 dark:text-slate-500 text-sm">Verification activity will appear here</p>
+              </div>
             )}
           </div>
         </CardContent>
