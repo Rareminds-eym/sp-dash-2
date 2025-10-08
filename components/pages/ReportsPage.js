@@ -25,7 +25,7 @@ import {
   Briefcase,
   BarChart3,
   Activity,
-  PieChart,
+  PieChart as PieChartIcon,
   Globe,
   Brain,
   Rocket,
