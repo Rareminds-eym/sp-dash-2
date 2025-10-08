@@ -208,60 +208,127 @@ export default function Dashboard({ user }) {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Trends Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Performance Trends</CardTitle>
+        <Card className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-white/20 dark:border-slate-700/50 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-2xl transition-all duration-500">
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl shadow-lg">
+                <TrendingUp className="h-5 w-5 text-white" />
+              </div>
+              <CardTitle className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 dark:from-purple-400 dark:to-blue-400 bg-clip-text text-transparent">
+                Performance Trends
+              </CardTitle>
+            </div>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={trends.length > 0 ? trends : [
-                { date: '2025-01', employability: 75, aiVerification: 70 },
-                { date: '2025-02', employability: 78, aiVerification: 73 },
-                { date: '2025-03', employability: 80, aiVerification: 76 },
-                { date: '2025-04', employability: 82, aiVerification: 78 },
-              ]}>
+            <ResponsiveContainer width="100%" height={320}>
+              <AreaChart 
+                data={trends.length > 0 ? trends : [
+                  { date: '2025-01', employability: 75, aiVerification: 70 },
+                  { date: '2025-02', employability: 78, aiVerification: 73 },
+                  { date: '2025-03', employability: 80, aiVerification: 76 },
+                  { date: '2025-04', employability: 82, aiVerification: 78 },
+                ]}
+                margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+              >
                 <defs>
                   <linearGradient id="colorEmploy" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.9}/>
+                    <stop offset="50%" stopColor="#8b5cf6" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.1}/>
                   </linearGradient>
                   <linearGradient id="colorAI" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.9}/>
+                    <stop offset="50%" stopColor="#3b82f6" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.3} />
+                <XAxis 
+                  dataKey="date" 
+                  tick={{ fontSize: 12, fill: '#64748b' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis 
+                  tick={{ fontSize: 12, fill: '#64748b' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip content={<CustomTooltip />} />
                 <Legend />
-                <Area type="monotone" dataKey="employability" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorEmploy)" name="Employability Index" />
-                <Area type="monotone" dataKey="aiVerification" stroke="#3b82f6" fillOpacity={1} fill="url(#colorAI)" name="AI Verification %" />
+                <Area 
+                  type="monotone" 
+                  dataKey="employability" 
+                  stroke="#8b5cf6" 
+                  strokeWidth={3}
+                  fillOpacity={1} 
+                  fill="url(#colorEmploy)" 
+                  name="Employability Index"
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="aiVerification" 
+                  stroke="#3b82f6" 
+                  strokeWidth={3}
+                  fillOpacity={1} 
+                  fill="url(#colorAI)" 
+                  name="AI Verification %"
+                />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
         {/* State-wise Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle>State-wise Distribution</CardTitle>
+        <Card className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-white/20 dark:border-slate-700/50 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-2xl transition-all duration-500">
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
+                <BarChart3 className="h-5 w-5 text-white" />
+              </div>
+              <CardTitle className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
+                State-wise Distribution
+              </CardTitle>
+            </div>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={stateData.length > 0 ? stateData : [
-                { state: 'Delhi', count: 8 },
-                { state: 'Maharashtra', count: 12 },
-                { state: 'Karnataka', count: 10 },
-                { state: 'Tamil Nadu', count: 7 },
-              ]}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="state" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="count" fill="#3b82f6" name="Organizations" />
+            <ResponsiveContainer width="100%" height={320}>
+              <BarChart 
+                data={stateData.length > 0 ? stateData : [
+                  { state: 'Delhi', count: 8 },
+                  { state: 'Maharashtra', count: 12 },
+                  { state: 'Karnataka', count: 10 },
+                  { state: 'Tamil Nadu', count: 7 },
+                ]}
+                margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" />
+                    <stop offset="100%" stopColor="#1e40af" />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.3} />
+                <XAxis 
+                  dataKey="state" 
+                  tick={{ fontSize: 12, fill: '#64748b' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis 
+                  tick={{ fontSize: 12, fill: '#64748b' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar 
+                  dataKey="count" 
+                  fill="url(#barGradient)" 
+                  name="Organizations"
+                  radius={[8, 8, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
