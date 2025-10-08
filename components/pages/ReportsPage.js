@@ -527,7 +527,10 @@ export default function ReportsPage() {
         {/* State Heat Map Tab */}
         <TabsContent value="heatmap" className="space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold">🌍 State/District Heat Map</h3>
+            <h3 className="text-xl font-semibold flex items-center gap-2">
+              <Globe className="h-5 w-5 text-orange-600" />
+              State/District Heat Map
+            </h3>
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
