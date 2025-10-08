@@ -515,7 +515,12 @@ export async function GET(request) {
         '/api/verifications',
         '/api/audit-logs',
         '/api/analytics/state-wise',
-        '/api/analytics/trends'
+        '/api/analytics/trends',
+        '/api/analytics/university-reports',
+        '/api/analytics/recruiter-metrics',
+        '/api/analytics/placement-conversion',
+        '/api/analytics/state-heatmap',
+        '/api/analytics/ai-insights'
       ]
     })
   } catch (error) {
