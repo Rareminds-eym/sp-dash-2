@@ -297,7 +297,7 @@ export default function Dashboard({ user }) {
           <CardHeader className="pb-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
-                <BarChart3 className="h-5 w-5 text-white" />
+                <BarChart className="h-5 w-5 text-white" />
               </div>
               <CardTitle className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
                 State-wise Distribution
