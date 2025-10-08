@@ -602,7 +602,10 @@ export default function ReportsPage() {
         {/* AI Insights Tab */}
         <TabsContent value="insights" className="space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold">🧠 AI Insight Panel</h3>
+            <h3 className="text-xl font-semibold flex items-center gap-2">
+              <Brain className="h-5 w-5 text-pink-600" />
+              AI Insight Panel
+            </h3>
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
