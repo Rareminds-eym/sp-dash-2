@@ -153,18 +153,26 @@ export default function DashboardLayout({ user, currentPage, onPageChange, onLog
       {/* Main content */}
       <div className="lg:pl-64">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 bg-white border-b border-gray-200">
-          <div className="flex items-center justify-between px-4 py-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="lg:hidden"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-            <div className="flex-1">
-              <h2 className="text-xl font-semibold capitalize">{currentPage}</h2>
+        <header className="sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-white/20 dark:border-slate-700/50 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50">
+          <div className="flex items-center justify-between px-6 py-4">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden hover:bg-white/50 dark:hover:bg-slate-800/50"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+              <div>
+                <h2 className="text-xl font-semibold capitalize bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+                  {currentPage}
+                </h2>
+                <p className="text-sm text-muted-foreground">Manage your platform</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
             </div>
           </div>
         </header>
