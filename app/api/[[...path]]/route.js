@@ -206,11 +206,31 @@ export async function GET(request) {
     if (path === '/audit-logs') {
       const { data: logs, error } = await supabase
         .from('audit_logs')
-        .select('*, users(email)')
+        .select('*')
         .order('createdAt', { ascending: false })
         .limit(100)
 
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching audit logs:', error)
+        return NextResponse.json({ error: 'Failed to fetch audit logs' }, { status: 500 })
+      }
+      
+      // Manually fetch user emails
+      if (logs && logs.length > 0) {
+        for (let log of logs) {
+          if (log.actorId) {
+            const { data: user } = await supabase
+              .from('users')
+              .select('email')
+              .eq('id', log.actorId)
+              .maybeSingle()
+            if (user) {
+              log.users = user
+            }
+          }
+        }
+      }
+      
       return NextResponse.json(logs || [])
     }
 
