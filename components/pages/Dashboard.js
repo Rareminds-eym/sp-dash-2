@@ -32,6 +32,31 @@ import {
   Cell
 } from 'recharts'
 
+// Custom Tooltip Component
+const CustomTooltip = ({ active, payload, label, labelFormatter, formatter }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl p-4 rounded-2xl shadow-xl border border-white/20 dark:border-slate-700/50">
+        <p className="font-semibold text-slate-900 dark:text-white mb-2">
+          {labelFormatter ? labelFormatter(label) : label}
+        </p>
+        {payload.map((entry, index) => (
+          <div key={index} className="flex items-center gap-2 text-sm">
+            <div 
+              className="w-3 h-3 rounded-full"
+              style={{ backgroundColor: entry.color }}
+            ></div>
+            <span className="text-slate-700 dark:text-slate-300">
+              {entry.name}: {formatter ? formatter(entry.value) : entry.value}
+            </span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+  return null
+}
+
 export default function Dashboard({ user }) {
   const [metrics, setMetrics] = useState(null)
   const [trends, setTrends] = useState([])
