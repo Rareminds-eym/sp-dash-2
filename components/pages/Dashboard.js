@@ -1,6 +1,6 @@
-'use client'
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Activity,
   ArrowDown,
@@ -12,9 +12,9 @@ import {
   GraduationCap,
   Sparkles,
   TrendingUp,
-  Users
-} from 'lucide-react'
-import { useEffect, useState } from 'react'
+  Users,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -24,11 +24,17 @@ import {
   ResponsiveContainer,
   Tooltip,
   XAxis,
-  YAxis
-} from 'recharts'
+  YAxis,
+} from "recharts";
 
 // Custom Tooltip Component
-const CustomTooltip = ({ active, payload, label, labelFormatter, formatter }) => {
+const CustomTooltip = ({
+  active,
+  payload,
+  label,
+  labelFormatter,
+  formatter,
+}) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl p-4 rounded-2xl shadow-xl border border-white/20 dark:border-slate-700/50">
@@ -37,7 +43,7 @@ const CustomTooltip = ({ active, payload, label, labelFormatter, formatter }) =>
         </p>
         {payload.map((entry, index) => (
           <div key={index} className="flex items-center gap-2 text-sm">
-            <div 
+            <div
               className="w-3 h-3 rounded-full"
               style={{ backgroundColor: entry.color }}
             ></div>
@@ -47,46 +53,47 @@ const CustomTooltip = ({ active, payload, label, labelFormatter, formatter }) =>
           </div>
         ))}
       </div>
-    )
+    );
   }
-  return null
-}
+  return null;
+};
 
 export default function Dashboard({ user }) {
-  const [metrics, setMetrics] = useState(null)
-  const [trends, setTrends] = useState([])
-  const [stateData, setStateData] = useState([])
-  const [recentVerifications, setRecentVerifications] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [metrics, setMetrics] = useState(null);
+  const [trends, setTrends] = useState([]);
+  const [stateData, setStateData] = useState([]);
+  const [recentVerifications, setRecentVerifications] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchDashboardData()
-  }, [])
+    fetchDashboardData();
+  }, []);
 
   const fetchDashboardData = async () => {
     try {
-      const [metricsRes, trendsRes, stateRes, verificationsRes] = await Promise.all([
-        fetch('/api/metrics'),
-        fetch('/api/analytics/trends'),
-        fetch('/api/analytics/state-wise'),
-        fetch('/api/verifications')
-      ])
+      const [metricsRes, trendsRes, stateRes, verificationsRes] =
+        await Promise.all([
+          fetch("/api/metrics"),
+          fetch("/api/analytics/trends"),
+          fetch("/api/analytics/state-wise"),
+          fetch("/api/verifications"),
+        ]);
 
-      const metricsData = await metricsRes.json()
-      const trendsData = await trendsRes.json()
-      const stateDataRes = await stateRes.json()
-      const verificationsData = await verificationsRes.json()
+      const metricsData = await metricsRes.json();
+      const trendsData = await trendsRes.json();
+      const stateDataRes = await stateRes.json();
+      const verificationsData = await verificationsRes.json();
 
-      setMetrics(metricsData)
-      setTrends(trendsData)
-      setStateData(stateDataRes)
-      setRecentVerifications(verificationsData.slice(0, 10))
+      setMetrics(metricsData);
+      setTrends(trendsData);
+      setStateData(stateDataRes);
+      setRecentVerifications(verificationsData.slice(0, 10));
     } catch (error) {
-      console.error('Error fetching dashboard data:', error)
+      console.error("Error fetching dashboard data:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -100,63 +107,67 @@ export default function Dashboard({ user }) {
           </div>
         </div>
         <div className="text-center">
-          <p className="text-lg font-semibold text-slate-700 dark:text-slate-300">Loading Dashboard</p>
-          <p className="text-sm text-slate-500 dark:text-slate-500">Fetching your data...</p>
+          <p className="text-lg font-semibold text-slate-700 dark:text-slate-300">
+            Loading Dashboard
+          </p>
+          <p className="text-sm text-slate-500 dark:text-slate-500">
+            Fetching your data...
+          </p>
         </div>
       </div>
-    )
+    );
   }
 
   const kpiCards = [
     {
-      title: 'Universities',
-      value: metrics?.activeUniversities || 0,
-      icon: GraduationCap,
-      color: 'bg-blue-500',
-      change: '+12%',
-      trend: 'up'
-    },
-    {
-      title: 'Students',
-      value: metrics?.registeredStudents || 0,
-      icon: Users,
-      color: 'bg-green-500',
-      change: '+18%',
-      trend: 'up'
-    },
-    {
-      title: 'Verified Passports',
-      value: metrics?.verifiedPassports || 0,
-      icon: Award,
-      color: 'bg-purple-500',
-      change: '+8%',
-      trend: 'up'
-    },
-    {
-      title: 'AI Verification',
-      value: `${parseFloat(metrics?.aiVerifiedPercent || 0).toFixed(1)}%`,
-      icon: CheckCircle2,
-      color: 'bg-orange-500',
-      change: '+5%',
-      trend: 'up'
-    },
-    {
-      title: 'Employability Index',
-      value: `${parseFloat(metrics?.employabilityIndex || 0).toFixed(1)}%`,
-      icon: TrendingUp,
-      color: 'bg-indigo-500',
-      change: '+3%',
-      trend: 'up'
-    },
-    {
-      title: 'Active Recruiters',
+      title: "Active Recruiters",
       value: metrics?.activeRecruiters || 0,
       icon: Building2,
-      color: 'bg-pink-500',
-      change: '+10%',
-      trend: 'up'
+      color: "bg-pink-500",
+      change: "+10%",
+      trend: "up",
     },
-  ]
+    {
+      title: "Universities",
+      value: metrics?.activeUniversities || 0,
+      icon: GraduationCap,
+      color: "bg-blue-500",
+      change: "+12%",
+      trend: "up",
+    },
+    {
+      title: "Students",
+      value: metrics?.registeredStudents || 0,
+      icon: Users,
+      color: "bg-teal-500",
+      change: "+18%",
+      trend: "up",
+    },
+    {
+      title: "Verified Passports",
+      value: metrics?.verifiedPassports || 0,
+      icon: Award,
+      color: "bg-purple-500",
+      change: "+8%",
+      trend: "up",
+    },
+    {
+      title: "Skill Verification",
+      value: `${parseFloat(metrics?.aiVerifiedPercent || 0).toFixed(1)}%`,
+      icon: CheckCircle2,
+      color: "bg-orange-500",
+      change: "+5%",
+      trend: "up",
+    },
+    {
+      title: "Employability Index",
+      value: `${parseFloat(metrics?.employabilityIndex || 0).toFixed(1)}%`,
+      icon: TrendingUp,
+      color: "bg-indigo-500",
+      change: "+3%",
+      trend: "up",
+    },
+  ];
 
   return (
     <div className="space-y-8">
@@ -171,8 +182,15 @@ export default function Dashboard({ user }) {
               <Sparkles className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold">Welcome back, {user.email.split('@')[0]}!</h1>
-              <p className="text-blue-100 text-lg">Here's what's happening with your platform today.</p>
+              <h1 className="text-3xl font-bold">
+                Welcome back,{" "}
+                {user.email.split("@")[0].charAt(0).toUpperCase() +
+                  user.email.split("@")[0].slice(1)}
+                !
+              </h1>
+              <p className="text-blue-100 text-lg">
+                Here's what's happening with your platform today.
+              </p>
             </div>
           </div>
         </div>
@@ -181,98 +199,118 @@ export default function Dashboard({ user }) {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {kpiCards.map((card, index) => {
-          const Icon = card.icon
+          const Icon = card.icon;
           return (
-            <Card 
-              key={index} 
+            <Card
+              key={index}
               className="group overflow-hidden bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-white/20 dark:border-slate-700/50 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-2xl hover:shadow-slate-300/50 dark:hover:shadow-slate-800/50 transition-all duration-500 hover:scale-[1.02] hover:-translate-y-1"
             >
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <div className={`${card.color} p-4 rounded-2xl shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                  <div
+                    className={`${card.color} p-4 rounded-2xl shadow-lg group-hover:scale-110 transition-transform duration-300`}
+                  >
                     <Icon className="h-7 w-7 text-white" />
                   </div>
-                  <div className={`flex items-center gap-2 text-sm font-semibold px-3 py-1 rounded-full ${
-                    card.trend === 'up' 
-                      ? 'text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/30' 
-                      : 'text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-900/30'
-                  }`}>
-                    {card.trend === 'up' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
+                  <div
+                    className={`flex items-center gap-2 text-sm font-semibold px-3 py-1 rounded-full ${
+                      card.trend === "up"
+                        ? "text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/30"
+                        : "text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-900/30"
+                    }`}
+                  >
+                    {card.trend === "up" ? (
+                      <ArrowUp className="h-4 w-4" />
+                    ) : (
+                      <ArrowDown className="h-4 w-4" />
+                    )}
                     {card.change}
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground mb-2 font-medium">{card.title}</p>
+                  <p className="text-sm text-muted-foreground mb-2 font-medium">
+                    {card.title}
+                  </p>
                   <p className="text-4xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent group-hover:scale-105 transition-transform duration-300 origin-left">
                     {card.value}
                   </p>
                 </div>
               </CardContent>
             </Card>
-          )
+          );
         })}
       </div>
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Employability Index Chart */}
-        <Card className="bg-slate-900/95 backdrop-blur-xl border-slate-700/50 shadow-xl shadow-slate-900/50 hover:shadow-2xl transition-all duration-500">
+        <Card className="bg-white/70 dark:bg-slate-900/95 backdrop-blur-xl border-white/20 dark:border-slate-700/50 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-2xl transition-all duration-500">
           <CardHeader className="pb-4">
-            <CardTitle className="text-xl font-bold text-white">
+            <CardTitle className="text-xl font-bold text-slate-900 dark:text-white">
               Employability Index Trend
             </CardTitle>
-            <p className="text-sm text-slate-400 mt-1">Monthly employability scores across all universities</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+              Monthly employability scores across all universities
+            </p>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={320}>
-              <AreaChart 
-                data={trends.length > 0 ? trends : [
-                  { date: 'Jan', employability: 73 },
-                  { date: 'Feb', employability: 72 },
-                  { date: 'Mar', employability: 74 },
-                  { date: 'Apr', employability: 78 },
-                  { date: 'May', employability: 80 },
-                  { date: 'Jun', employability: 85 },
-                  { date: 'Jul', employability: 90 },
-                  { date: 'Aug', employability: 82 },
-                  { date: 'Sep', employability: 75 },
-                  { date: 'Oct', employability: 78 },
-                  { date: 'Nov', employability: 82 },
-                  { date: 'Dec', employability: 80 },
-                ]}
+              <AreaChart
+                data={
+                  trends.length > 0
+                    ? trends
+                    : [
+                        { date: "Jan", employability: 73 },
+                        { date: "Feb", employability: 72 },
+                        { date: "Mar", employability: 74 },
+                        { date: "Apr", employability: 78 },
+                        { date: "May", employability: 80 },
+                        { date: "Jun", employability: 85 },
+                        { date: "Jul", employability: 90 },
+                        { date: "Aug", employability: 82 },
+                        { date: "Sep", employability: 75 },
+                        { date: "Oct", employability: 78 },
+                        { date: "Nov", employability: 82 },
+                        { date: "Dec", employability: 80 },
+                      ]
+                }
                 margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
               >
                 <defs>
                   <linearGradient id="colorEmploy" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#6366f1" stopOpacity={0.6}/>
-                    <stop offset="100%" stopColor="#6366f1" stopOpacity={0.05}/>
+                    <stop offset="0%" stopColor="#6366f1" stopOpacity={0.6} />
+                    <stop
+                      offset="100%"
+                      stopColor="#6366f1"
+                      stopOpacity={0.05}
+                    />
                   </linearGradient>
                 </defs>
-                <CartesianGrid 
-                  strokeDasharray="4 4" 
-                  stroke="#475569" 
+                <CartesianGrid
+                  strokeDasharray="4 4"
+                  stroke="#475569"
                   opacity={0.2}
                   vertical={true}
                   horizontal={true}
                 />
-                <XAxis 
-                  dataKey="date" 
-                  tick={{ fontSize: 12, fill: '#94a3b8' }}
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 12, fill: "#64748b" }}
                   axisLine={false}
                   tickLine={false}
                 />
-                <YAxis 
-                  tick={{ fontSize: 12, fill: '#94a3b8' }}
+                <YAxis
+                  tick={{ fontSize: 12, fill: "#64748b" }}
                   axisLine={false}
                   tickLine={false}
                   domain={[0, 100]}
                   ticks={[0, 25, 50, 75, 100]}
                 />
                 <Tooltip content={<CustomTooltip />} />
-                <Area 
-                  type="monotone" 
-                  dataKey="employability" 
-                  stroke="#818cf8" 
+                <Area
+                  type="monotone"
+                  dataKey="employability"
+                  stroke="#818cf8"
                   strokeWidth={2}
                   fill="url(#colorEmploy)"
                   name="Employability Index"
@@ -283,63 +321,73 @@ export default function Dashboard({ user }) {
         </Card>
 
         {/* AI Verification Chart */}
-        <Card className="bg-slate-900/95 backdrop-blur-xl border-slate-700/50 shadow-xl shadow-slate-900/50 hover:shadow-2xl transition-all duration-500">
+        <Card className="bg-white/70 dark:bg-slate-900/95 backdrop-blur-xl border-white/20 dark:border-slate-700/50 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-2xl transition-all duration-500">
           <CardHeader className="pb-4">
-            <CardTitle className="text-xl font-bold text-white">
+            <CardTitle className="text-xl font-bold text-slate-900 dark:text-white">
               AI Verification Trend
             </CardTitle>
-            <p className="text-sm text-slate-400 mt-1">Monthly AI verification percentage across all verifications</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+              Monthly AI verification percentage across all verifications
+            </p>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={320}>
-              <AreaChart 
-                data={trends.length > 0 ? trends : [
-                  { date: 'Jan', aiVerification: 68 },
-                  { date: 'Feb', aiVerification: 70 },
-                  { date: 'Mar', aiVerification: 72 },
-                  { date: 'Apr', aiVerification: 75 },
-                  { date: 'May', aiVerification: 77 },
-                  { date: 'Jun', aiVerification: 82 },
-                  { date: 'Jul', aiVerification: 87 },
-                  { date: 'Aug', aiVerification: 80 },
-                  { date: 'Sep', aiVerification: 73 },
-                  { date: 'Oct', aiVerification: 76 },
-                  { date: 'Nov', aiVerification: 80 },
-                  { date: 'Dec', aiVerification: 78 },
-                ]}
+              <AreaChart
+                data={
+                  trends.length > 0
+                    ? trends
+                    : [
+                        { date: "Jan", aiVerification: 68 },
+                        { date: "Feb", aiVerification: 70 },
+                        { date: "Mar", aiVerification: 72 },
+                        { date: "Apr", aiVerification: 75 },
+                        { date: "May", aiVerification: 77 },
+                        { date: "Jun", aiVerification: 82 },
+                        { date: "Jul", aiVerification: 87 },
+                        { date: "Aug", aiVerification: 80 },
+                        { date: "Sep", aiVerification: 73 },
+                        { date: "Oct", aiVerification: 76 },
+                        { date: "Nov", aiVerification: 80 },
+                        { date: "Dec", aiVerification: 78 },
+                      ]
+                }
                 margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
               >
                 <defs>
                   <linearGradient id="colorAI" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#6366f1" stopOpacity={0.6}/>
-                    <stop offset="100%" stopColor="#6366f1" stopOpacity={0.05}/>
+                    <stop offset="0%" stopColor="#6366f1" stopOpacity={0.6} />
+                    <stop
+                      offset="100%"
+                      stopColor="#6366f1"
+                      stopOpacity={0.05}
+                    />
                   </linearGradient>
                 </defs>
-                <CartesianGrid 
-                  strokeDasharray="4 4" 
-                  stroke="#475569" 
+                <CartesianGrid
+                  strokeDasharray="4 4"
+                  stroke="#475569"
                   opacity={0.2}
                   vertical={true}
                   horizontal={true}
                 />
-                <XAxis 
-                  dataKey="date" 
-                  tick={{ fontSize: 12, fill: '#94a3b8' }}
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 12, fill: "#64748b" }}
                   axisLine={false}
                   tickLine={false}
                 />
-                <YAxis 
-                  tick={{ fontSize: 12, fill: '#94a3b8' }}
+                <YAxis
+                  tick={{ fontSize: 12, fill: "#64748b" }}
                   axisLine={false}
                   tickLine={false}
                   domain={[0, 100]}
                   ticks={[0, 25, 50, 75, 100]}
                 />
                 <Tooltip content={<CustomTooltip />} />
-                <Area 
-                  type="monotone" 
-                  dataKey="aiVerification" 
-                  stroke="#818cf8" 
+                <Area
+                  type="monotone"
+                  dataKey="aiVerification"
+                  stroke="#818cf8"
                   strokeWidth={2}
                   fill="url(#colorAI)"
                   name="AI Verification %"
@@ -363,13 +411,17 @@ export default function Dashboard({ user }) {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={320}>
-              <BarChart 
-                data={stateData.length > 0 ? stateData : [
-                  { state: 'Delhi', count: 8 },
-                  { state: 'Maharashtra', count: 12 },
-                  { state: 'Karnataka', count: 10 },
-                  { state: 'Tamil Nadu', count: 7 },
-                ]}
+              <BarChart
+                data={
+                  stateData.length > 0
+                    ? stateData
+                    : [
+                        { state: "Delhi", count: 8 },
+                        { state: "Maharashtra", count: 12 },
+                        { state: "Karnataka", count: 10 },
+                        { state: "Tamil Nadu", count: 7 },
+                      ]
+                }
                 margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
               >
                 <defs>
@@ -378,22 +430,26 @@ export default function Dashboard({ user }) {
                     <stop offset="100%" stopColor="#1e40af" />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.3} />
-                <XAxis 
-                  dataKey="state" 
-                  tick={{ fontSize: 12, fill: '#64748b' }}
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#e2e8f0"
+                  opacity={0.3}
+                />
+                <XAxis
+                  dataKey="state"
+                  tick={{ fontSize: 12, fill: "#64748b" }}
                   axisLine={false}
                   tickLine={false}
                 />
-                <YAxis 
-                  tick={{ fontSize: 12, fill: '#64748b' }}
+                <YAxis
+                  tick={{ fontSize: 12, fill: "#64748b" }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar 
-                  dataKey="count" 
-                  fill="url(#barGradient)" 
+                <Bar
+                  dataKey="count"
+                  fill="url(#barGradient)"
                   name="Organizations"
                   radius={[8, 8, 0, 0]}
                 />
@@ -419,30 +475,39 @@ export default function Dashboard({ user }) {
           <div className="space-y-4">
             {recentVerifications.length > 0 ? (
               recentVerifications.map((verification, index) => (
-                <div 
-                  key={verification.id} 
+                <div
+                  key={verification.id}
                   className="group flex items-center justify-between p-4 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-white/20 dark:border-slate-700/50 shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300"
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
                   <div className="flex items-center gap-4">
-                    <div className={`p-3 rounded-2xl shadow-lg transition-transform duration-300 group-hover:scale-110 ${
-                      verification.action === 'verify' ? 'bg-gradient-to-br from-green-500 to-emerald-600' :
-                      verification.action === 'reject' ? 'bg-gradient-to-br from-red-500 to-rose-600' :
-                      verification.action === 'suspend' ? 'bg-gradient-to-br from-orange-500 to-amber-600' :
-                      'bg-gradient-to-br from-blue-500 to-indigo-600'
-                    }`}>
+                    <div
+                      className={`p-3 rounded-2xl shadow-lg transition-transform duration-300 group-hover:scale-110 ${
+                        verification.action === "verify"
+                          ? "bg-gradient-to-br from-green-500 to-emerald-600"
+                          : verification.action === "reject"
+                          ? "bg-gradient-to-br from-red-500 to-rose-600"
+                          : verification.action === "suspend"
+                          ? "bg-gradient-to-br from-orange-500 to-amber-600"
+                          : "bg-gradient-to-br from-blue-500 to-indigo-600"
+                      }`}
+                    >
                       <CheckCircle2 className="h-5 w-5 text-white" />
                     </div>
                     <div>
                       <p className="font-semibold text-slate-900 dark:text-white">
-                        {verification.action.charAt(0).toUpperCase() + verification.action.slice(1)} - {verification.targetTable}
+                        {verification.action.charAt(0).toUpperCase() +
+                          verification.action.slice(1)}{" "}
+                        - {verification.targetTable}
                       </p>
-                      <p className="text-sm text-slate-600 dark:text-slate-400">{verification.note}</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
+                        {verification.note}
+                      </p>
                     </div>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                      {verification.users?.email || 'System'}
+                      {verification.users?.email || "System"}
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-500">
                       {new Date(verification.createdAt).toLocaleDateString()}
@@ -455,13 +520,17 @@ export default function Dashboard({ user }) {
                 <div className="w-16 h-16 bg-gradient-to-br from-gray-400 to-gray-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                   <Activity className="h-8 w-8 text-white opacity-50" />
                 </div>
-                <p className="text-slate-600 dark:text-slate-400 text-lg font-medium">No recent verifications</p>
-                <p className="text-slate-500 dark:text-slate-500 text-sm">Verification activity will appear here</p>
+                <p className="text-slate-600 dark:text-slate-400 text-lg font-medium">
+                  No recent verifications
+                </p>
+                <p className="text-slate-500 dark:text-slate-500 text-sm">
+                  Verification activity will appear here
+                </p>
               </div>
             )}
           </div>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
