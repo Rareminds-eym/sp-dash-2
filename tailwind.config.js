@@ -67,6 +67,14 @@ module.exports = {
     				'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
     				border: 'hsl(var(--sidebar-border))',
     				ring: 'hsl(var(--sidebar-ring))'
+    			},
+    			// Campaign colors
+    			campaign: {
+    				blue1: '#1D8AD1', // Primary Blue 1
+    				blue2: '#5378F1', // Primary Blue 2
+    				red: '#E32A18',   // Campaign Red
+    				gold: '#D4AF37',  // Gold/Bronze
+    				gray: '#EDF2F9'   // Light Gray/Off-White
     			}
     		},
     		borderRadius: {

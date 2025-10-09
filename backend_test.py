@@ -10,7 +10,7 @@ import sys
 from datetime import datetime
 
 # Base URL from environment
-BASE_URL = "https://insights-dashboard-5.preview.emergentagent.com/api"
+BASE_URL = "https://api-checkup.preview.emergentagent.com/api"
 
 class BackendTester:
     def __init__(self):
@@ -598,6 +598,64 @@ class BackendTester:
             self.log_result("AI Insights Analytics", False, 
                           f"AI insights request failed: {str(e)}")
             return False
+
+    def test_reject_passport(self):
+        """Test POST /api/reject-passport - Reject a passport"""
+        if not self.passport_id or not self.user_id:
+            self.log_result("Reject Passport API", False, "Cannot test - missing passport ID or user ID from previous tests")
+            return False
+            
+        try:
+            reject_data = {
+                "passportId": self.passport_id,
+                "userId": self.user_id,
+                "reason": "Test rejection from backend testing"
+            }
+            
+            response = requests.post(f"{self.base_url}/reject-passport", json=reject_data)
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('success'):
+                    self.log_result("Reject Passport API", True, "Passport rejection successful", data)
+                    return True
+                else:
+                    self.log_result("Reject Passport API", False, "Rejection response missing success flag")
+                    return False
+            else:
+                self.log_result("Reject Passport API", False, f"Reject endpoint returned status {response.status_code}")
+                return False
+        except Exception as e:
+            self.log_result("Reject Passport API", False, f"Reject request failed: {str(e)}")
+            return False
+
+    def test_delete_user(self):
+        """Test DELETE /api/user - Delete (soft delete) a user"""
+        if not self.target_user_id or not self.user_id:
+            self.log_result("Delete User API", False, "Cannot test - missing target user ID or actor user ID from previous tests")
+            return False
+            
+        try:
+            delete_data = {
+                "userId": self.target_user_id,
+                "actorId": self.user_id,
+                "reason": "Test deletion from backend testing"
+            }
+            
+            response = requests.delete(f"{self.base_url}/user", json=delete_data)
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('success'):
+                    self.log_result("Delete User API", True, "User deletion (soft delete) successful", data)
+                    return True
+                else:
+                    self.log_result("Delete User API", False, "Deletion response missing success flag")
+                    return False
+            else:
+                self.log_result("Delete User API", False, f"Delete endpoint returned status {response.status_code}")
+                return False
+        except Exception as e:
+            self.log_result("Delete User API", False, f"Delete request failed: {str(e)}")
+            return False
     
     def run_all_tests(self):
         """Run all backend API tests"""
@@ -635,15 +693,19 @@ class BackendTester:
         if login_success and self.user_id:
             if self.passport_id:
                 self.test_verify_passport()
+                self.test_reject_passport()
             else:
                 self.log_result("Verify Passport API", False, "Skipped - no passport ID available from passports endpoint")
+                self.log_result("Reject Passport API", False, "Skipped - no passport ID available from passports endpoint")
                 
             if self.target_user_id:
                 self.test_suspend_user()
                 self.test_activate_user()
+                self.test_delete_user()
             else:
                 self.log_result("Suspend User API", False, "Skipped - no target user ID available from users endpoint")
                 self.log_result("Activate User API", False, "Skipped - no target user ID available from users endpoint")
+                self.log_result("Delete User API", False, "Skipped - no target user ID available from users endpoint")
         else:
             self.log_result("Action APIs", False, "Skipped action APIs - login failed or no user ID")
         
