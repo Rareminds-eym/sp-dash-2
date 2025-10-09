@@ -5,7 +5,6 @@ const nextConfig = {
   },
   experimental: {
     // Remove if not using Server Components
-    serverExternalPackages: ['mongodb'],
   },
   webpack(config, { dev }) {
     if (dev) {
