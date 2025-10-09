@@ -31,7 +31,7 @@ export async function GET(request) {
         .select('*')
         .order('snapshotDate', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
 
       if (error) throw error
 
