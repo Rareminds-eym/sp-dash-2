@@ -1,6 +1,8 @@
-import { NextResponse } from 'next/server'
-import { v4 as uuidv4 } from 'uuid'
-import { supabase } from '../../../lib/supabase'
+import { NextResponse } from 'next/server';
+import { v4 as uuidv4 } from 'uuid';
+import { supabase } from '../../../lib/supabase';
+
+export const runtime = 'edge';
 
 // Helper to log audit
 async function logAudit(actorId, action, target, payload = {}, ip = '') {
