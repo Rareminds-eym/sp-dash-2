@@ -348,6 +348,30 @@ backend:
         agent: "testing"
         comment: "AI insights endpoint working correctly. Returns comprehensive mock data with 5 emerging skills, 5 skill tags, and 5 top universities. All nested arrays have proper structure with growth percentages, salary data, and performance metrics ready for dashboard visualization."
 
+  - task: "Passport Rejection API"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "POST /api/reject-passport endpoint working correctly. Updates passport status to 'rejected', creates verification record, and logs audit trail. Returns proper success response."
+
+  - task: "User Deletion API"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "DELETE /api/user endpoint working correctly. Performs soft delete by setting isActive to false, creates verification record, and logs audit trail. Returns proper success response."
+
 frontend:
   - task: "Comprehensive Reports & Analytics Page"
     implemented: true
