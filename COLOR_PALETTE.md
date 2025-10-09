@@ -79,4 +79,4 @@ In dark mode, the campaign colors remain consistent to maintain brand identity:
 - Campaign Red: #E32A18
 - Gold/Bronze: #D4AF37
 
-These colors automatically adapt to have appropriate contrast against dark backgrounds.
+These colors automatically adapt to have appropriate contrast against dark backgrounds...
