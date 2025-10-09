@@ -693,15 +693,19 @@ class BackendTester:
         if login_success and self.user_id:
             if self.passport_id:
                 self.test_verify_passport()
+                self.test_reject_passport()
             else:
                 self.log_result("Verify Passport API", False, "Skipped - no passport ID available from passports endpoint")
+                self.log_result("Reject Passport API", False, "Skipped - no passport ID available from passports endpoint")
                 
             if self.target_user_id:
                 self.test_suspend_user()
                 self.test_activate_user()
+                self.test_delete_user()
             else:
                 self.log_result("Suspend User API", False, "Skipped - no target user ID available from users endpoint")
                 self.log_result("Activate User API", False, "Skipped - no target user ID available from users endpoint")
+                self.log_result("Delete User API", False, "Skipped - no target user ID available from users endpoint")
         else:
             self.log_result("Action APIs", False, "Skipped action APIs - login failed or no user ID")
         
