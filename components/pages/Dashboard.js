@@ -123,7 +123,7 @@ export default function Dashboard({ user }) {
       title: "Active Recruiters",
       value: metrics?.activeRecruiters || 0,
       icon: Building2,
-      color: "bg-campaign-blue1",
+      color: "bg-campaign-blue1", // Using single campaign blue1 color
       change: "+10%",
       trend: "up",
     },
@@ -131,7 +131,7 @@ export default function Dashboard({ user }) {
       title: "Universities",
       value: metrics?.activeUniversities || 0,
       icon: GraduationCap,
-      color: "bg-campaign-blue2",
+      color: "bg-campaign-blue1", // Using single campaign blue1 color
       change: "+12%",
       trend: "up",
     },
@@ -139,7 +139,7 @@ export default function Dashboard({ user }) {
       title: "Students",
       value: metrics?.registeredStudents || 0,
       icon: Users,
-      color: "bg-campaign-gold",
+      color: "bg-campaign-blue1", // Using single campaign blue1 color
       change: "+18%",
       trend: "up",
     },
@@ -147,7 +147,7 @@ export default function Dashboard({ user }) {
       title: "Verified Passports",
       value: metrics?.verifiedPassports || 0,
       icon: Award,
-      color: "bg-campaign-red",
+      color: "bg-campaign-blue1", // Using single campaign blue1 color
       change: "+8%",
       trend: "up",
     },
@@ -155,7 +155,7 @@ export default function Dashboard({ user }) {
       title: "Skill Verification",
       value: `${parseFloat(metrics?.aiVerifiedPercent || 0).toFixed(1)}%`,
       icon: CheckCircle2,
-      color: "bg-campaign-blue1",
+      color: "bg-campaign-blue1", // Using single campaign blue1 color
       change: "+5%",
       trend: "up",
     },
@@ -163,7 +163,7 @@ export default function Dashboard({ user }) {
       title: "Employability Index",
       value: `${parseFloat(metrics?.employabilityIndex || 0).toFixed(1)}%`,
       icon: TrendingUp,
-      color: "bg-campaign-blue2",
+      color: "bg-campaign-blue1", // Using single campaign blue1 color
       change: "+3%",
       trend: "up",
     },
