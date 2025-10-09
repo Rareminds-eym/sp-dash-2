@@ -123,7 +123,7 @@ export default function Dashboard({ user }) {
       title: "Active Recruiters",
       value: metrics?.activeRecruiters || 0,
       icon: Building2,
-      color: "bg-pink-500",
+      color: "bg-campaign-blue1",
       change: "+10%",
       trend: "up",
     },
@@ -131,7 +131,7 @@ export default function Dashboard({ user }) {
       title: "Universities",
       value: metrics?.activeUniversities || 0,
       icon: GraduationCap,
-      color: "bg-blue-500",
+      color: "bg-campaign-blue2",
       change: "+12%",
       trend: "up",
     },
@@ -139,7 +139,7 @@ export default function Dashboard({ user }) {
       title: "Students",
       value: metrics?.registeredStudents || 0,
       icon: Users,
-      color: "bg-teal-500",
+      color: "bg-campaign-gold",
       change: "+18%",
       trend: "up",
     },
@@ -147,7 +147,7 @@ export default function Dashboard({ user }) {
       title: "Verified Passports",
       value: metrics?.verifiedPassports || 0,
       icon: Award,
-      color: "bg-purple-500",
+      color: "bg-campaign-red",
       change: "+8%",
       trend: "up",
     },
@@ -155,7 +155,7 @@ export default function Dashboard({ user }) {
       title: "Skill Verification",
       value: `${parseFloat(metrics?.aiVerifiedPercent || 0).toFixed(1)}%`,
       icon: CheckCircle2,
-      color: "bg-orange-500",
+      color: "bg-campaign-blue1",
       change: "+5%",
       trend: "up",
     },
@@ -163,7 +163,7 @@ export default function Dashboard({ user }) {
       title: "Employability Index",
       value: `${parseFloat(metrics?.employabilityIndex || 0).toFixed(1)}%`,
       icon: TrendingUp,
-      color: "bg-indigo-500",
+      color: "bg-campaign-blue2",
       change: "+3%",
       trend: "up",
     },
@@ -172,7 +172,7 @@ export default function Dashboard({ user }) {
   return (
     <div className="space-y-8">
       {/* Welcome Section */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 rounded-3xl p-8 text-white shadow-2xl shadow-blue-500/25">
+      <div className="relative overflow-hidden bg-gradient-to-br from-campaign-blue1 via-campaign-blue2 to-campaign-red rounded-3xl p-8 text-white shadow-2xl shadow-campaign-blue1/25">
         <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent"></div>
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-16 translate-x-16"></div>
         <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-12 -translate-x-12"></div>
@@ -484,12 +484,12 @@ export default function Dashboard({ user }) {
                     <div
                       className={`p-3 rounded-2xl shadow-lg transition-transform duration-300 group-hover:scale-110 ${
                         verification.action === "verify"
-                          ? "bg-gradient-to-br from-green-500 to-emerald-600"
+                          ? "bg-gradient-to-br from-campaign-blue1 to-campaign-blue2"
                           : verification.action === "reject"
-                          ? "bg-gradient-to-br from-red-500 to-rose-600"
+                          ? "bg-gradient-to-br from-campaign-red to-orange-600"
                           : verification.action === "suspend"
-                          ? "bg-gradient-to-br from-orange-500 to-amber-600"
-                          : "bg-gradient-to-br from-blue-500 to-indigo-600"
+                          ? "bg-gradient-to-br from-campaign-gold to-amber-600"
+                          : "bg-gradient-to-br from-campaign-blue1 to-campaign-blue2"
                       }`}
                     >
                       <CheckCircle2 className="h-5 w-5 text-white" />

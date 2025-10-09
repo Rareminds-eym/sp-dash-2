@@ -1,7 +1,6 @@
-import * as React from "react"
 import { cva } from "class-variance-authority";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
   "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
@@ -15,6 +14,15 @@ const badgeVariants = cva(
         destructive:
           "border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80",
         outline: "text-foreground",
+        // Campaign variants
+        campaignBlue1:
+          "border-transparent bg-campaign-blue1 text-white shadow hover:bg-campaign-blue1/90",
+        campaignBlue2:
+          "border-transparent bg-campaign-blue2 text-white shadow hover:bg-campaign-blue2/90",
+        campaignRed:
+          "border-transparent bg-campaign-red text-white shadow hover:bg-campaign-red/90",
+        campaignGold:
+          "border-transparent bg-campaign-gold text-black shadow hover:bg-campaign-gold/90",
       },
     },
     defaultVariants: {
@@ -31,4 +39,4 @@ function Badge({
   return (<div className={cn(badgeVariants({ variant }), className)} {...props} />);
 }
 
-export { Badge, badgeVariants }
+export { Badge, badgeVariants };
