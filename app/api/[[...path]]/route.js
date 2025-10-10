@@ -586,7 +586,11 @@ export async function POST(request) {
   const path = pathname.replace('/api', '')
 
   try {
-    const body = await request.json()
+    // Only parse JSON body for endpoints that need it (not update-metrics)
+    let body = {}
+    if (path !== '/update-metrics') {
+      body = await request.json()
+    }
 
     // POST /api/verify - Verify a passport
     if (path === '/verify') {
