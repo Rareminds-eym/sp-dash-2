@@ -50,7 +50,7 @@ export default function SettingsPage({ user }) {
       </div>
 
       {/* System Management Section - Only for Super Admin */}
-      {user.role === 'super_admin' && (
+      {user?.role === 'super_admin' && (
         <Card className="border-blue-200 dark:border-blue-800">
           <CardHeader className="bg-blue-50 dark:bg-blue-950/30">
             <div className="flex items-center gap-2">
