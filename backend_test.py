@@ -888,6 +888,10 @@ class BackendTester:
         self.test_api_root()
         self.test_metrics_endpoint()
         self.test_update_metrics_endpoint()
+        
+        # Test the specific metrics scenarios requested
+        self.test_metrics_endpoint_scenarios()
+        
         self.test_analytics_trends()
         self.test_analytics_state_wise()
         self.test_users_endpoint()
