@@ -32,30 +32,30 @@ export async function GET(request) {
         // Calculate metrics dynamically from database tables
         
         // Count universities (organizations with type = 'university')
-        const { data: universities, error: uniError } = await supabase
+        const { data: universities } = await supabase
           .from('organizations')
-          .select('id', { count: 'exact', head: true })
+          .select('id')
           .eq('type', 'university')
         
-        const activeUniversities = universities || 0
+        const activeUniversities = universities?.length || 0
 
         // Count recruiters (organizations with type = 'recruiter')
-        const { data: recruiters, error: recError } = await supabase
+        const { data: recruiters } = await supabase
           .from('organizations')
-          .select('id', { count: 'exact', head: true })
+          .select('id')
           .eq('type', 'recruiter')
         
-        const activeRecruiters = recruiters || 0
+        const activeRecruiters = recruiters?.length || 0
 
         // Count total students
-        const { count: studentsCount, error: studError } = await supabase
+        const { data: students } = await supabase
           .from('students')
-          .select('*', { count: 'exact', head: true })
+          .select('id')
         
-        const registeredStudents = studentsCount || 0
+        const registeredStudents = students?.length || 0
 
         // Get all passports to calculate verification metrics
-        const { data: passports, error: passError } = await supabase
+        const { data: passports } = await supabase
           .from('skill_passports')
           .select('status, aiVerification')
         
