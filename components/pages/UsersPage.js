@@ -22,7 +22,7 @@ import {
     UserCheck,
     UserX
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 
 export default function UsersPage({ currentUser }) {
   const [users, setUsers] = useState([])
