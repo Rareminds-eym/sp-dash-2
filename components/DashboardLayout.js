@@ -132,12 +132,12 @@ export default function DashboardLayout({ user, currentPage, onPageChange, onLog
                   <Shield className="h-5 w-5 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{user.email}</p>
+                  <p className="text-sm font-medium truncate">{user?.email || 'User'}</p>
                   <span className={cn(
                     "inline-block text-xs px-3 py-1 rounded-full font-medium shadow-sm",
-                    getRoleBadgeColor(user.role)
+                    getRoleBadgeColor(user?.role)
                   )}>
-                    {getRoleLabel(user.role)}
+                    {getRoleLabel(user?.role)}
                   </span>
                 </div>
               </div>
