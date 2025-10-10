@@ -760,6 +760,7 @@ class BackendTester:
         print("📊 TESTING DATA RETRIEVAL APIS...")
         self.test_api_root()
         self.test_metrics_endpoint()
+        self.test_update_metrics_endpoint()
         self.test_analytics_trends()
         self.test_analytics_state_wise()
         self.test_users_endpoint()
