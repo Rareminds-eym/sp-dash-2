@@ -128,6 +128,15 @@ backend:
       - working: true
         agent: "testing"
         comment: "Metrics endpoint returned all expected fields (activeUniversities, registeredStudents, verifiedPassports, aiVerifiedPercent, employabilityIndex, activeRecruiters)"
+      - working: true
+        agent: "testing"
+        comment: "METRICS FIX VERIFIED: Updated metrics endpoint now calculates data dynamically from database tables instead of metrics_snapshots. Real-time calculations working correctly: activeUniversities=10 (from organizations table), registeredStudents=712 (from students table), verifiedPassports=1 (from skill_passports where status='verified'), aiVerifiedPercent=0% (no AI verified passports), employabilityIndex=0.1% (1 verified/712 students), activeRecruiters=0 (no recruiter organizations). All calculations are mathematically correct and reflect actual database state."
+      - working: "NA"
+        agent: "main"
+        comment: "UPDATED: Modified /api/metrics endpoint to fetch from metrics_snapshots table first, with fallback to dynamic calculation if table is empty. Added 'source' field to response to indicate data origin (snapshot/dynamic/error). Also updated Dashboard.js to automatically trigger /api/update-metrics when snapshot is outdated or missing."
+      - working: true
+        agent: "testing"
+        comment: "COMPREHENSIVE METRICS ENDPOINT TESTING COMPLETED: All 4 requested scenarios tested successfully. ✅ Scenario 1: Metrics endpoint returns valid source field ('snapshot' in current state). ✅ Scenario 2: POST /api/update-metrics creates/updates snapshots correctly (currently updating existing snapshot for today's date). ✅ Scenario 3: Metrics endpoint returns snapshot data with snapshotDate field when source='snapshot'. ✅ Scenario 4: Data accuracy verified - all 6 metrics match exactly between /api/update-metrics response and /api/metrics endpoint. Current metrics: activeUniversities=10, registeredStudents=712, verifiedPassports=1, aiVerifiedPercent=100%, employabilityIndex=0.1%, activeRecruiters=0. The updated metrics system is working correctly with proper snapshot/dynamic fallback mechanism and accurate data consistency."
 
   - task: "Analytics Trends API"
     implemented: true
@@ -372,6 +381,18 @@ backend:
         agent: "testing"
         comment: "DELETE /api/user endpoint working correctly. Performs soft delete by setting isActive to false, creates verification record, and logs audit trail. Returns proper success response."
 
+  - task: "Metrics Update API"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "POST /api/update-metrics endpoint working correctly. Calculates metrics from database tables (same as /api/metrics), saves/updates metrics_snapshots table with today's date. First call creates new snapshot, second call updates existing snapshot for today. Returns success with calculated metrics data. Fixed JSON parsing issue for endpoints without request body. All 6 metrics (activeUniversities, registeredStudents, verifiedPassports, aiVerifiedPercent, employabilityIndex, activeRecruiters) returned correctly and match /api/metrics endpoint values."
+
 frontend:
   - task: "Comprehensive Reports & Analytics Page"
     implemented: true
@@ -463,3 +484,11 @@ agent_communication:
     message: "Backend API testing complete (21/21 endpoints working). Starting frontend testing of Reports & Analytics page to ensure full application functionality. User requested comprehensive testing of both backend and frontend components."
   - agent: "testing"
     message: "COMPREHENSIVE FRONTEND TESTING COMPLETED SUCCESSFULLY. Tested all requested components: ✅ Authentication & Login Flow: Working perfectly with superadmin@rareminds.com. ✅ Dashboard Navigation: All 7 menu items functional. ✅ Reports & Analytics Page: All 5 analytics tabs working with proper data visualization and API integration. ✅ Theme Switching: Dark/light mode toggle working correctly. ✅ Data Integration: All 5 analytics APIs responding with 200 status. ✅ Responsive Design: Mobile, tablet, and desktop views working properly. ✅ Export Functionality: CSV/Excel export buttons present. Total test coverage: Frontend 5/5 components working (100% success rate). Application is fully functional and ready for production use. No critical issues found - only minor empty data cards due to limited test data which is expected behavior."
+  - agent: "testing"
+    message: "METRICS ENDPOINT FIX VERIFICATION COMPLETED: Successfully tested the updated /api/metrics endpoint that now calculates KPI metrics dynamically from database tables instead of relying on metrics_snapshots table. ✅ All 6 metrics returned correctly: activeUniversities=10, registeredStudents=712, verifiedPassports=1, aiVerifiedPercent=0%, employabilityIndex=0.1%, activeRecruiters=0. ✅ Real-time calculations verified against actual database data: 10 universities from organizations table, 712 students from students table, 1 verified passport from skill_passports table. ✅ Mathematical accuracy confirmed: employabilityIndex = (1 verified / 712 students) = 0.14% ≈ 0.1%. The metrics endpoint is now providing accurate, real-time KPI data instead of static zeros."
+  - agent: "testing"
+    message: "NEW METRICS UPDATE ENDPOINT TESTING COMPLETED: Successfully tested the new POST /api/update-metrics endpoint. ✅ Endpoint calculates metrics from database tables (same logic as /api/metrics) and saves/updates metrics_snapshots table with today's date. ✅ First call creates new snapshot, second call updates existing snapshot (no duplicates). ✅ Returns proper JSON response with success flag, descriptive message, and data object containing all 6 metrics. ✅ Fixed JSON parsing issue for endpoints without request body. ✅ Verified metrics values match /api/metrics endpoint exactly. ✅ Database integration working correctly - snapshots table being populated/updated as expected. Total backend API coverage: 22/22 endpoints working (100% success rate)."
+  - agent: "main"
+    message: "ENHANCEMENT: Updated metrics fetching strategy to use metrics_snapshots table. Changes: 1) /api/metrics now fetches from metrics_snapshots table (latest snapshot) with fallback to dynamic calculation if empty. 2) Added automatic scheduling in Dashboard.js - when dashboard loads, it checks if snapshot is outdated or missing and automatically triggers /api/update-metrics to refresh data. 3) Response includes 'source' field indicating data origin. This provides better performance and historical tracking while maintaining reliability with fallback mechanism."
+  - agent: "testing"
+    message: "UPDATED METRICS ENDPOINT TESTING COMPLETED: Successfully tested all 4 requested scenarios for the updated /api/metrics endpoint. ✅ Verified metrics endpoint with existing snapshots (returns source='snapshot' with snapshotDate). ✅ Verified automatic snapshot creation/update via POST /api/update-metrics. ✅ Verified metrics endpoint returns snapshot data after update. ✅ Verified data accuracy between endpoints - all 6 metrics match exactly. The enhanced metrics system is working correctly with proper snapshot prioritization, fallback to dynamic calculation, and accurate data consistency. Current metrics show: 10 universities, 712 students, 1 verified passport, 100% AI verified, 0.1% employability index, 0 recruiters."

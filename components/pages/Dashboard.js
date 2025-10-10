@@ -71,15 +71,32 @@ export default function Dashboard({ user }) {
 
   const fetchDashboardData = async () => {
     try {
-      const [metricsRes, trendsRes, stateRes, verificationsRes] =
-        await Promise.all([
-          fetch("/api/metrics"),
-          fetch("/api/analytics/trends"),
-          fetch("/api/analytics/state-wise"),
-          fetch("/api/verifications"),
-        ]);
-
+      // First, fetch metrics to check if we need to update snapshots
+      const metricsRes = await fetch("/api/metrics");
       const metricsData = await metricsRes.json();
+
+      // Check if we need to update the snapshot
+      // If source is 'dynamic' or snapshot is from a previous date, trigger an update
+      const today = new Date().toISOString().split('T')[0];
+      const shouldUpdate = 
+        metricsData.source === 'dynamic' || 
+        (metricsData.snapshotDate && metricsData.snapshotDate !== today);
+
+      if (shouldUpdate) {
+        console.log('Updating metrics snapshot automatically...');
+        // Trigger update in the background (don't wait for it)
+        fetch("/api/update-metrics", { method: "POST" })
+          .then(() => console.log('Metrics snapshot updated'))
+          .catch(err => console.error('Error updating metrics:', err));
+      }
+
+      // Fetch the rest of the data in parallel
+      const [trendsRes, stateRes, verificationsRes] = await Promise.all([
+        fetch("/api/analytics/trends"),
+        fetch("/api/analytics/state-wise"),
+        fetch("/api/verifications"),
+      ]);
+
       const trendsData = await trendsRes.json();
       const stateDataRes = await stateRes.json();
       const verificationsData = await verificationsRes.json();

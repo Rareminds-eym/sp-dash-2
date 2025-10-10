@@ -28,23 +28,94 @@ export async function GET(request) {
   try {
     // GET /api/metrics - Dashboard metrics
     if (path === '/metrics') {
-      const { data: metrics, error } = await supabase
-        .from('metrics_snapshots')
-        .select('*')
-        .order('snapshotDate', { ascending: false })
-        .limit(1)
-        .maybeSingle()
+      try {
+        // First, try to fetch the latest snapshot from metrics_snapshots table
+        const { data: latestSnapshot, error: snapshotError } = await supabase
+          .from('metrics_snapshots')
+          .select('*')
+          .order('snapshotDate', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        
+        // If we have a snapshot, return it
+        if (latestSnapshot && !snapshotError) {
+          return NextResponse.json({
+            activeUniversities: latestSnapshot.activeUniversities || 0,
+            registeredStudents: latestSnapshot.registeredStudents || 0,
+            verifiedPassports: latestSnapshot.verifiedPassports || 0,
+            aiVerifiedPercent: parseFloat(latestSnapshot.aiVerifiedPercent || 0),
+            employabilityIndex: parseFloat(latestSnapshot.employabilityIndex || 0),
+            activeRecruiters: latestSnapshot.activeRecruiters || 0,
+            snapshotDate: latestSnapshot.snapshotDate,
+            source: 'snapshot'
+          })
+        }
+        
+        // Fallback: Calculate metrics dynamically from database tables if no snapshot exists
+        console.log('No snapshot found, calculating metrics dynamically')
+        
+        // Count universities (organizations with type = 'university')
+        const { data: universities } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('type', 'university')
+        
+        const activeUniversities = universities?.length || 0
 
-      if (error) throw error
+        // Count recruiters (organizations with type = 'recruiter')
+        const { data: recruiters } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('type', 'recruiter')
+        
+        const activeRecruiters = recruiters?.length || 0
 
-      return NextResponse.json(metrics || {
-        activeUniversities: 0,
-        registeredStudents: 0,
-        verifiedPassports: 0,
-        aiVerifiedPercent: 0,
-        employabilityIndex: 0,
-        activeRecruiters: 0
-      })
+        // Count total students
+        const { data: students } = await supabase
+          .from('students')
+          .select('id')
+        
+        const registeredStudents = students?.length || 0
+
+        // Get all passports to calculate verification metrics
+        const { data: passports } = await supabase
+          .from('skill_passports')
+          .select('status, aiVerification')
+        
+        const totalPassports = passports?.length || 0
+        const verifiedPassports = passports?.filter(p => p.status === 'verified').length || 0
+        const aiVerifiedCount = passports?.filter(p => p.aiVerification === true).length || 0
+        
+        // Calculate percentages
+        const aiVerifiedPercent = totalPassports > 0 
+          ? ((aiVerifiedCount / totalPassports) * 100).toFixed(1) 
+          : 0
+        
+        const employabilityIndex = registeredStudents > 0 
+          ? ((verifiedPassports / registeredStudents) * 100).toFixed(1) 
+          : 0
+
+        return NextResponse.json({
+          activeUniversities,
+          registeredStudents,
+          verifiedPassports,
+          aiVerifiedPercent: parseFloat(aiVerifiedPercent),
+          employabilityIndex: parseFloat(employabilityIndex),
+          activeRecruiters,
+          source: 'dynamic'
+        })
+      } catch (error) {
+        console.error('Error fetching metrics:', error)
+        return NextResponse.json({
+          activeUniversities: 0,
+          registeredStudents: 0,
+          verifiedPassports: 0,
+          aiVerifiedPercent: 0,
+          employabilityIndex: 0,
+          activeRecruiters: 0,
+          source: 'error'
+        })
+      }
     }
 
     // GET /api/users - List all users
@@ -540,7 +611,11 @@ export async function POST(request) {
   const path = pathname.replace('/api', '')
 
   try {
-    const body = await request.json()
+    // Only parse JSON body for endpoints that need it (not update-metrics)
+    let body = {}
+    if (path !== '/update-metrics') {
+      body = await request.json()
+    }
 
     // POST /api/verify - Verify a passport
     if (path === '/verify') {
@@ -668,6 +743,120 @@ export async function POST(request) {
       await logAudit(userId, 'reject_passport', passportId, { reason })
 
       return NextResponse.json({ success: true, message: 'Passport rejected successfully' })
+    }
+
+    // POST /api/update-metrics - Update metrics_snapshots table
+    if (path === '/update-metrics') {
+      try {
+        // Calculate metrics from database tables
+        
+        // Count universities
+        const { data: universities } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('type', 'university')
+        
+        const activeUniversities = universities?.length || 0
+
+        // Count recruiters
+        const { data: recruiters } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('type', 'recruiter')
+        
+        const activeRecruiters = recruiters?.length || 0
+
+        // Count students
+        const { data: students } = await supabase
+          .from('students')
+          .select('id')
+        
+        const registeredStudents = students?.length || 0
+
+        // Get passports for verification metrics
+        const { data: passports } = await supabase
+          .from('skill_passports')
+          .select('status, aiVerification')
+        
+        const totalPassports = passports?.length || 0
+        const verifiedPassports = passports?.filter(p => p.status === 'verified').length || 0
+        const aiVerifiedCount = passports?.filter(p => p.aiVerification === true).length || 0
+        
+        // Calculate percentages
+        const aiVerifiedPercent = totalPassports > 0 
+          ? parseFloat(((aiVerifiedCount / totalPassports) * 100).toFixed(1))
+          : 0
+        
+        const employabilityIndex = registeredStudents > 0 
+          ? parseFloat(((verifiedPassports / registeredStudents) * 100).toFixed(1))
+          : 0
+
+        // Get today's date in YYYY-MM-DD format
+        const today = new Date().toISOString().split('T')[0]
+
+        // Check if a snapshot for today already exists
+        const { data: existingSnapshot } = await supabase
+          .from('metrics_snapshots')
+          .select('id')
+          .eq('snapshotDate', today)
+          .maybeSingle()
+
+        let result
+        if (existingSnapshot) {
+          // Update existing snapshot
+          const { error: updateError } = await supabase
+            .from('metrics_snapshots')
+            .update({
+              activeUniversities,
+              registeredStudents,
+              verifiedPassports,
+              aiVerifiedPercent,
+              employabilityIndex,
+              activeRecruiters
+            })
+            .eq('id', existingSnapshot.id)
+
+          if (updateError) throw updateError
+          result = { action: 'updated', snapshotDate: today }
+        } else {
+          // Insert new snapshot
+          const { error: insertError } = await supabase
+            .from('metrics_snapshots')
+            .insert({
+              id: uuidv4(),
+              snapshotDate: today,
+              activeUniversities,
+              registeredStudents,
+              verifiedPassports,
+              aiVerifiedPercent,
+              employabilityIndex,
+              activeRecruiters
+            })
+
+          if (insertError) throw insertError
+          result = { action: 'created', snapshotDate: today }
+        }
+
+        return NextResponse.json({
+          success: true,
+          message: `Metrics snapshot ${result.action} successfully`,
+          data: {
+            snapshotDate: result.snapshotDate,
+            activeUniversities,
+            registeredStudents,
+            verifiedPassports,
+            aiVerifiedPercent,
+            employabilityIndex,
+            activeRecruiters
+          }
+        })
+      } catch (error) {
+        console.error('Error updating metrics snapshot:', error)
+        return NextResponse.json(
+          { error: 'Failed to update metrics snapshot', details: error.message },
+          { status: 500 }
+        )
+      }
     }
 
     // POST /api/login - Simple login (checking if user exists)
