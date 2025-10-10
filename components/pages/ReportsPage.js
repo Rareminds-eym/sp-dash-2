@@ -73,7 +73,13 @@ const CustomTooltip = ({ active, payload, label }) => {
 }
 
 export default function ReportsPage() {
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState({
+    university: true,
+    recruiter: true,
+    placement: true,
+    heatmap: true,
+    insights: true
+  })
   const [analyticsData, setAnalyticsData] = useState({
     universityReports: [],
     recruiterMetrics: {},
@@ -81,54 +87,84 @@ export default function ReportsPage() {
     stateHeatmap: [],
     aiInsights: {}
   })
+  const [activeTab, setActiveTab] = useState('universities')
   const { toast } = useToast()
 
   useEffect(() => {
-    fetchAnalyticsData()
+    // Fetch data progressively - start with first tab
+    fetchTabData('universities')
   }, [])
 
-  const fetchAnalyticsData = async () => {
+  const fetchTabData = async (tab) => {
+    // If data already loaded for this tab, skip
+    if (tab === 'universities' && analyticsData.universityReports.length > 0) return
+    if (tab === 'recruiters' && Object.keys(analyticsData.recruiterMetrics).length > 0) return
+    if (tab === 'placements' && Object.keys(analyticsData.placementConversion).length > 0) return
+    if (tab === 'heatmap' && analyticsData.stateHeatmap.length > 0) return
+    if (tab === 'insights' && Object.keys(analyticsData.aiInsights).length > 0) return
+
     try {
-      setLoading(true)
-      
-      // Fetch all analytics data in parallel
-      const [
-        universityRes,
-        recruiterRes,
-        placementRes,
-        heatmapRes,
-        insightsRes
-      ] = await Promise.all([
-        fetch('/api/analytics/university-reports'),
-        fetch('/api/analytics/recruiter-metrics'),
-        fetch('/api/analytics/placement-conversion'),
-        fetch('/api/analytics/state-heatmap'),
-        fetch('/api/analytics/ai-insights')
-      ])
-
-      const universityReports = await universityRes.json()
-      const recruiterMetrics = await recruiterRes.json()
-      const placementConversion = await placementRes.json()
-      const stateHeatmap = await heatmapRes.json()
-      const aiInsights = await insightsRes.json()
-
-      setAnalyticsData({
-        universityReports,
-        recruiterMetrics,
-        placementConversion,
-        stateHeatmap,
-        aiInsights
-      })
+      switch(tab) {
+        case 'universities':
+          setLoading(prev => ({ ...prev, university: true }))
+          const universityRes = await fetch('/api/analytics/university-reports')
+          const universityReports = await universityRes.json()
+          setAnalyticsData(prev => ({ ...prev, universityReports }))
+          setLoading(prev => ({ ...prev, university: false }))
+          break
+        
+        case 'recruiters':
+          setLoading(prev => ({ ...prev, recruiter: true }))
+          const recruiterRes = await fetch('/api/analytics/recruiter-metrics')
+          const recruiterMetrics = await recruiterRes.json()
+          setAnalyticsData(prev => ({ ...prev, recruiterMetrics }))
+          setLoading(prev => ({ ...prev, recruiter: false }))
+          break
+        
+        case 'placements':
+          setLoading(prev => ({ ...prev, placement: true }))
+          const placementRes = await fetch('/api/analytics/placement-conversion')
+          const placementConversion = await placementRes.json()
+          setAnalyticsData(prev => ({ ...prev, placementConversion }))
+          setLoading(prev => ({ ...prev, placement: false }))
+          break
+        
+        case 'heatmap':
+          setLoading(prev => ({ ...prev, heatmap: true }))
+          const heatmapRes = await fetch('/api/analytics/state-heatmap')
+          const stateHeatmap = await heatmapRes.json()
+          setAnalyticsData(prev => ({ ...prev, stateHeatmap }))
+          setLoading(prev => ({ ...prev, heatmap: false }))
+          break
+        
+        case 'insights':
+          setLoading(prev => ({ ...prev, insights: true }))
+          const insightsRes = await fetch('/api/analytics/ai-insights')
+          const aiInsights = await insightsRes.json()
+          setAnalyticsData(prev => ({ ...prev, aiInsights }))
+          setLoading(prev => ({ ...prev, insights: false }))
+          break
+      }
     } catch (error) {
-      console.error('Error fetching analytics:', error)
+      console.error(`Error fetching ${tab} data:`, error)
       toast({
         title: 'Error',
-        description: 'Failed to load analytics data',
+        description: `Failed to load ${tab} data`,
         variant: 'destructive'
       })
-    } finally {
-      setLoading(false)
+      // Set loading to false even on error
+      const loadingKey = tab === 'universities' ? 'university' : 
+                        tab === 'recruiters' ? 'recruiter' :
+                        tab === 'placements' ? 'placement' :
+                        tab === 'heatmap' ? 'heatmap' : 'insights'
+      setLoading(prev => ({ ...prev, [loadingKey]: false }))
     }
+  }
+
+  const handleTabChange = (value) => {
+    setActiveTab(value)
+    // Prefetch data for the selected tab
+    fetchTabData(value)
   }
 
   const handleExport = async (type, section) => {
