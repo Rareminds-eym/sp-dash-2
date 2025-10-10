@@ -220,9 +220,9 @@ export default function ReportsPage() {
         </Button>
       </div>
 
-      <Tabs defaultValue="university" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="university" className="flex items-center gap-2">
+          <TabsTrigger value="universities" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             Universities
           </TabsTrigger>
