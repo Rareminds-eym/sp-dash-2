@@ -591,7 +591,7 @@ export default function ReportsPage() {
                 variant="outline" 
                 size="sm"
                 onClick={() => handleExport('CSV', 'State Analytics')}
-                disabled={loading}
+                disabled={loading.heatmap}
               >
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
