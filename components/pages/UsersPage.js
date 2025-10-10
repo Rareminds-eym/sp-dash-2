@@ -38,8 +38,8 @@ export default function UsersPage({ currentUser }) {
 
   useEffect(() => {
     const filtered = users.filter(user => 
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.role.toLowerCase().includes(searchTerm.toLowerCase())
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.role?.toLowerCase().includes(searchTerm.toLowerCase())
     )
     setFilteredUsers(filtered)
   }, [searchTerm, users])
