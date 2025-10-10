@@ -274,8 +274,34 @@ export default function ReportsPage() {
           </div>
 
           <div className="grid gap-4">
-            {analyticsData.universityReports.map((university, index) => (
-              <Card key={university.universityId} className="neu-card">
+            {loading.university ? (
+              // Loading skeleton
+              Array.from({ length: 3 }).map((_, index) => (
+                <Card key={index} className="neu-card animate-pulse">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-2">
+                        <div className="h-5 w-48 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                        <div className="h-4 w-24 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                      </div>
+                      <div className="h-6 w-32 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <div key={i} className="text-center space-y-2">
+                          <div className="h-8 w-16 bg-slate-200 dark:bg-slate-700 rounded mx-auto"></div>
+                          <div className="h-3 w-20 bg-slate-200 dark:bg-slate-700 rounded mx-auto"></div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              analyticsData.universityReports.map((university, index) => (
+                <Card key={university.universityId} className="neu-card">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <div>
