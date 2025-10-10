@@ -185,7 +185,7 @@ export default function PassportsPage({ currentUser }) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {(currentUser.role === 'super_admin' || currentUser.role === 'admin') && passport.status === 'pending' && (
+                    {(currentUser?.role === 'super_admin' || currentUser?.role === 'admin') && passport.status === 'pending' && (
                       <>
                         <Button
                           variant="outline"
