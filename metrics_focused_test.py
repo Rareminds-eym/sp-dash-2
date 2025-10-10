@@ -6,7 +6,7 @@ Focused test for metrics endpoint verification
 import requests
 import json
 
-BASE_URL = "https://dashboard-metrics-8.preview.emergentagent.com/api"
+BASE_URL = "https://nextsupadash.preview.emergentagent.com/api"
 
 def test_metrics_endpoint():
     """Test the metrics endpoint with detailed analysis"""

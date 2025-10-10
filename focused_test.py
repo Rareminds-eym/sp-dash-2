@@ -7,7 +7,7 @@ import requests
 import json
 
 # Base URL from environment
-BASE_URL = "https://dashboard-metrics-8.preview.emergentagent.com/api"
+BASE_URL = "https://nextsupadash.preview.emergentagent.com/api"
 
 def test_key_endpoints():
     """Test key endpoints to ensure nothing is broken"""
