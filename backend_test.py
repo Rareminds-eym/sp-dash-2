@@ -10,7 +10,7 @@ import sys
 from datetime import datetime
 
 # Base URL from environment
-BASE_URL = "https://kpi-data-fix.preview.emergentagent.com/api"
+BASE_URL = "https://dashboard-metrics-8.preview.emergentagent.com/api"
 
 class BackendTester:
     def __init__(self):
