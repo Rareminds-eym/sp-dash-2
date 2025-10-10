@@ -1,28 +1,52 @@
+import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
-import { decrypt } from '@/lib/session'
 
 const protectedRoutes = ['/dashboard', '/users', '/passports', '/reports', '/audit-logs', '/integrations', '/settings']
 const publicRoutes = ['/login']
 
-export default async function middleware(req) {
+export async function middleware(req) {
   const path = req.nextUrl.pathname
   const isProtectedRoute = protectedRoutes.some(route => path.startsWith(route))
   const isPublicRoute = publicRoutes.includes(path)
 
-  const cookie = req.cookies.get('session')?.value
-  const session = await decrypt(cookie)
+  let supabaseResponse = NextResponse.next({
+    request: req,
+  })
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      cookies: {
+        getAll() {
+          return req.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            req.cookies.set(name, value)
+            supabaseResponse.cookies.set(name, value, options)
+          })
+        },
+      },
+    }
+  )
+
+  // Refresh session if expired
+  const { data: { session } } = await supabase.auth.getSession()
 
   // Redirect to /login if accessing protected route without session
-  if (isProtectedRoute && !session?.user) {
-    return NextResponse.redirect(new URL('/login', req.nextUrl))
+  if (isProtectedRoute && !session) {
+    const redirectUrl = new URL('/login', req.url)
+    return NextResponse.redirect(redirectUrl)
   }
 
   // Redirect to /dashboard if accessing login with valid session
-  if (isPublicRoute && session?.user) {
-    return NextResponse.redirect(new URL('/dashboard', req.nextUrl))
+  if (isPublicRoute && session) {
+    const redirectUrl = new URL('/dashboard', req.url)
+    return NextResponse.redirect(redirectUrl)
   }
 
-  return NextResponse.next()
+  return supabaseResponse
 }
 
 export const config = {
