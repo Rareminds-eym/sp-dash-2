@@ -200,9 +200,8 @@ export default function Dashboard({ user }) {
             </div>
             <div>
               <h1 className="text-3xl font-bold">
-                Welcome back,{" "}
-                {user.email.split("@")[0].charAt(0).toUpperCase() +
-                  user.email.split("@")[0].slice(1)}
+                Welcome back
+                {user?.email ? `, ${user.email.split("@")[0].charAt(0).toUpperCase() + user.email.split("@")[0].slice(1)}` : ''}
                 !
               </h1>
               <p className="text-blue-100 text-lg">
