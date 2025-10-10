@@ -29,7 +29,30 @@ export async function GET(request) {
     // GET /api/metrics - Dashboard metrics
     if (path === '/metrics') {
       try {
-        // Calculate metrics dynamically from database tables
+        // First, try to fetch the latest snapshot from metrics_snapshots table
+        const { data: latestSnapshot, error: snapshotError } = await supabase
+          .from('metrics_snapshots')
+          .select('*')
+          .order('snapshotDate', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        
+        // If we have a snapshot, return it
+        if (latestSnapshot && !snapshotError) {
+          return NextResponse.json({
+            activeUniversities: latestSnapshot.activeUniversities || 0,
+            registeredStudents: latestSnapshot.registeredStudents || 0,
+            verifiedPassports: latestSnapshot.verifiedPassports || 0,
+            aiVerifiedPercent: parseFloat(latestSnapshot.aiVerifiedPercent || 0),
+            employabilityIndex: parseFloat(latestSnapshot.employabilityIndex || 0),
+            activeRecruiters: latestSnapshot.activeRecruiters || 0,
+            snapshotDate: latestSnapshot.snapshotDate,
+            source: 'snapshot'
+          })
+        }
+        
+        // Fallback: Calculate metrics dynamically from database tables if no snapshot exists
+        console.log('No snapshot found, calculating metrics dynamically')
         
         // Count universities (organizations with type = 'university')
         const { data: universities } = await supabase
@@ -78,17 +101,19 @@ export async function GET(request) {
           verifiedPassports,
           aiVerifiedPercent: parseFloat(aiVerifiedPercent),
           employabilityIndex: parseFloat(employabilityIndex),
-          activeRecruiters
+          activeRecruiters,
+          source: 'dynamic'
         })
       } catch (error) {
-        console.error('Error calculating metrics:', error)
+        console.error('Error fetching metrics:', error)
         return NextResponse.json({
           activeUniversities: 0,
           registeredStudents: 0,
           verifiedPassports: 0,
           aiVerifiedPercent: 0,
           employabilityIndex: 0,
-          activeRecruiters: 0
+          activeRecruiters: 0,
+          source: 'error'
         })
       }
     }
