@@ -248,7 +248,7 @@ export default function ReportsPage() {
                 variant="outline" 
                 size="sm"
                 onClick={() => handleExport('CSV', 'University Reports')}
-                disabled={loading}
+                disabled={loading.university}
               >
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
@@ -257,7 +257,7 @@ export default function ReportsPage() {
                 variant="outline" 
                 size="sm"
                 onClick={() => handleExport('Excel', 'University Reports')}
-                disabled={loading}
+                disabled={loading.university}
               >
                 <FileSpreadsheet className="h-4 w-4 mr-2" />
                 Export Excel
