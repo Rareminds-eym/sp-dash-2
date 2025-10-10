@@ -68,10 +68,10 @@ export default function PassportsPage({ currentUser }) {
 
       if (action === 'verify') {
         endpoint = '/api/verify'
-        body = { passportId: passport.id, userId: currentUser.id, note: 'Passport verified by admin' }
+        body = { passportId: passport.id, userId: currentUser?.id, note: 'Passport verified by admin' }
       } else if (action === 'reject') {
         endpoint = '/api/reject-passport'
-        body = { passportId: passport.id, userId: currentUser.id, reason: 'Failed verification criteria' }
+        body = { passportId: passport.id, userId: currentUser?.id, reason: 'Failed verification criteria' }
       }
 
       const response = await fetch(endpoint, {
@@ -185,7 +185,7 @@ export default function PassportsPage({ currentUser }) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {(currentUser.role === 'super_admin' || currentUser.role === 'admin') && passport.status === 'pending' && (
+                    {(currentUser?.role === 'super_admin' || currentUser?.role === 'admin') && passport.status === 'pending' && (
                       <>
                         <Button
                           variant="outline"

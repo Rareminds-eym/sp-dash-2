@@ -50,7 +50,7 @@ export default function SettingsPage({ user }) {
       </div>
 
       {/* System Management Section - Only for Super Admin */}
-      {user.role === 'super_admin' && (
+      {user?.role === 'super_admin' && (
         <Card className="border-blue-200 dark:border-blue-800">
           <CardHeader className="bg-blue-50 dark:bg-blue-950/30">
             <div className="flex items-center gap-2">
@@ -102,11 +102,11 @@ export default function SettingsPage({ user }) {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" value={user.email} disabled />
+            <Input id="email" type="email" value={user?.email || ''} disabled />
           </div>
           <div className="space-y-2">
             <Label htmlFor="role">Role</Label>
-            <Input id="role" value={user.role.replace('_', ' ')} disabled />
+            <Input id="role" value={user?.role ? user.role.replace('_', ' ') : ''} disabled />
           </div>
         </CardContent>
       </Card>

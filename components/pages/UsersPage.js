@@ -22,7 +22,7 @@ import {
     UserCheck,
     UserX
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 
 export default function UsersPage({ currentUser }) {
   const [users, setUsers] = useState([])
@@ -38,8 +38,8 @@ export default function UsersPage({ currentUser }) {
 
   useEffect(() => {
     const filtered = users.filter(user => 
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.role.toLowerCase().includes(searchTerm.toLowerCase())
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.role?.toLowerCase().includes(searchTerm.toLowerCase())
     )
     setFilteredUsers(filtered)
   }, [searchTerm, users])
@@ -74,10 +74,10 @@ export default function UsersPage({ currentUser }) {
 
       if (action === 'suspend') {
         endpoint = '/api/suspend-user'
-        body = { targetUserId: user.id, actorId: currentUser.id, reason: 'Admin action' }
+        body = { targetUserId: user.id, actorId: currentUser?.id, reason: 'Admin action' }
       } else if (action === 'activate') {
         endpoint = '/api/activate-user'
-        body = { targetUserId: user.id, actorId: currentUser.id, note: 'User activated' }
+        body = { targetUserId: user.id, actorId: currentUser?.id, note: 'User activated' }
       }
 
       const response = await fetch(endpoint, {
@@ -183,7 +183,7 @@ export default function UsersPage({ currentUser }) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {currentUser.role === 'super_admin' && user.id !== currentUser.id && (
+                    {currentUser?.role === 'super_admin' && user.id !== currentUser?.id && (
                       user.isActive ? (
                         <Button
                           variant="outline"

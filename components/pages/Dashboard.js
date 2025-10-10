@@ -71,43 +71,41 @@ export default function Dashboard({ user }) {
 
   const fetchDashboardData = async () => {
     try {
-      // First, fetch metrics to check if we need to update snapshots
-      const metricsRes = await fetch("/api/metrics");
-      const metricsData = await metricsRes.json();
+      // Fetch critical data in parallel - remove slow verifications call
+      const [metricsRes, trendsRes, stateRes] = await Promise.all([
+        fetch("/api/metrics"),
+        fetch("/api/analytics/trends"),
+        fetch("/api/analytics/state-wise"),
+      ]);
 
-      // Check if we need to update the snapshot
-      // If source is 'dynamic' or snapshot is from a previous date, trigger an update
+      const metricsData = await metricsRes.json();
+      const trendsData = await trendsRes.json();
+      const stateDataRes = await stateRes.json();
+
+      setMetrics(metricsData);
+      setTrends(trendsData);
+      setStateData(stateDataRes);
+      setLoading(false);
+
+      // Check if we need to update the snapshot in background
       const today = new Date().toISOString().split('T')[0];
       const shouldUpdate = 
         metricsData.source === 'dynamic' || 
         (metricsData.snapshotDate && metricsData.snapshotDate !== today);
 
       if (shouldUpdate) {
-        console.log('Updating metrics snapshot automatically...');
         // Trigger update in the background (don't wait for it)
         fetch("/api/update-metrics", { method: "POST" })
-          .then(() => console.log('Metrics snapshot updated'))
           .catch(err => console.error('Error updating metrics:', err));
       }
 
-      // Fetch the rest of the data in parallel
-      const [trendsRes, stateRes, verificationsRes] = await Promise.all([
-        fetch("/api/analytics/trends"),
-        fetch("/api/analytics/state-wise"),
-        fetch("/api/verifications"),
-      ]);
-
-      const trendsData = await trendsRes.json();
-      const stateDataRes = await stateRes.json();
-      const verificationsData = await verificationsRes.json();
-
-      setMetrics(metricsData);
-      setTrends(trendsData);
-      setStateData(stateDataRes);
-      setRecentVerifications(verificationsData.slice(0, 10));
+      // Load verifications in background after page is interactive
+      fetch("/api/verifications")
+        .then(res => res.json())
+        .then(data => setRecentVerifications(data.slice(0, 10)))
+        .catch(err => console.error("Error fetching verifications:", err));
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
-    } finally {
       setLoading(false);
     }
   };
@@ -200,9 +198,8 @@ export default function Dashboard({ user }) {
             </div>
             <div>
               <h1 className="text-3xl font-bold">
-                Welcome back,{" "}
-                {user.email.split("@")[0].charAt(0).toUpperCase() +
-                  user.email.split("@")[0].slice(1)}
+                Welcome back
+                {user?.email ? `, ${user.email.split("@")[0].charAt(0).toUpperCase() + user.email.split("@")[0].slice(1)}` : ''}
                 !
               </h1>
               <p className="text-blue-100 text-lg">

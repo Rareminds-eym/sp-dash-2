@@ -17,31 +17,71 @@ import {
     Users,
     X
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
+import Link from 'next/link'
 
 const navigation = [
-  { name: 'Dashboard', icon: LayoutDashboard, id: 'dashboard' },
-  { name: 'Users', icon: Users, id: 'users' },
-  { name: 'Passports', icon: FileText, id: 'passports' },
-  { name: 'Reports', icon: BarChart3, id: 'reports' },
-  { name: 'Audit Logs', icon: History, id: 'audit' },
-  { name: 'Integrations', icon: Plug, id: 'integrations' },
-  { name: 'Settings', icon: Settings, id: 'settings' },
+  { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
+  { name: 'Users', icon: Users, href: '/users' },
+  { name: 'Passports', icon: FileText, href: '/passports' },
+  { name: 'Reports', icon: BarChart3, href: '/reports' },
+  { name: 'Audit Logs', icon: History, href: '/audit-logs' },
+  { name: 'Integrations', icon: Plug, href: '/integrations' },
+  { name: 'Settings', icon: Settings, href: '/settings' },
 ]
 
-export default function DashboardLayout({ user, currentPage, onPageChange, onLogout, children }) {
+export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [user, setUser] = useState(null)
+  const router = useRouter()
+  const pathname = usePathname()
+
+  useEffect(() => {
+    // Fetch current user session
+    fetch('/api/auth/session')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.user) {
+          setUser(data.user)
+        }
+      })
+      .catch(err => console.error('Failed to fetch session:', err))
+  }, [])
+
+  const handleLogout = async () => {
+    try {
+      const response = await fetch('/api/auth/logout', { method: 'POST' })
+      const data = await response.json()
+      
+      if (data.success) {
+        // Clear any local state
+        setUser(null)
+        
+        // Force a full page reload to clear all cached state
+        window.location.href = '/login'
+      } else {
+        console.error('Logout failed:', data.error)
+        // Even if server-side logout fails, redirect to login
+        window.location.href = '/login'
+      }
+    } catch (err) {
+      console.error('Logout error:', err)
+      // On error, still redirect to login page
+      window.location.href = '/login'
+    }
+  }
 
   const getRoleBadgeColor = (role) => {
     switch (role) {
       case 'super_admin':
-        return 'bg-purple-100 text-purple-700'
+        return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
       case 'admin':
-        return 'bg-blue-100 text-blue-700'
+        return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
       case 'manager':
-        return 'bg-green-100 text-green-700'
+        return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
       default:
-        return 'bg-gray-100 text-gray-700'
+        return 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'
     }
   }
 
@@ -56,6 +96,11 @@ export default function DashboardLayout({ user, currentPage, onPageChange, onLog
       default:
         return role
     }
+  }
+
+  const getPageTitle = () => {
+    const currentNav = navigation.find(nav => nav.href === pathname)
+    return currentNav ? currentNav.name : 'Dashboard'
   }
 
   return (
@@ -101,14 +146,12 @@ export default function DashboardLayout({ user, currentPage, onPageChange, onLog
           <nav className="flex-1 p-4 space-y-1">
             {navigation.map((item) => {
               const Icon = item.icon
-              const isActive = currentPage === item.id
+              const isActive = pathname === item.href
               return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    onPageChange(item.id)
-                    setSidebarOpen(false)
-                  }}
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setSidebarOpen(false)}
                   className={cn(
                     "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-300 transform hover:scale-[1.02]",
                     isActive
@@ -119,38 +162,40 @@ export default function DashboardLayout({ user, currentPage, onPageChange, onLog
                   <Icon className="h-5 w-5" />
                   {item.name}
                   {isActive && <ChevronRight className="h-4 w-4 ml-auto" />}
-                </button>
+                </Link>
               )
             })}
           </nav>
 
           {/* User info */}
-          <div className="p-4 border-t border-white/20 dark:border-slate-700/50">
-            <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 mb-3">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/25">
-                  <Shield className="h-5 w-5 text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{user?.email || 'User'}</p>
-                  <span className={cn(
-                    "inline-block text-xs px-3 py-1 rounded-full font-medium shadow-sm",
-                    getRoleBadgeColor(user?.role)
-                  )}>
-                    {getRoleLabel(user?.role)}
-                  </span>
+          {user && (
+            <div className="p-4 border-t border-white/20 dark:border-slate-700/50">
+              <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 mb-3">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/25">
+                    <Shield className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{user.email}</p>
+                    <span className={cn(
+                      "inline-block text-xs px-3 py-1 rounded-full font-medium shadow-sm",
+                      getRoleBadgeColor(user.role)
+                    )}>
+                      {getRoleLabel(user.role)}
+                    </span>
+                  </div>
                 </div>
               </div>
+              <Button
+                variant="outline"
+                className="w-full bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800/50 transition-all duration-300"
+                onClick={handleLogout}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
             </div>
-            <Button
-              variant="outline"
-              className="w-full bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800/50 transition-all duration-300"
-              onClick={onLogout}
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
-          </div>
+          )}
         </div>
       </aside>
 
@@ -170,7 +215,7 @@ export default function DashboardLayout({ user, currentPage, onPageChange, onLog
               </Button>
               <div>
                 <h2 className="text-xl font-semibold capitalize bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
-                  {currentPage}
+                  {getPageTitle()}
                 </h2>
                 <p className="text-sm text-muted-foreground">Manage your platform</p>
               </div>

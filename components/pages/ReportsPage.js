@@ -73,7 +73,13 @@ const CustomTooltip = ({ active, payload, label }) => {
 }
 
 export default function ReportsPage() {
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState({
+    university: true,
+    recruiter: true,
+    placement: true,
+    heatmap: true,
+    insights: true
+  })
   const [analyticsData, setAnalyticsData] = useState({
     universityReports: [],
     recruiterMetrics: {},
@@ -81,58 +87,87 @@ export default function ReportsPage() {
     stateHeatmap: [],
     aiInsights: {}
   })
+  const [activeTab, setActiveTab] = useState('universities')
   const { toast } = useToast()
 
   useEffect(() => {
-    fetchAnalyticsData()
+    // Fetch data progressively - start with first tab
+    fetchTabData('universities')
   }, [])
 
-  const fetchAnalyticsData = async () => {
+  const fetchTabData = async (tab) => {
+    // If data already loaded for this tab, skip
+    if (tab === 'universities' && analyticsData.universityReports.length > 0) return
+    if (tab === 'recruiters' && Object.keys(analyticsData.recruiterMetrics).length > 0) return
+    if (tab === 'placements' && Object.keys(analyticsData.placementConversion).length > 0) return
+    if (tab === 'heatmap' && analyticsData.stateHeatmap.length > 0) return
+    if (tab === 'insights' && Object.keys(analyticsData.aiInsights).length > 0) return
+
     try {
-      setLoading(true)
-      
-      // Fetch all analytics data in parallel
-      const [
-        universityRes,
-        recruiterRes,
-        placementRes,
-        heatmapRes,
-        insightsRes
-      ] = await Promise.all([
-        fetch('/api/analytics/university-reports'),
-        fetch('/api/analytics/recruiter-metrics'),
-        fetch('/api/analytics/placement-conversion'),
-        fetch('/api/analytics/state-heatmap'),
-        fetch('/api/analytics/ai-insights')
-      ])
-
-      const universityReports = await universityRes.json()
-      const recruiterMetrics = await recruiterRes.json()
-      const placementConversion = await placementRes.json()
-      const stateHeatmap = await heatmapRes.json()
-      const aiInsights = await insightsRes.json()
-
-      setAnalyticsData({
-        universityReports,
-        recruiterMetrics,
-        placementConversion,
-        stateHeatmap,
-        aiInsights
-      })
+      switch(tab) {
+        case 'universities':
+          setLoading(prev => ({ ...prev, university: true }))
+          const universityRes = await fetch('/api/analytics/university-reports')
+          const universityReports = await universityRes.json()
+          setAnalyticsData(prev => ({ ...prev, universityReports }))
+          setLoading(prev => ({ ...prev, university: false }))
+          break
+        
+        case 'recruiters':
+          setLoading(prev => ({ ...prev, recruiter: true }))
+          const recruiterRes = await fetch('/api/analytics/recruiter-metrics')
+          const recruiterMetrics = await recruiterRes.json()
+          setAnalyticsData(prev => ({ ...prev, recruiterMetrics }))
+          setLoading(prev => ({ ...prev, recruiter: false }))
+          break
+        
+        case 'placements':
+          setLoading(prev => ({ ...prev, placement: true }))
+          const placementRes = await fetch('/api/analytics/placement-conversion')
+          const placementConversion = await placementRes.json()
+          setAnalyticsData(prev => ({ ...prev, placementConversion }))
+          setLoading(prev => ({ ...prev, placement: false }))
+          break
+        
+        case 'heatmap':
+          setLoading(prev => ({ ...prev, heatmap: true }))
+          const heatmapRes = await fetch('/api/analytics/state-heatmap')
+          const stateHeatmap = await heatmapRes.json()
+          setAnalyticsData(prev => ({ ...prev, stateHeatmap }))
+          setLoading(prev => ({ ...prev, heatmap: false }))
+          break
+        
+        case 'insights':
+          setLoading(prev => ({ ...prev, insights: true }))
+          const insightsRes = await fetch('/api/analytics/ai-insights')
+          const aiInsights = await insightsRes.json()
+          setAnalyticsData(prev => ({ ...prev, aiInsights }))
+          setLoading(prev => ({ ...prev, insights: false }))
+          break
+      }
     } catch (error) {
-      console.error('Error fetching analytics:', error)
+      console.error(`Error fetching ${tab} data:`, error)
       toast({
         title: 'Error',
-        description: 'Failed to load analytics data',
+        description: `Failed to load ${tab} data`,
         variant: 'destructive'
       })
-    } finally {
-      setLoading(false)
+      // Set loading to false even on error
+      const loadingKey = tab === 'universities' ? 'university' : 
+                        tab === 'recruiters' ? 'recruiter' :
+                        tab === 'placements' ? 'placement' :
+                        tab === 'heatmap' ? 'heatmap' : 'insights'
+      setLoading(prev => ({ ...prev, [loadingKey]: false }))
     }
   }
 
+  const handleTabChange = (value) => {
+    setActiveTab(value)
+    // Prefetch data for the selected tab
+    fetchTabData(value)
+  }
+
   const handleExport = async (type, section) => {
-    setLoading(true)
     toast({
       title: 'Export Started',
       description: `Preparing ${section} ${type} export...`
@@ -140,7 +175,6 @@ export default function ReportsPage() {
     
     // Simulate export
     setTimeout(() => {
-      setLoading(false)
       toast({
         title: 'Export Complete',
         description: `${section} ${type} file has been downloaded`
@@ -158,17 +192,11 @@ export default function ReportsPage() {
 
   const colors = ['#8B5CF6', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#EC4899']
 
-  if (loading && !analyticsData.universityReports.length) {
-    return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-8 bg-gray-200 dark:bg-gray-800 rounded w-1/3"></div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-32 bg-gray-200 dark:bg-gray-800 rounded"></div>
-          ))}
-        </div>
-      </div>
-    )
+  const isAnyLoading = Object.values(loading).some(val => val === true)
+
+  const handleRefresh = () => {
+    // Refresh current active tab data
+    fetchTabData(activeTab)
   }
 
   return (
@@ -178,15 +206,15 @@ export default function ReportsPage() {
           <h2 className="text-3xl font-bold gradient-text">Reports & Analytics</h2>
           <p className="text-muted-foreground mt-1">Comprehensive insights and data visualization</p>
         </div>
-        <Button onClick={fetchAnalyticsData} disabled={loading}>
+        <Button onClick={handleRefresh} disabled={isAnyLoading}>
           <TrendingUp className="h-4 w-4 mr-2" />
           Refresh Data
         </Button>
       </div>
 
-      <Tabs defaultValue="university" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="university" className="flex items-center gap-2">
+          <TabsTrigger value="universities" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             Universities
           </TabsTrigger>
@@ -209,7 +237,7 @@ export default function ReportsPage() {
         </TabsList>
 
         {/* University Reports Tab */}
-        <TabsContent value="university" className="space-y-6">
+        <TabsContent value="universities" className="space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-semibold flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-blue-600" />
@@ -220,7 +248,7 @@ export default function ReportsPage() {
                 variant="outline" 
                 size="sm"
                 onClick={() => handleExport('CSV', 'University Reports')}
-                disabled={loading}
+                disabled={loading.university}
               >
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
@@ -229,7 +257,7 @@ export default function ReportsPage() {
                 variant="outline" 
                 size="sm"
                 onClick={() => handleExport('Excel', 'University Reports')}
-                disabled={loading}
+                disabled={loading.university}
               >
                 <FileSpreadsheet className="h-4 w-4 mr-2" />
                 Export Excel
@@ -238,8 +266,34 @@ export default function ReportsPage() {
           </div>
 
           <div className="grid gap-4">
-            {analyticsData.universityReports.map((university, index) => (
-              <Card key={university.universityId} className="neu-card">
+            {loading.university ? (
+              // Loading skeleton
+              Array.from({ length: 3 }).map((_, index) => (
+                <Card key={index} className="neu-card animate-pulse">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-2">
+                        <div className="h-5 w-48 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                        <div className="h-4 w-24 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                      </div>
+                      <div className="h-6 w-32 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <div key={i} className="text-center space-y-2">
+                          <div className="h-8 w-16 bg-slate-200 dark:bg-slate-700 rounded mx-auto"></div>
+                          <div className="h-3 w-20 bg-slate-200 dark:bg-slate-700 rounded mx-auto"></div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              analyticsData.universityReports.map((university, index) => (
+                <Card key={university.universityId} className="neu-card">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <div>
@@ -278,7 +332,8 @@ export default function ReportsPage() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              ))
+            )}
           </div>
         </TabsContent>
 
@@ -294,7 +349,7 @@ export default function ReportsPage() {
                 variant="outline" 
                 size="sm"
                 onClick={() => handleExport('CSV', 'Recruiter Metrics')}
-                disabled={loading}
+                disabled={loading.recruiter}
               >
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
@@ -448,7 +503,7 @@ export default function ReportsPage() {
                 variant="outline" 
                 size="sm"
                 onClick={() => handleExport('CSV', 'Placement Analytics')}
-                disabled={loading}
+                disabled={loading.placement}
               >
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
@@ -536,7 +591,7 @@ export default function ReportsPage() {
                 variant="outline" 
                 size="sm"
                 onClick={() => handleExport('CSV', 'State Analytics')}
-                disabled={loading}
+                disabled={loading.heatmap}
               >
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
@@ -611,7 +666,7 @@ export default function ReportsPage() {
                 variant="outline" 
                 size="sm"
                 onClick={() => handleExport('CSV', 'AI Insights')}
-                disabled={loading}
+                disabled={loading.insights}
               >
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
