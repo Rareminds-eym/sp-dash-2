@@ -747,6 +747,133 @@ class BackendTester:
         except Exception as e:
             self.log_result("Delete User API", False, f"Delete request failed: {str(e)}")
             return False
+
+    def test_metrics_endpoint_scenarios(self):
+        """Test updated /api/metrics endpoint with specific scenarios"""
+        try:
+            print("\n🔍 TESTING UPDATED METRICS ENDPOINT SCENARIOS...")
+            
+            # First, clear any existing snapshots by checking if we can delete them
+            # We'll use a different approach - just test the current behavior
+            
+            # Scenario 1: Test metrics endpoint (should work regardless of snapshot state)
+            print("📊 Scenario 1: Testing /api/metrics endpoint...")
+            response1 = requests.get(f"{self.base_url}/metrics")
+            if response1.status_code != 200:
+                self.log_result("Metrics Scenarios - Initial Check", False, 
+                              f"Metrics endpoint returned status {response1.status_code}")
+                return False
+            
+            data1 = response1.json()
+            
+            # Check for required fields including source
+            expected_fields = ['activeUniversities', 'registeredStudents', 'verifiedPassports', 
+                             'aiVerifiedPercent', 'employabilityIndex', 'activeRecruiters', 'source']
+            
+            missing_fields = [field for field in expected_fields if field not in data1]
+            if missing_fields:
+                self.log_result("Metrics Scenarios - Initial Check", False, 
+                              f"Missing required fields: {missing_fields}")
+                return False
+            
+            initial_source = data1.get('source')
+            print(f"   Initial metrics source: {initial_source}")
+            
+            # Scenario 2: Create/update snapshot using /api/update-metrics
+            print("📊 Scenario 2: Creating/updating metrics snapshot...")
+            response2 = requests.post(f"{self.base_url}/update-metrics")
+            if response2.status_code != 200:
+                self.log_result("Metrics Scenarios - Snapshot Creation", False, 
+                              f"Update metrics endpoint returned status {response2.status_code}")
+                return False
+            
+            data2 = response2.json()
+            if not data2.get('success'):
+                self.log_result("Metrics Scenarios - Snapshot Creation", False, 
+                              "Update metrics response success flag is false")
+                return False
+            
+            snapshot_action = 'created' if 'created' in data2.get('message', '').lower() else 'updated'
+            print(f"   Snapshot action: {snapshot_action}")
+            
+            # Scenario 3: Test metrics endpoint after snapshot creation
+            print("📊 Scenario 3: Testing /api/metrics after snapshot creation...")
+            response3 = requests.get(f"{self.base_url}/metrics")
+            if response3.status_code != 200:
+                self.log_result("Metrics Scenarios - After Snapshot", False, 
+                              f"Metrics endpoint returned status {response3.status_code} after snapshot")
+                return False
+            
+            data3 = response3.json()
+            
+            # Check if source changed to 'snapshot'
+            final_source = data3.get('source')
+            print(f"   Final metrics source: {final_source}")
+            
+            # Verify snapshotDate field is present when source is 'snapshot'
+            has_snapshot_date = 'snapshotDate' in data3 if final_source == 'snapshot' else True
+            
+            # Scenario 4: Verify data accuracy between endpoints
+            print("📊 Scenario 4: Verifying data accuracy between endpoints...")
+            snapshot_data = data2.get('data', {})
+            
+            # Compare key metrics between update-metrics response and metrics endpoint
+            metrics_match = True
+            mismatched_fields = []
+            for field in ['activeUniversities', 'registeredStudents', 'verifiedPassports', 
+                         'aiVerifiedPercent', 'employabilityIndex', 'activeRecruiters']:
+                if snapshot_data.get(field) != data3.get(field):
+                    metrics_match = False
+                    mismatched_fields.append(f"{field}: snapshot={snapshot_data.get(field)}, metrics={data3.get(field)}")
+            
+            # Compile results
+            all_scenarios_passed = True
+            scenario_results = []
+            
+            # Check each scenario
+            if initial_source in ['dynamic', 'snapshot', 'error']:
+                scenario_results.append("✅ Scenario 1: Metrics endpoint returns valid source field")
+            else:
+                scenario_results.append(f"❌ Scenario 1: Invalid source '{initial_source}'")
+                all_scenarios_passed = False
+            
+            if data2.get('success') and snapshot_action in ['created', 'updated']:
+                scenario_results.append(f"✅ Scenario 2: Snapshot {snapshot_action} successfully")
+            else:
+                scenario_results.append("❌ Scenario 2: Snapshot creation/update failed")
+                all_scenarios_passed = False
+            
+            if final_source == 'snapshot' and has_snapshot_date:
+                scenario_results.append("✅ Scenario 3: Metrics endpoint returns snapshot data with snapshotDate")
+            elif final_source == 'dynamic':
+                scenario_results.append("✅ Scenario 3: Metrics endpoint returns dynamic data (fallback working)")
+            else:
+                scenario_results.append(f"❌ Scenario 3: Unexpected source '{final_source}' or missing snapshotDate")
+                all_scenarios_passed = False
+            
+            if metrics_match:
+                scenario_results.append("✅ Scenario 4: Data accuracy verified - metrics match between endpoints")
+            else:
+                scenario_results.append(f"❌ Scenario 4: Data mismatch - {', '.join(mismatched_fields)}")
+                all_scenarios_passed = False
+            
+            # Log comprehensive result
+            result_message = f"Metrics endpoint scenarios test. {len([r for r in scenario_results if r.startswith('✅')])}/4 scenarios passed. " + "; ".join(scenario_results)
+            
+            self.log_result("Updated Metrics Endpoint Scenarios", all_scenarios_passed, result_message, {
+                'initial_source': initial_source,
+                'snapshot_action': snapshot_action,
+                'final_source': final_source,
+                'has_snapshot_date': has_snapshot_date,
+                'metrics_match': metrics_match,
+                'scenario_details': scenario_results
+            })
+            
+            return all_scenarios_passed
+            
+        except Exception as e:
+            self.log_result("Updated Metrics Endpoint Scenarios", False, f"Scenarios test failed: {str(e)}")
+            return False
     
     def run_all_tests(self):
         """Run all backend API tests"""
