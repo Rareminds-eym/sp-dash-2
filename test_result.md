@@ -119,11 +119,11 @@ backend:
 
   - task: "Dashboard Metrics API"
     implemented: true
-    working: true
+    working: "NA"
     file: "app/api/[[...path]]/route.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: true
         agent: "testing"
@@ -131,6 +131,9 @@ backend:
       - working: true
         agent: "testing"
         comment: "METRICS FIX VERIFIED: Updated metrics endpoint now calculates data dynamically from database tables instead of metrics_snapshots. Real-time calculations working correctly: activeUniversities=10 (from organizations table), registeredStudents=712 (from students table), verifiedPassports=1 (from skill_passports where status='verified'), aiVerifiedPercent=0% (no AI verified passports), employabilityIndex=0.1% (1 verified/712 students), activeRecruiters=0 (no recruiter organizations). All calculations are mathematically correct and reflect actual database state."
+      - working: "NA"
+        agent: "main"
+        comment: "UPDATED: Modified /api/metrics endpoint to fetch from metrics_snapshots table first, with fallback to dynamic calculation if table is empty. Added 'source' field to response to indicate data origin (snapshot/dynamic/error). Also updated Dashboard.js to automatically trigger /api/update-metrics when snapshot is outdated or missing."
 
   - task: "Analytics Trends API"
     implemented: true
