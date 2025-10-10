@@ -77,6 +77,97 @@ class BackendTester:
             self.log_result("Metrics API", False, f"Metrics request failed: {str(e)}")
             return False
     
+    def test_update_metrics_endpoint(self):
+        """Test POST /api/update-metrics - Update metrics snapshots table"""
+        try:
+            # First call - should create new snapshot
+            response1 = requests.post(f"{self.base_url}/update-metrics")
+            if response1.status_code == 200:
+                data1 = response1.json()
+                
+                # Check required fields in response
+                required_fields = ['success', 'message', 'data']
+                has_all_fields = all(field in data1 for field in required_fields)
+                
+                if not has_all_fields:
+                    missing_fields = [field for field in required_fields if field not in data1]
+                    self.log_result("Update Metrics API", False, f"Missing required fields: {missing_fields}")
+                    return False
+                
+                # Check success flag
+                if not data1.get('success'):
+                    self.log_result("Update Metrics API", False, "Response success flag is false")
+                    return False
+                
+                # Check data object has all 6 metrics
+                data_obj = data1.get('data', {})
+                expected_metrics = ['activeUniversities', 'registeredStudents', 'verifiedPassports', 
+                                  'aiVerifiedPercent', 'employabilityIndex', 'activeRecruiters']
+                
+                has_all_metrics = all(metric in data_obj for metric in expected_metrics)
+                if not has_all_metrics:
+                    missing_metrics = [metric for metric in expected_metrics if metric not in data_obj]
+                    self.log_result("Update Metrics API", False, f"Missing metrics in data: {missing_metrics}")
+                    return False
+                
+                # Check if message indicates creation or update
+                message1 = data1.get('message', '')
+                action1 = 'created' if 'created' in message1.lower() else 'updated' if 'updated' in message1.lower() else 'unknown'
+                
+                # Second call - should update existing snapshot
+                response2 = requests.post(f"{self.base_url}/update-metrics")
+                if response2.status_code == 200:
+                    data2 = response2.json()
+                    
+                    if not data2.get('success'):
+                        self.log_result("Update Metrics API", False, "Second call success flag is false")
+                        return False
+                    
+                    message2 = data2.get('message', '')
+                    action2 = 'created' if 'created' in message2.lower() else 'updated' if 'updated' in message2.lower() else 'unknown'
+                    
+                    # Verify the metrics values match what /api/metrics returns
+                    metrics_response = requests.get(f"{self.base_url}/metrics")
+                    if metrics_response.status_code == 200:
+                        metrics_data = metrics_response.json()
+                        
+                        # Compare key metrics
+                        metrics_match = True
+                        for metric in expected_metrics:
+                            if data_obj.get(metric) != metrics_data.get(metric):
+                                metrics_match = False
+                                break
+                        
+                        if metrics_match:
+                            self.log_result("Update Metrics API", True, 
+                                          f"Update metrics working correctly. First call: {action1}, Second call: {action2}. Metrics match /api/metrics endpoint.", 
+                                          {
+                                              'first_action': action1,
+                                              'second_action': action2,
+                                              'metrics_data': data_obj,
+                                              'metrics_match': metrics_match
+                                          })
+                            return True
+                        else:
+                            self.log_result("Update Metrics API", False, 
+                                          "Metrics values don't match /api/metrics endpoint")
+                            return False
+                    else:
+                        self.log_result("Update Metrics API", False, 
+                                      f"Could not verify metrics match - /api/metrics returned {metrics_response.status_code}")
+                        return False
+                else:
+                    self.log_result("Update Metrics API", False, 
+                                  f"Second call returned status {response2.status_code}")
+                    return False
+            else:
+                self.log_result("Update Metrics API", False, 
+                              f"Update metrics endpoint returned status {response1.status_code}")
+                return False
+        except Exception as e:
+            self.log_result("Update Metrics API", False, f"Update metrics request failed: {str(e)}")
+            return False
+
     def test_analytics_trends(self):
         """Test GET /api/analytics/trends - Trend data"""
         try:
