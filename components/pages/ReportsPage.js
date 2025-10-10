@@ -340,7 +340,8 @@ export default function ReportsPage() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              ))
+            )}
           </div>
         </TabsContent>
 
