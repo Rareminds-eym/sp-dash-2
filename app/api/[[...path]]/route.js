@@ -468,21 +468,32 @@ export async function GET(request) {
       return NextResponse.json(mockConversionData)
     }
 
-    // GET /api/analytics/state-heatmap - Enhanced state-wise heat map data
+    // GET /api/analytics/state-heatmap - Enhanced state-wise heat map data (OPTIMIZED)
     if (path === '/analytics/state-heatmap') {
-      const { data: orgs, error } = await supabase
-        .from('organizations')
-        .select('state, type')
+      // Fetch all data in parallel
+      const [orgsResult, studentsResult, passportsResult] = await Promise.all([
+        supabase.from('organizations').select('id, state, type'),
+        supabase.from('students').select('id, universityId'),
+        supabase.from('skill_passports').select('studentId, status')
+      ])
 
-      if (error) throw error
+      if (orgsResult.error) throw orgsResult.error
 
-      const { data: students } = await supabase
-        .from('students')
-        .select('id, universityId')
+      const orgs = orgsResult.data || []
+      const students = studentsResult.data || []
+      const passports = passportsResult.data || []
 
-      const { data: passports } = await supabase
-        .from('skill_passports')
-        .select('studentId, status')
+      // Create lookup maps for O(1) access
+      const orgMap = {}
+      orgs.forEach(org => { orgMap[org.id] = org })
+
+      const passportsByStudent = {}
+      passports.forEach(passport => {
+        if (!passportsByStudent[passport.studentId]) {
+          passportsByStudent[passport.studentId] = []
+        }
+        passportsByStudent[passport.studentId].push(passport.status)
+      })
 
       // Calculate engagement metrics by state
       const stateMetrics = {}
@@ -506,23 +517,21 @@ export async function GET(request) {
         }
       })
 
-      // Add student and passport data
-      if (students && passports) {
-        students.forEach(student => {
-          const university = orgs.find(org => org.id === student.universityId)
-          if (university && university.state) {
-            stateMetrics[university.state].students++
-            
-            const studentPassports = passports.filter(p => p.studentId === student.id)
-            const verifiedPassports = studentPassports.filter(p => p.status === 'verified')
-            stateMetrics[university.state].verifiedPassports += verifiedPassports.length
-          }
-        })
-      }
+      // Add student and passport data using lookup map
+      students.forEach(student => {
+        const university = orgMap[student.universityId]
+        if (university?.state && stateMetrics[university.state]) {
+          stateMetrics[university.state].students++
+          
+          const studentPassports = passportsByStudent[student.id] || []
+          const verifiedCount = studentPassports.filter(status => status === 'verified').length
+          stateMetrics[university.state].verifiedPassports += verifiedCount
+        }
+      })
 
       // Calculate scores
       Object.values(stateMetrics).forEach(state => {
-        state.engagementScore = Math.min(95, Math.floor((state.students / state.universities) * 2 + Math.random() * 20))
+        state.engagementScore = Math.min(95, Math.floor((state.students / Math.max(state.universities, 1)) * 2 + Math.random() * 20))
         state.employabilityIndex = Math.min(98, Math.floor((state.verifiedPassports / Math.max(state.students, 1)) * 100 + Math.random() * 15))
       })
 
