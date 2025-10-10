@@ -97,9 +97,9 @@ async function setupAuthUsers() {
             .insert({
               id: existingUser.id,
               email: user.email,
-              name: user.name,
               role: user.role,
-              isActive: true
+              isActive: true,
+              metadata: { name: user.name }
             })
 
           if (insertError) {
@@ -112,8 +112,8 @@ async function setupAuthUsers() {
           const { error: updateDbError } = await supabase
             .from('users')
             .update({
-              name: user.name,
-              role: user.role
+              role: user.role,
+              metadata: { name: user.name }
             })
             .eq('id', existingUser.id)
 
