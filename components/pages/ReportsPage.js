@@ -666,7 +666,7 @@ export default function ReportsPage() {
                 variant="outline" 
                 size="sm"
                 onClick={() => handleExport('CSV', 'AI Insights')}
-                disabled={loading}
+                disabled={loading.insights}
               >
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
