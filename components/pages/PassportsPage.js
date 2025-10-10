@@ -68,10 +68,10 @@ export default function PassportsPage({ currentUser }) {
 
       if (action === 'verify') {
         endpoint = '/api/verify'
-        body = { passportId: passport.id, userId: currentUser.id, note: 'Passport verified by admin' }
+        body = { passportId: passport.id, userId: currentUser?.id, note: 'Passport verified by admin' }
       } else if (action === 'reject') {
         endpoint = '/api/reject-passport'
-        body = { passportId: passport.id, userId: currentUser.id, reason: 'Failed verification criteria' }
+        body = { passportId: passport.id, userId: currentUser?.id, reason: 'Failed verification criteria' }
       }
 
       const response = await fetch(endpoint, {
