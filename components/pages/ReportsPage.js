@@ -168,7 +168,6 @@ export default function ReportsPage() {
   }
 
   const handleExport = async (type, section) => {
-    setLoading(true)
     toast({
       title: 'Export Started',
       description: `Preparing ${section} ${type} export...`
@@ -176,7 +175,6 @@ export default function ReportsPage() {
     
     // Simulate export
     setTimeout(() => {
-      setLoading(false)
       toast({
         title: 'Export Complete',
         description: `${section} ${type} file has been downloaded`
