@@ -349,7 +349,7 @@ export default function ReportsPage() {
                 variant="outline" 
                 size="sm"
                 onClick={() => handleExport('CSV', 'Recruiter Metrics')}
-                disabled={loading}
+                disabled={loading.recruiter}
               >
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
