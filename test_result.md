@@ -375,6 +375,18 @@ backend:
         agent: "testing"
         comment: "DELETE /api/user endpoint working correctly. Performs soft delete by setting isActive to false, creates verification record, and logs audit trail. Returns proper success response."
 
+  - task: "Metrics Update API"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "POST /api/update-metrics endpoint working correctly. Calculates metrics from database tables (same as /api/metrics), saves/updates metrics_snapshots table with today's date. First call creates new snapshot, second call updates existing snapshot for today. Returns success with calculated metrics data. Fixed JSON parsing issue for endpoints without request body. All 6 metrics (activeUniversities, registeredStudents, verifiedPassports, aiVerifiedPercent, employabilityIndex, activeRecruiters) returned correctly and match /api/metrics endpoint values."
+
 frontend:
   - task: "Comprehensive Reports & Analytics Page"
     implemented: true
