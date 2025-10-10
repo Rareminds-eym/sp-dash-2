@@ -51,11 +51,24 @@ export default function DashboardLayout({ children }) {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' })
-      router.push('/login')
-      router.refresh()
+      const response = await fetch('/api/auth/logout', { method: 'POST' })
+      const data = await response.json()
+      
+      if (data.success) {
+        // Clear any local state
+        setUser(null)
+        
+        // Force a full page reload to clear all cached state
+        window.location.href = '/login'
+      } else {
+        console.error('Logout failed:', data.error)
+        // Even if server-side logout fails, redirect to login
+        window.location.href = '/login'
+      }
     } catch (err) {
       console.error('Logout error:', err)
+      // On error, still redirect to login page
+      window.location.href = '/login'
     }
   }
 
