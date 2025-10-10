@@ -108,7 +108,7 @@ export default function LoginPage() {
               <p>Admin: <code className="bg-white/50 dark:bg-slate-700/50 px-2 py-1 rounded">admin@rareminds.com</code></p>
               <p>Manager: <code className="bg-white/50 dark:bg-slate-700/50 px-2 py-1 rounded">manager@rareminds.com</code></p>
             </div>
-            <p className="mt-3 text-xs text-center text-slate-500 dark:text-slate-500">(Any password works for demo)</p>
+            <p className="mt-3 text-xs text-center text-slate-500 dark:text-slate-500">Password: <code className="bg-white/50 dark:bg-slate-700/50 px-2 py-1 rounded">password123</code></p>
           </div>
         </CardContent>
       </Card>
