@@ -183,7 +183,7 @@ export default function UsersPage({ currentUser }) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {currentUser.role === 'super_admin' && user.id !== currentUser.id && (
+                    {currentUser?.role === 'super_admin' && user.id !== currentUser?.id && (
                       user.isActive ? (
                         <Button
                           variant="outline"
