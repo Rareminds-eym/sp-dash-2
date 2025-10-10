@@ -43,12 +43,14 @@ export async function GET(request) {
       })
     }
 
+    const userName = userData.metadata?.name || session.user.user_metadata?.name || session.user.email.split('@')[0]
+
     return NextResponse.json({
       success: true,
       user: {
         id: userData.id,
         email: userData.email,
-        name: userData.name,
+        name: userName,
         role: userData.role,
         organizationId: userData.organizationId,
         organization: userData.organization,
