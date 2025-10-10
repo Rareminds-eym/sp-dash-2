@@ -102,11 +102,11 @@ export default function SettingsPage({ user }) {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" value={user.email} disabled />
+            <Input id="email" type="email" value={user?.email || ''} disabled />
           </div>
           <div className="space-y-2">
             <Label htmlFor="role">Role</Label>
-            <Input id="role" value={user.role.replace('_', ' ')} disabled />
+            <Input id="role" value={user?.role ? user.role.replace('_', ' ') : ''} disabled />
           </div>
         </CardContent>
       </Card>
