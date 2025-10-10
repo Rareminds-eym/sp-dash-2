@@ -49,16 +49,17 @@ export async function POST(request) {
     const user = userData || {
       id: authData.user.id,
       email: authData.user.email,
-      name: authData.user.user_metadata?.name || authData.user.email.split('@')[0],
       role: authData.user.user_metadata?.role || 'user',
     }
+
+    const userName = userData?.metadata?.name || authData.user.user_metadata?.name || authData.user.email.split('@')[0]
 
     return NextResponse.json({
       success: true,
       user: {
         id: user.id,
         email: user.email,
-        name: user.name,
+        name: userName,
         role: user.role,
         organizationId: user.organizationId,
         organization: user.organization,
