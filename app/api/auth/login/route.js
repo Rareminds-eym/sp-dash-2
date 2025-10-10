@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
-import { createSession } from '@/lib/session'
+import { createClient } from '@/lib/supabase-server'
 
 export async function POST(request) {
   try {
@@ -13,8 +12,23 @@ export async function POST(request) {
       )
     }
 
-    // Fetch user from database
-    const { data: users, error } = await supabase
+    const supabase = await createClient()
+
+    // Sign in with Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (authError || !authData.user) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid email or password' },
+        { status: 401 }
+      )
+    }
+
+    // Fetch additional user data from users table
+    const { data: userData, error: userError } = await supabase
       .from('users')
       .select(`
         *,
@@ -24,30 +38,20 @@ export async function POST(request) {
           type
         )
       `)
-      .eq('email', email)
-      .limit(1)
+      .eq('id', authData.user.id)
+      .single()
 
-    if (error || !users || users.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid email or password' },
-        { status: 401 }
-      )
+    if (userError) {
+      console.error('Error fetching user data:', userError)
+      // Continue with auth user data if custom user data fetch fails
     }
 
-    const user = users[0]
-
-    // In production, you should verify password hash
-    // For demo purposes, accepting any password
-
-    // Create session
-    await createSession({
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      organizationId: user.organizationId,
-      organization: user.organization,
-    })
+    const user = userData || {
+      id: authData.user.id,
+      email: authData.user.email,
+      name: authData.user.user_metadata?.name || authData.user.email.split('@')[0],
+      role: authData.user.user_metadata?.role || 'user',
+    }
 
     return NextResponse.json({
       success: true,
@@ -59,6 +63,7 @@ export async function POST(request) {
         organizationId: user.organizationId,
         organization: user.organization,
       },
+      session: authData.session,
     })
   } catch (error) {
     console.error('Login error:', error)
