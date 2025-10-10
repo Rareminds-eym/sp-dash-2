@@ -192,17 +192,11 @@ export default function ReportsPage() {
 
   const colors = ['#8B5CF6', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#EC4899']
 
-  if (loading && !analyticsData.universityReports.length) {
-    return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-8 bg-gray-200 dark:bg-gray-800 rounded w-1/3"></div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-32 bg-gray-200 dark:bg-gray-800 rounded"></div>
-          ))}
-        </div>
-      </div>
-    )
+  const isAnyLoading = Object.values(loading).some(val => val === true)
+
+  const handleRefresh = () => {
+    // Refresh current active tab data
+    fetchTabData(activeTab)
   }
 
   return (
@@ -212,7 +206,7 @@ export default function ReportsPage() {
           <h2 className="text-3xl font-bold gradient-text">Reports & Analytics</h2>
           <p className="text-muted-foreground mt-1">Comprehensive insights and data visualization</p>
         </div>
-        <Button onClick={fetchAnalyticsData} disabled={loading}>
+        <Button onClick={handleRefresh} disabled={isAnyLoading}>
           <TrendingUp className="h-4 w-4 mr-2" />
           Refresh Data
         </Button>
