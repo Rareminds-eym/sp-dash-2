@@ -259,7 +259,7 @@ export async function GET(request) {
       return NextResponse.json(chartData)
     }
 
-    // GET /api/analytics/trends - Employability and AI verification trends
+    // GET /api/analytics/trends - Employability and Skill verification trends
     if (path === '/analytics/trends') {
       const { data: metrics, error } = await supabase
         .from('metrics_snapshots')

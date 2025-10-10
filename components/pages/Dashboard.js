@@ -320,14 +320,14 @@ export default function Dashboard({ user }) {
           </CardContent>
         </Card>
 
-        {/* AI Verification Chart */}
+        {/* Skill Verification Chart */}
         <Card className="bg-white/70 dark:bg-slate-900/95 backdrop-blur-xl border-white/20 dark:border-slate-700/50 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-2xl transition-all duration-500">
           <CardHeader className="pb-4">
             <CardTitle className="text-xl font-bold text-slate-900 dark:text-white">
-              AI Verification Trend
+              Skill Verification Trend
             </CardTitle>
             <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-              Monthly AI verification percentage across all verifications
+              Monthly Skill verification percentage across all verifications
             </p>
           </CardHeader>
           <CardContent>
@@ -390,7 +390,7 @@ export default function Dashboard({ user }) {
                   stroke="#818cf8"
                   strokeWidth={2}
                   fill="url(#colorAI)"
-                  name="AI Verification %"
+                  name="Skill Verification %"
                 />
               </AreaChart>
             </ResponsiveContainer>
