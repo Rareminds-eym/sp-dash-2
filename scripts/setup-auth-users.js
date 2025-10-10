@@ -148,9 +148,9 @@ async function setupAuthUsers() {
           .upsert({
             id: authData.user.id,
             email: user.email,
-            name: user.name,
             role: user.role,
-            isActive: true
+            isActive: true,
+            metadata: { name: user.name }
           })
 
         if (dbError) {
