@@ -9,6 +9,11 @@ export async function middleware(req) {
   const isProtectedRoute = protectedRoutes.some(route => path.startsWith(route))
   const isPublicRoute = publicRoutes.includes(path)
 
+  // Quick check: if not a protected or public route, skip middleware
+  if (!isProtectedRoute && !isPublicRoute) {
+    return NextResponse.next()
+  }
+
   let supabaseResponse = NextResponse.next({
     request: req,
   })
@@ -31,7 +36,7 @@ export async function middleware(req) {
     }
   )
 
-  // Refresh session if expired
+  // Only check session for routes that need it
   const { data: { session } } = await supabase.auth.getSession()
 
   // Redirect to /login if accessing protected route without session
