@@ -28,23 +28,69 @@ export async function GET(request) {
   try {
     // GET /api/metrics - Dashboard metrics
     if (path === '/metrics') {
-      const { data: metrics, error } = await supabase
-        .from('metrics_snapshots')
-        .select('*')
-        .order('snapshotDate', { ascending: false })
-        .limit(1)
-        .maybeSingle()
+      try {
+        // Calculate metrics dynamically from database tables
+        
+        // Count universities (organizations with type = 'university')
+        const { data: universities, error: uniError } = await supabase
+          .from('organizations')
+          .select('id', { count: 'exact', head: true })
+          .eq('type', 'university')
+        
+        const activeUniversities = universities || 0
 
-      if (error) throw error
+        // Count recruiters (organizations with type = 'recruiter')
+        const { data: recruiters, error: recError } = await supabase
+          .from('organizations')
+          .select('id', { count: 'exact', head: true })
+          .eq('type', 'recruiter')
+        
+        const activeRecruiters = recruiters || 0
 
-      return NextResponse.json(metrics || {
-        activeUniversities: 0,
-        registeredStudents: 0,
-        verifiedPassports: 0,
-        aiVerifiedPercent: 0,
-        employabilityIndex: 0,
-        activeRecruiters: 0
-      })
+        // Count total students
+        const { count: studentsCount, error: studError } = await supabase
+          .from('students')
+          .select('*', { count: 'exact', head: true })
+        
+        const registeredStudents = studentsCount || 0
+
+        // Get all passports to calculate verification metrics
+        const { data: passports, error: passError } = await supabase
+          .from('skill_passports')
+          .select('status, aiVerification')
+        
+        const totalPassports = passports?.length || 0
+        const verifiedPassports = passports?.filter(p => p.status === 'verified').length || 0
+        const aiVerifiedCount = passports?.filter(p => p.aiVerification === true).length || 0
+        
+        // Calculate percentages
+        const aiVerifiedPercent = totalPassports > 0 
+          ? ((aiVerifiedCount / totalPassports) * 100).toFixed(1) 
+          : 0
+        
+        const employabilityIndex = registeredStudents > 0 
+          ? ((verifiedPassports / registeredStudents) * 100).toFixed(1) 
+          : 0
+
+        return NextResponse.json({
+          activeUniversities,
+          registeredStudents,
+          verifiedPassports,
+          aiVerifiedPercent: parseFloat(aiVerifiedPercent),
+          employabilityIndex: parseFloat(employabilityIndex),
+          activeRecruiters
+        })
+      } catch (error) {
+        console.error('Error calculating metrics:', error)
+        return NextResponse.json({
+          activeUniversities: 0,
+          registeredStudents: 0,
+          verifiedPassports: 0,
+          aiVerifiedPercent: 0,
+          employabilityIndex: 0,
+          activeRecruiters: 0
+        })
+      }
     }
 
     // GET /api/users - List all users
