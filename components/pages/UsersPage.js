@@ -74,10 +74,10 @@ export default function UsersPage({ currentUser }) {
 
       if (action === 'suspend') {
         endpoint = '/api/suspend-user'
-        body = { targetUserId: user.id, actorId: currentUser.id, reason: 'Admin action' }
+        body = { targetUserId: user.id, actorId: currentUser?.id, reason: 'Admin action' }
       } else if (action === 'activate') {
         endpoint = '/api/activate-user'
-        body = { targetUserId: user.id, actorId: currentUser.id, note: 'User activated' }
+        body = { targetUserId: user.id, actorId: currentUser?.id, note: 'User activated' }
       }
 
       const response = await fetch(endpoint, {
