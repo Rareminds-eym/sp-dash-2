@@ -186,7 +186,7 @@ class AuthSecurityTester:
             
         return False
     
-    def test_update_metrics_endpoint(self):
+    def test_session_api_invalid(self):
         """Test POST /api/update-metrics - Update metrics snapshots table"""
         try:
             # First call - should create new snapshot
