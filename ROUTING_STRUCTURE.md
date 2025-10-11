@@ -199,9 +199,9 @@ Note: In production, use a strong random secret key.
 ## Testing Credentials
 
 As per the existing setup:
-- Super Admin: `superadmin@rareminds.com`
-- Admin: `admin@rareminds.com`
-- Manager: `manager@rareminds.com`
+- Super Admin: `superadmin@rareminds.in`
+- Admin: `admin@rareminds.in`
+- Manager: `manager@rareminds.in`
 - Password: Any password (demo mode)
 
 ## Migration Notes

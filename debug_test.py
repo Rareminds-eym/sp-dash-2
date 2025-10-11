@@ -10,7 +10,7 @@ def debug_database_queries():
     
     # Login first
     login_response = requests.post(f'{BASE_URL}/api/auth/login', json={
-        'email': 'superadmin@rareminds.com', 
+        'email': 'superadmin@rareminds.in', 
         'password': 'password123'
     })
     
@@ -31,7 +31,7 @@ def debug_database_queries():
         # Find the superadmin user
         superadmin = None
         for user in users:
-            if user.get('email') == 'superadmin@rareminds.com':
+            if user.get('email') == 'superadmin@rareminds.in':
                 superadmin = user
                 break
         

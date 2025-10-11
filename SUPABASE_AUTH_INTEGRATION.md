@@ -56,7 +56,7 @@ Authenticates user with Supabase Auth.
 **Request:**
 ```json
 {
-  "email": "superadmin@rareminds.com",
+  "email": "superadmin@rareminds.in",
   "password": "password123"
 }
 ```
@@ -67,7 +67,7 @@ Authenticates user with Supabase Auth.
   "success": true,
   "user": {
     "id": "uuid",
-    "email": "superadmin@rareminds.com",
+    "email": "superadmin@rareminds.in",
     "name": "Super Admin",
     "role": "super_admin",
     "organizationId": "uuid",
@@ -210,9 +210,9 @@ The following test users are pre-configured:
 
 | Email | Password | Role |
 |-------|----------|------|
-| superadmin@rareminds.com | password123 | super_admin |
-| admin@rareminds.com | password123 | admin |
-| manager@rareminds.com | password123 | manager |
+| superadmin@rareminds.in | password123 | super_admin |
+| admin@rareminds.in | password123 | admin |
+| manager@rareminds.in | password123 | manager |
 
 ## Security Features
 

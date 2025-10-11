@@ -36,19 +36,19 @@ async function setupAuthUsers() {
 
   const testUsers = [
     {
-      email: 'superadmin@rareminds.com',
+      email: 'superadmin@rareminds.in',
       password: 'password123',
       role: 'super_admin',
       name: 'Super Admin'
     },
     {
-      email: 'admin@rareminds.com',
+      email: 'admin@rareminds.in',
       password: 'password123',
       role: 'admin',
       name: 'Admin User'
     },
     {
-      email: 'manager@rareminds.com',
+      email: 'manager@rareminds.in',
       password: 'password123',
       role: 'manager',
       name: 'Manager User'
@@ -166,9 +166,9 @@ async function setupAuthUsers() {
 
   console.log('\n✨ Auth users setup complete!')
   console.log('\n📝 Test Credentials:')
-  console.log('   Email: superadmin@rareminds.com | Password: password123')
-  console.log('   Email: admin@rareminds.com | Password: password123')
-  console.log('   Email: manager@rareminds.com | Password: password123')
+  console.log('   Email: superadmin@rareminds.in | Password: password123')
+  console.log('   Email: admin@rareminds.in | Password: password123')
+  console.log('   Email: manager@rareminds.in | Password: password123')
 }
 
 // Run the setup

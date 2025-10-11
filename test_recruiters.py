@@ -16,9 +16,9 @@ def test_login():
     # Try different email variations
     credentials = [
         {"email": "superadmin@rareminds.in", "password": "password123"},
-        {"email": "superadmin@rareminds.com", "password": "password123"},
+        {"email": "superadmin@rareminds.in", "password": "password123"},
         {"email": "admin@rareminds.in", "password": "password123"},
-        {"email": "admin@rareminds.com", "password": "password123"}
+        {"email": "admin@rareminds.in", "password": "password123"}
     ]
     
     for cred in credentials:

@@ -52,9 +52,9 @@ The application uses 7 Supabase tables:
 
 Use any of these emails with any password (demo mode):
 
-- **Super Admin**: `superadmin@rareminds.com`
-- **Admin**: `admin@rareminds.com`
-- **Manager**: `manager@rareminds.com`
+- **Super Admin**: `superadmin@rareminds.in`
+- **Admin**: `admin@rareminds.in`
+- **Manager**: `manager@rareminds.in`
 
 ## 🚀 Getting Started
 

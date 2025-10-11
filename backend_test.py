@@ -16,7 +16,7 @@ API_BASE = f"{BASE_URL}/api"
 
 # Test credentials
 VALID_CREDENTIALS = {
-    "email": "superadmin@rareminds.com",
+    "email": "superadmin@rareminds.in",
     "password": "password123"
 }
 
@@ -464,7 +464,7 @@ class AuthSecurityTester:
         try:
             # Test with the specified super admin email
             login_data = {
-                "email": "superadmin@rareminds.com",
+                "email": "superadmin@rareminds.in",
                 "password": "password123"  # Updated to match review request credentials
             }
             
