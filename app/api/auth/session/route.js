@@ -17,11 +17,11 @@ export async function GET(request) {
       )
     }
 
-    // Fetch additional user data from users table
+    // Fetch additional user data from users table (lookup by email since IDs may not match)
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('*')
-      .eq('id', session.user.id)
+      .eq('email', session.user.email)
       .single()
     
     // Fetch organization data separately if organizationId exists
