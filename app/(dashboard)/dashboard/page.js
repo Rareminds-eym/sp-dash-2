@@ -1,5 +1,5 @@
 import Dashboard from '@/components/pages/Dashboard'
-import { getSession } from '@/lib/session'
+import { getSession } from '@/lib/supabase-server'
 
 export const runtime = 'edge'
 

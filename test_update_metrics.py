@@ -8,7 +8,7 @@ import json
 from datetime import datetime
 
 # Base URL from environment
-BASE_URL = "https://recruiter-verify-tab.preview.emergentagent.com/api"
+BASE_URL = "https://settings-view-fix.preview.emergentagent.com/api"
 
 def test_update_metrics_endpoint():
     """Test POST /api/update-metrics - Update metrics snapshots table"""

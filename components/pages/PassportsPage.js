@@ -158,7 +158,7 @@ export default function PassportsPage({ currentUser }) {
                     </div>
                     <div>
                       <p className="font-medium dark:text-white">
-                        {passport.students?.profile?.name || passport.students?.users?.email || 'Unknown Student'}
+                        {passport.students?.profile?.name || passport.students?.users?.metadata?.name || passport.students?.users?.email || 'Unknown Student'}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
                         <Badge className={getStatusBadge(passport.status)}>
