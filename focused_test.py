@@ -7,7 +7,7 @@ from datetime import datetime
 
 
 # Configuration
-BASE_URL = "https://settings-view-fix.preview.emergentagent.com"
+BASE_URL = "https://secure-auth-fix.preview.emergentagent.com"
 TEST_EMAIL = "superadmin@rareminds.in"
 TEST_PASSWORD = "password123"
 

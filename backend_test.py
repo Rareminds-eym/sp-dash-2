@@ -11,7 +11,7 @@ from datetime import datetime
 
 # Base URL from environment
 
-BASE_URL = "https://settings-view-fix.preview.emergentagent.com/api"
+BASE_URL = "https://secure-auth-fix.preview.emergentagent.com/api"
 
 # Test credentials
 SUPERADMIN_EMAIL = "superadmin@rareminds.com"
