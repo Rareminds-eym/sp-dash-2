@@ -59,7 +59,7 @@ export async function GET(request) {
         name: userName,
         role: userData.role,
         organizationId: userData.organizationId,
-        organization: userData.organization,
+        organization: organizationData,
       },
     })
   } catch (error) {
