@@ -217,11 +217,15 @@ export async function GET(request) {
       if (passports && passports.length > 0) {
         for (let passport of passports) {
           if (passport.studentId) {
-            const { data: student } = await supabase
+            const { data: student, error: studentError } = await supabase
               .from('students')
               .select('*')
               .eq('id', passport.studentId)
               .maybeSingle()
+            
+            if (studentError) {
+              console.error('Error fetching student:', studentError)
+            }
             if (student) {
               // Get user data for student (email and metadata with name)
               if (student.userId) {
