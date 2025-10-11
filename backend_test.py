@@ -19,11 +19,8 @@ SUPERADMIN_PASSWORD = "password123"
 
 class RecruiterVerificationTester:
     def __init__(self):
-        self.base_url = BASE_URL
-        self.test_results = []
+        self.session = requests.Session()
         self.user_id = None
-        self.passport_id = None
-        self.target_user_id = None
         self.recruiter_id = None
         
     def log_result(self, test_name, success, message, response_data=None):
