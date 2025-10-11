@@ -359,7 +359,7 @@ class RecruiterVerificationTester:
             # Test with the specified super admin email
             login_data = {
                 "email": "superadmin@rareminds.com",
-                "password": "admin123"  # Using a realistic password
+                "password": "password123"  # Updated to match review request credentials
             }
             
             response = requests.post(f"{self.base_url}/login", json=login_data)
