@@ -474,7 +474,7 @@ export default function Dashboard({ user }) {
       </div>
 
       {/* Recent Verifications */}
-      <Card className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-white/20 dark:border-slate-700/50 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50">
+      <Card className="neu-card">
         <CardHeader className="pb-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg">
