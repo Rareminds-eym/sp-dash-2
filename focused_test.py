@@ -7,7 +7,7 @@ import requests
 import json
 
 # Base URL from environment
-BASE_URL = "https://card-theme-panel.preview.emergentagent.com/api"
+BASE_URL = "https://settings-view-fix.preview.emergentagent.com/api"
 
 def test_key_endpoints():
     """Test key endpoints to ensure nothing is broken"""
