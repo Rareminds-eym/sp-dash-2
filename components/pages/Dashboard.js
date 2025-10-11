@@ -258,7 +258,7 @@ export default function Dashboard({ user }) {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Employability Index Chart */}
-        <Card className="bg-white/70 dark:bg-slate-900/95 backdrop-blur-xl border-white/20 dark:border-slate-700/50 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-2xl transition-all duration-500">
+        <Card className="neu-card">
           <CardHeader className="pb-4">
             <CardTitle className="text-xl font-bold text-slate-900 dark:text-white">
               Employability Index Trend
