@@ -278,13 +278,13 @@ class AuthSecurityTester:
             # Test a frontend route that should be protected
             response = test_session.get(f"{BASE_URL}/dashboard", allow_redirects=False)
             
-            # Should redirect to login (302) for frontend routes
-            if response.status_code == 302:
+            # Should redirect to login (302 or 307) for frontend routes
+            if response.status_code in [302, 307]:
                 location = response.headers.get('Location', '')
-                if 'login' in location.lower():
+                if 'login' in location.lower() or location == '/login':
                     self.log_result(
                         "Protected Route Without Auth", True,
-                        f"Protected frontend route properly redirects to login: {location}"
+                        f"Protected frontend route properly redirects to login: {location} (status {response.status_code})"
                     )
                     return True
                 else:
