@@ -28,21 +28,23 @@ INVALID_CREDENTIALS = {
 class AuthSecurityTester:
     def __init__(self):
         self.session = requests.Session()
-        self.user_id = None
-        self.recruiter_id = None
+        self.auth_token = None
+        self.test_results = []
         
-    def log_result(self, test_name, success, message, response_data=None):
+    def log_result(self, test_name, success, message, details=None):
         """Log test result"""
-        result = {
-            'test': test_name,
-            'success': success,
-            'message': message,
-            'timestamp': datetime.now().isoformat(),
-            'response_data': response_data
-        }
-        self.test_results.append(result)
         status = "✅ PASS" if success else "❌ FAIL"
-        print(f"{status}: {test_name} - {message}")
+        print(f"{status} {test_name}: {message}")
+        if details:
+            print(f"   Details: {details}")
+        
+        self.test_results.append({
+            "test": test_name,
+            "success": success,
+            "message": message,
+            "details": details,
+            "timestamp": datetime.now().isoformat()
+        })
         
     def test_api_root(self):
         """Test GET /api - API root endpoint"""
