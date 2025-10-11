@@ -229,11 +229,15 @@ export async function GET(request) {
             if (student) {
               // Get user data for student (email and metadata with name)
               if (student.userId) {
-                const { data: user } = await supabase
+                const { data: user, error: userError } = await supabase
                   .from('users')
                   .select('email, metadata')
                   .eq('id', student.userId)
                   .maybeSingle()
+                
+                if (userError) {
+                  console.error('Error fetching user for student:', userError)
+                }
                 if (user) {
                   student.users = user
                 }
