@@ -29,19 +29,23 @@ export async function POST(request) {
       )
     }
 
-    // Fetch additional user data from users table
+    // Fetch additional user data from users table (lookup by email since IDs may not match)
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select(`
-        *,
-        organization:organizationId (
-          id,
-          name,
-          type
-        )
-      `)
-      .eq('id', authData.user.id)
-      .single()
+      .select('*')
+      .eq('email', authData.user.email)
+      .maybeSingle()
+    
+    // Fetch organization data separately if organizationId exists
+    let organizationData = null
+    if (userData && userData.organizationId) {
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('id, name, type')
+        .eq('id', userData.organizationId)
+        .maybeSingle()
+      organizationData = orgData
+    }
 
     if (userError) {
       console.error('Error fetching user data:', userError)
