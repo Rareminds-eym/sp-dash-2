@@ -47,17 +47,54 @@ class AuthSecurityTester:
         })
     
     def test_login_flow(self):
-        """Test GET /api - API root endpoint"""
+        """Test complete authentication flow with valid credentials"""
+        print("\n=== Testing Login Flow ===")
+        
         try:
-            response = requests.get(f"{self.base_url}")
+            # Test valid login
+            response = self.session.post(
+                f"{API_BASE}/auth/login",
+                json=VALID_CREDENTIALS,
+                headers={"Content-Type": "application/json"}
+            )
+            
             if response.status_code == 200:
                 data = response.json()
-                if 'message' in data and 'endpoints' in data:
-                    self.log_result("API Root", True, "API root endpoint working correctly", data)
-                    return True
+                if data.get("success") and data.get("user"):
+                    user = data["user"]
+                    required_fields = ["email", "role", "name", "organizationId"]
+                    missing_fields = [field for field in required_fields if field not in user]
+                    
+                    if not missing_fields:
+                        self.log_result(
+                            "Valid Login", True,
+                            f"Login successful for {user['email']} with role {user['role']}",
+                            f"User data: {json.dumps(user, indent=2)}"
+                        )
+                        return True
+                    else:
+                        self.log_result(
+                            "Valid Login", False,
+                            f"Missing required user fields: {missing_fields}",
+                            f"Response: {json.dumps(data, indent=2)}"
+                        )
                 else:
-                    self.log_result("API Root", False, "API root response missing required fields")
-                    return False
+                    self.log_result(
+                        "Valid Login", False,
+                        "Login response missing success flag or user data",
+                        f"Response: {json.dumps(data, indent=2)}"
+                    )
+            else:
+                self.log_result(
+                    "Valid Login", False,
+                    f"Login failed with status {response.status_code}",
+                    f"Response: {response.text}"
+                )
+                
+        except Exception as e:
+            self.log_result("Valid Login", False, f"Login request failed: {str(e)}")
+            
+        return False
             else:
                 self.log_result("API Root", False, f"API root returned status {response.status_code}")
                 return False
