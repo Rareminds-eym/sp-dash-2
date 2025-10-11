@@ -95,7 +95,7 @@ export default function SettingsPage({ user }) {
       )}
       
 
-      <Card>
+      <Card className="neu-card">
         <CardHeader>
           <CardTitle>Profile Settings</CardTitle>
         </CardHeader>
@@ -111,7 +111,7 @@ export default function SettingsPage({ user }) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="neu-card">
         <CardHeader>
           <CardTitle>Notification Settings</CardTitle>
         </CardHeader>
