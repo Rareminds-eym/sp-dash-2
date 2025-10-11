@@ -7,12 +7,20 @@ export async function GET(request) {
   try {
     const supabase = await createClient()
     
-    // Get current session from Supabase Auth
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    // Use getUser() instead of getSession() for better security and JWT validation
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
     
-    if (sessionError || !session) {
+    if (authError || !user) {
+      // Handle JWT expiration and other auth errors gracefully
+      if (authError?.message?.includes('JWT') || authError?.message?.includes('expired')) {
+        console.warn('JWT expired in session API:', authError.message)
+        return NextResponse.json(
+          { success: false, user: null, error: 'JWT expired' },
+          { status: 401 }
+        )
+      }
       return NextResponse.json(
-        { success: false, user: null },
+        { success: false, user: null, error: authError?.message || 'Authentication failed' },
         { status: 401 }
       )
     }
@@ -21,7 +29,7 @@ export async function GET(request) {
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('*')
-      .eq('email', session.user.email)
+      .eq('email', user.email)
       .maybeSingle()
     
     // Fetch organization data separately if organizationId exists
@@ -41,15 +49,15 @@ export async function GET(request) {
       return NextResponse.json({
         success: true,
         user: {
-          id: session.user.id,
-          email: session.user.email,
-          name: session.user.user_metadata?.name || session.user.email.split('@')[0],
-          role: session.user.user_metadata?.role || 'user',
+          id: user.id,
+          email: user.email,
+          name: user.user_metadata?.name || user.email.split('@')[0],
+          role: user.user_metadata?.role || 'user',
         },
       })
     }
 
-    const userName = userData.metadata?.name || session.user.user_metadata?.name || session.user.email.split('@')[0]
+    const userName = userData?.metadata?.name || user.user_metadata?.name || user.email.split('@')[0]
 
     return NextResponse.json({
       success: true,
@@ -65,7 +73,7 @@ export async function GET(request) {
   } catch (error) {
     console.error('Session error:', error)
     return NextResponse.json(
-      { success: false, user: null },
+      { success: false, user: null, error: error.message },
       { status: 500 }
     )
   }
