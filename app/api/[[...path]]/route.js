@@ -173,7 +173,7 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Failed to fetch recruiters' }, { status: 500 })
       }
 
-      // Count users for each recruiter organization
+      // Count users for each recruiter organization and add default verification fields if missing
       if (recruiters && recruiters.length > 0) {
         for (let recruiter of recruiters) {
           const { data: users } = await supabase
@@ -182,6 +182,14 @@ export async function GET(request) {
             .eq('organizationId', recruiter.id)
           
           recruiter.userCount = users?.length || 0
+          
+          // Add default values if verification fields don't exist
+          if (!recruiter.hasOwnProperty('verificationStatus')) {
+            recruiter.verificationStatus = 'approved'
+          }
+          if (!recruiter.hasOwnProperty('isActive')) {
+            recruiter.isActive = true
+          }
         }
       }
 
