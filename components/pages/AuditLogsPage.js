@@ -59,7 +59,7 @@ export default function AuditLogsPage() {
         </Button>
       </div>
 
-      <Card>
+      <Card className="neu-card">
         <CardHeader>
           <div className="flex items-center gap-2">
             <History className="h-5 w-5" />

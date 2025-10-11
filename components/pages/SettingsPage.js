@@ -51,7 +51,7 @@ export default function SettingsPage({ user }) {
 
       {/* System Management Section - Only for Super Admin */}
       {user?.role === 'super_admin' && (
-        <Card className="border-blue-200 dark:border-blue-800">
+        <Card className="neu-card border-blue-200 dark:border-blue-800">
           <CardHeader className="bg-blue-50 dark:bg-blue-950/30">
             <div className="flex items-center gap-2">
               <Database className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -95,7 +95,7 @@ export default function SettingsPage({ user }) {
       )}
       
 
-      <Card>
+      <Card className="neu-card">
         <CardHeader>
           <CardTitle>Profile Settings</CardTitle>
         </CardHeader>
@@ -111,7 +111,7 @@ export default function SettingsPage({ user }) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="neu-card">
         <CardHeader>
           <CardTitle>Notification Settings</CardTitle>
         </CardHeader>
@@ -133,7 +133,7 @@ export default function SettingsPage({ user }) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="neu-card">
         <CardHeader>
           <CardTitle>Security</CardTitle>
         </CardHeader>

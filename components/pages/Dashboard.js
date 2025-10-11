@@ -217,7 +217,7 @@ export default function Dashboard({ user }) {
           return (
             <Card
               key={index}
-              className="group overflow-hidden bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-white/20 dark:border-slate-700/50 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-2xl hover:shadow-slate-300/50 dark:hover:shadow-slate-800/50 transition-all duration-500 hover:scale-[1.02] hover:-translate-y-1"
+              className="neu-card group overflow-hidden"
             >
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-6">
@@ -258,7 +258,7 @@ export default function Dashboard({ user }) {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Employability Index Chart */}
-        <Card className="bg-white/70 dark:bg-slate-900/95 backdrop-blur-xl border-white/20 dark:border-slate-700/50 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-2xl transition-all duration-500">
+        <Card className="neu-card">
           <CardHeader className="pb-4">
             <CardTitle className="text-xl font-bold text-slate-900 dark:text-white">
               Employability Index Trend
@@ -335,7 +335,7 @@ export default function Dashboard({ user }) {
         </Card>
 
         {/* Skill Verification Chart */}
-        <Card className="bg-white/70 dark:bg-slate-900/95 backdrop-blur-xl border-white/20 dark:border-slate-700/50 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-2xl transition-all duration-500">
+        <Card className="neu-card">
           <CardHeader className="pb-4">
             <CardTitle className="text-xl font-bold text-slate-900 dark:text-white">
               Skill Verification Trend
@@ -412,7 +412,7 @@ export default function Dashboard({ user }) {
         </Card>
 
         {/* State-wise Distribution */}
-        <Card className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-white/20 dark:border-slate-700/50 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-2xl transition-all duration-500">
+        <Card className="neu-card">
           <CardHeader className="pb-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
@@ -474,7 +474,7 @@ export default function Dashboard({ user }) {
       </div>
 
       {/* Recent Verifications */}
-      <Card className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-white/20 dark:border-slate-700/50 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50">
+      <Card className="neu-card">
         <CardHeader className="pb-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg">

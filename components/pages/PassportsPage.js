@@ -133,7 +133,7 @@ export default function PassportsPage({ currentUser }) {
         </Button>
       </div>
 
-      <Card>
+      <Card className="neu-card">
         <CardHeader>
           <div className="flex items-center gap-4">
             <div className="relative flex-1">
