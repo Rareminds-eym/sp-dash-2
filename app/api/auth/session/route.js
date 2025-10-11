@@ -22,7 +22,7 @@ export async function GET(request) {
       .from('users')
       .select('*')
       .eq('email', session.user.email)
-      .single()
+      .maybeSingle()
     
     // Fetch organization data separately if organizationId exists
     let organizationData = null
