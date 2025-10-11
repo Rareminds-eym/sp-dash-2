@@ -160,6 +160,34 @@ export async function GET(request) {
       return NextResponse.json(orgs || [])
     }
 
+    // GET /api/recruiters - List all recruiter organizations
+    if (path === '/recruiters') {
+      const { data: recruiters, error } = await supabase
+        .from('organizations')
+        .select('*')
+        .eq('type', 'recruiter')
+        .order('createdAt', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching recruiters:', error)
+        return NextResponse.json({ error: 'Failed to fetch recruiters' }, { status: 500 })
+      }
+
+      // Count users for each recruiter organization
+      if (recruiters && recruiters.length > 0) {
+        for (let recruiter of recruiters) {
+          const { data: users } = await supabase
+            .from('users')
+            .select('id')
+            .eq('organizationId', recruiter.id)
+          
+          recruiter.userCount = users?.length || 0
+        }
+      }
+
+      return NextResponse.json(recruiters || [])
+    }
+
     // GET /api/students - List all students
     if (path === '/students') {
       const { data: students, error } = await supabase
