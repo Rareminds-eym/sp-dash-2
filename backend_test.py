@@ -875,6 +875,217 @@ class BackendTester:
             self.log_result("Updated Metrics Endpoint Scenarios", False, f"Scenarios test failed: {str(e)}")
             return False
     
+    def test_get_recruiters(self):
+        """Test GET /api/recruiters - List all recruiter organizations"""
+        try:
+            response = requests.get(f"{self.base_url}/recruiters")
+            
+            if response.status_code == 200:
+                recruiters = response.json()
+                
+                if isinstance(recruiters, list):
+                    # Store first recruiter ID for other tests
+                    if recruiters and 'id' in recruiters[0]:
+                        self.recruiter_id = recruiters[0]['id']
+                    
+                    # Validate response structure
+                    if recruiters:
+                        recruiter = recruiters[0]
+                        required_fields = ['id', 'name', 'type']
+                        missing_fields = [field for field in required_fields if field not in recruiter]
+                        
+                        if missing_fields:
+                            self.log_result("GET Recruiters", False, f"Missing required fields: {missing_fields}")
+                            return False
+                        
+                        # Check for userCount and verification fields
+                        has_user_count = 'userCount' in recruiter
+                        has_verification_status = 'verificationStatus' in recruiter or recruiter.get('verificationStatus') == 'approved'
+                        has_is_active = 'isActive' in recruiter or recruiter.get('isActive') == True
+                        
+                        message = f"Found {len(recruiters)} recruiters with proper structure"
+                        if has_user_count:
+                            message += f", userCount included"
+                        if has_verification_status:
+                            message += f", verificationStatus: {recruiter.get('verificationStatus', 'approved')}"
+                        if has_is_active:
+                            message += f", isActive: {recruiter.get('isActive', True)}"
+                        
+                        self.log_result("GET Recruiters", True, message, {
+                            'count': len(recruiters),
+                            'sample_recruiter': recruiter
+                        })
+                        return True
+                    else:
+                        self.log_result("GET Recruiters", True, "No recruiters found in database (empty array returned)")
+                        return True
+                else:
+                    self.log_result("GET Recruiters", False, f"Expected array, got {type(recruiters)}")
+                    return False
+            else:
+                self.log_result("GET Recruiters", False, f"HTTP {response.status_code}: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_result("GET Recruiters", False, f"Request failed: {str(e)}")
+            return False
+    
+    def test_approve_recruiter(self):
+        """Test POST /api/approve-recruiter"""
+        if not hasattr(self, 'recruiter_id') or not self.recruiter_id:
+            self.log_result("Approve Recruiter", False, "No recruiter ID available for testing")
+            return False
+        
+        if not self.user_id:
+            self.log_result("Approve Recruiter", False, "No user ID available - login required")
+            return False
+        
+        try:
+            payload = {
+                "recruiterId": self.recruiter_id,
+                "userId": self.user_id,
+                "note": "Test approval via automated testing"
+            }
+            
+            response = requests.post(
+                f"{self.base_url}/approve-recruiter",
+                json=payload,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('success'):
+                    self.log_result("Approve Recruiter", True, f"Recruiter approved: {data.get('message')}")
+                    return True
+                else:
+                    self.log_result("Approve Recruiter", False, f"API returned success=false: {data}")
+                    return False
+            else:
+                self.log_result("Approve Recruiter", False, f"HTTP {response.status_code}: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Approve Recruiter", False, f"Request failed: {str(e)}")
+            return False
+    
+    def test_reject_recruiter(self):
+        """Test POST /api/reject-recruiter"""
+        if not hasattr(self, 'recruiter_id') or not self.recruiter_id:
+            self.log_result("Reject Recruiter", False, "No recruiter ID available for testing")
+            return False
+        
+        if not self.user_id:
+            self.log_result("Reject Recruiter", False, "No user ID available - login required")
+            return False
+        
+        try:
+            payload = {
+                "recruiterId": self.recruiter_id,
+                "userId": self.user_id,
+                "reason": "Test rejection via automated testing"
+            }
+            
+            response = requests.post(
+                f"{self.base_url}/reject-recruiter",
+                json=payload,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('success'):
+                    self.log_result("Reject Recruiter", True, f"Recruiter rejected: {data.get('message')}")
+                    return True
+                else:
+                    self.log_result("Reject Recruiter", False, f"API returned success=false: {data}")
+                    return False
+            else:
+                self.log_result("Reject Recruiter", False, f"HTTP {response.status_code}: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Reject Recruiter", False, f"Request failed: {str(e)}")
+            return False
+    
+    def test_suspend_recruiter(self):
+        """Test POST /api/suspend-recruiter"""
+        if not hasattr(self, 'recruiter_id') or not self.recruiter_id:
+            self.log_result("Suspend Recruiter", False, "No recruiter ID available for testing")
+            return False
+        
+        if not self.user_id:
+            self.log_result("Suspend Recruiter", False, "No user ID available - login required")
+            return False
+        
+        try:
+            payload = {
+                "recruiterId": self.recruiter_id,
+                "userId": self.user_id,
+                "reason": "Test suspension via automated testing"
+            }
+            
+            response = requests.post(
+                f"{self.base_url}/suspend-recruiter",
+                json=payload,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('success'):
+                    self.log_result("Suspend Recruiter", True, f"Recruiter suspended: {data.get('message')}")
+                    return True
+                else:
+                    self.log_result("Suspend Recruiter", False, f"API returned success=false: {data}")
+                    return False
+            else:
+                self.log_result("Suspend Recruiter", False, f"HTTP {response.status_code}: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Suspend Recruiter", False, f"Request failed: {str(e)}")
+            return False
+    
+    def test_activate_recruiter(self):
+        """Test POST /api/activate-recruiter"""
+        if not hasattr(self, 'recruiter_id') or not self.recruiter_id:
+            self.log_result("Activate Recruiter", False, "No recruiter ID available for testing")
+            return False
+        
+        if not self.user_id:
+            self.log_result("Activate Recruiter", False, "No user ID available - login required")
+            return False
+        
+        try:
+            payload = {
+                "recruiterId": self.recruiter_id,
+                "userId": self.user_id,
+                "note": "Test activation via automated testing"
+            }
+            
+            response = requests.post(
+                f"{self.base_url}/activate-recruiter",
+                json=payload,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('success'):
+                    self.log_result("Activate Recruiter", True, f"Recruiter activated: {data.get('message')}")
+                    return True
+                else:
+                    self.log_result("Activate Recruiter", False, f"API returned success=false: {data}")
+                    return False
+            else:
+                self.log_result("Activate Recruiter", False, f"HTTP {response.status_code}: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Activate Recruiter", False, f"Request failed: {str(e)}")
+            return False
+    
     def run_all_tests(self):
         """Run all backend API tests"""
         print("=" * 80)
