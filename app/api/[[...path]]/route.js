@@ -223,11 +223,11 @@ export async function GET(request) {
               .eq('id', passport.studentId)
               .maybeSingle()
             if (student) {
-              // Get user email for student
+              // Get user data for student (email and metadata with name)
               if (student.userId) {
                 const { data: user } = await supabase
                   .from('users')
-                  .select('email')
+                  .select('email, metadata')
                   .eq('id', student.userId)
                   .maybeSingle()
                 if (user) {
