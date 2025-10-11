@@ -95,12 +95,44 @@ class AuthSecurityTester:
             self.log_result("Valid Login", False, f"Login request failed: {str(e)}")
             
         return False
+    
+    def test_invalid_login(self):
+        """Test login with invalid credentials"""
+        print("\n=== Testing Invalid Login ===")
+        
+        try:
+            response = self.session.post(
+                f"{API_BASE}/auth/login",
+                json=INVALID_CREDENTIALS,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code == 401:
+                data = response.json()
+                if not data.get("success") and data.get("error"):
+                    self.log_result(
+                        "Invalid Login", True,
+                        "Invalid credentials properly rejected",
+                        f"Error message: {data['error']}"
+                    )
+                    return True
+                else:
+                    self.log_result(
+                        "Invalid Login", False,
+                        "Response format incorrect for invalid login",
+                        f"Response: {json.dumps(data, indent=2)}"
+                    )
             else:
-                self.log_result("API Root", False, f"API root returned status {response.status_code}")
-                return False
+                self.log_result(
+                    "Invalid Login", False,
+                    f"Expected 401 status, got {response.status_code}",
+                    f"Response: {response.text}"
+                )
+                
         except Exception as e:
-            self.log_result("API Root", False, f"API root request failed: {str(e)}")
-            return False
+            self.log_result("Invalid Login", False, f"Invalid login test failed: {str(e)}")
+            
+        return False
     
     def test_metrics_endpoint(self):
         """Test GET /api/metrics - Dashboard metrics"""
