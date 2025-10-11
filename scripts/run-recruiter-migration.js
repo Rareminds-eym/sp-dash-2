@@ -21,37 +21,50 @@ async function runMigration() {
   console.log('🚀 Running recruiter verification migration...\n')
 
   try {
-    // Read the SQL file
-    const sqlPath = path.join(__dirname, 'add-recruiter-verification-fields.sql')
-    const sql = fs.readFileSync(sqlPath, 'utf8')
-
-    console.log('📝 Executing SQL migration...')
+    console.log('📝 Checking if fields already exist...')
     
-    // Execute the SQL
-    const { data, error } = await supabase.rpc('exec_sql', { sql_query: sql }).single()
+    // Try to fetch organizations to check if fields exist
+    const { data: testOrg, error: testError } = await supabase
+      .from('organizations')
+      .select('verificationStatus, isActive')
+      .limit(1)
+      .maybeSingle()
 
-    if (error) {
-      console.error('❌ Migration failed:', error.message)
-      console.log('\n⚠️  Manual migration required. Please run the following SQL in Supabase SQL Editor:')
-      console.log('\n' + sql)
-      console.log('\nOr you can manually add these fields to organizations table:')
-      console.log('- verificationStatus TEXT DEFAULT \'pending\'')
-      console.log('- isActive BOOLEAN DEFAULT true')
-      console.log('- verifiedAt TIMESTAMP WITH TIME ZONE')
-      console.log('- verifiedBy TEXT REFERENCES users(id)')
+    if (!testError) {
+      console.log('✅ Migration fields already exist!')
+      console.log('   - verificationStatus')
+      console.log('   - isActive')
+      
+      // Update existing recruiters to approved status
+      console.log('\n📝 Updating existing recruiters to approved status...')
+      const { error: updateError } = await supabase
+        .from('organizations')
+        .update({ 
+          verificationStatus: 'approved',
+          isActive: true 
+        })
+        .eq('type', 'recruiter')
+      
+      if (updateError) {
+        console.error('⚠️  Update warning:', updateError.message)
+      } else {
+        console.log('✅ All recruiters set to approved status')
+      }
+      
       return
     }
 
-    console.log('✅ Migration completed successfully!')
-    console.log('\nAdded fields to organizations table:')
-    console.log('  - verificationStatus (pending/approved/rejected)')
-    console.log('  - isActive (boolean)')
-    console.log('  - verifiedAt (timestamp)')
-    console.log('  - verifiedBy (user reference)')
-    console.log('\n✅ All existing recruiter organizations have been set to approved status')
+    console.log('⚠️  Migration fields do not exist yet.')
+    console.log('\n📋 Please run the following SQL in Supabase SQL Editor:\n')
+    
+    const sqlPath = path.join(__dirname, 'add-recruiter-verification-fields.sql')
+    const sql = fs.readFileSync(sqlPath, 'utf8')
+    console.log(sql)
+    
+    console.log('\n💡 After running the SQL, the recruiter verification feature will work correctly.')
 
   } catch (error) {
-    console.error('❌ Error running migration:', error.message)
+    console.error('❌ Error during migration:', error.message)
     console.log('\n⚠️  Please run the SQL migration manually in Supabase SQL Editor.')
     console.log('File location: /app/scripts/add-recruiter-verification-fields.sql')
   }
