@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Rareminds Super Admin Dashboard Backend API Tests
-Tests all backend APIs for the Super Admin Dashboard with Supabase backend
+Comprehensive Backend API Testing Script for Recruiter Verification
+Tests all 5 recruiter verification endpoints after database migration
 """
 
 import requests
@@ -9,10 +9,15 @@ import json
 import sys
 from datetime import datetime
 
-# Base URL from environment
-BASE_URL = "https://recruiter-verify-tab.preview.emergentagent.com/api"
+# Configuration
+BASE_URL = "https://recruiter-verify-tab.preview.emergentagent.com"
+API_BASE = f"{BASE_URL}/api"
 
-class BackendTester:
+# Test credentials
+SUPERADMIN_EMAIL = "superadmin@rareminds.com"
+SUPERADMIN_PASSWORD = "password123"
+
+class RecruiterVerificationTester:
     def __init__(self):
         self.base_url = BASE_URL
         self.test_results = []
