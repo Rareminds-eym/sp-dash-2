@@ -16,7 +16,7 @@ API_BASE = f"{BASE_URL}/api"
 
 # Test credentials
 VALID_CREDENTIALS = {
-    "email": "superadmin@rareminds.com",
+    "email": "superadmin@rareminds.in",
     "password": "password123"
 }
 
