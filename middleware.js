@@ -36,17 +36,21 @@ export async function middleware(req) {
     }
   )
 
-  // Only check session for routes that need it
-  const { data: { session } } = await supabase.auth.getSession()
+  // Use getUser() instead of getSession() for better security and JWT validation
+  const { data: { user }, error } = await supabase.auth.getUser()
 
-  // Redirect to /login if accessing protected route without session
-  if (isProtectedRoute && !session) {
+  // Redirect to /login if accessing protected route without valid user
+  if (isProtectedRoute && (!user || error)) {
+    // Handle JWT expiration gracefully
+    if (error?.message?.includes('JWT') || error?.message?.includes('expired')) {
+      console.warn('JWT expired in middleware, redirecting to login')
+    }
     const redirectUrl = new URL('/login', req.url)
     return NextResponse.redirect(redirectUrl)
   }
 
-  // Redirect to /dashboard if accessing login with valid session
-  if (isPublicRoute && session) {
+  // Redirect to /dashboard if accessing login with valid user
+  if (isPublicRoute && user && !error) {
     const redirectUrl = new URL('/dashboard', req.url)
     return NextResponse.redirect(redirectUrl)
   }
