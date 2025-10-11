@@ -9,9 +9,9 @@ import json
 import sys
 from datetime import datetime
 
-# Configuration
-BASE_URL = "https://recruiter-verify-tab.preview.emergentagent.com"
-API_BASE = f"{BASE_URL}/api"
+# Base URL from environment
+
+BASE_URL = "https://settings-view-fix.preview.emergentagent.com/api"
 
 # Test credentials
 SUPERADMIN_EMAIL = "superadmin@rareminds.com"

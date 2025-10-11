@@ -17,19 +17,23 @@ export async function GET(request) {
       )
     }
 
-    // Fetch additional user data from users table
+    // Fetch additional user data from users table (lookup by email since IDs may not match)
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select(`
-        *,
-        organization:organizationId (
-          id,
-          name,
-          type
-        )
-      `)
-      .eq('id', session.user.id)
-      .single()
+      .select('*')
+      .eq('email', session.user.email)
+      .maybeSingle()
+    
+    // Fetch organization data separately if organizationId exists
+    let organizationData = null
+    if (userData && userData.organizationId) {
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('id, name, type')
+        .eq('id', userData.organizationId)
+        .maybeSingle()
+      organizationData = orgData
+    }
 
     if (userError) {
       console.error('Error fetching user data:', userError)
@@ -55,7 +59,7 @@ export async function GET(request) {
         name: userName,
         role: userData.role,
         organizationId: userData.organizationId,
-        organization: userData.organization,
+        organization: organizationData,
       },
     })
   } catch (error) {
