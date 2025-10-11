@@ -29,29 +29,42 @@ export async function POST(request) {
       )
     }
 
-    // Fetch additional user data from users table
+    // Fetch additional user data from users table (lookup by email since IDs may not match)
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select(`
-        *,
-        organization:organizationId (
-          id,
-          name,
-          type
-        )
-      `)
-      .eq('id', authData.user.id)
-      .single()
+      .select('*')
+      .eq('email', authData.user.email)
+      .maybeSingle()
+    
+    // Fetch organization data separately if organizationId exists
+    let organizationData = null
+    if (userData && userData.organizationId) {
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('id, name, type')
+        .eq('id', userData.organizationId)
+        .maybeSingle()
+      organizationData = orgData
+    }
 
     if (userError) {
       console.error('Error fetching user data:', userError)
       // Continue with auth user data if custom user data fetch fails
     }
 
-    const user = userData || {
-      id: authData.user.id,
-      email: authData.user.email,
-      role: authData.user.user_metadata?.role || 'user',
+    if (userError) {
+      console.error('Error fetching user data:', userError)
+      // Return basic auth user data if custom user data fetch fails
+      return NextResponse.json({
+        success: true,
+        user: {
+          id: authData.user.id,
+          email: authData.user.email,
+          name: authData.user.user_metadata?.name || authData.user.email.split('@')[0],
+          role: authData.user.user_metadata?.role || 'user',
+        },
+        session: authData.session,
+      })
     }
 
     const userName = userData?.metadata?.name || authData.user.user_metadata?.name || authData.user.email.split('@')[0]
@@ -59,12 +72,12 @@ export async function POST(request) {
     return NextResponse.json({
       success: true,
       user: {
-        id: user.id,
-        email: user.email,
+        id: userData.id,
+        email: userData.email,
         name: userName,
-        role: user.role,
-        organizationId: user.organizationId,
-        organization: user.organization,
+        role: userData.role,
+        organizationId: userData.organizationId,
+        organization: organizationData,
       },
       session: authData.session,
     })

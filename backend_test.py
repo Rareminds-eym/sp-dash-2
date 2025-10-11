@@ -1,86 +1,192 @@
 #!/usr/bin/env python3
 """
-Comprehensive Backend API Testing Script for Recruiter Verification
-Tests all 5 recruiter verification endpoints after database migration
+Authentication Security Testing Suite
+Tests the JWT security fixes and getUser() implementation
 """
 
 import requests
 import json
+import time
 import sys
 from datetime import datetime
 
-# Base URL from environment
-
-BASE_URL = "https://settings-view-fix.preview.emergentagent.com/api"
+# Configuration
+BASE_URL = "https://secure-auth-fix.preview.emergentagent.com"
+API_BASE = f"{BASE_URL}/api"
 
 # Test credentials
-SUPERADMIN_EMAIL = "superadmin@rareminds.com"
-SUPERADMIN_PASSWORD = "password123"
+VALID_CREDENTIALS = {
+    "email": "superadmin@rareminds.com",
+    "password": "password123"
+}
 
-class RecruiterVerificationTester:
+INVALID_CREDENTIALS = {
+    "email": "invalid@test.com", 
+    "password": "wrongpassword"
+}
+
+class AuthSecurityTester:
     def __init__(self):
         self.session = requests.Session()
-        self.user_id = None
-        self.recruiter_id = None
+        self.auth_token = None
+        self.test_results = []
         
-    def log_result(self, test_name, success, message, response_data=None):
+    def log_result(self, test_name, success, message, details=None):
         """Log test result"""
-        result = {
-            'test': test_name,
-            'success': success,
-            'message': message,
-            'timestamp': datetime.now().isoformat(),
-            'response_data': response_data
-        }
-        self.test_results.append(result)
         status = "✅ PASS" if success else "❌ FAIL"
-        print(f"{status}: {test_name} - {message}")
+        print(f"{status} {test_name}: {message}")
+        if details:
+            print(f"   Details: {details}")
         
-    def test_api_root(self):
-        """Test GET /api - API root endpoint"""
-        try:
-            response = requests.get(f"{self.base_url}")
-            if response.status_code == 200:
-                data = response.json()
-                if 'message' in data and 'endpoints' in data:
-                    self.log_result("API Root", True, "API root endpoint working correctly", data)
-                    return True
-                else:
-                    self.log_result("API Root", False, "API root response missing required fields")
-                    return False
-            else:
-                self.log_result("API Root", False, f"API root returned status {response.status_code}")
-                return False
-        except Exception as e:
-            self.log_result("API Root", False, f"API root request failed: {str(e)}")
-            return False
+        self.test_results.append({
+            "test": test_name,
+            "success": success,
+            "message": message,
+            "details": details,
+            "timestamp": datetime.now().isoformat()
+        })
     
-    def test_metrics_endpoint(self):
-        """Test GET /api/metrics - Dashboard metrics"""
+    def test_login_flow(self):
+        """Test complete authentication flow with valid credentials"""
+        print("\n=== Testing Login Flow ===")
+        
         try:
-            response = requests.get(f"{self.base_url}/metrics")
+            # Test valid login
+            response = self.session.post(
+                f"{API_BASE}/auth/login",
+                json=VALID_CREDENTIALS,
+                headers={"Content-Type": "application/json"}
+            )
+            
             if response.status_code == 200:
                 data = response.json()
-                # Check for expected metric fields
-                expected_fields = ['activeUniversities', 'registeredStudents', 'verifiedPassports', 
-                                 'aiVerifiedPercent', 'employabilityIndex', 'activeRecruiters']
+                if data.get("success") and data.get("user"):
+                    user = data["user"]
+                    required_fields = ["email", "role", "name", "organizationId"]
+                    missing_fields = [field for field in required_fields if field not in user]
+                    
+                    if not missing_fields:
+                        self.log_result(
+                            "Valid Login", True,
+                            f"Login successful for {user['email']} with role {user['role']}",
+                            f"User data: {json.dumps(user, indent=2)}"
+                        )
+                        return True
+                    else:
+                        self.log_result(
+                            "Valid Login", False,
+                            f"Missing required user fields: {missing_fields}",
+                            f"Response: {json.dumps(data, indent=2)}"
+                        )
+                else:
+                    self.log_result(
+                        "Valid Login", False,
+                        "Login response missing success flag or user data",
+                        f"Response: {json.dumps(data, indent=2)}"
+                    )
+            else:
+                self.log_result(
+                    "Valid Login", False,
+                    f"Login failed with status {response.status_code}",
+                    f"Response: {response.text}"
+                )
                 
-                has_all_fields = all(field in data for field in expected_fields)
-                if has_all_fields:
-                    self.log_result("Metrics API", True, "Metrics endpoint returned all expected fields", data)
+        except Exception as e:
+            self.log_result("Valid Login", False, f"Login request failed: {str(e)}")
+            
+        return False
+    
+    def test_invalid_login(self):
+        """Test login with invalid credentials"""
+        print("\n=== Testing Invalid Login ===")
+        
+        try:
+            response = self.session.post(
+                f"{API_BASE}/auth/login",
+                json=INVALID_CREDENTIALS,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code == 401:
+                data = response.json()
+                if not data.get("success") and data.get("error"):
+                    self.log_result(
+                        "Invalid Login", True,
+                        "Invalid credentials properly rejected",
+                        f"Error message: {data['error']}"
+                    )
                     return True
                 else:
-                    missing_fields = [field for field in expected_fields if field not in data]
-                    self.log_result("Metrics API", False, f"Missing fields: {missing_fields}")
-                    return False
+                    self.log_result(
+                        "Invalid Login", False,
+                        "Response format incorrect for invalid login",
+                        f"Response: {json.dumps(data, indent=2)}"
+                    )
             else:
-                self.log_result("Metrics API", False, f"Metrics endpoint returned status {response.status_code}")
-                return False
+                self.log_result(
+                    "Invalid Login", False,
+                    f"Expected 401 status, got {response.status_code}",
+                    f"Response: {response.text}"
+                )
+                
         except Exception as e:
-            self.log_result("Metrics API", False, f"Metrics request failed: {str(e)}")
-            return False
+            self.log_result("Invalid Login", False, f"Invalid login test failed: {str(e)}")
+            
+        return False
     
-    def test_update_metrics_endpoint(self):
+    def test_session_api_valid(self):
+        """Test session API with valid authentication"""
+        print("\n=== Testing Session API (Valid) ===")
+        
+        # First login to get valid session
+        login_success = self.test_login_flow()
+        if not login_success:
+            self.log_result("Session API Valid", False, "Cannot test session API - login failed")
+            return False
+            
+        try:
+            # Test session endpoint
+            response = self.session.get(f"{API_BASE}/auth/session")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("success") and data.get("user"):
+                    user = data["user"]
+                    required_fields = ["email", "role", "name", "organizationId"]
+                    missing_fields = [field for field in required_fields if field not in user]
+                    
+                    if not missing_fields:
+                        self.log_result(
+                            "Session API Valid", True,
+                            f"Session API returned complete user data for {user['email']}",
+                            f"User data: {json.dumps(user, indent=2)}"
+                        )
+                        return True
+                    else:
+                        self.log_result(
+                            "Session API Valid", False,
+                            f"Session API missing required fields: {missing_fields}",
+                            f"Response: {json.dumps(data, indent=2)}"
+                        )
+                else:
+                    self.log_result(
+                        "Session API Valid", False,
+                        "Session API response missing success flag or user data",
+                        f"Response: {json.dumps(data, indent=2)}"
+                    )
+            else:
+                self.log_result(
+                    "Session API Valid", False,
+                    f"Session API failed with status {response.status_code}",
+                    f"Response: {response.text}"
+                )
+                
+        except Exception as e:
+            self.log_result("Session API Valid", False, f"Session API test failed: {str(e)}")
+            
+        return False
+    
+    def test_session_api_invalid(self):
         """Test POST /api/update-metrics - Update metrics snapshots table"""
         try:
             # First call - should create new snapshot
