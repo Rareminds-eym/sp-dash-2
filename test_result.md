@@ -511,6 +511,18 @@ frontend:
         agent: "testing"
         comment: "Backend testing found one passport with data consistency issue (references non-existent student), but code logic is correct and will work for valid passport data. The endpoint properly fetches email and metadata for students."
 
+  - task: "Authentication Security Enhancement (JWT & getUser)"
+    implemented: true
+    working: "NA"
+    file: "lib/supabase-server.js, middleware.js, app/api/auth/session/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "SECURITY FIX: Replaced all insecure supabase.auth.getSession() calls with secure supabase.auth.getUser() method across the application. Updated 3 critical files: 1) lib/supabase-server.js getSession() function now uses getUser() with proper JWT validation and expiration handling. 2) middleware.js authentication check updated to use getUser() with graceful JWT expiration logging. 3) app/api/auth/session/route.js session API endpoint updated to use getUser() with detailed error responses for JWT issues. Added proper error handling for JWT expiration scenarios with informative logging. This resolves the security warnings about using getSession() and improves JWT token validation throughout the application."
+
 
 metadata:
   created_by: "testing_agent"
