@@ -52,10 +52,19 @@ export async function POST(request) {
       // Continue with auth user data if custom user data fetch fails
     }
 
-    const user = userData || {
-      id: authData.user.id,
-      email: authData.user.email,
-      role: authData.user.user_metadata?.role || 'user',
+    if (userError) {
+      console.error('Error fetching user data:', userError)
+      // Return basic auth user data if custom user data fetch fails
+      return NextResponse.json({
+        success: true,
+        user: {
+          id: authData.user.id,
+          email: authData.user.email,
+          name: authData.user.user_metadata?.name || authData.user.email.split('@')[0],
+          role: authData.user.user_metadata?.role || 'user',
+        },
+        session: authData.session,
+      })
     }
 
     const userName = userData?.metadata?.name || authData.user.user_metadata?.name || authData.user.email.split('@')[0]
@@ -63,12 +72,12 @@ export async function POST(request) {
     return NextResponse.json({
       success: true,
       user: {
-        id: user.id,
-        email: user.email,
+        id: userData.id,
+        email: userData.email,
         name: userName,
-        role: user.role,
-        organizationId: user.organizationId,
-        organization: user.organization,
+        role: userData.role,
+        organizationId: userData.organizationId,
+        organization: organizationData,
       },
       session: authData.session,
     })
