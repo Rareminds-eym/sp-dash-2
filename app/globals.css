@@ -139,3 +139,44 @@ code {
     @apply bg-background text-foreground;
     }
 }
+
+/* Neumorphic Card Styling */
+@layer components {
+  .neu-card {
+    @apply rounded-xl border shadow-lg transition-all duration-300;
+    /* Light mode - Pure white with neumorphic shadows */
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 
+      8px 8px 16px rgba(0, 0, 0, 0.1),
+      -8px -8px 16px rgba(255, 255, 255, 0.9),
+      inset 0px 0px 0px rgba(255, 255, 255, 0.5);
+  }
+
+  .neu-card:hover {
+    @apply shadow-xl;
+    box-shadow: 
+      10px 10px 20px rgba(0, 0, 0, 0.12),
+      -10px -10px 20px rgba(255, 255, 255, 0.95),
+      inset 0px 0px 0px rgba(255, 255, 255, 0.6);
+    transform: translateY(-2px);
+  }
+
+  /* Dark mode - Dark gray/slate with neumorphic shadows */
+  .dark .neu-card {
+    background: hsl(220, 13%, 18%);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 
+      8px 8px 16px rgba(0, 0, 0, 0.4),
+      -8px -8px 16px rgba(255, 255, 255, 0.05),
+      inset 0px 0px 0px rgba(255, 255, 255, 0.02);
+  }
+
+  .dark .neu-card:hover {
+    box-shadow: 
+      10px 10px 20px rgba(0, 0, 0, 0.5),
+      -10px -10px 20px rgba(255, 255, 255, 0.08),
+      inset 0px 0px 0px rgba(255, 255, 255, 0.03);
+    transform: translateY(-2px);
+  }
+}
