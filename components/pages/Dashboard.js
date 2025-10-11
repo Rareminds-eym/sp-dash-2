@@ -217,7 +217,7 @@ export default function Dashboard({ user }) {
           return (
             <Card
               key={index}
-              className="group overflow-hidden bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-white/20 dark:border-slate-700/50 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-2xl hover:shadow-slate-300/50 dark:hover:shadow-slate-800/50 transition-all duration-500 hover:scale-[1.02] hover:-translate-y-1"
+              className="neu-card group overflow-hidden"
             >
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-6">
