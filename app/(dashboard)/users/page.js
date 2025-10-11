@@ -1,5 +1,5 @@
 import UsersPage from '@/components/pages/UsersPage'
-import { getSession } from '@/lib/session'
+import { getSession } from '@/lib/supabase-server'
 
 export const runtime = 'edge'
 
