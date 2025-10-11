@@ -135,29 +135,56 @@ class AuthSecurityTester:
         return False
     
     def test_session_api_valid(self):
-        """Test GET /api/metrics - Dashboard metrics"""
+        """Test session API with valid authentication"""
+        print("\n=== Testing Session API (Valid) ===")
+        
+        # First login to get valid session
+        login_success = self.test_login_flow()
+        if not login_success:
+            self.log_result("Session API Valid", False, "Cannot test session API - login failed")
+            return False
+            
         try:
-            response = requests.get(f"{self.base_url}/metrics")
+            # Test session endpoint
+            response = self.session.get(f"{API_BASE}/auth/session")
+            
             if response.status_code == 200:
                 data = response.json()
-                # Check for expected metric fields
-                expected_fields = ['activeUniversities', 'registeredStudents', 'verifiedPassports', 
-                                 'aiVerifiedPercent', 'employabilityIndex', 'activeRecruiters']
-                
-                has_all_fields = all(field in data for field in expected_fields)
-                if has_all_fields:
-                    self.log_result("Metrics API", True, "Metrics endpoint returned all expected fields", data)
-                    return True
+                if data.get("success") and data.get("user"):
+                    user = data["user"]
+                    required_fields = ["email", "role", "name", "organizationId"]
+                    missing_fields = [field for field in required_fields if field not in user]
+                    
+                    if not missing_fields:
+                        self.log_result(
+                            "Session API Valid", True,
+                            f"Session API returned complete user data for {user['email']}",
+                            f"User data: {json.dumps(user, indent=2)}"
+                        )
+                        return True
+                    else:
+                        self.log_result(
+                            "Session API Valid", False,
+                            f"Session API missing required fields: {missing_fields}",
+                            f"Response: {json.dumps(data, indent=2)}"
+                        )
                 else:
-                    missing_fields = [field for field in expected_fields if field not in data]
-                    self.log_result("Metrics API", False, f"Missing fields: {missing_fields}")
-                    return False
+                    self.log_result(
+                        "Session API Valid", False,
+                        "Session API response missing success flag or user data",
+                        f"Response: {json.dumps(data, indent=2)}"
+                    )
             else:
-                self.log_result("Metrics API", False, f"Metrics endpoint returned status {response.status_code}")
-                return False
+                self.log_result(
+                    "Session API Valid", False,
+                    f"Session API failed with status {response.status_code}",
+                    f"Response: {response.text}"
+                )
+                
         except Exception as e:
-            self.log_result("Metrics API", False, f"Metrics request failed: {str(e)}")
-            return False
+            self.log_result("Session API Valid", False, f"Session API test failed: {str(e)}")
+            
+        return False
     
     def test_update_metrics_endpoint(self):
         """Test POST /api/update-metrics - Update metrics snapshots table"""
