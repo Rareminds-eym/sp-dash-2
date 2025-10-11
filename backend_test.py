@@ -1,23 +1,31 @@
 #!/usr/bin/env python3
 """
-Comprehensive Backend API Testing Script for Recruiter Verification
-Tests all 5 recruiter verification endpoints after database migration
+Authentication Security Testing Suite
+Tests the JWT security fixes and getUser() implementation
 """
 
 import requests
 import json
+import time
 import sys
 from datetime import datetime
 
-# Base URL from environment
-
-BASE_URL = "https://secure-auth-fix.preview.emergentagent.com/api"
+# Configuration
+BASE_URL = "https://secure-auth-fix.preview.emergentagent.com"
+API_BASE = f"{BASE_URL}/api"
 
 # Test credentials
-SUPERADMIN_EMAIL = "superadmin@rareminds.com"
-SUPERADMIN_PASSWORD = "password123"
+VALID_CREDENTIALS = {
+    "email": "superadmin@rareminds.com",
+    "password": "password123"
+}
 
-class RecruiterVerificationTester:
+INVALID_CREDENTIALS = {
+    "email": "invalid@test.com", 
+    "password": "wrongpassword"
+}
+
+class AuthSecurityTester:
     def __init__(self):
         self.session = requests.Session()
         self.user_id = None
