@@ -1119,12 +1119,23 @@ class BackendTester:
         self.test_state_heatmap_analytics()
         self.test_ai_insights_analytics()
         
+        print("\n🏢 TESTING RECRUITER VERIFICATION APIS...")
+        # Test recruiter endpoints first
+        self.test_get_recruiters()
+        
         print("\n🔐 TESTING ACTION APIS...")
         # Test login first to get user ID
         login_success = self.test_login_endpoint()
         
         # Only test action APIs if we have necessary IDs
         if login_success and self.user_id:
+            # Test recruiter verification actions
+            print("\n📋 TESTING RECRUITER ACTIONS...")
+            self.test_approve_recruiter()
+            self.test_reject_recruiter()
+            self.test_suspend_recruiter()
+            self.test_activate_recruiter()
+            
             if self.passport_id:
                 self.test_verify_passport()
                 self.test_reject_passport()
