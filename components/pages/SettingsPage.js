@@ -133,7 +133,7 @@ export default function SettingsPage({ user }) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="neu-card">
         <CardHeader>
           <CardTitle>Security</CardTitle>
         </CardHeader>
