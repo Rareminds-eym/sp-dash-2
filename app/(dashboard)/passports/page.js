@@ -1,5 +1,5 @@
 import PassportsPage from '@/components/pages/PassportsPage'
-import { getSession } from '@/lib/session'
+import { getSession } from '@/lib/supabase-server'
 
 export const runtime = 'edge'
 

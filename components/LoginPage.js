@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AlertCircle } from 'lucide-react'
+import { useState } from 'react'
 
 export default function LoginPage({ onLogin }) {
   const [email, setEmail] = useState('')
@@ -65,7 +65,7 @@ export default function LoginPage({ onLogin }) {
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@rareminds.com"
+                placeholder="admin@rareminds.in"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50 focus:border-blue-500 dark:focus:border-blue-400 transition-all duration-300 h-12 text-base"
@@ -101,9 +101,9 @@ export default function LoginPage({ onLogin }) {
           <div className="mt-8 p-4 bg-white/30 dark:bg-slate-800/30 backdrop-blur-sm rounded-2xl border border-white/20 dark:border-slate-700/50">
             <p className="font-semibold text-center text-slate-700 dark:text-slate-300 mb-3">Test Credentials:</p>
             <div className="space-y-1 text-sm text-center text-slate-600 dark:text-slate-400">
-              <p>Super Admin: <code className="bg-white/50 dark:bg-slate-700/50 px-2 py-1 rounded">superadmin@rareminds.com</code></p>
-              <p>Admin: <code className="bg-white/50 dark:bg-slate-700/50 px-2 py-1 rounded">admin@rareminds.com</code></p>
-              <p>Manager: <code className="bg-white/50 dark:bg-slate-700/50 px-2 py-1 rounded">manager@rareminds.com</code></p>
+              <p>Super Admin: <code className="bg-white/50 dark:bg-slate-700/50 px-2 py-1 rounded">superadmin@rareminds.in</code></p>
+              <p>Admin: <code className="bg-white/50 dark:bg-slate-700/50 px-2 py-1 rounded">admin@rareminds.in</code></p>
+              <p>Manager: <code className="bg-white/50 dark:bg-slate-700/50 px-2 py-1 rounded">manager@rareminds.in</code></p>
             </div>
             <p className="mt-3 text-xs text-center text-slate-500 dark:text-slate-500">(Any password works for demo)</p>
           </div>

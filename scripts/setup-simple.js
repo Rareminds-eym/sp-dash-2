@@ -43,9 +43,9 @@ async function setupDatabase() {
     // Create users
     console.log('📝 Creating users...')
     const users = [
-      { id: uuidv4(), email: 'superadmin@rareminds.com', role: 'super_admin', organizationId: null, isActive: true },
-      { id: uuidv4(), email: 'admin@rareminds.com', role: 'admin', organizationId: orgs[0].id, isActive: true },
-      { id: uuidv4(), email: 'manager@rareminds.com', role: 'manager', organizationId: orgs[1].id, isActive: true },
+      { id: uuidv4(), email: 'superadmin@rareminds.in', role: 'super_admin', organizationId: null, isActive: true },
+      { id: uuidv4(), email: 'admin@rareminds.in', role: 'admin', organizationId: orgs[0].id, isActive: true },
+      { id: uuidv4(), email: 'manager@rareminds.in', role: 'manager', organizationId: orgs[1].id, isActive: true },
       { id: uuidv4(), email: 'john.doe@student.com', role: 'manager', organizationId: orgs[0].id, isActive: true },
       { id: uuidv4(), email: 'jane.smith@student.com', role: 'manager', organizationId: orgs[1].id, isActive: true },
     ]
@@ -121,9 +121,9 @@ async function setupDatabase() {
 
     console.log('\n🎉 Database setup complete!')
     console.log('\n📧 Test Credentials (for reference):')
-    console.log('Super Admin: superadmin@rareminds.com')
-    console.log('Admin: admin@rareminds.com')
-    console.log('Manager: manager@rareminds.com')
+    console.log('Super Admin: superadmin@rareminds.in')
+    console.log('Admin: admin@rareminds.in')
+    console.log('Manager: manager@rareminds.in')
 
   } catch (error) {
     console.error('❌ Setup failed:', error)
