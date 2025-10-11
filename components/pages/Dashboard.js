@@ -412,7 +412,7 @@ export default function Dashboard({ user }) {
         </Card>
 
         {/* State-wise Distribution */}
-        <Card className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-white/20 dark:border-slate-700/50 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-2xl transition-all duration-500">
+        <Card className="neu-card">
           <CardHeader className="pb-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
