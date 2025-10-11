@@ -59,11 +59,11 @@ code {
 
 @layer base {
   :root {
-        --background: 0 0% 93.3%; /* EDF2F9 - Light Gray/Off-White */
+        --background: 0 0% 100%; /* FFFFFF - White */
         --foreground: 0 0% 0%; /* 000000 - Black */
-        --card: 0 0% 93.3%; /* EDF2F9 - Light Gray/Off-White */
+        --card: 0 0% 100%; /* FFFFFF - White */
         --card-foreground: 0 0% 0%; /* 000000 - Black */
-        --popover: 0 0% 93.3%; /* EDF2F9 - Light Gray/Off-White */
+        --popover: 0 0% 100%; /* FFFFFF - White */
         --popover-foreground: 0 0% 0%; /* 000000 - Black */
         --primary: 210 77.6% 46.5%; /* 1D8AD1 - Primary Blue 1 */
         --primary-foreground: 0 0% 100%; /* White text on primary */
@@ -84,7 +84,7 @@ code {
         --chart-4: 40 63.8% 52.5%; /* D4AF37 - Gold/Bronze */
         --chart-5: 0 0% 93.3%; /* EDF2F9 - Light Gray/Off-White */
         --radius: 0.5rem;
-        --sidebar-background: 0 0% 93.3%; /* EDF2F9 - Light Gray/Off-White */
+        --sidebar-background: 0 0% 100%; /* FFFFFF - White */
         --sidebar-foreground: 0 0% 0%; /* 000000 - Black */
         --sidebar-primary: 210 77.6% 46.5%; /* 1D8AD1 - Primary Blue 1 */
         --sidebar-primary-foreground: 0 0% 100%; /* White text on sidebar primary */
