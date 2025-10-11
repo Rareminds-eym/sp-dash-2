@@ -5,6 +5,7 @@ import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { cn } from '@/lib/utils'
 import {
     BarChart3,
+    Briefcase,
     ChevronRight,
     FileText,
     History,
