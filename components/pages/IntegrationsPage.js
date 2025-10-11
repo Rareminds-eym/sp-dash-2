@@ -30,7 +30,7 @@ export default function IntegrationsPage() {
 
       <div className="grid gap-6">
         {integrations.map((integration) => (
-          <Card key={integration.name}>
+          <Card key={integration.name} className="neu-card">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
