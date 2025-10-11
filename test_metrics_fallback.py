@@ -8,7 +8,7 @@ import json
 from datetime import datetime
 
 # Base URL from environment
-BASE_URL = "https://card-theme-panel.preview.emergentagent.com/api"
+BASE_URL = "https://recruiter-verify-tab.preview.emergentagent.com/api"
 
 def test_metrics_fallback():
     """Test metrics endpoint fallback behavior"""
