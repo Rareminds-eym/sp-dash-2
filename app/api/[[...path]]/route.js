@@ -794,6 +794,141 @@ export async function POST(request) {
       return NextResponse.json({ success: true, message: 'Passport rejected successfully' })
     }
 
+    // POST /api/approve-recruiter - Approve a recruiter organization
+    if (path === '/approve-recruiter') {
+      const { recruiterId, userId, note } = body
+
+      // Update recruiter status
+      const { error: updateError } = await supabase
+        .from('organizations')
+        .update({ 
+          verificationStatus: 'approved',
+          verifiedAt: new Date().toISOString(),
+          verifiedBy: userId
+        })
+        .eq('id', recruiterId)
+
+      if (updateError) throw updateError
+
+      // Log verification
+      const { error: verifyError } = await supabase
+        .from('verifications')
+        .insert({
+          id: uuidv4(),
+          targetTable: 'organizations',
+          targetId: recruiterId,
+          action: 'approve',
+          performedBy: userId,
+          note: note || 'Recruiter approved'
+        })
+
+      if (verifyError) throw verifyError
+
+      // Log audit
+      await logAudit(userId, 'approve_recruiter', recruiterId, { note })
+
+      return NextResponse.json({ success: true, message: 'Recruiter approved successfully' })
+    }
+
+    // POST /api/reject-recruiter - Reject a recruiter organization
+    if (path === '/reject-recruiter') {
+      const { recruiterId, userId, reason } = body
+
+      // Update recruiter status
+      const { error: updateError } = await supabase
+        .from('organizations')
+        .update({ 
+          verificationStatus: 'rejected',
+          isActive: false
+        })
+        .eq('id', recruiterId)
+
+      if (updateError) throw updateError
+
+      // Log verification
+      const { error: verifyError } = await supabase
+        .from('verifications')
+        .insert({
+          id: uuidv4(),
+          targetTable: 'organizations',
+          targetId: recruiterId,
+          action: 'reject',
+          performedBy: userId,
+          note: reason || 'Recruiter rejected'
+        })
+
+      if (verifyError) throw verifyError
+
+      // Log audit
+      await logAudit(userId, 'reject_recruiter', recruiterId, { reason })
+
+      return NextResponse.json({ success: true, message: 'Recruiter rejected successfully' })
+    }
+
+    // POST /api/suspend-recruiter - Suspend a recruiter organization
+    if (path === '/suspend-recruiter') {
+      const { recruiterId, userId, reason } = body
+
+      // Update recruiter status
+      const { error: updateError } = await supabase
+        .from('organizations')
+        .update({ isActive: false })
+        .eq('id', recruiterId)
+
+      if (updateError) throw updateError
+
+      // Log verification
+      const { error: verifyError } = await supabase
+        .from('verifications')
+        .insert({
+          id: uuidv4(),
+          targetTable: 'organizations',
+          targetId: recruiterId,
+          action: 'suspend',
+          performedBy: userId,
+          note: reason || 'Recruiter suspended'
+        })
+
+      if (verifyError) throw verifyError
+
+      // Log audit
+      await logAudit(userId, 'suspend_recruiter', recruiterId, { reason })
+
+      return NextResponse.json({ success: true, message: 'Recruiter suspended successfully' })
+    }
+
+    // POST /api/activate-recruiter - Activate a recruiter organization
+    if (path === '/activate-recruiter') {
+      const { recruiterId, userId, note } = body
+
+      // Update recruiter status
+      const { error: updateError } = await supabase
+        .from('organizations')
+        .update({ isActive: true })
+        .eq('id', recruiterId)
+
+      if (updateError) throw updateError
+
+      // Log verification
+      const { error: verifyError } = await supabase
+        .from('verifications')
+        .insert({
+          id: uuidv4(),
+          targetTable: 'organizations',
+          targetId: recruiterId,
+          action: 'activate',
+          performedBy: userId,
+          note: note || 'Recruiter activated'
+        })
+
+      if (verifyError) throw verifyError
+
+      // Log audit
+      await logAudit(userId, 'activate_recruiter', recruiterId, { note })
+
+      return NextResponse.json({ success: true, message: 'Recruiter activated successfully' })
+    }
+
     // POST /api/update-metrics - Update metrics_snapshots table
     if (path === '/update-metrics') {
       try {
