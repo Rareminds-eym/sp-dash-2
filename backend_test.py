@@ -45,8 +45,8 @@ class AuthSecurityTester:
             "details": details,
             "timestamp": datetime.now().isoformat()
         })
-        
-    def test_api_root(self):
+    
+    def test_login_flow(self):
         """Test GET /api - API root endpoint"""
         try:
             response = requests.get(f"{self.base_url}")
