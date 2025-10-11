@@ -20,16 +20,20 @@ export async function GET(request) {
     // Fetch additional user data from users table
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select(`
-        *,
-        organization:organizationId (
-          id,
-          name,
-          type
-        )
-      `)
+      .select('*')
       .eq('id', session.user.id)
       .single()
+    
+    // Fetch organization data separately if organizationId exists
+    let organizationData = null
+    if (userData && userData.organizationId) {
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('id, name, type')
+        .eq('id', userData.organizationId)
+        .maybeSingle()
+      organizationData = orgData
+    }
 
     if (userError) {
       console.error('Error fetching user data:', userError)
