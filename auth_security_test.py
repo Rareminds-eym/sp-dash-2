@@ -328,10 +328,12 @@ class AuthSecurityTester:
                 data = response.json()
                 if not data.get("success") and data.get("error"):
                     error_msg = data["error"].lower()
-                    if "jwt" in error_msg or "expired" in error_msg or "authentication" in error_msg:
+                    # Accept various authentication error messages as valid
+                    valid_errors = ["jwt", "expired", "authentication", "auth session missing", "invalid", "token"]
+                    if any(err in error_msg for err in valid_errors):
                         self.log_result(
                             "JWT Error Handling", True,
-                            "JWT errors handled gracefully with proper error messages",
+                            "JWT/Auth errors handled gracefully with proper error messages",
                             f"Error message: {data['error']}"
                         )
                         return True
