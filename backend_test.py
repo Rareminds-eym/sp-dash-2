@@ -134,7 +134,7 @@ class AuthSecurityTester:
             
         return False
     
-    def test_metrics_endpoint(self):
+    def test_session_api_valid(self):
         """Test GET /api/metrics - Dashboard metrics"""
         try:
             response = requests.get(f"{self.base_url}/metrics")
