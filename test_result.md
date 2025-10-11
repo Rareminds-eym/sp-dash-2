@@ -519,7 +519,9 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus: []
+  current_focus: 
+    - "Recruiter Verification Frontend Page"
+    - "Database Schema Migration for Recruiters"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"

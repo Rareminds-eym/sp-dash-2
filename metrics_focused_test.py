@@ -6,6 +6,7 @@ Focused test for metrics endpoint verification
 import requests
 import json
 
+
 BASE_URL = "https://settings-view-fix.preview.emergentagent.com/api"
 
 def test_metrics_endpoint():

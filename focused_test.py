@@ -5,9 +5,10 @@ import json
 import sys
 from datetime import datetime
 
+
 # Configuration
 BASE_URL = "https://settings-view-fix.preview.emergentagent.com"
-TEST_EMAIL = "superadmin@rareminds.com"
+TEST_EMAIL = "superadmin@rareminds.in"
 TEST_PASSWORD = "password123"
 
 def print_separator(title):
