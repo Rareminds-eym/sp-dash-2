@@ -510,6 +510,9 @@ frontend:
       - working: true
         agent: "testing"
         comment: "Backend testing found one passport with data consistency issue (references non-existent student), but code logic is correct and will work for valid passport data. The endpoint properly fetches email and metadata for students."
+      - working: true
+        agent: "main"
+        comment: "FINAL FIX COMPLETED: Resolved the root cause where profile field was stored as JSON string with invalid NaN values. Updated /api/passports endpoint (lines 266-276) to properly parse profile JSON string by: 1) Replacing invalid NaN values with null to make valid JSON, 2) Parsing the cleaned JSON string into object, 3) Handling parse errors gracefully with empty object fallback. Student names from profile.name field now correctly extracted and displayed. Verified working: API returns proper student name 'Rakshitha.M', frontend displays correctly, no more 'Unknown Student' fallback text. Screenshot verification shows student name displaying correctly on Passports page."
 
   - task: "Authentication Security Enhancement (JWT & getUser)"
     implemented: true
