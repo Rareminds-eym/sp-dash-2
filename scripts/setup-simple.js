@@ -1,53 +1,48 @@
-const { createClient } = require('@supabase/supabase-js')
-const { v4: uuidv4 } = require('uuid')
+import { createClient } from '@supabase/supabase-js'
+import { config } from 'dotenv'
+import { v4 as uuidv4 } from 'uuid'
+
+config()
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-if (!supabaseUrl || !supabaseServiceKey) {
+if (!supabaseUrl || !supabaseKey) {
   console.error('❌ Missing Supabase environment variables')
+  console.log('Please set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in your .env file')
   process.exit(1)
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-})
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 async function setupDatabase() {
-  console.log('🚀 Starting database setup...')
-  console.log('Note: Tables need to be created in Supabase SQL Editor manually')
-  console.log('Proceeding with seed data insertion...\n')
-
   try {
-    // Create organizations
-    console.log('📝 Creating organizations...')
-    const orgs = [
-      { id: uuidv4(), name: 'Delhi University', type: 'university', state: 'Delhi', district: 'Central Delhi' },
-      { id: uuidv4(), name: 'Mumbai College of Engineering', type: 'college', state: 'Maharashtra', district: 'Mumbai' },
-      { id: uuidv4(), name: 'Bangalore Institute of Technology', type: 'institute', state: 'Karnataka', district: 'Bangalore' },
-      { id: uuidv4(), name: 'TechCorp Recruiters', type: 'recruiter', state: 'Karnataka', district: 'Bangalore' },
-      { id: uuidv4(), name: 'IIT Delhi', type: 'university', state: 'Delhi', district: 'South Delhi' },
-    ]
+    console.log('🚀 Setting up simple database...')
 
-    const { error: orgError } = await supabase.from('organizations').insert(orgs)
+    // Create a simple university organization
+    console.log('📝 Creating organization...')
+    const org = {
+      id: uuidv4(),
+      name: 'Sample University',
+      type: 'university',
+      state: 'Delhi',
+      district: 'Central Delhi'
+    }
+
+    const { error: orgError } = await supabase.from('organizations').insert(org)
     if (orgError) {
       console.error('Organization insert error:', orgError.message)
-      console.log('Tables may not exist yet. Please create them first.')
       return
     }
-    console.log('✅ Organizations created')
+    console.log('✅ Organization created')
 
     // Create users
     console.log('📝 Creating users...')
     const users = [
       { id: uuidv4(), email: 'superadmin@rareminds.in', role: 'super_admin', organizationId: null, isActive: true },
-      { id: uuidv4(), email: 'admin@rareminds.in', role: 'admin', organizationId: orgs[0].id, isActive: true },
-      { id: uuidv4(), email: 'manager@rareminds.in', role: 'manager', organizationId: orgs[1].id, isActive: true },
-      { id: uuidv4(), email: 'john.doe@student.com', role: 'manager', organizationId: orgs[0].id, isActive: true },
-      { id: uuidv4(), email: 'jane.smith@student.com', role: 'manager', organizationId: orgs[1].id, isActive: true },
+      { id: uuidv4(), email: 'admin@rareminds.in', role: 'admin', organizationId: org.id, isActive: true },
+      { id: uuidv4(), email: 'manager@rareminds.in', role: 'manager', organizationId: org.id, isActive: true },
+      { id: uuidv4(), email: 'student@rareminds.in', role: 'manager', organizationId: org.id, isActive: true },
     ]
 
     const { error: userError } = await supabase.from('users').insert(users)
@@ -60,8 +55,7 @@ async function setupDatabase() {
     // Create students
     console.log('📝 Creating students...')
     const students = [
-      { id: uuidv4(), userId: users[3].id, universityId: orgs[0].id, profile: { name: 'John Doe', course: 'Computer Science', year: 3 } },
-      { id: uuidv4(), userId: users[4].id, universityId: orgs[1].id, profile: { name: 'Jane Smith', course: 'Electronics', year: 2 } },
+      { id: uuidv4(), userId: users[3].id, universityId: org.id, profile: { name: 'Sample Student', course: 'Computer Science', year: 3 } },
     ]
 
     const { error: studentError } = await supabase.from('students').insert(students)
@@ -74,8 +68,8 @@ async function setupDatabase() {
     // Create skill passports
     console.log('📝 Creating skill passports...')
     const passports = [
-      { id: uuidv4(), studentId: students[0].id, status: 'verified', aiVerification: true, nsqfLevel: 5, skills: ['JavaScript', 'React', 'Node.js'] },
-      { id: uuidv4(), studentId: students[1].id, status: 'pending', aiVerification: false, nsqfLevel: 4, skills: ['Python', 'Data Analysis'] },
+      { id: uuidv4(), studentId: students[0].id, status: 'verified', nsqfLevel: 5, skills: ['JavaScript', 'React', 'Node.js'] },
+      { id: uuidv4(), studentId: students[0].id, status: 'pending', nsqfLevel: 4, skills: ['Python', 'Data Analysis'] },
     ]
 
     const { error: passportError } = await supabase.from('skill_passports').insert(passports)
@@ -90,12 +84,11 @@ async function setupDatabase() {
     const metrics = {
       id: uuidv4(),
       snapshotDate: new Date().toISOString().split('T')[0],
-      activeUniversities: 5,
-      registeredStudents: 1247,
-      verifiedPassports: 856,
-      aiVerifiedPercent: 78.5,
-      employabilityIndex: 82.3,
-      activeRecruiters: 24
+      activeUniversities: 1,
+      registeredStudents: 1,
+      verifiedPassports: 1,
+      employabilityIndex: 100.0,
+      activeRecruiters: 0
     }
 
     const { error: metricsError } = await supabase.from('metrics_snapshots').insert(metrics)
@@ -108,7 +101,7 @@ async function setupDatabase() {
     // Create some verifications
     console.log('📝 Creating verifications...')
     const verifications = [
-      { id: uuidv4(), targetTable: 'skill_passports', targetId: passports[0].id, action: 'verify', performedBy: users[0].id, note: 'AI verification completed' },
+      { id: uuidv4(), targetTable: 'skill_passports', targetId: passports[0].id, action: 'verify', performedBy: users[0].id, note: 'Verification completed' },
       { id: uuidv4(), targetTable: 'users', targetId: users[3].id, action: 'approve', performedBy: users[1].id, note: 'User approved' },
     ]
 

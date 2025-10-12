@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test the updated /api/metrics endpoint with specific scenarios
+Test comprehensive metrics scenarios for the updated /api/metrics endpoint
 """
 
 import requests
@@ -8,17 +8,16 @@ import json
 from datetime import datetime
 
 # Base URL from environment
-BASE_URL = "https://secure-auth-fix.preview.emergentagent.com/api"
+BASE_URL = "https://passport-student-fix.preview.emergentagent.com/api"
 
 def test_metrics_scenarios():
-    """Test updated /api/metrics endpoint with specific scenarios"""
+    """Test comprehensive metrics scenarios"""
+    print("🧪 TESTING METRICS ENDPOINT SCENARIOS")
+    print("=" * 60)
+    
     try:
-        print("🔍 TESTING UPDATED METRICS ENDPOINT SCENARIOS...")
-        print(f"Testing against: {BASE_URL}")
-        print()
-        
-        # Scenario 1: Test metrics endpoint (should work regardless of snapshot state)
-        print("📊 Scenario 1: Testing /api/metrics endpoint...")
+        # Scenario 1: Test initial metrics endpoint
+        print("📊 Scenario 1: Testing initial /api/metrics...")
         response1 = requests.get(f"{BASE_URL}/metrics")
         if response1.status_code != 200:
             print(f"❌ FAIL: Metrics endpoint returned status {response1.status_code}")
@@ -29,7 +28,7 @@ def test_metrics_scenarios():
         
         # Check for required fields including source
         expected_fields = ['activeUniversities', 'registeredStudents', 'verifiedPassports', 
-                         'aiVerifiedPercent', 'employabilityIndex', 'activeRecruiters', 'source']
+                         'employabilityIndex', 'activeRecruiters', 'source']
         
         missing_fields = [field for field in expected_fields if field not in data1]
         if missing_fields:
@@ -38,7 +37,7 @@ def test_metrics_scenarios():
         
         initial_source = data1.get('source')
         print(f"   ✅ Initial metrics source: {initial_source}")
-        print(f"   ✅ All 6 metrics fields present: {[f for f in expected_fields[:-1] if f in data1]}")
+        print(f"   ✅ All 5 metrics fields present: {[f for f in expected_fields[:-1] if f in data1]}")
         
         # Scenario 2: Create/update snapshot using /api/update-metrics
         print("\n📊 Scenario 2: Creating/updating metrics snapshot...")
@@ -87,7 +86,7 @@ def test_metrics_scenarios():
         metrics_match = True
         mismatched_fields = []
         for field in ['activeUniversities', 'registeredStudents', 'verifiedPassports', 
-                     'aiVerifiedPercent', 'employabilityIndex', 'activeRecruiters']:
+                     'employabilityIndex', 'activeRecruiters']:
             snapshot_val = snapshot_data.get(field)
             metrics_val = data3.get(field)
             if snapshot_val != metrics_val:

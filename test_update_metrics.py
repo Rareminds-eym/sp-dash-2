@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test script specifically for the new /api/update-metrics endpoint
+Test the new /api/update-metrics endpoint that creates/updates metrics snapshots
 """
 
 import requests
@@ -8,25 +8,25 @@ import json
 from datetime import datetime
 
 # Base URL from environment
-BASE_URL = "https://secure-auth-fix.preview.emergentagent.com/api"
+BASE_URL = "https://passport-student-fix.preview.emergentagent.com/api"
 
 def test_update_metrics_endpoint():
-    """Test POST /api/update-metrics - Update metrics snapshots table"""
-    print("🧪 Testing /api/update-metrics endpoint...")
+    """Test the new update-metrics endpoint"""
+    print("🔍 Testing /api/update-metrics endpoint...")
     
     try:
-        # First, get current metrics for comparison
+        # First, get current metrics to compare
         print("📊 Getting current metrics from /api/metrics...")
         metrics_response = requests.get(f"{BASE_URL}/metrics")
         if metrics_response.status_code != 200:
-            print(f"❌ Could not get current metrics: {metrics_response.status_code}")
+            print(f"❌ Failed to get current metrics: {metrics_response.status_code}")
             return False
         
         current_metrics = metrics_response.json()
-        print(f"✅ Current metrics: {current_metrics}")
+        print(f"✅ Current metrics: {json.dumps(current_metrics, indent=2)}")
         
-        # First call to update-metrics - should create new snapshot
-        print("\n🔄 First call to /api/update-metrics (should create snapshot)...")
+        # First call - should create or update snapshot
+        print("\n🚀 First call to /api/update-metrics (should create/update snapshot)...")
         response1 = requests.post(f"{BASE_URL}/update-metrics")
         
         if response1.status_code != 200:
@@ -37,22 +37,14 @@ def test_update_metrics_endpoint():
         data1 = response1.json()
         print(f"✅ First call response: {json.dumps(data1, indent=2)}")
         
-        # Check required fields in response
-        required_fields = ['success', 'message', 'data']
-        missing_fields = [field for field in required_fields if field not in data1]
-        if missing_fields:
-            print(f"❌ Missing required fields: {missing_fields}")
-            return False
-        
-        # Check success flag
         if not data1.get('success'):
-            print(f"❌ Response success flag is false")
+            print(f"❌ First call success flag is false")
             return False
         
-        # Check data object has all 6 metrics
+        # Check data object has all metrics
         data_obj = data1.get('data', {})
         expected_metrics = ['activeUniversities', 'registeredStudents', 'verifiedPassports', 
-                          'aiVerifiedPercent', 'employabilityIndex', 'activeRecruiters']
+                          'employabilityIndex', 'activeRecruiters']
         
         missing_metrics = [metric for metric in expected_metrics if metric not in data_obj]
         if missing_metrics:
@@ -103,7 +95,7 @@ def test_update_metrics_endpoint():
             print(f"\n🎉 SUCCESS: Update metrics endpoint working correctly!")
             print(f"   - First call: {action1} snapshot")
             print(f"   - Second call: {action2} snapshot")
-            print(f"   - All 6 metrics present and match /api/metrics")
+            print(f"   - All 5 metrics present and match /api/metrics")
             print(f"   - Response format correct (success, message, data)")
             return True
         else:

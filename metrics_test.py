@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 
 # Base URL from environment
-BASE_URL = "https://secure-auth-fix.preview.emergentagent.com/api"
+BASE_URL = "https://passport-student-fix.preview.emergentagent.com/api"
 
 def test_metrics_endpoint_detailed():
     """Test the updated metrics endpoint with detailed validation"""
@@ -30,7 +30,6 @@ def test_metrics_endpoint_detailed():
                 'activeUniversities', 
                 'registeredStudents', 
                 'verifiedPassports', 
-                'aiVerifiedPercent', 
                 'employabilityIndex', 
                 'activeRecruiters'
             ]

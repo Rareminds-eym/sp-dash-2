@@ -47,7 +47,6 @@ CREATE TABLE skill_passports (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   "studentId" TEXT REFERENCES students(id) ON DELETE CASCADE,
   status TEXT NOT NULL CHECK (status IN ('pending', 'verified', 'rejected', 'suspended')),
-  "aiVerification" BOOLEAN DEFAULT false,
   "nsqfLevel" INTEGER,
   skills JSONB DEFAULT '[]'::jsonb,
   "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -83,7 +82,6 @@ CREATE TABLE metrics_snapshots (
   "activeUniversities" INTEGER DEFAULT 0,
   "registeredStudents" INTEGER DEFAULT 0,
   "verifiedPassports" INTEGER DEFAULT 0,
-  "aiVerifiedPercent" DECIMAL(5,2) DEFAULT 0,
   "employabilityIndex" DECIMAL(5,2) DEFAULT 0,
   "activeRecruiters" INTEGER DEFAULT 0,
   "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW()
