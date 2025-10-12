@@ -1,36 +1,26 @@
-const { createClient } = require('@supabase/supabase-js')
-const { v4: uuidv4 } = require('uuid')
+import { createClient } from '@supabase/supabase-js'
+import { config } from 'dotenv'
+import { v4 as uuidv4 } from 'uuid'
+
+config()
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('Missing Supabase environment variables')
+if (!supabaseUrl || !supabaseKey) {
+  console.error('❌ Missing Supabase environment variables')
+  console.log('Please set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in your .env file')
   process.exit(1)
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-})
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 async function setupDatabase() {
-  console.log('🚀 Starting database setup...')
-
   try {
-    // Create tables using SQL
-    const createTablesSQL = `
-      -- Drop existing tables if they exist
-      DROP TABLE IF EXISTS audit_logs CASCADE;
-      DROP TABLE IF EXISTS verifications CASCADE;
-      DROP TABLE IF EXISTS metrics_snapshots CASCADE;
-      DROP TABLE IF EXISTS skill_passports CASCADE;
-      DROP TABLE IF EXISTS students CASCADE;
-      DROP TABLE IF EXISTS organizations CASCADE;
-      DROP TABLE IF EXISTS users CASCADE;
+    console.log('🚀 Setting up database...')
 
+    // Create tables
+    const createTablesSQL = `
       -- Create users table
       CREATE TABLE users (
         id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -68,7 +58,6 @@ async function setupDatabase() {
         id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
         "studentId" TEXT REFERENCES students(id) ON DELETE CASCADE,
         status TEXT NOT NULL CHECK (status IN ('pending', 'verified', 'rejected', 'suspended')),
-        "aiVerification" BOOLEAN DEFAULT false,
         "nsqfLevel" INTEGER,
         skills JSONB DEFAULT '[]'::jsonb,
         "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -104,7 +93,6 @@ async function setupDatabase() {
         "activeUniversities" INTEGER DEFAULT 0,
         "registeredStudents" INTEGER DEFAULT 0,
         "verifiedPassports" INTEGER DEFAULT 0,
-        "aiVerifiedPercent" DECIMAL(5,2) DEFAULT 0,
         "employabilityIndex" DECIMAL(5,2) DEFAULT 0,
         "activeRecruiters" INTEGER DEFAULT 0,
         "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -242,8 +230,8 @@ async function setupDatabase() {
 
     // Create skill passports
     const passports = [
-      { id: uuidv4(), studentId: students[0].id, status: 'verified', aiVerification: true, nsqfLevel: 5, skills: ['JavaScript', 'React', 'Node.js'] },
-      { id: uuidv4(), studentId: students[1].id, status: 'pending', aiVerification: false, nsqfLevel: 4, skills: ['Python', 'Data Analysis'] },
+      { id: uuidv4(), studentId: students[0].id, status: 'verified', nsqfLevel: 5, skills: ['JavaScript', 'React', 'Node.js'] },
+      { id: uuidv4(), studentId: students[1].id, status: 'pending', nsqfLevel: 4, skills: ['Python', 'Data Analysis'] },
     ]
 
     const { error: passportError } = await supabase.from('skill_passports').insert(passports)
@@ -256,7 +244,6 @@ async function setupDatabase() {
       activeUniversities: 5,
       registeredStudents: 1247,
       verifiedPassports: 856,
-      aiVerifiedPercent: 78.5,
       employabilityIndex: 82.3,
       activeRecruiters: 24
     }
@@ -266,7 +253,7 @@ async function setupDatabase() {
 
     // Create some verifications
     const verifications = [
-      { id: uuidv4(), targetTable: 'skill_passports', targetId: passports[0].id, action: 'verify', performedBy: users[0].id, note: 'AI verification completed' },
+      { id: uuidv4(), targetTable: 'skill_passports', targetId: passports[0].id, action: 'verify', performedBy: users[0].id, note: 'Verification completed' },
       { id: uuidv4(), targetTable: 'users', targetId: users[3].id, action: 'approve', performedBy: users[1].id, note: 'User approved' },
     ]
 

@@ -1,64 +1,71 @@
-const { createClient } = require('@supabase/supabase-js');
-const { v4: uuidv4 } = require('uuid');
+import { createClient } from '@supabase/supabase-js'
+import { v4 as uuidv4 } from 'uuid'
+import { config } from 'dotenv'
 
-const supabaseUrl = 'https://dpooleduinyyzxgrcwko.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwb29sZWR1aW55eXp4Z3Jjd2tvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk5OTQ2OTgsImV4cCI6MjA3NTU3MDY5OH0.LvId6Cq13yeASDt0RXbb0y83P2xAZw0L1Q4KJAXT4jk';
+config()
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-const statuses = ['verified', 'pending', 'rejected', 'pending'];
-const nsqfLevels = [1, 2, 3, 4, 5, 6, 7];
-const skillSets = [
-  ['JavaScript', 'React', 'Node.js'],
-  ['Python', 'Django', 'Machine Learning'],
-  ['Java', 'Spring Boot', 'Microservices'],
-  ['Data Analysis', 'SQL', 'Excel'],
-  ['UI/UX Design', 'Figma', 'Adobe XD'],
-  ['Digital Marketing', 'SEO', 'Content Writing'],
-  ['Project Management', 'Agile', 'Scrum'],
-  ['Cloud Computing', 'AWS', 'Docker'],
-  ['Cybersecurity', 'Networking', 'Ethical Hacking'],
-  ['Mobile Development', 'React Native', 'Flutter']
-];
+if (!supabaseUrl || !supabaseKey) {
+  console.error('Missing Supabase environment variables')
+  process.exit(1)
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 async function createPassportsForAllStudents() {
   try {
-    console.log('🔍 Fetching all students...');
+    console.log('🚀 Creating skill passports for all students...')
     
     // Get all students
     const { data: students, error: studentsError } = await supabase
       .from('students')
-      .select('id');
+      .select('id')
     
     if (studentsError) {
-      console.error('Error fetching students:', studentsError);
-      return;
+      console.error('Error fetching students:', studentsError)
+      return
     }
     
-    console.log(`✅ Found ${students.length} students`);
+    console.log(`📊 Found ${students.length} students`)
     
     // Get existing passports
     const { data: existingPassports, error: passportsError } = await supabase
       .from('skill_passports')
-      .select('studentId');
+      .select('studentId')
     
     if (passportsError) {
-      console.error('Error fetching passports:', passportsError);
-      return;
+      console.error('Error fetching existing passports:', passportsError)
+      return
     }
     
-    console.log(`📋 Found ${existingPassports.length} existing passports`);
+    // Create a set of student IDs that already have passports
+    const studentsWithPassports = new Set(existingPassports.map(p => p.studentId))
     
-    // Find students without passports
-    const existingStudentIds = new Set(existingPassports.map(p => p.studentId));
-    const studentsWithoutPassports = students.filter(s => !existingStudentIds.has(s.id));
+    // Filter students who don't have passports yet
+    const studentsWithoutPassports = students.filter(s => !studentsWithPassports.has(s.id))
     
-    console.log(`📝 Creating passports for ${studentsWithoutPassports.length} students...`);
+    console.log(`📝 ${studentsWithoutPassports.length} students need passports`)
     
     if (studentsWithoutPassports.length === 0) {
-      console.log('✅ All students already have passports!');
-      return;
+      console.log('✅ All students already have passports')
+      return
     }
+    
+    // Define possible values
+    const statuses = ['pending', 'verified', 'rejected', 'suspended']
+    const nsqfLevels = [1, 2, 3, 4, 5, 6, 7]
+    const skillSets = [
+      ['JavaScript', 'React', 'Node.js'],
+      ['Python', 'Data Analysis', 'Machine Learning'],
+      ['Java', 'Spring', 'Hibernate'],
+      ['C++', 'Algorithms', 'System Design'],
+      ['UI/UX', 'Figma', 'Prototyping'],
+      ['Digital Marketing', 'SEO', 'Content Creation'],
+      ['Cloud Computing', 'AWS', 'DevOps'],
+      ['Cybersecurity', 'Ethical Hacking', 'Network Security']
+    ]
     
     // Create passports in batches
     const batchSize = 100;
@@ -70,7 +77,6 @@ async function createPassportsForAllStudents() {
       const newPassports = batch.map((student, index) => {
         const statusIndex = (i + index) % statuses.length;
         const status = statuses[statusIndex];
-        const aiVerification = status === 'verified' ? (Math.random() > 0.3) : false;
         const nsqfLevel = nsqfLevels[(i + index) % nsqfLevels.length];
         const skills = skillSets[(i + index) % skillSets.length];
         
@@ -78,7 +84,6 @@ async function createPassportsForAllStudents() {
           id: uuidv4(),
           studentId: student.id,
           status: status,
-          aiVerification: aiVerification,
           nsqfLevel: nsqfLevel,
           skills: skills,
           createdAt: new Date().toISOString(),

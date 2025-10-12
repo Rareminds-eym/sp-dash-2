@@ -30,7 +30,6 @@ def test_metrics_endpoint_detailed():
                 'activeUniversities', 
                 'registeredStudents', 
                 'verifiedPassports', 
-                'aiVerifiedPercent', 
                 'employabilityIndex', 
                 'activeRecruiters'
             ]

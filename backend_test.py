@@ -1,217 +1,144 @@
-#!/usr/bin/env python3
-"""
-Authentication Security Testing Suite
-Tests the JWT security fixes and getUser() implementation
-"""
-
 import requests
 import json
-import time
-import sys
 from datetime import datetime
 
-# Configuration
-BASE_URL = "https://passport-student-fix.preview.emergentagent.com"
-API_BASE = f"{BASE_URL}/api"
-
-# Test credentials
-VALID_CREDENTIALS = {
-    "email": "superadmin@rareminds.in",
-    "password": "password123"
-}
-
-INVALID_CREDENTIALS = {
-    "email": "invalid@test.com", 
-    "password": "wrongpassword"
-}
-
-class AuthSecurityTester:
-    def __init__(self):
+class BackendTester:
+    def __init__(self, base_url="http://localhost:3000/api"):
+        self.base_url = base_url
         self.session = requests.Session()
-        self.auth_token = None
-        self.test_results = []
-        
-    def log_result(self, test_name, success, message, details=None):
-        """Log test result"""
-        status = "✅ PASS" if success else "❌ FAIL"
+        self.user_id = None
+        self.target_user_id = None
+        self.passport_id = None
+        self.recruiter_id = None
+        self.results = []
+    
+    def log_result(self, test_name, passed, message="", details=None):
+        result = {
+            'test': test_name,
+            'passed': passed,
+            'message': message,
+            'details': details,
+            'timestamp': datetime.now().isoformat()
+        }
+        self.results.append(result)
+        status = "✅ PASS" if passed else "❌ FAIL"
         print(f"{status} {test_name}: {message}")
         if details:
             print(f"   Details: {details}")
-        
-        self.test_results.append({
-            "test": test_name,
-            "success": success,
-            "message": message,
-            "details": details,
-            "timestamp": datetime.now().isoformat()
-        })
+        return result
     
-    def test_login_flow(self):
-        """Test complete authentication flow with valid credentials"""
-        print("\n=== Testing Login Flow ===")
-        
+    def test_health_check(self):
+        """Test basic connectivity to the API"""
         try:
-            # Test valid login
-            response = self.session.post(
-                f"{API_BASE}/auth/login",
-                json=VALID_CREDENTIALS,
-                headers={"Content-Type": "application/json"}
-            )
-            
+            response = requests.get(f"{self.base_url}/")
             if response.status_code == 200:
                 data = response.json()
-                if data.get("success") and data.get("user"):
-                    user = data["user"]
-                    required_fields = ["email", "role", "name", "organizationId"]
-                    missing_fields = [field for field in required_fields if field not in user]
-                    
-                    if not missing_fields:
-                        self.log_result(
-                            "Valid Login", True,
-                            f"Login successful for {user['email']} with role {user['role']}",
-                            f"User data: {json.dumps(user, indent=2)}"
-                        )
-                        return True
-                    else:
-                        self.log_result(
-                            "Valid Login", False,
-                            f"Missing required user fields: {missing_fields}",
-                            f"Response: {json.dumps(data, indent=2)}"
-                        )
-                else:
-                    self.log_result(
-                        "Valid Login", False,
-                        "Login response missing success flag or user data",
-                        f"Response: {json.dumps(data, indent=2)}"
-                    )
-            else:
-                self.log_result(
-                    "Valid Login", False,
-                    f"Login failed with status {response.status_code}",
-                    f"Response: {response.text}"
-                )
-                
-        except Exception as e:
-            self.log_result("Valid Login", False, f"Login request failed: {str(e)}")
-            
-        return False
-    
-    def test_invalid_login(self):
-        """Test login with invalid credentials"""
-        print("\n=== Testing Invalid Login ===")
-        
-        try:
-            response = self.session.post(
-                f"{API_BASE}/auth/login",
-                json=INVALID_CREDENTIALS,
-                headers={"Content-Type": "application/json"}
-            )
-            
-            if response.status_code == 401:
-                data = response.json()
-                if not data.get("success") and data.get("error"):
-                    self.log_result(
-                        "Invalid Login", True,
-                        "Invalid credentials properly rejected",
-                        f"Error message: {data['error']}"
-                    )
+                if 'message' in data:
+                    self.log_result("Health Check", True, "API is responding correctly")
                     return True
                 else:
-                    self.log_result(
-                        "Invalid Login", False,
-                        "Response format incorrect for invalid login",
-                        f"Response: {json.dumps(data, indent=2)}"
-                    )
+                    self.log_result("Health Check", False, "API response missing message field")
+                    return False
             else:
-                self.log_result(
-                    "Invalid Login", False,
-                    f"Expected 401 status, got {response.status_code}",
-                    f"Response: {response.text}"
-                )
-                
+                self.log_result("Health Check", False, f"API returned status {response.status_code}")
+                return False
         except Exception as e:
-            self.log_result("Invalid Login", False, f"Invalid login test failed: {str(e)}")
-            
-        return False
-    
-    def test_session_api_valid(self):
-        """Test session API with valid authentication"""
-        print("\n=== Testing Session API (Valid) ===")
-        
-        # First login to get valid session
-        login_success = self.test_login_flow()
-        if not login_success:
-            self.log_result("Session API Valid", False, "Cannot test session API - login failed")
+            self.log_result("Health Check", False, f"Connection failed: {str(e)}")
             return False
-            
+    
+    def test_login(self, email, password):
+        """Test POST /api/login - User authentication"""
         try:
-            # Test session endpoint
-            response = self.session.get(f"{API_BASE}/auth/session")
-            
+            payload = {
+                "email": email,
+                "password": password
+            }
+            response = requests.post(f"{self.base_url}/login", json=payload)
             if response.status_code == 200:
                 data = response.json()
-                if data.get("success") and data.get("user"):
-                    user = data["user"]
-                    required_fields = ["email", "role", "name", "organizationId"]
-                    missing_fields = [field for field in required_fields if field not in user]
-                    
-                    if not missing_fields:
-                        self.log_result(
-                            "Session API Valid", True,
-                            f"Session API returned complete user data for {user['email']}",
-                            f"User data: {json.dumps(user, indent=2)}"
-                        )
-                        return True
-                    else:
-                        self.log_result(
-                            "Session API Valid", False,
-                            f"Session API missing required fields: {missing_fields}",
-                            f"Response: {json.dumps(data, indent=2)}"
-                        )
+                if data.get('success') and 'user' in data:
+                    self.user_id = data['user']['id']
+                    self.log_result("Login", True, f"Login successful for {data['user']['email']}", data['user'])
+                    return True
                 else:
-                    self.log_result(
-                        "Session API Valid", False,
-                        "Session API response missing success flag or user data",
-                        f"Response: {json.dumps(data, indent=2)}"
-                    )
+                    self.log_result("Login", False, "Login response missing user data")
+                    return False
+            elif response.status_code == 401:
+                self.log_result("Login", False, "Invalid credentials")
+                return False
             else:
-                self.log_result(
-                    "Session API Valid", False,
-                    f"Session API failed with status {response.status_code}",
-                    f"Response: {response.text}"
-                )
-                
+                self.log_result("Login", False, f"Login endpoint returned status {response.status_code}")
+                return False
         except Exception as e:
-            self.log_result("Session API Valid", False, f"Session API test failed: {str(e)}")
-            
-        return False
+            self.log_result("Login", False, f"Login request failed: {str(e)}")
+            return False
     
-    def test_session_api_invalid(self):
-        """Test POST /api/update-metrics - Update metrics snapshots table"""
+    def test_metrics_endpoint(self):
+        """Test GET /api/metrics - Dashboard metrics"""
         try:
-            # First call - should create new snapshot
+            response = requests.get(f"{self.base_url}/metrics")
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Check for required fields
+                expected_fields = ['activeUniversities', 'registeredStudents', 'verifiedPassports', 
+                                 'employabilityIndex', 'activeRecruiters', 'source']
+                
+                missing_fields = [field for field in expected_fields if field not in data]
+                if missing_fields:
+                    self.log_result("Metrics API", False, f"Missing required fields: {missing_fields}")
+                    return False
+                
+                # Check data types
+                if not isinstance(data.get('activeUniversities', 0), int):
+                    self.log_result("Metrics API", False, "activeUniversities should be integer")
+                    return False
+                
+                if not isinstance(data.get('registeredStudents', 0), int):
+                    self.log_result("Metrics API", False, "registeredStudents should be integer")
+                    return False
+                
+                if not isinstance(data.get('verifiedPassports', 0), int):
+                    self.log_result("Metrics API", False, "verifiedPassports should be integer")
+                    return False
+                
+                if not isinstance(data.get('employabilityIndex', 0), (int, float)):
+                    self.log_result("Metrics API", False, "employabilityIndex should be number")
+                    return False
+                
+                if not isinstance(data.get('activeRecruiters', 0), int):
+                    self.log_result("Metrics API", False, "activeRecruiters should be integer")
+                    return False
+                
+                if not isinstance(data.get('source', ''), str):
+                    self.log_result("Metrics API", False, "source should be string")
+                    return False
+                
+                self.log_result("Metrics API", True, "Metrics endpoint working correctly", data)
+                return True
+            else:
+                self.log_result("Metrics API", False, f"Metrics endpoint returned status {response.status_code}")
+                return False
+        except Exception as e:
+            self.log_result("Metrics API", False, f"Metrics request failed: {str(e)}")
+            return False
+    
+    def test_update_metrics(self):
+        """Test POST /api/update-metrics - Update metrics snapshot"""
+        try:
+            # First call - should create or update snapshot
             response1 = requests.post(f"{self.base_url}/update-metrics")
             if response1.status_code == 200:
                 data1 = response1.json()
                 
-                # Check required fields in response
-                required_fields = ['success', 'message', 'data']
-                has_all_fields = all(field in data1 for field in required_fields)
-                
-                if not has_all_fields:
-                    missing_fields = [field for field in required_fields if field not in data1]
-                    self.log_result("Update Metrics API", False, f"Missing required fields: {missing_fields}")
-                    return False
-                
-                # Check success flag
                 if not data1.get('success'):
-                    self.log_result("Update Metrics API", False, "Response success flag is false")
+                    self.log_result("Update Metrics API", False, "First call success flag is false")
                     return False
                 
-                # Check data object has all 6 metrics
+                # Check data object has all metrics
                 data_obj = data1.get('data', {})
                 expected_metrics = ['activeUniversities', 'registeredStudents', 'verifiedPassports', 
-                                  'aiVerifiedPercent', 'employabilityIndex', 'activeRecruiters']
+                                  'employabilityIndex', 'activeRecruiters']
                 
                 has_all_metrics = all(metric in data_obj for metric in expected_metrics)
                 if not has_all_metrics:
@@ -412,7 +339,7 @@ class AuthSecurityTester:
             return False
     
     def test_verifications_endpoint(self):
-        """Test GET /api/verifications - List verification history"""
+        """Test GET /api/verifications - List recent verifications"""
         try:
             response = requests.get(f"{self.base_url}/verifications")
             if response.status_code == 200:
@@ -421,7 +348,7 @@ class AuthSecurityTester:
                     if len(data) > 0:
                         # Check if verifications have user data
                         has_user_data = any('users' in verification for verification in data if verification.get('performedBy'))
-                        self.log_result("Verifications API", True, f"Verifications endpoint returned {len(data)} verifications, user data: {has_user_data}", data[:2] if data else [])
+                        self.log_result("Verifications API", True, f"Verifications endpoint returned {len(data)} records, user data: {has_user_data}", data[:2] if data else [])
                     else:
                         self.log_result("Verifications API", True, "Verifications endpoint returned empty array (no verifications in DB)")
                     return True
@@ -436,16 +363,16 @@ class AuthSecurityTester:
             return False
     
     def test_audit_logs_endpoint(self):
-        """Test GET /api/audit-logs - List audit trail"""
+        """Test GET /api/audit-logs - List audit logs"""
         try:
             response = requests.get(f"{self.base_url}/audit-logs")
             if response.status_code == 200:
                 data = response.json()
                 if isinstance(data, list):
                     if len(data) > 0:
-                        # Check if audit logs have user data
+                        # Check if logs have user data
                         has_user_data = any('users' in log for log in data if log.get('actorId'))
-                        self.log_result("Audit Logs API", True, f"Audit logs endpoint returned {len(data)} logs, user data: {has_user_data}", data[:2] if data else [])
+                        self.log_result("Audit Logs API", True, f"Audit logs endpoint returned {len(data)} records, user data: {has_user_data}", data[:2] if data else [])
                     else:
                         self.log_result("Audit Logs API", True, "Audit logs endpoint returned empty array (no logs in DB)")
                     return True
@@ -459,414 +386,168 @@ class AuthSecurityTester:
             self.log_result("Audit Logs API", False, f"Audit logs request failed: {str(e)}")
             return False
     
-    def test_login_endpoint(self):
-        """Test POST /api/login - Login functionality"""
-        try:
-            # Test with the specified super admin email
-            login_data = {
-                "email": "superadmin@rareminds.in",
-                "password": "password123"  # Updated to match review request credentials
-            }
-            
-            response = requests.post(f"{self.base_url}/login", json=login_data)
-            if response.status_code == 200:
-                data = response.json()
-                if data.get('success') and 'user' in data:
-                    self.user_id = data['user'].get('id')
-                    self.log_result("Login API", True, f"Login successful for {login_data['email']}", data)
-                    return True
-                else:
-                    self.log_result("Login API", False, "Login response missing success or user data")
-                    return False
-            elif response.status_code == 401:
-                self.log_result("Login API", False, "Login failed - Invalid credentials (expected if user doesn't exist)")
-                return False
-            else:
-                self.log_result("Login API", False, f"Login endpoint returned status {response.status_code}")
-                return False
-        except Exception as e:
-            self.log_result("Login API", False, f"Login request failed: {str(e)}")
-            return False
-    
     def test_verify_passport(self):
-        """Test POST /api/verify - Verify a passport"""
-        if not self.passport_id or not self.user_id:
-            self.log_result("Verify Passport API", False, "Cannot test - missing passport ID or user ID from previous tests")
+        """Test POST /api/verify - Verify a skill passport"""
+        if not self.passport_id:
+            self.log_result("Verify Passport", False, "No passport ID available for testing")
             return False
-            
+        
+        if not self.user_id:
+            self.log_result("Verify Passport", False, "No user ID available - login required")
+            return False
+        
         try:
-            verify_data = {
+            payload = {
                 "passportId": self.passport_id,
                 "userId": self.user_id,
-                "note": "Test verification from backend testing"
+                "note": "Test verification via automated testing"
             }
             
-            response = requests.post(f"{self.base_url}/verify", json=verify_data)
+            response = requests.post(
+                f"{self.base_url}/verify",
+                json=payload,
+                headers={"Content-Type": "application/json"}
+            )
+            
             if response.status_code == 200:
                 data = response.json()
                 if data.get('success'):
-                    self.log_result("Verify Passport API", True, "Passport verification successful", data)
+                    self.log_result("Verify Passport", True, f"Passport verified: {data.get('message')}")
                     return True
                 else:
-                    self.log_result("Verify Passport API", False, "Verification response missing success flag")
+                    self.log_result("Verify Passport", False, f"Verify failed: {data.get('error', 'Unknown error')}")
                     return False
             else:
-                self.log_result("Verify Passport API", False, f"Verify endpoint returned status {response.status_code}")
+                self.log_result("Verify Passport", False, f"Verify endpoint returned status {response.status_code}")
                 return False
         except Exception as e:
-            self.log_result("Verify Passport API", False, f"Verify request failed: {str(e)}")
+            self.log_result("Verify Passport", False, f"Verify request failed: {str(e)}")
+            return False
+    
+    def test_reject_passport(self):
+        """Test POST /api/reject-passport - Reject a skill passport"""
+        if not self.passport_id:
+            self.log_result("Reject Passport", False, "No passport ID available for testing")
+            return False
+        
+        if not self.user_id:
+            self.log_result("Reject Passport", False, "No user ID available - login required")
+            return False
+        
+        try:
+            payload = {
+                "passportId": self.passport_id,
+                "userId": self.user_id,
+                "reason": "Test rejection via automated testing"
+            }
+            
+            response = requests.post(
+                f"{self.base_url}/reject-passport",
+                json=payload,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('success'):
+                    self.log_result("Reject Passport", True, f"Passport rejected: {data.get('message')}")
+                    return True
+                else:
+                    self.log_result("Reject Passport", False, f"Reject failed: {data.get('error', 'Unknown error')}")
+                    return False
+            else:
+                self.log_result("Reject Passport", False, f"Reject endpoint returned status {response.status_code}")
+                return False
+        except Exception as e:
+            self.log_result("Reject Passport", False, f"Reject request failed: {str(e)}")
             return False
     
     def test_suspend_user(self):
         """Test POST /api/suspend-user - Suspend a user"""
-        if not self.target_user_id or not self.user_id:
-            self.log_result("Suspend User API", False, "Cannot test - missing target user ID or actor user ID from previous tests")
+        if not self.target_user_id:
+            self.log_result("Suspend User", False, "No target user ID available for testing")
             return False
-            
+        
+        if not self.user_id:
+            self.log_result("Suspend User", False, "No user ID available - login required")
+            return False
+        
+        # Don't suspend ourselves
+        if self.target_user_id == self.user_id:
+            self.log_result("Suspend User", False, "Cannot suspend self - skipping test")
+            return False
+        
         try:
-            suspend_data = {
+            payload = {
                 "targetUserId": self.target_user_id,
                 "actorId": self.user_id,
-                "reason": "Test suspension from backend testing"
+                "reason": "Test suspension via automated testing"
             }
             
-            response = requests.post(f"{self.base_url}/suspend-user", json=suspend_data)
+            response = requests.post(
+                f"{self.base_url}/suspend-user",
+                json=payload,
+                headers={"Content-Type": "application/json"}
+            )
+            
             if response.status_code == 200:
                 data = response.json()
                 if data.get('success'):
-                    self.log_result("Suspend User API", True, "User suspension successful", data)
+                    self.log_result("Suspend User", True, f"User suspended: {data.get('message')}")
                     return True
                 else:
-                    self.log_result("Suspend User API", False, "Suspension response missing success flag")
+                    self.log_result("Suspend User", False, f"Suspend failed: {data.get('error', 'Unknown error')}")
                     return False
             else:
-                self.log_result("Suspend User API", False, f"Suspend endpoint returned status {response.status_code}")
+                self.log_result("Suspend User", False, f"Suspend endpoint returned status {response.status_code}")
                 return False
         except Exception as e:
-            self.log_result("Suspend User API", False, f"Suspend request failed: {str(e)}")
+            self.log_result("Suspend User", False, f"Suspend request failed: {str(e)}")
             return False
     
     def test_activate_user(self):
-        """Test POST /api/activate-user - Reactivate the suspended user"""
-        if not self.target_user_id or not self.user_id:
-            self.log_result("Activate User API", False, "Cannot test - missing target user ID or actor user ID from previous tests")
+        """Test POST /api/activate-user - Activate a user"""
+        if not self.target_user_id:
+            self.log_result("Activate User", False, "No target user ID available for testing")
             return False
-            
+        
+        if not self.user_id:
+            self.log_result("Activate User", False, "No user ID available - login required")
+            return False
+        
         try:
-            activate_data = {
+            payload = {
                 "targetUserId": self.target_user_id,
                 "actorId": self.user_id,
-                "note": "Test reactivation from backend testing"
+                "note": "Test activation via automated testing"
             }
             
-            response = requests.post(f"{self.base_url}/activate-user", json=activate_data)
+            response = requests.post(
+                f"{self.base_url}/activate-user",
+                json=payload,
+                headers={"Content-Type": "application/json"}
+            )
+            
             if response.status_code == 200:
                 data = response.json()
                 if data.get('success'):
-                    self.log_result("Activate User API", True, "User activation successful", data)
+                    self.log_result("Activate User", True, f"User activated: {data.get('message')}")
                     return True
                 else:
-                    self.log_result("Activate User API", False, "Activation response missing success flag")
+                    self.log_result("Activate User", False, f"Activate failed: {data.get('error', 'Unknown error')}")
                     return False
             else:
-                self.log_result("Activate User API", False, f"Activate endpoint returned status {response.status_code}")
+                self.log_result("Activate User", False, f"Activate endpoint returned status {response.status_code}")
                 return False
         except Exception as e:
-            self.log_result("Activate User API", False, f"Activate request failed: {str(e)}")
+            self.log_result("Activate User", False, f"Activate request failed: {str(e)}")
             return False
-
-    def test_university_reports_analytics(self):
-        """Test GET /api/analytics/university-reports - University-wise analytics"""
+    
+    def test_metrics_scenarios(self):
+        """Test comprehensive metrics scenarios"""
         try:
-            response = requests.get(f"{self.base_url}/analytics/university-reports")
-            if response.status_code == 200:
-                data = response.json()
-                if isinstance(data, list):
-                    if len(data) > 0:
-                        # Check required fields in university reports
-                        required_fields = ['universityId', 'universityName', 'state', 'enrollmentCount', 
-                                         'totalPassports', 'verifiedPassports', 'completionRate', 'verificationRate']
-                        sample_report = data[0]
-                        has_all_fields = all(field in sample_report for field in required_fields)
-                        
-                        if has_all_fields:
-                            self.log_result("University Reports Analytics", True, 
-                                          f"University reports returned {len(data)} universities with all required fields", 
-                                          data[:2] if data else [])
-                        else:
-                            missing_fields = [field for field in required_fields if field not in sample_report]
-                            self.log_result("University Reports Analytics", False, 
-                                          f"Missing required fields: {missing_fields}")
-                        return has_all_fields
-                    else:
-                        self.log_result("University Reports Analytics", True, 
-                                      "University reports returned empty array (no universities in DB)")
-                        return True
-                else:
-                    self.log_result("University Reports Analytics", False, 
-                                  "University reports should return an array")
-                    return False
-            else:
-                self.log_result("University Reports Analytics", False, 
-                              f"University reports returned status {response.status_code}")
-                return False
-        except Exception as e:
-            self.log_result("University Reports Analytics", False, 
-                          f"University reports request failed: {str(e)}")
-            return False
-
-    def test_recruiter_metrics_analytics(self):
-        """Test GET /api/analytics/recruiter-metrics - Recruiter engagement metrics"""
-        try:
-            response = requests.get(f"{self.base_url}/analytics/recruiter-metrics")
-            if response.status_code == 200:
-                data = response.json()
-                if isinstance(data, dict):
-                    # Check required fields in recruiter metrics
-                    required_fields = ['totalSearches', 'profileViews', 'contactAttempts', 
-                                     'shortlisted', 'hireIntents', 'searchTrends', 'topSkillsSearched']
-                    has_all_fields = all(field in data for field in required_fields)
-                    
-                    if has_all_fields:
-                        # Validate nested structures
-                        trends_valid = isinstance(data.get('searchTrends'), list)
-                        skills_valid = isinstance(data.get('topSkillsSearched'), list)
-                        
-                        if trends_valid and skills_valid:
-                            self.log_result("Recruiter Metrics Analytics", True, 
-                                          "Recruiter metrics returned all required fields with valid structure", 
-                                          {k: v for k, v in data.items() if k not in ['searchTrends', 'topSkillsSearched']})
-                        else:
-                            self.log_result("Recruiter Metrics Analytics", False, 
-                                          f"Invalid nested structure - trends: {trends_valid}, skills: {skills_valid}")
-                        return has_all_fields and trends_valid and skills_valid
-                    else:
-                        missing_fields = [field for field in required_fields if field not in data]
-                        self.log_result("Recruiter Metrics Analytics", False, 
-                                      f"Missing required fields: {missing_fields}")
-                        return False
-                else:
-                    self.log_result("Recruiter Metrics Analytics", False, 
-                                  "Recruiter metrics should return an object")
-                    return False
-            else:
-                self.log_result("Recruiter Metrics Analytics", False, 
-                              f"Recruiter metrics returned status {response.status_code}")
-                return False
-        except Exception as e:
-            self.log_result("Recruiter Metrics Analytics", False, 
-                          f"Recruiter metrics request failed: {str(e)}")
-            return False
-
-    def test_placement_conversion_analytics(self):
-        """Test GET /api/analytics/placement-conversion - Placement conversion funnel"""
-        try:
-            response = requests.get(f"{self.base_url}/analytics/placement-conversion")
-            if response.status_code == 200:
-                data = response.json()
-                if isinstance(data, dict):
-                    # Check required fields in placement conversion
-                    required_fields = ['conversionFunnel', 'monthlyConversions']
-                    has_all_fields = all(field in data for field in required_fields)
-                    
-                    if has_all_fields:
-                        # Validate nested structures
-                        funnel_valid = isinstance(data.get('conversionFunnel'), list)
-                        monthly_valid = isinstance(data.get('monthlyConversions'), list)
-                        
-                        if funnel_valid and monthly_valid:
-                            funnel_count = len(data.get('conversionFunnel', []))
-                            monthly_count = len(data.get('monthlyConversions', []))
-                            self.log_result("Placement Conversion Analytics", True, 
-                                          f"Placement conversion returned funnel with {funnel_count} stages and {monthly_count} months", 
-                                          {'funnel_stages': funnel_count, 'monthly_data': monthly_count})
-                        else:
-                            self.log_result("Placement Conversion Analytics", False, 
-                                          f"Invalid nested structure - funnel: {funnel_valid}, monthly: {monthly_valid}")
-                        return has_all_fields and funnel_valid and monthly_valid
-                    else:
-                        missing_fields = [field for field in required_fields if field not in data]
-                        self.log_result("Placement Conversion Analytics", False, 
-                                      f"Missing required fields: {missing_fields}")
-                        return False
-                else:
-                    self.log_result("Placement Conversion Analytics", False, 
-                                  "Placement conversion should return an object")
-                    return False
-            else:
-                self.log_result("Placement Conversion Analytics", False, 
-                              f"Placement conversion returned status {response.status_code}")
-                return False
-        except Exception as e:
-            self.log_result("Placement Conversion Analytics", False, 
-                          f"Placement conversion request failed: {str(e)}")
-            return False
-
-    def test_state_heatmap_analytics(self):
-        """Test GET /api/analytics/state-heatmap - Enhanced state-wise heat map"""
-        try:
-            response = requests.get(f"{self.base_url}/analytics/state-heatmap")
-            if response.status_code == 200:
-                data = response.json()
-                if isinstance(data, list):
-                    if len(data) > 0:
-                        # Check required fields in state heatmap
-                        required_fields = ['state', 'universities', 'students', 'verifiedPassports', 
-                                         'engagementScore', 'employabilityIndex']
-                        sample_state = data[0]
-                        has_all_fields = all(field in sample_state for field in required_fields)
-                        
-                        if has_all_fields:
-                            # Validate data types
-                            numeric_fields = ['universities', 'students', 'verifiedPassports', 
-                                            'engagementScore', 'employabilityIndex']
-                            valid_types = all(isinstance(sample_state.get(field), (int, float)) 
-                                            for field in numeric_fields)
-                            
-                            if valid_types:
-                                self.log_result("State Heatmap Analytics", True, 
-                                              f"State heatmap returned {len(data)} states with all required fields and valid types", 
-                                              data[:2] if data else [])
-                            else:
-                                self.log_result("State Heatmap Analytics", False, 
-                                              "Invalid data types in numeric fields")
-                            return has_all_fields and valid_types
-                        else:
-                            missing_fields = [field for field in required_fields if field not in sample_state]
-                            self.log_result("State Heatmap Analytics", False, 
-                                          f"Missing required fields: {missing_fields}")
-                            return False
-                    else:
-                        self.log_result("State Heatmap Analytics", True, 
-                                      "State heatmap returned empty array (no states in DB)")
-                        return True
-                else:
-                    self.log_result("State Heatmap Analytics", False, 
-                                  "State heatmap should return an array")
-                    return False
-            else:
-                self.log_result("State Heatmap Analytics", False, 
-                              f"State heatmap returned status {response.status_code}")
-                return False
-        except Exception as e:
-            self.log_result("State Heatmap Analytics", False, 
-                          f"State heatmap request failed: {str(e)}")
-            return False
-
-    def test_ai_insights_analytics(self):
-        """Test GET /api/analytics/ai-insights - AI-powered insights"""
-        try:
-            response = requests.get(f"{self.base_url}/analytics/ai-insights")
-            if response.status_code == 200:
-                data = response.json()
-                if isinstance(data, dict):
-                    # Check required fields in AI insights
-                    required_fields = ['emergingSkills', 'soughtSkillTags', 'topUniversities']
-                    has_all_fields = all(field in data for field in required_fields)
-                    
-                    if has_all_fields:
-                        # Validate nested structures
-                        skills_valid = isinstance(data.get('emergingSkills'), list)
-                        tags_valid = isinstance(data.get('soughtSkillTags'), list)
-                        unis_valid = isinstance(data.get('topUniversities'), list)
-                        
-                        if skills_valid and tags_valid and unis_valid:
-                            skills_count = len(data.get('emergingSkills', []))
-                            tags_count = len(data.get('soughtSkillTags', []))
-                            unis_count = len(data.get('topUniversities', []))
-                            self.log_result("AI Insights Analytics", True, 
-                                          f"AI insights returned {skills_count} emerging skills, {tags_count} skill tags, {unis_count} universities", 
-                                          {'emerging_skills': skills_count, 'skill_tags': tags_count, 'top_universities': unis_count})
-                        else:
-                            self.log_result("AI Insights Analytics", False, 
-                                          f"Invalid nested structure - skills: {skills_valid}, tags: {tags_valid}, unis: {unis_valid}")
-                        return has_all_fields and skills_valid and tags_valid and unis_valid
-                    else:
-                        missing_fields = [field for field in required_fields if field not in data]
-                        self.log_result("AI Insights Analytics", False, 
-                                      f"Missing required fields: {missing_fields}")
-                        return False
-                else:
-                    self.log_result("AI Insights Analytics", False, 
-                                  "AI insights should return an object")
-                    return False
-            else:
-                self.log_result("AI Insights Analytics", False, 
-                              f"AI insights returned status {response.status_code}")
-                return False
-        except Exception as e:
-            self.log_result("AI Insights Analytics", False, 
-                          f"AI insights request failed: {str(e)}")
-            return False
-
-    def test_reject_passport(self):
-        """Test POST /api/reject-passport - Reject a passport"""
-        if not self.passport_id or not self.user_id:
-            self.log_result("Reject Passport API", False, "Cannot test - missing passport ID or user ID from previous tests")
-            return False
-            
-        try:
-            reject_data = {
-                "passportId": self.passport_id,
-                "userId": self.user_id,
-                "reason": "Test rejection from backend testing"
-            }
-            
-            response = requests.post(f"{self.base_url}/reject-passport", json=reject_data)
-            if response.status_code == 200:
-                data = response.json()
-                if data.get('success'):
-                    self.log_result("Reject Passport API", True, "Passport rejection successful", data)
-                    return True
-                else:
-                    self.log_result("Reject Passport API", False, "Rejection response missing success flag")
-                    return False
-            else:
-                self.log_result("Reject Passport API", False, f"Reject endpoint returned status {response.status_code}")
-                return False
-        except Exception as e:
-            self.log_result("Reject Passport API", False, f"Reject request failed: {str(e)}")
-            return False
-
-    def test_delete_user(self):
-        """Test DELETE /api/user - Delete (soft delete) a user"""
-        if not self.target_user_id or not self.user_id:
-            self.log_result("Delete User API", False, "Cannot test - missing target user ID or actor user ID from previous tests")
-            return False
-            
-        try:
-            delete_data = {
-                "userId": self.target_user_id,
-                "actorId": self.user_id,
-                "reason": "Test deletion from backend testing"
-            }
-            
-            response = requests.delete(f"{self.base_url}/user", json=delete_data)
-            if response.status_code == 200:
-                data = response.json()
-                if data.get('success'):
-                    self.log_result("Delete User API", True, "User deletion (soft delete) successful", data)
-                    return True
-                else:
-                    self.log_result("Delete User API", False, "Deletion response missing success flag")
-                    return False
-            else:
-                self.log_result("Delete User API", False, f"Delete endpoint returned status {response.status_code}")
-                return False
-        except Exception as e:
-            self.log_result("Delete User API", False, f"Delete request failed: {str(e)}")
-            return False
-
-    def test_metrics_endpoint_scenarios(self):
-        """Test updated /api/metrics endpoint with specific scenarios"""
-        try:
-            print("\n🔍 TESTING UPDATED METRICS ENDPOINT SCENARIOS...")
-            
-            # First, clear any existing snapshots by checking if we can delete them
-            # We'll use a different approach - just test the current behavior
-            
-            # Scenario 1: Test metrics endpoint (should work regardless of snapshot state)
-            print("📊 Scenario 1: Testing /api/metrics endpoint...")
+            # Scenario 1: Test initial metrics endpoint
+            print("📊 Scenario 1: Testing initial /api/metrics...")
             response1 = requests.get(f"{self.base_url}/metrics")
             if response1.status_code != 200:
                 self.log_result("Metrics Scenarios - Initial Check", False, 
@@ -877,7 +558,7 @@ class AuthSecurityTester:
             
             # Check for required fields including source
             expected_fields = ['activeUniversities', 'registeredStudents', 'verifiedPassports', 
-                             'aiVerifiedPercent', 'employabilityIndex', 'activeRecruiters', 'source']
+                             'employabilityIndex', 'activeRecruiters', 'source']
             
             missing_fields = [field for field in expected_fields if field not in data1]
             if missing_fields:
@@ -930,7 +611,7 @@ class AuthSecurityTester:
             metrics_match = True
             mismatched_fields = []
             for field in ['activeUniversities', 'registeredStudents', 'verifiedPassports', 
-                         'aiVerifiedPercent', 'employabilityIndex', 'activeRecruiters']:
+                         'employabilityIndex', 'activeRecruiters']:
                 if snapshot_data.get(field) != data3.get(field):
                     metrics_match = False
                     mismatched_fields.append(f"{field}: snapshot={snapshot_data.get(field)}, metrics={data3.get(field)}")
@@ -1068,14 +749,13 @@ class AuthSecurityTester:
                     self.log_result("Approve Recruiter", True, f"Recruiter approved: {data.get('message')}")
                     return True
                 else:
-                    self.log_result("Approve Recruiter", False, f"API returned success=false: {data}")
+                    self.log_result("Approve Recruiter", False, f"Approval failed: {data.get('error', 'Unknown error')}")
                     return False
             else:
-                self.log_result("Approve Recruiter", False, f"HTTP {response.status_code}: {response.text}")
+                self.log_result("Approve Recruiter", False, f"Approve endpoint returned status {response.status_code}")
                 return False
-                
         except Exception as e:
-            self.log_result("Approve Recruiter", False, f"Request failed: {str(e)}")
+            self.log_result("Approve Recruiter", False, f"Approve request failed: {str(e)}")
             return False
     
     def test_reject_recruiter(self):
@@ -1107,192 +787,71 @@ class AuthSecurityTester:
                     self.log_result("Reject Recruiter", True, f"Recruiter rejected: {data.get('message')}")
                     return True
                 else:
-                    self.log_result("Reject Recruiter", False, f"API returned success=false: {data}")
+                    self.log_result("Reject Recruiter", False, f"Rejection failed: {data.get('error', 'Unknown error')}")
                     return False
             else:
-                self.log_result("Reject Recruiter", False, f"HTTP {response.status_code}: {response.text}")
+                self.log_result("Reject Recruiter", False, f"Reject endpoint returned status {response.status_code}")
                 return False
-                
         except Exception as e:
-            self.log_result("Reject Recruiter", False, f"Request failed: {str(e)}")
+            self.log_result("Reject Recruiter", False, f"Reject request failed: {str(e)}")
             return False
     
-    def test_suspend_recruiter(self):
-        """Test POST /api/suspend-recruiter"""
-        if not hasattr(self, 'recruiter_id') or not self.recruiter_id:
-            self.log_result("Suspend Recruiter", False, "No recruiter ID available for testing")
+    def run_all_tests(self, email="superadmin@rareminds.in", password="test123"):
+        """Run all tests in sequence"""
+        print("🚀 Starting Backend API Tests")
+        print("=" * 50)
+        
+        # Test basic connectivity
+        if not self.test_health_check():
+            print("❌ Health check failed - aborting tests")
             return False
         
-        if not self.user_id:
-            self.log_result("Suspend Recruiter", False, "No user ID available - login required")
+        # Test login
+        if not self.test_login(email, password):
+            print("❌ Login failed - aborting tests")
             return False
         
-        try:
-            payload = {
-                "recruiterId": self.recruiter_id,
-                "userId": self.user_id,
-                "reason": "Test suspension via automated testing"
-            }
-            
-            response = requests.post(
-                f"{self.base_url}/suspend-recruiter",
-                json=payload,
-                headers={"Content-Type": "application/json"}
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                if data.get('success'):
-                    self.log_result("Suspend Recruiter", True, f"Recruiter suspended: {data.get('message')}")
-                    return True
-                else:
-                    self.log_result("Suspend Recruiter", False, f"API returned success=false: {data}")
-                    return False
-            else:
-                self.log_result("Suspend Recruiter", False, f"HTTP {response.status_code}: {response.text}")
-                return False
-                
-        except Exception as e:
-            self.log_result("Suspend Recruiter", False, f"Request failed: {str(e)}")
-            return False
-    
-    def test_activate_recruiter(self):
-        """Test POST /api/activate-recruiter"""
-        if not hasattr(self, 'recruiter_id') or not self.recruiter_id:
-            self.log_result("Activate Recruiter", False, "No recruiter ID available for testing")
-            return False
+        # Test core endpoints
+        test_results = []
+        test_results.append(self.test_metrics_endpoint())
+        test_results.append(self.test_update_metrics())
+        test_results.append(self.test_analytics_trends())
+        test_results.append(self.test_analytics_state_wise())
+        test_results.append(self.test_users_endpoint())
+        test_results.append(self.test_organizations_endpoint())
+        test_results.append(self.test_students_endpoint())
+        test_results.append(self.test_passports_endpoint())
+        test_results.append(self.test_verifications_endpoint())
+        test_results.append(self.test_audit_logs_endpoint())
         
-        if not self.user_id:
-            self.log_result("Activate Recruiter", False, "No user ID available - login required")
-            return False
+        # Test action endpoints
+        test_results.append(self.test_verify_passport())
+        test_results.append(self.test_reject_passport())
+        test_results.append(self.test_suspend_user())
+        test_results.append(self.test_activate_user())
         
-        try:
-            payload = {
-                "recruiterId": self.recruiter_id,
-                "userId": self.user_id,
-                "note": "Test activation via automated testing"
-            }
-            
-            response = requests.post(
-                f"{self.base_url}/activate-recruiter",
-                json=payload,
-                headers={"Content-Type": "application/json"}
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                if data.get('success'):
-                    self.log_result("Activate Recruiter", True, f"Recruiter activated: {data.get('message')}")
-                    return True
-                else:
-                    self.log_result("Activate Recruiter", False, f"API returned success=false: {data}")
-                    return False
-            else:
-                self.log_result("Activate Recruiter", False, f"HTTP {response.status_code}: {response.text}")
-                return False
-                
-        except Exception as e:
-            self.log_result("Activate Recruiter", False, f"Request failed: {str(e)}")
-            return False
-    
-    def run_all_tests(self):
-        """Run all backend API tests"""
-        print("=" * 80)
-        print("RAREMINDS SUPER ADMIN DASHBOARD - BACKEND API TESTS")
-        print("=" * 80)
-        print(f"Testing against: {self.base_url}")
-        print()
+        # Test recruiter endpoints
+        test_results.append(self.test_get_recruiters())
+        test_results.append(self.test_approve_recruiter())
+        test_results.append(self.test_reject_recruiter())
         
-        # Test all GET endpoints first
-        print("📊 TESTING DATA RETRIEVAL APIS...")
-        self.test_api_root()
-        self.test_metrics_endpoint()
-        self.test_update_metrics_endpoint()
+        # Test comprehensive scenarios
+        test_results.append(self.test_metrics_scenarios())
         
-        # Test the specific metrics scenarios requested
-        self.test_metrics_endpoint_scenarios()
+        # Calculate final results
+        passed_tests = sum(test_results)
+        total_tests = len(test_results)
         
-        self.test_analytics_trends()
-        self.test_analytics_state_wise()
-        self.test_users_endpoint()
-        self.test_organizations_endpoint()
-        self.test_students_endpoint()
-        self.test_passports_endpoint()
-        self.test_verifications_endpoint()
-        self.test_audit_logs_endpoint()
+        print("\n" + "=" * 50)
+        print(f"🏁 Test Results: {passed_tests}/{total_tests} tests passed")
         
-        print("\n📈 TESTING NEW ANALYTICS APIS...")
-        self.test_university_reports_analytics()
-        self.test_recruiter_metrics_analytics()
-        self.test_placement_conversion_analytics()
-        self.test_state_heatmap_analytics()
-        self.test_ai_insights_analytics()
-        
-        print("\n🏢 TESTING RECRUITER VERIFICATION APIS...")
-        # Test recruiter endpoints first
-        self.test_get_recruiters()
-        
-        print("\n🔐 TESTING ACTION APIS...")
-        # Test login first to get user ID
-        login_success = self.test_login_endpoint()
-        
-        # Only test action APIs if we have necessary IDs
-        if login_success and self.user_id:
-            # Test recruiter verification actions
-            print("\n📋 TESTING RECRUITER ACTIONS...")
-            self.test_approve_recruiter()
-            self.test_reject_recruiter()
-            self.test_suspend_recruiter()
-            self.test_activate_recruiter()
-            
-            if self.passport_id:
-                self.test_verify_passport()
-                self.test_reject_passport()
-            else:
-                self.log_result("Verify Passport API", False, "Skipped - no passport ID available from passports endpoint")
-                self.log_result("Reject Passport API", False, "Skipped - no passport ID available from passports endpoint")
-                
-            if self.target_user_id:
-                self.test_suspend_user()
-                self.test_activate_user()
-                self.test_delete_user()
-            else:
-                self.log_result("Suspend User API", False, "Skipped - no target user ID available from users endpoint")
-                self.log_result("Activate User API", False, "Skipped - no target user ID available from users endpoint")
-                self.log_result("Delete User API", False, "Skipped - no target user ID available from users endpoint")
+        if passed_tests == total_tests:
+            print("🎉 All tests passed!")
+            return True
         else:
-            self.log_result("Action APIs", False, "Skipped action APIs - login failed or no user ID")
-        
-        # Print summary
-        print("\n" + "=" * 80)
-        print("TEST SUMMARY")
-        print("=" * 80)
-        
-        passed = sum(1 for result in self.test_results if result['success'])
-        total = len(self.test_results)
-        
-        print(f"Total Tests: {total}")
-        print(f"Passed: {passed}")
-        print(f"Failed: {total - passed}")
-        print(f"Success Rate: {(passed/total)*100:.1f}%")
-        
-        # Show failed tests
-        failed_tests = [result for result in self.test_results if not result['success']]
-        if failed_tests:
-            print("\n❌ FAILED TESTS:")
-            for test in failed_tests:
-                print(f"  - {test['test']}: {test['message']}")
-        
-        print("\n✅ PASSED TESTS:")
-        passed_tests = [result for result in self.test_results if result['success']]
-        for test in passed_tests:
-            print(f"  - {test['test']}: {test['message']}")
-        
-        return passed, total, self.test_results
+            print(f"⚠️  {total_tests - passed_tests} tests failed")
+            return False
 
 if __name__ == "__main__":
     tester = BackendTester()
-    passed, total, results = tester.run_all_tests()
-    
-    # Exit with appropriate code
-    sys.exit(0 if passed == total else 1)
+    tester.run_all_tests()

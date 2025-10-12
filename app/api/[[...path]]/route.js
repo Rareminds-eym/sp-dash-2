@@ -43,7 +43,6 @@ export async function GET(request) {
             activeUniversities: latestSnapshot.activeUniversities || 0,
             registeredStudents: latestSnapshot.registeredStudents || 0,
             verifiedPassports: latestSnapshot.verifiedPassports || 0,
-            aiVerifiedPercent: parseFloat(latestSnapshot.aiVerifiedPercent || 0),
             employabilityIndex: parseFloat(latestSnapshot.employabilityIndex || 0),
             activeRecruiters: latestSnapshot.activeRecruiters || 0,
             snapshotDate: latestSnapshot.snapshotDate,
@@ -80,17 +79,12 @@ export async function GET(request) {
         // Get all passports to calculate verification metrics
         const { data: passports } = await supabase
           .from('skill_passports')
-          .select('status, aiVerification')
+          .select('status')
         
         const totalPassports = passports?.length || 0
         const verifiedPassports = passports?.filter(p => p.status === 'verified').length || 0
-        const aiVerifiedCount = passports?.filter(p => p.aiVerification === true).length || 0
         
-        // Calculate percentages
-        const aiVerifiedPercent = totalPassports > 0 
-          ? ((aiVerifiedCount / totalPassports) * 100).toFixed(1) 
-          : 0
-        
+        // Calculate employability index
         const employabilityIndex = registeredStudents > 0 
           ? ((verifiedPassports / registeredStudents) * 100).toFixed(1) 
           : 0
@@ -99,7 +93,6 @@ export async function GET(request) {
           activeUniversities,
           registeredStudents,
           verifiedPassports,
-          aiVerifiedPercent: parseFloat(aiVerifiedPercent),
           employabilityIndex: parseFloat(employabilityIndex),
           activeRecruiters,
           source: 'dynamic'
@@ -110,7 +103,6 @@ export async function GET(request) {
           activeUniversities: 0,
           registeredStudents: 0,
           verifiedPassports: 0,
-          aiVerifiedPercent: 0,
           employabilityIndex: 0,
           activeRecruiters: 0,
           source: 'error'
@@ -412,7 +404,7 @@ export async function GET(request) {
       return NextResponse.json(chartData)
     }
 
-    // GET /api/analytics/trends - Employability and Skill verification trends
+    // GET /api/analytics/trends - Employability trends
     if (path === '/analytics/trends') {
       const { data: metrics, error } = await supabase
         .from('metrics_snapshots')
@@ -424,8 +416,7 @@ export async function GET(request) {
 
       const chartData = metrics.map(m => ({
         date: m.snapshotDate,
-        employability: parseFloat(m.employabilityIndex) || 0,
-        aiVerification: parseFloat(m.aiVerifiedPercent) || 0
+        employability: parseFloat(m.employabilityIndex) || 0
       }))
 
       return NextResponse.json(chartData)
@@ -727,7 +718,7 @@ export async function POST(request) {
       // Update passport status
       const { error: updateError } = await supabase
         .from('skill_passports')
-        .update({ status: 'verified', aiVerification: true })
+        .update({ status: 'verified' })
         .eq('id', passportId)
 
       if (updateError) throw updateError
@@ -983,11 +974,9 @@ export async function POST(request) {
       return NextResponse.json({ success: true, message: 'Recruiter activated successfully' })
     }
 
-    // POST /api/update-metrics - Update metrics_snapshots table
+    // POST /api/update-metrics - Update metrics snapshot
     if (path === '/update-metrics') {
       try {
-        // Calculate metrics from database tables
-        
         // Count universities
         const { data: universities } = await supabase
           .from('organizations')
@@ -1014,17 +1003,12 @@ export async function POST(request) {
         // Get passports for verification metrics
         const { data: passports } = await supabase
           .from('skill_passports')
-          .select('status, aiVerification')
+          .select('status')
         
         const totalPassports = passports?.length || 0
         const verifiedPassports = passports?.filter(p => p.status === 'verified').length || 0
-        const aiVerifiedCount = passports?.filter(p => p.aiVerification === true).length || 0
         
-        // Calculate percentages
-        const aiVerifiedPercent = totalPassports > 0 
-          ? parseFloat(((aiVerifiedCount / totalPassports) * 100).toFixed(1))
-          : 0
-        
+        // Calculate employability index
         const employabilityIndex = registeredStudents > 0 
           ? parseFloat(((verifiedPassports / registeredStudents) * 100).toFixed(1))
           : 0
@@ -1048,7 +1032,6 @@ export async function POST(request) {
               activeUniversities,
               registeredStudents,
               verifiedPassports,
-              aiVerifiedPercent,
               employabilityIndex,
               activeRecruiters
             })
@@ -1066,7 +1049,6 @@ export async function POST(request) {
               activeUniversities,
               registeredStudents,
               verifiedPassports,
-              aiVerifiedPercent,
               employabilityIndex,
               activeRecruiters
             })
@@ -1083,7 +1065,6 @@ export async function POST(request) {
             activeUniversities,
             registeredStudents,
             verifiedPassports,
-            aiVerifiedPercent,
             employabilityIndex,
             activeRecruiters
           }

@@ -167,14 +167,6 @@ export default function Dashboard({ user }) {
       trend: "up",
     },
     {
-      title: "Skill Verification",
-      value: `${parseFloat(metrics?.aiVerifiedPercent || 0).toFixed(1)}%`,
-      icon: CheckCircle2,
-      color: "bg-campaign-blue1", // Using single campaign blue1 color
-      change: "+5%",
-      trend: "up",
-    },
-    {
       title: "Employability Index",
       value: `${parseFloat(metrics?.employabilityIndex || 0).toFixed(1)}%`,
       icon: TrendingUp,
@@ -328,83 +320,6 @@ export default function Dashboard({ user }) {
                   strokeWidth={2}
                   fill="url(#colorEmploy)"
                   name="Employability Index"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Skill Verification Chart */}
-        <Card className="neu-card">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-xl font-bold text-slate-900 dark:text-white">
-              Skill Verification Trend
-            </CardTitle>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-              Monthly Skill verification percentage across all verifications
-            </p>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={320}>
-              <AreaChart
-                data={
-                  trends.length > 0
-                    ? trends
-                    : [
-                        { date: "Jan", aiVerification: 68 },
-                        { date: "Feb", aiVerification: 70 },
-                        { date: "Mar", aiVerification: 72 },
-                        { date: "Apr", aiVerification: 75 },
-                        { date: "May", aiVerification: 77 },
-                        { date: "Jun", aiVerification: 82 },
-                        { date: "Jul", aiVerification: 87 },
-                        { date: "Aug", aiVerification: 80 },
-                        { date: "Sep", aiVerification: 73 },
-                        { date: "Oct", aiVerification: 76 },
-                        { date: "Nov", aiVerification: 80 },
-                        { date: "Dec", aiVerification: 78 },
-                      ]
-                }
-                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient id="colorAI" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#6366f1" stopOpacity={0.6} />
-                    <stop
-                      offset="100%"
-                      stopColor="#6366f1"
-                      stopOpacity={0.05}
-                    />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  strokeDasharray="4 4"
-                  stroke="#475569"
-                  opacity={0.2}
-                  vertical={true}
-                  horizontal={true}
-                />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 12, fill: "#64748b" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 12, fill: "#64748b" }}
-                  axisLine={false}
-                  tickLine={false}
-                  domain={[0, 100]}
-                  ticks={[0, 25, 50, 75, 100]}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Area
-                  type="monotone"
-                  dataKey="aiVerification"
-                  stroke="#818cf8"
-                  strokeWidth={2}
-                  fill="url(#colorAI)"
-                  name="Skill Verification %"
                 />
               </AreaChart>
             </ResponsiveContainer>

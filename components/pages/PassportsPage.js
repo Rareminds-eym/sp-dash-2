@@ -30,7 +30,6 @@ export default function PassportsPage({ currentUser }) {
   const [filteredPassports, setFilteredPassports] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [aiVerificationFilter, setAiVerificationFilter] = useState('all')
   const [nsqfLevelFilter, setNsqfLevelFilter] = useState('all')
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
@@ -56,24 +55,18 @@ export default function PassportsPage({ currentUser }) {
       // Status filter
       const matchesStatus = statusFilter === 'all' || passport.status === statusFilter
       
-      // AI Verification filter
-      const matchesAI = aiVerificationFilter === 'all' || 
-                       (aiVerificationFilter === 'verified' && passport.aiVerification) ||
-                       (aiVerificationFilter === 'not-verified' && !passport.aiVerification)
-      
       // NSQF Level filter
       const matchesNSQF = nsqfLevelFilter === 'all' || 
                          passport.nsqfLevel?.toString() === nsqfLevelFilter
       
-      return matchesSearch && matchesStatus && matchesAI && matchesNSQF
+      return matchesSearch && matchesStatus && matchesNSQF
     })
     setFilteredPassports(filtered)
-  }, [searchTerm, statusFilter, aiVerificationFilter, nsqfLevelFilter, passports])
+  }, [searchTerm, statusFilter, nsqfLevelFilter, passports])
   
   const resetFilters = () => {
     setSearchTerm('')
     setStatusFilter('all')
-    setAiVerificationFilter('all')
     setNsqfLevelFilter('all')
   }
 
@@ -216,17 +209,6 @@ export default function PassportsPage({ currentUser }) {
                 </SelectContent>
               </Select>
               
-              <Select value={aiVerificationFilter} onValueChange={setAiVerificationFilter}>
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="AI Verification" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All AI Status</SelectItem>
-                  <SelectItem value="verified">AI Verified</SelectItem>
-                  <SelectItem value="not-verified">Not AI Verified</SelectItem>
-                </SelectContent>
-              </Select>
-              
               <Select value={nsqfLevelFilter} onValueChange={setNsqfLevelFilter}>
                 <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="NSQF Level" />
@@ -276,9 +258,6 @@ export default function PassportsPage({ currentUser }) {
                         {/* Show status badge for all statuses */}
                         <Badge className={getStatusBadge(passport.status)}>
                           {passport.status.charAt(0).toUpperCase() + passport.status.slice(1)}
-                        </Badge>
-                        <Badge variant={passport.aiVerification ? 'default' : 'secondary'}>
-                          {passport.aiVerification ? 'AI Verified' : 'Not AI Verified'}
                         </Badge>
                         {passport.nsqfLevel && (
                           <span className="text-xs text-muted-foreground">
@@ -365,7 +344,7 @@ export default function PassportsPage({ currentUser }) {
             </AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to {actionDialog.action} this skill passport?
-              {actionDialog.action === 'reject' && ' This action will mark the passport as rejected.'}
+              {actionDialog.action === 'reject' ? ' This action will mark the passport as rejected.' : ''}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
