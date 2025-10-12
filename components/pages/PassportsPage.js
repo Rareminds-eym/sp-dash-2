@@ -210,6 +210,7 @@ export default function PassportsPage({ currentUser }) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="verified">Verified</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
@@ -272,12 +273,10 @@ export default function PassportsPage({ currentUser }) {
                         {passport.students?.profile?.name || passport.students?.users?.metadata?.name || passport.students?.users?.email || 'Unknown Student'}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
-                        {/* Only show status badge for Pending and Rejected */}
-                        {passport.status !== 'verified' && (
-                          <Badge className={getStatusBadge(passport.status)}>
-                            {passport.status.charAt(0).toUpperCase() + passport.status.slice(1)}
-                          </Badge>
-                        )}
+                        {/* Show status badge for all statuses */}
+                        <Badge className={getStatusBadge(passport.status)}>
+                          {passport.status.charAt(0).toUpperCase() + passport.status.slice(1)}
+                        </Badge>
                         <Badge variant={passport.aiVerification ? 'default' : 'secondary'}>
                           {passport.aiVerification ? 'AI Verified' : 'Not AI Verified'}
                         </Badge>
