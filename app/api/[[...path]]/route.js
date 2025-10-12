@@ -263,6 +263,16 @@ export async function GET(request) {
               console.error('Error fetching student:', studentError)
             }
             if (student) {
+              // Parse the profile JSON string if it exists
+              if (student.profile && typeof student.profile === 'string') {
+                try {
+                  student.profile = JSON.parse(student.profile)
+                } catch (parseError) {
+                  console.error('Error parsing student profile:', parseError)
+                  student.profile = {}
+                }
+              }
+              
               // Get user data for student (email and metadata with name)
               if (student.userId) {
                 const { data: user, error: userError } = await supabase
