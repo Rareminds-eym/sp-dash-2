@@ -23,27 +23,43 @@ export default function PassportsPage({ currentUser }) {
   const [filteredPassports, setFilteredPassports] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 0, limit: 50 })
   const [actionDialog, setActionDialog] = useState({ open: false, passport: null, action: null })
   const { toast } = useToast()
 
   useEffect(() => {
     fetchPassports()
-  }, [])
+  }, [currentPage])
 
   useEffect(() => {
-    const filtered = passports.filter(passport => 
-      passport.students?.users?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      passport.status.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+    const filtered = passports.filter(passport => {
+      const studentName = passport.students?.profile?.name || ''
+      const studentEmail = passport.students?.profile?.email || passport.students?.users?.email || ''
+      const searchLower = searchTerm.toLowerCase()
+      
+      return studentName.toLowerCase().includes(searchLower) ||
+             studentEmail.toLowerCase().includes(searchLower) ||
+             passport.status.toLowerCase().includes(searchLower)
+    })
     setFilteredPassports(filtered)
   }, [searchTerm, passports])
 
   const fetchPassports = async () => {
     try {
-      const response = await fetch('/api/passports')
-      const data = await response.json()
-      setPassports(data)
-      setFilteredPassports(data)
+      setLoading(true)
+      const response = await fetch(`/api/passports?page=${currentPage}&limit=50`)
+      const result = await response.json()
+      
+      // Handle both old format (array) and new format (object with data and pagination)
+      if (Array.isArray(result)) {
+        setPassports(result)
+        setFilteredPassports(result)
+      } else {
+        setPassports(result.data || [])
+        setFilteredPassports(result.data || [])
+        setPagination(result.pagination || { total: 0, totalPages: 0, limit: 50 })
+      }
     } catch (error) {
       console.error('Error fetching passports:', error)
       toast({
