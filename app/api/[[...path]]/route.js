@@ -237,12 +237,29 @@ export async function GET(request) {
       return NextResponse.json(students || [])
     }
 
-    // GET /api/passports - List all skill passports
+    // GET /api/passports - List all skill passports with pagination
     if (path === '/passports') {
+      // Get pagination parameters from query string
+      const url = new URL(request.url)
+      const page = parseInt(url.searchParams.get('page') || '1')
+      const limit = parseInt(url.searchParams.get('limit') || '50')
+      const offset = (page - 1) * limit
+      
+      // Get total count
+      const { count, error: countError } = await supabase
+        .from('skill_passports')
+        .select('*', { count: 'exact', head: true })
+      
+      if (countError) {
+        console.error('Error counting passports:', countError)
+      }
+      
+      // Fetch paginated passports
       const { data: passports, error } = await supabase
         .from('skill_passports')
         .select('*')
         .order('createdAt', { ascending: false })
+        .range(offset, offset + limit - 1)
 
       if (error) {
         console.error('Error fetching passports:', error)
@@ -296,7 +313,16 @@ export async function GET(request) {
         }
       }
       
-      return NextResponse.json(passports || [])
+      // Return paginated response
+      return NextResponse.json({
+        data: passports || [],
+        pagination: {
+          page,
+          limit,
+          total: count || 0,
+          totalPages: Math.ceil((count || 0) / limit)
+        }
+      })
     }
 
     // GET /api/verifications - List recent verifications
