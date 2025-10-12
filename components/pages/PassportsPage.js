@@ -14,14 +14,24 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
-import { Award, CheckCircle2, RefreshCw, Search, XCircle } from 'lucide-react'
+import { Award, CheckCircle2, Filter, RefreshCw, Search, XCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 export default function PassportsPage({ currentUser }) {
   const [passports, setPassports] = useState([])
   const [filteredPassports, setFilteredPassports] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [aiVerificationFilter, setAiVerificationFilter] = useState('all')
+  const [nsqfLevelFilter, setNsqfLevelFilter] = useState('all')
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
   const [pagination, setPagination] = useState({ total: 0, totalPages: 0, limit: 50 })
@@ -38,12 +48,34 @@ export default function PassportsPage({ currentUser }) {
       const studentEmail = passport.students?.profile?.email || passport.students?.users?.email || ''
       const searchLower = searchTerm.toLowerCase()
       
-      return studentName.toLowerCase().includes(searchLower) ||
-             studentEmail.toLowerCase().includes(searchLower) ||
-             passport.status.toLowerCase().includes(searchLower)
+      // Search filter
+      const matchesSearch = studentName.toLowerCase().includes(searchLower) ||
+                           studentEmail.toLowerCase().includes(searchLower) ||
+                           passport.status.toLowerCase().includes(searchLower)
+      
+      // Status filter
+      const matchesStatus = statusFilter === 'all' || passport.status === statusFilter
+      
+      // AI Verification filter
+      const matchesAI = aiVerificationFilter === 'all' || 
+                       (aiVerificationFilter === 'verified' && passport.aiVerification) ||
+                       (aiVerificationFilter === 'not-verified' && !passport.aiVerification)
+      
+      // NSQF Level filter
+      const matchesNSQF = nsqfLevelFilter === 'all' || 
+                         passport.nsqfLevel?.toString() === nsqfLevelFilter
+      
+      return matchesSearch && matchesStatus && matchesAI && matchesNSQF
     })
     setFilteredPassports(filtered)
-  }, [searchTerm, passports])
+  }, [searchTerm, statusFilter, aiVerificationFilter, nsqfLevelFilter, passports])
+  
+  const resetFilters = () => {
+    setSearchTerm('')
+    setStatusFilter('all')
+    setAiVerificationFilter('all')
+    setNsqfLevelFilter('all')
+  }
 
   const fetchPassports = async () => {
     try {
