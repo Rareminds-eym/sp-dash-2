@@ -210,6 +210,7 @@ export default function PassportsPage({ currentUser }) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="verified">Verified</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
