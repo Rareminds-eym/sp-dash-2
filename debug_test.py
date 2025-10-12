@@ -3,7 +3,7 @@
 import requests
 import json
 
-BASE_URL = "https://secure-auth-fix.preview.emergentagent.com"
+BASE_URL = "https://passport-student-fix.preview.emergentagent.com"
 
 def debug_database_queries():
     """Debug the database queries to understand the issues"""
