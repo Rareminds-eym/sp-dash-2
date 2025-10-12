@@ -183,15 +183,78 @@ export default function PassportsPage({ currentUser }) {
 
       <Card className="neu-card">
         <CardHeader>
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by student email or status..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+          <div className="space-y-4">
+            {/* Search Bar */}
+            <div className="flex items-center gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by student name or email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            
+            {/* Filters */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-muted-foreground">Filters:</span>
+              </div>
+              
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Select value={aiVerificationFilter} onValueChange={setAiVerificationFilter}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="AI Verification" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All AI Status</SelectItem>
+                  <SelectItem value="verified">AI Verified</SelectItem>
+                  <SelectItem value="not-verified">Not AI Verified</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Select value={nsqfLevelFilter} onValueChange={setNsqfLevelFilter}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="NSQF Level" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Levels</SelectItem>
+                  <SelectItem value="1">Level 1</SelectItem>
+                  <SelectItem value="2">Level 2</SelectItem>
+                  <SelectItem value="3">Level 3</SelectItem>
+                  <SelectItem value="4">Level 4</SelectItem>
+                  <SelectItem value="5">Level 5</SelectItem>
+                  <SelectItem value="6">Level 6</SelectItem>
+                  <SelectItem value="7">Level 7</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={resetFilters}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                Clear Filters
+              </Button>
+            </div>
+            
+            {/* Results count */}
+            <div className="text-sm text-muted-foreground">
+              Showing {filteredPassports.length} of {passports.length} passports on this page
             </div>
           </div>
         </CardHeader>
