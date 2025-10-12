@@ -266,7 +266,9 @@ export async function GET(request) {
               // Parse the profile JSON string if it exists
               if (student.profile && typeof student.profile === 'string') {
                 try {
-                  student.profile = JSON.parse(student.profile)
+                  // Replace NaN values with null to make it valid JSON
+                  const cleanedProfile = student.profile.replace(/:\s*NaN/g, ': null')
+                  student.profile = JSON.parse(cleanedProfile)
                 } catch (parseError) {
                   console.error('Error parsing student profile:', parseError)
                   student.profile = {}
