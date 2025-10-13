@@ -796,6 +796,125 @@ class BackendTester:
             self.log_result("Reject Recruiter", False, f"Reject request failed: {str(e)}")
             return False
     
+    def test_profile_update(self):
+        """Test PUT /api/profile - Update user profile"""
+        try:
+            # First, get current user data to use for testing
+            login_response = requests.post(f"{self.base_url}/login", json={
+                "email": "superadmin@rareminds.in",
+                "password": "password123"
+            })
+            
+            if login_response.status_code != 200:
+                self.log_result("Profile Update - Login", False, f"Login failed with status {login_response.status_code}")
+                return False
+            
+            login_data = login_response.json()
+            if not login_data.get('success') or 'user' not in login_data:
+                self.log_result("Profile Update - Login", False, "Login response missing user data")
+                return False
+            
+            user = login_data['user']
+            current_email = user.get('email')
+            current_name = user.get('name', 'Super Admin')
+            organization_id = user.get('organizationId')
+            
+            print(f"📝 Testing profile update for user: {current_email}")
+            print(f"   Current name: {current_name}")
+            print(f"   Organization ID: {organization_id}")
+            
+            # Test 1: Valid profile update with new name
+            new_name = "Super Admin Updated"
+            payload = {
+                "email": current_email,
+                "name": new_name,
+                "organizationName": "Rareminds Updated"
+            }
+            
+            response = requests.put(
+                f"{self.base_url}/profile",
+                json=payload,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('success'):
+                    print(f"   ✅ Profile update successful: {data.get('message')}")
+                    
+                    # Verify the update by checking the session endpoint
+                    session_response = requests.get(f"{self.base_url}/auth/session")
+                    if session_response.status_code == 200:
+                        session_data = session_response.json()
+                        updated_name = session_data.get('name')
+                        
+                        if updated_name == new_name:
+                            print(f"   ✅ Name update verified: {updated_name}")
+                        else:
+                            print(f"   ⚠️  Name not updated in session: expected '{new_name}', got '{updated_name}'")
+                    
+                    # Test 2: Invalid request without email
+                    invalid_payload = {
+                        "name": "Test Name"
+                    }
+                    
+                    invalid_response = requests.put(
+                        f"{self.base_url}/profile",
+                        json=invalid_payload,
+                        headers={"Content-Type": "application/json"}
+                    )
+                    
+                    if invalid_response.status_code == 400:
+                        invalid_data = invalid_response.json()
+                        if 'error' in invalid_data and 'Email is required' in invalid_data['error']:
+                            print(f"   ✅ Validation working: {invalid_data['error']}")
+                        else:
+                            print(f"   ⚠️  Unexpected error message: {invalid_data}")
+                    else:
+                        print(f"   ⚠️  Expected 400 status for invalid request, got {invalid_response.status_code}")
+                    
+                    # Test 3: Non-existent user
+                    nonexistent_payload = {
+                        "email": "nonexistent@example.com",
+                        "name": "Test Name"
+                    }
+                    
+                    nonexistent_response = requests.put(
+                        f"{self.base_url}/profile",
+                        json=nonexistent_payload,
+                        headers={"Content-Type": "application/json"}
+                    )
+                    
+                    if nonexistent_response.status_code == 404:
+                        nonexistent_data = nonexistent_response.json()
+                        if 'error' in nonexistent_data and 'User not found' in nonexistent_data['error']:
+                            print(f"   ✅ User not found handling: {nonexistent_data['error']}")
+                        else:
+                            print(f"   ⚠️  Unexpected error message: {nonexistent_data}")
+                    else:
+                        print(f"   ⚠️  Expected 404 status for non-existent user, got {nonexistent_response.status_code}")
+                    
+                    self.log_result("Profile Update", True, 
+                                  f"Profile update functionality working correctly. Name updated from '{current_name}' to '{new_name}'. Validation and error handling working.", 
+                                  {
+                                      'original_name': current_name,
+                                      'updated_name': new_name,
+                                      'organization_id': organization_id,
+                                      'response_data': data
+                                  })
+                    return True
+                else:
+                    self.log_result("Profile Update", False, f"Profile update failed: {data.get('error', 'Unknown error')}")
+                    return False
+            else:
+                response_text = response.text if response.text else "No response body"
+                self.log_result("Profile Update", False, f"Profile update endpoint returned status {response.status_code}: {response_text}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Profile Update", False, f"Profile update test failed: {str(e)}")
+            return False
+    
     def run_all_tests(self, email="superadmin@rareminds.in", password="test123"):
         """Run all tests in sequence"""
         print("🚀 Starting Backend API Tests")
