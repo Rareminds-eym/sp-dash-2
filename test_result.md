@@ -483,9 +483,9 @@ frontend:
 
   - task: "Settings Page User Data Display Fix"
     implemented: true
-    working: true
+    working: false
     file: "lib/supabase-server.js, app/(dashboard)/settings/page.js, app/(dashboard)/passports/page.js, app/(dashboard)/dashboard/page.js, app/(dashboard)/users/page.js"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
     needs_retesting: false
     status_history:
