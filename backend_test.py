@@ -954,6 +954,9 @@ class BackendTester:
         test_results.append(self.test_approve_recruiter())
         test_results.append(self.test_reject_recruiter())
         
+        # Test profile update functionality
+        test_results.append(self.test_profile_update())
+        
         # Test comprehensive scenarios
         test_results.append(self.test_metrics_scenarios())
         
