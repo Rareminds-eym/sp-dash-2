@@ -374,7 +374,7 @@ export async function GET(request) {
       return NextResponse.json(verifications || [])
     }
 
-    // GET /api/audit-logs - List audit logs
+    // GET /api/audit-logs - List audit logs (OPTIMIZED)
     if (path === '/audit-logs') {
       const { data: logs, error } = await supabase
         .from('audit_logs')
@@ -387,19 +387,24 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Failed to fetch audit logs' }, { status: 500 })
       }
       
-      // Manually fetch user emails
+      // Fetch all user emails in bulk
       if (logs && logs.length > 0) {
-        for (let log of logs) {
-          if (log.actorId) {
-            const { data: user } = await supabase
-              .from('users')
-              .select('email')
-              .eq('id', log.actorId)
-              .maybeSingle()
-            if (user) {
-              log.users = user
+        const userIds = logs.map(l => l.actorId).filter(Boolean)
+        
+        if (userIds.length > 0) {
+          const { data: users } = await supabase
+            .from('users')
+            .select('id, email')
+            .in('id', userIds)
+          
+          const userMap = {}
+          users?.forEach(user => { userMap[user.id] = user })
+          
+          logs.forEach(log => {
+            if (log.actorId && userMap[log.actorId]) {
+              log.users = userMap[log.actorId]
             }
-          }
+          })
         }
       }
       
