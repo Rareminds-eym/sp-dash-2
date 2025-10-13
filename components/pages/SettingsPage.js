@@ -98,7 +98,7 @@ export default function SettingsPage({ user }) {
     setProfileData({
       name: user?.name || '',
       email: user?.email || '',
-      organizationName: user?.organization?.name || 'No organization assigned'
+      organizationName: user?.organization?.name || ''
     })
     setIsEditing(false)
   }
