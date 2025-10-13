@@ -54,8 +54,23 @@ export default function SettingsPage({ user }) {
   const handleSaveProfile = async () => {
     setIsSaving(true)
     try {
-      // Simulate API call - replace with actual API endpoint
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      const response = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: profileData.email,
+          name: profileData.name,
+          organizationName: profileData.organizationName,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update profile')
+      }
       
       toast({
         title: 'Profile Updated',
@@ -63,10 +78,15 @@ export default function SettingsPage({ user }) {
         variant: 'default',
       })
       setIsEditing(false)
+      
+      // Refresh the page to show updated data
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to update profile. Please try again.',
+        description: error.message || 'Failed to update profile. Please try again.',
         variant: 'destructive',
       })
     } finally {
