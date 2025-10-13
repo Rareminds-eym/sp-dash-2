@@ -120,7 +120,7 @@ class ProfileUpdateTester:
                                   data)
                     
                     # Verify the update by checking session again
-                    session_response = requests.get(f"{self.base_url}/auth/session")
+                    session_response = self.session.get(f"{self.base_url}/auth/session")
                     if session_response.status_code == 200:
                         session_data = session_response.json()
                         updated_name = session_data.get('name')
