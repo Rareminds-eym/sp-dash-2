@@ -221,7 +221,7 @@ class ProfileUpdateTester:
                 "name": "Super Admin Final"
             }
             
-            response = requests.put(
+            response = self.session.put(
                 f"{self.base_url}/profile",
                 json=name_only_payload,
                 headers={"Content-Type": "application/json"}
