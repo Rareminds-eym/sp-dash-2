@@ -3,7 +3,7 @@
 import requests
 import json
 
-BASE_URL = "https://user-settings-plus.preview.emergentagent.com"
+BASE_URL = "https://profile-fix-15.preview.emergentagent.com"
 
 def debug_database_queries():
     """Debug the database queries to understand the issues"""
