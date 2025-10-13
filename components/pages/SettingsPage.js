@@ -64,8 +64,23 @@ export default function SettingsPage({ user }) {
   }
 
   const handleSaveProfile = async () => {
+    console.log('handleSaveProfile called')
+    console.log('Profile data to save:', profileData)
+    
+    // Validate email exists
+    if (!profileData.email) {
+      console.error('Email is missing from profileData!')
+      toast({
+        title: 'Error',
+        description: 'Email is required. Please refresh the page and try again.',
+        variant: 'destructive',
+      })
+      return
+    }
+    
     setIsSaving(true)
     try {
+      console.log('Sending PUT request to /api/profile...')
       const response = await fetch('/api/profile', {
         method: 'PUT',
         headers: {
@@ -78,7 +93,9 @@ export default function SettingsPage({ user }) {
         }),
       })
 
+      console.log('Response status:', response.status)
       const data = await response.json()
+      console.log('Response data:', data)
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to update profile')
@@ -96,6 +113,7 @@ export default function SettingsPage({ user }) {
         window.location.reload()
       }, 1000)
     } catch (error) {
+      console.error('Profile update error:', error)
       toast({
         title: 'Error',
         description: error.message || 'Failed to update profile. Please try again.',
