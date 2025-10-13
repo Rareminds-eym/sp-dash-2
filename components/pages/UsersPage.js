@@ -219,7 +219,8 @@ export default function UsersPage({ currentUser }) {
             ) : (
               <p className="text-center text-muted-foreground py-8">No users found</p>
             )}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
