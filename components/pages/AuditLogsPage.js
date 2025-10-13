@@ -105,7 +105,8 @@ export default function AuditLogsPage() {
             ) : (
               <p className="text-center text-muted-foreground py-8">No audit logs found</p>
             )}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
