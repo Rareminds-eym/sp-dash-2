@@ -73,7 +73,7 @@ export default function PassportsPage({ currentUser }) {
   const fetchPassports = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/passports?page=${currentPage}&limit=50`)
+      const response = await fetch(`/api/passports?page=${currentPage}&limit=20`)
       const result = await response.json()
       
       // Handle both old format (array) and new format (object with data and pagination)
@@ -83,7 +83,7 @@ export default function PassportsPage({ currentUser }) {
       } else {
         setPassports(result.data || [])
         setFilteredPassports(result.data || [])
-        setPagination(result.pagination || { total: 0, totalPages: 0, limit: 50 })
+        setPagination(result.pagination || { total: 0, totalPages: 0, limit: 20 })
       }
     } catch (error) {
       console.error('Error fetching passports:', error)
