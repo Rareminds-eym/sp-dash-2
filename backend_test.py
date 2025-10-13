@@ -915,7 +915,7 @@ class BackendTester:
             self.log_result("Profile Update", False, f"Profile update test failed: {str(e)}")
             return False
     
-    def run_all_tests(self, email="superadmin@rareminds.in", password="test123"):
+    def run_all_tests(self, email="superadmin@rareminds.in", password="password123"):
         """Run all tests in sequence"""
         print("🚀 Starting Backend API Tests")
         print("=" * 50)
