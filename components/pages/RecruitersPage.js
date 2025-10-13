@@ -335,7 +335,8 @@ export default function RecruitersPage({ currentUser }) {
             ) : (
               <p className="text-center text-muted-foreground py-8">No recruiters found</p>
             )}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
