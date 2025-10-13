@@ -555,7 +555,8 @@ test_plan:
   current_focus: 
     - "Recruiter Verification Frontend Page"
     - "Database Schema Migration for Recruiters"
-  stuck_tasks: []
+  stuck_tasks: 
+    - "Settings Page User Data Display Fix"
   test_all: false
   test_priority: "high_first"
 
