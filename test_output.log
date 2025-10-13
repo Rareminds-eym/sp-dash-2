@@ -1,7 +1,7 @@
 ================================================================================
 RAREMINDS SUPER ADMIN DASHBOARD - BACKEND API TESTS
 ================================================================================
-Testing against: https://api-checkup.preview.emergentagent.com/api
+Testing against: https://passport-paginate.preview.emergentagent.com/api
 
 📊 TESTING DATA RETRIEVAL APIS...
 ✅ PASS: API Root - API root endpoint working correctly
