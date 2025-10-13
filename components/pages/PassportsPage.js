@@ -322,10 +322,11 @@ export default function PassportsPage({ currentUser }) {
             ) : (
               <p className="text-center text-muted-foreground py-8">No passports found</p>
             )}
-          </div>
+            </div>
+          )}
           
           {/* Pagination Controls */}
-          {pagination.totalPages > 1 && (
+          {!loading && pagination.totalPages > 1 && (
             <div className="flex items-center justify-between mt-6 pt-4 border-t">
               <div className="text-sm text-muted-foreground">
                 Showing page {currentPage} of {pagination.totalPages} ({pagination.total} total passports)
