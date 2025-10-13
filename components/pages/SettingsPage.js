@@ -15,11 +15,11 @@ export default function SettingsPage({ user }) {
   const [isSaving, setIsSaving] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   
-  // Profile form state
+  // Profile form state  
   const [profileData, setProfileData] = useState({
     name: user?.name || '',
     email: user?.email || '',
-    organizationName: user?.organization?.name || 'No organization assigned'
+    organizationName: user?.organization?.name || ''
   })
 
   const handleUpdateMetrics = async () => {
