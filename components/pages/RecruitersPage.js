@@ -136,14 +136,6 @@ export default function RecruitersPage({ currentUser }) {
     })
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -151,14 +143,28 @@ export default function RecruitersPage({ currentUser }) {
           <h2 className="text-2xl font-bold">Recruiter Verification</h2>
           <p className="text-muted-foreground">Verify and manage recruiter organizations</p>
         </div>
-        <Button onClick={fetchRecruiters} variant="outline">
-          <RefreshCw className="h-4 w-4 mr-2" />
+        <Button onClick={fetchRecruiters} variant="outline" disabled={loading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="neu-card">
+              <CardContent className="pt-6">
+                <div className="animate-pulse space-y-2">
+                  <div className="h-4 bg-gray-300 rounded w-2/3 dark:bg-gray-700"></div>
+                  <div className="h-8 bg-gray-300 rounded w-1/3 dark:bg-gray-700"></div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="neu-card">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
