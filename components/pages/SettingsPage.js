@@ -165,8 +165,13 @@ export default function SettingsPage({ user }) {
                 value={profileData.organizationName}
                 onChange={(e) => setProfileData({ ...profileData, organizationName: e.target.value })}
                 disabled={!isEditing}
-                placeholder="Enter organization name"
+                placeholder={user?.organization?.name ? "Enter organization name" : "No organization assigned - contact admin to link organization"}
               />
+              {!user?.organization?.name && (
+                <p className="text-xs text-muted-foreground">
+                  You are not currently linked to an organization. Contact your administrator to be assigned to one.
+                </p>
+              )}
             </div>
           </div>
 
