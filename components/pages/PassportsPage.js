@@ -33,7 +33,7 @@ export default function PassportsPage({ currentUser }) {
   const [nsqfLevelFilter, setNsqfLevelFilter] = useState('all')
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
-  const [pagination, setPagination] = useState({ total: 0, totalPages: 0, limit: 50 })
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 0, limit: 20 })
   const [actionDialog, setActionDialog] = useState({ open: false, passport: null, action: null })
   const { toast } = useToast()
 
