@@ -263,7 +263,7 @@ class ProfileUpdateTester:
             }
             
             # Make the update
-            update_response = requests.put(
+            update_response = self.session.put(
                 f"{self.base_url}/profile",
                 json=payload,
                 headers={"Content-Type": "application/json"}
