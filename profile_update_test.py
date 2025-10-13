@@ -40,7 +40,7 @@ class ProfileUpdateTester:
                 "password": "password123"
             }
             
-            login_response = requests.post(f"{self.base_url}/login", json=login_payload)
+            login_response = self.session.post(f"{self.base_url}/login", json=login_payload)
             
             if login_response.status_code != 200:
                 self.log_result("Login Test", False, f"Login failed with status {login_response.status_code}")
@@ -59,9 +59,9 @@ class ProfileUpdateTester:
                 'organizationId': user.get('organizationId')
             })
             
-            # Test session endpoint
+            # Test session endpoint using the same session (with cookies)
             print("📋 Testing session endpoint...")
-            session_response = requests.get(f"{self.base_url}/auth/session")
+            session_response = self.session.get(f"{self.base_url}/auth/session")
             
             if session_response.status_code == 200:
                 session_data = session_response.json()
