@@ -157,7 +157,7 @@ export async function GET(request) {
       return NextResponse.json(orgs || [])
     }
 
-    // GET /api/recruiters - List all recruiter organizations
+    // GET /api/recruiters - List all recruiter organizations (OPTIMIZED)
     if (path === '/recruiters') {
       const { data: recruiters, error } = await supabase
         .from('organizations')
@@ -170,15 +170,23 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Failed to fetch recruiters' }, { status: 500 })
       }
 
-      // Count users for each recruiter organization and add default verification fields if missing
+      // Fetch all users in bulk and count by organization
       if (recruiters && recruiters.length > 0) {
-        for (let recruiter of recruiters) {
-          const { data: users } = await supabase
-            .from('users')
-            .select('id')
-            .eq('organizationId', recruiter.id)
-          
-          recruiter.userCount = users?.length || 0
+        const recruiterIds = recruiters.map(r => r.id)
+        
+        const { data: users } = await supabase
+          .from('users')
+          .select('id, organizationId')
+          .in('organizationId', recruiterIds)
+        
+        // Count users by organization
+        const userCountMap = {}
+        users?.forEach(user => {
+          userCountMap[user.organizationId] = (userCountMap[user.organizationId] || 0) + 1
+        })
+        
+        recruiters.forEach(recruiter => {
+          recruiter.userCount = userCountMap[recruiter.id] || 0
           
           // Add default values if verification fields don't exist
           if (!recruiter.hasOwnProperty('verificationStatus')) {
@@ -187,7 +195,7 @@ export async function GET(request) {
           if (!recruiter.hasOwnProperty('isActive')) {
             recruiter.isActive = true
           }
-        }
+        })
       }
 
       return NextResponse.json(recruiters || [])
