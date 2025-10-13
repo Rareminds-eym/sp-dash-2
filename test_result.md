@@ -495,6 +495,9 @@ frontend:
       - working: true
         agent: "testing"
         comment: "Backend testing confirmed session endpoint returns all required fields: email, role, name, organizationId. Console error 'Error fetching user data: {}' was resolved by changing from ID-based lookup to email-based lookup."
+      - working: false
+        agent: "testing"
+        comment: "ORGANIZATION DATA ISSUE IDENTIFIED: User superadmin@rareminds.in has organizationId '905b21a8-8374-4a7c-a224-46bd6f58dc4c' in database but this organization does NOT exist in organizations table. This is a REFERENTIAL INTEGRITY ISSUE causing 'You are not currently linked to an organization' message in settings. Session endpoint returns organizationId but organization object is null because the referenced organization doesn't exist. Available organizations in DB are different university IDs. RECOMMENDATION: Either create the missing organization or update user's organizationId to reference an existing organization."
 
   - task: "Passports Page Student Name Display Fix"
     implemented: true
