@@ -1242,11 +1242,14 @@ export async function PUT(request) {
         .single()
 
       if (userError || !user) {
+        console.error('User lookup error:', userError)
         return NextResponse.json(
           { error: 'User not found' },
           { status: 404 }
         )
       }
+
+      console.log('User found:', { id: user.id, organizationId: user.organizationId, metadata: user.metadata })
 
       // Update user metadata with name
       const updatedMetadata = {
@@ -1266,18 +1269,29 @@ export async function PUT(request) {
         throw updateUserError
       }
 
+      console.log('User metadata updated successfully')
+
       // If organizationName is provided and user has an organizationId, update the organization
-      // Only update if organizationId looks like a valid UUID
-      if (organizationName && user.organizationId && user.organizationId.length > 10) {
-        const { error: updateOrgError } = await supabase
+      // Validate UUID format (UUID v4 format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx)
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      
+      if (organizationName && user.organizationId && uuidRegex.test(user.organizationId)) {
+        console.log('Attempting to update organization:', user.organizationId, 'with name:', organizationName)
+        
+        const { data: orgData, error: updateOrgError } = await supabase
           .from('organizations')
           .update({ name: organizationName })
           .eq('id', user.organizationId)
+          .select()
 
         if (updateOrgError) {
           console.error('Error updating organization:', updateOrgError)
-          // Don't throw error here, just log it
+          // Don't throw error here, just log it - user update already succeeded
+        } else {
+          console.log('Organization updated successfully:', orgData)
         }
+      } else {
+        console.log('Skipping organization update. organizationId:', user.organizationId, 'isValidUUID:', user.organizationId ? uuidRegex.test(user.organizationId) : false)
       }
 
       // Log audit
