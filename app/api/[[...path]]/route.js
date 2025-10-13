@@ -110,7 +110,7 @@ export async function GET(request) {
       }
     }
 
-    // GET /api/users - List all users
+    // GET /api/users - List all users (OPTIMIZED)
     if (path === '/users') {
       const { data: users, error } = await supabase
         .from('users')
@@ -122,19 +122,24 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
       }
       
-      // Manually fetch organization names if needed
+      // Fetch all organizations in bulk
       if (users && users.length > 0) {
-        for (let user of users) {
-          if (user.organizationId) {
-            const { data: org, error: orgError } = await supabase
-              .from('organizations')
-              .select('name')
-              .eq('id', user.organizationId)
-              .maybeSingle()
-            if (!orgError && org) {
-              user.organizations = org
+        const orgIds = users.map(u => u.organizationId).filter(Boolean)
+        
+        if (orgIds.length > 0) {
+          const { data: orgs } = await supabase
+            .from('organizations')
+            .select('id, name')
+            .in('id', orgIds)
+          
+          const orgMap = {}
+          orgs?.forEach(org => { orgMap[org.id] = org })
+          
+          users.forEach(user => {
+            if (user.organizationId && orgMap[user.organizationId]) {
+              user.organizations = orgMap[user.organizationId]
             }
-          }
+          })
         }
       }
       
