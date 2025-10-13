@@ -201,7 +201,7 @@ export async function GET(request) {
       return NextResponse.json(recruiters || [])
     }
 
-    // GET /api/students - List all students
+    // GET /api/students - List all students (OPTIMIZED)
     if (path === '/students') {
       const { data: students, error } = await supabase
         .from('students')
@@ -213,30 +213,32 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Failed to fetch students' }, { status: 500 })
       }
       
-      // Manually fetch related data
+      // Fetch all related data in parallel
       if (students && students.length > 0) {
-        for (let student of students) {
-          if (student.userId) {
-            const { data: user } = await supabase
-              .from('users')
-              .select('email')
-              .eq('id', student.userId)
-              .maybeSingle()
-            if (user) {
-              student.users = user
-            }
+        const userIds = students.map(s => s.userId).filter(Boolean)
+        const universityIds = students.map(s => s.universityId).filter(Boolean)
+        
+        const [usersResult, orgsResult] = await Promise.all([
+          userIds.length > 0 ? supabase.from('users').select('id, email').in('id', userIds) : { data: [] },
+          universityIds.length > 0 ? supabase.from('organizations').select('id, name').in('id', universityIds) : { data: [] }
+        ])
+        
+        // Create lookup maps
+        const userMap = {}
+        usersResult.data?.forEach(user => { userMap[user.id] = user })
+        
+        const orgMap = {}
+        orgsResult.data?.forEach(org => { orgMap[org.id] = org })
+        
+        // Map data to students
+        students.forEach(student => {
+          if (student.userId && userMap[student.userId]) {
+            student.users = userMap[student.userId]
           }
-          if (student.universityId) {
-            const { data: org } = await supabase
-              .from('organizations')
-              .select('name')
-              .eq('id', student.universityId)
-              .maybeSingle()
-            if (org) {
-              student.organizations = org
-            }
+          if (student.universityId && orgMap[student.universityId]) {
+            student.organizations = orgMap[student.universityId]
           }
-        }
+        })
       }
       
       return NextResponse.json(students || [])
