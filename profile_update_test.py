@@ -157,7 +157,7 @@ class ProfileUpdateTester:
                 "name": "Test Name"
             }
             
-            response = requests.put(
+            response = self.session.put(
                 f"{self.base_url}/profile",
                 json=invalid_payload,
                 headers={"Content-Type": "application/json"}
