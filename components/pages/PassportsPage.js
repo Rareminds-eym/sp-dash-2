@@ -153,14 +153,6 @@ export default function PassportsPage({ currentUser }) {
     return colors[status] || 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -168,8 +160,8 @@ export default function PassportsPage({ currentUser }) {
           <h2 className="text-2xl font-bold">Skill Passports</h2>
           <p className="text-muted-foreground">Verify and manage skill passports</p>
         </div>
-        <Button onClick={fetchPassports} variant="outline">
-          <RefreshCw className="h-4 w-4 mr-2" />
+        <Button onClick={fetchPassports} variant="outline" disabled={loading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
       </div>
@@ -186,6 +178,7 @@ export default function PassportsPage({ currentUser }) {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -197,7 +190,7 @@ export default function PassportsPage({ currentUser }) {
                 <span className="text-sm font-medium text-muted-foreground">Filters:</span>
               </div>
               
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusFilter} onValueChange={setStatusFilter} disabled={loading}>
                 <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -209,7 +202,7 @@ export default function PassportsPage({ currentUser }) {
                 </SelectContent>
               </Select>
               
-              <Select value={nsqfLevelFilter} onValueChange={setNsqfLevelFilter}>
+              <Select value={nsqfLevelFilter} onValueChange={setNsqfLevelFilter} disabled={loading}>
                 <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="NSQF Level" />
                 </SelectTrigger>
@@ -230,6 +223,7 @@ export default function PassportsPage({ currentUser }) {
                 size="sm" 
                 onClick={resetFilters}
                 className="text-muted-foreground hover:text-foreground"
+                disabled={loading}
               >
                 Clear Filters
               </Button>
@@ -237,14 +231,37 @@ export default function PassportsPage({ currentUser }) {
             
             {/* Results count */}
             <div className="text-sm text-muted-foreground">
-              Showing {filteredPassports.length} of {passports.length} passports on this page
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Loading passports...
+                </span>
+              ) : (
+                `Showing ${filteredPassports.length} of ${passports.length} passports on this page`
+              )}
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {filteredPassports.length > 0 ? (
-              filteredPassports.map((passport) => (
+          {loading ? (
+            <div className="space-y-4">
+              {/* Loading skeletons */}
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg animate-pulse dark:bg-gray-800/50">
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="w-12 h-12 bg-gray-300 rounded-full dark:bg-gray-700"></div>
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-gray-300 rounded w-1/4 dark:bg-gray-700"></div>
+                      <div className="h-3 bg-gray-300 rounded w-1/3 dark:bg-gray-700"></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredPassports.length > 0 ? (
+                filteredPassports.map((passport) => (
                 <div key={passport.id} className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors dark:bg-gray-800/50 dark:hover:bg-gray-800">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
