@@ -19,7 +19,7 @@ export default function SettingsPage({ user }) {
   const [profileData, setProfileData] = useState({
     name: user?.name || '',
     email: user?.email || '',
-    organizationName: user?.organization?.name || ''
+    organizationName: user?.organization?.name || 'No organization assigned'
   })
 
   const handleUpdateMetrics = async () => {
