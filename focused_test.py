@@ -7,7 +7,7 @@ from datetime import datetime
 
 
 # Configuration
-BASE_URL = "https://passport-paginate.preview.emergentagent.com"
+BASE_URL = "https://user-settings-plus.preview.emergentagent.com"
 TEST_EMAIL = "superadmin@rareminds.in"
 TEST_PASSWORD = "password123"
 
