@@ -279,7 +279,7 @@ class ProfileUpdateTester:
             time.sleep(1)
             
             # Check if the update persisted by getting session data
-            session_response = requests.get(f"{self.base_url}/auth/session")
+            session_response = self.session.get(f"{self.base_url}/auth/session")
             
             if session_response.status_code == 200:
                 session_data = session_response.json()
