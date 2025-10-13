@@ -3,7 +3,7 @@ import json
 from datetime import datetime
 
 class BackendTester:
-    def __init__(self, base_url="http://localhost:3000/api"):
+    def __init__(self, base_url="https://profile-fix-15.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.session = requests.Session()
         self.user_id = None
