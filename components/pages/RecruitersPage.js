@@ -216,6 +216,7 @@ export default function RecruitersPage({ currentUser }) {
           </CardContent>
         </Card>
       </div>
+      )}
 
       <Card className="neu-card">
         <CardHeader>
@@ -227,13 +228,30 @@ export default function RecruitersPage({ currentUser }) {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
+                disabled={loading}
               />
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {filteredRecruiters.length > 0 ? (
+          {loading ? (
+            <div className="space-y-4">
+              {/* Loading skeletons */}
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg animate-pulse dark:bg-gray-800/50">
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="w-12 h-12 bg-gray-300 rounded-full dark:bg-gray-700"></div>
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-gray-300 rounded w-1/4 dark:bg-gray-700"></div>
+                      <div className="h-3 bg-gray-300 rounded w-1/3 dark:bg-gray-700"></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredRecruiters.length > 0 ? (
               filteredRecruiters.map((recruiter) => (
                 <div key={recruiter.id} className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors dark:bg-gray-800/50 dark:hover:bg-gray-800">
                   <div className="flex items-center gap-4">
