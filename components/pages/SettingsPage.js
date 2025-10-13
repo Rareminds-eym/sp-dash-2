@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,6 +21,18 @@ export default function SettingsPage({ user }) {
     email: user?.email || '',
     organizationName: user?.organization?.name || ''
   })
+
+  // Sync profileData with user prop when it changes
+  useEffect(() => {
+    if (user) {
+      console.log('User data received:', user)
+      setProfileData({
+        name: user.name || '',
+        email: user.email || '',
+        organizationName: user.organization?.name || ''
+      })
+    }
+  }, [user])
 
   const handleUpdateMetrics = async () => {
     setIsUpdating(true)
