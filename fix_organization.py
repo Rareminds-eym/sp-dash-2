@@ -17,7 +17,7 @@ TEST_PASSWORD = "password123"
 # Organization details to create
 ORGANIZATION_ID = "905b21a8-8374-4a7c-a224-46bd6f58dc4c"
 ORGANIZATION_NAME = "Rareminds"
-ORGANIZATION_TYPE = "company"
+ORGANIZATION_TYPE = "university"  # Changed from 'company' to 'university' as per DB constraints
 
 def fix_organization_data():
     """
