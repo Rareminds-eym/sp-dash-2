@@ -1267,7 +1267,8 @@ export async function PUT(request) {
       }
 
       // If organizationName is provided and user has an organizationId, update the organization
-      if (organizationName && user.organizationId) {
+      // Only update if organizationId looks like a valid UUID
+      if (organizationName && user.organizationId && user.organizationId.length > 10) {
         const { error: updateOrgError } = await supabase
           .from('organizations')
           .update({ name: organizationName })
