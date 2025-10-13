@@ -197,6 +197,20 @@ def test_organization_data_investigation():
     except Exception as e:
         print(f"❌ Test failed with error: {str(e)}")
         return False
+
+if __name__ == "__main__":
+    print("Starting Organization Data Investigation...")
+    success = test_organization_data_investigation()
+    
+    if success:
+        print("\n" + "=" * 80)
+        print("✅ INVESTIGATION COMPLETED SUCCESSFULLY")
+        print("=" * 80)
+    else:
+        print("\n" + "=" * 80)
+        print("❌ INVESTIGATION FAILED")
+        print("=" * 80)
+        sys.exit(1)
         try:
             payload = {
                 "email": email,
