@@ -106,7 +106,7 @@ class ProfileUpdateTester:
                 "organizationName": "Rareminds Updated"
             }
             
-            response = requests.put(
+            response = self.session.put(
                 f"{self.base_url}/profile",
                 json=payload,
                 headers={"Content-Type": "application/json"}
