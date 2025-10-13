@@ -322,7 +322,7 @@ export default function PassportsPage({ currentUser }) {
             ) : (
               <p className="text-center text-muted-foreground py-8">No passports found</p>
             )}
-            </div>
+          </div>
           )}
           
           {/* Pagination Controls */}
