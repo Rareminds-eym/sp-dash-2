@@ -337,7 +337,7 @@ export async function GET(request) {
       })
     }
 
-    // GET /api/verifications - List recent verifications
+    // GET /api/verifications - List recent verifications (OPTIMIZED)
     if (path === '/verifications') {
       const { data: verifications, error } = await supabase
         .from('verifications')
@@ -350,19 +350,24 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Failed to fetch verifications' }, { status: 500 })
       }
       
-      // Manually fetch user emails
+      // Fetch all user emails in bulk
       if (verifications && verifications.length > 0) {
-        for (let verification of verifications) {
-          if (verification.performedBy) {
-            const { data: user } = await supabase
-              .from('users')
-              .select('email')
-              .eq('id', verification.performedBy)
-              .maybeSingle()
-            if (user) {
-              verification.users = user
+        const userIds = verifications.map(v => v.performedBy).filter(Boolean)
+        
+        if (userIds.length > 0) {
+          const { data: users } = await supabase
+            .from('users')
+            .select('id, email')
+            .in('id', userIds)
+          
+          const userMap = {}
+          users?.forEach(user => { userMap[user.id] = user })
+          
+          verifications.forEach(verification => {
+            if (verification.performedBy && userMap[verification.performedBy]) {
+              verification.users = userMap[verification.performedBy]
             }
-          }
+          })
         }
       }
       
