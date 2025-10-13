@@ -234,7 +234,7 @@ export async function GET(request) {
       // Get pagination parameters from query string
       const url = new URL(request.url)
       const page = parseInt(url.searchParams.get('page') || '1')
-      const limit = parseInt(url.searchParams.get('limit') || '50')
+      const limit = parseInt(url.searchParams.get('limit') || '20')
       const offset = (page - 1) * limit
       
       // Get total count
