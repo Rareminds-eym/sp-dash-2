@@ -336,7 +336,7 @@ export default function PassportsPage({ currentUser }) {
                   variant="outline"
                   size="sm"
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
+                  disabled={currentPage === 1 || loading}
                 >
                   Previous
                 </Button>
@@ -344,7 +344,7 @@ export default function PassportsPage({ currentUser }) {
                   variant="outline"
                   size="sm"
                   onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))}
-                  disabled={currentPage === pagination.totalPages}
+                  disabled={currentPage === pagination.totalPages || loading}
                 >
                   Next
                 </Button>
