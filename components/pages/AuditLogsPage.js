@@ -38,14 +38,6 @@ export default function AuditLogsPage() {
     return colors[action] || 'bg-gray-100 text-gray-700 dark:bg-gray-700/30 dark:text-gray-300'
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -53,8 +45,8 @@ export default function AuditLogsPage() {
           <h2 className="text-2xl font-bold">Audit Logs</h2>
           <p className="text-muted-foreground">Track all system activities and changes</p>
         </div>
-        <Button onClick={fetchLogs} variant="outline">
-          <RefreshCw className="h-4 w-4 mr-2" />
+        <Button onClick={fetchLogs} variant="outline" disabled={loading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
       </div>
@@ -67,8 +59,23 @@ export default function AuditLogsPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {logs.length > 0 ? (
+          {loading ? (
+            <div className="space-y-4">
+              {/* Loading skeletons */}
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg animate-pulse dark:bg-gray-800/50">
+                  <div className="w-2 h-2 bg-gray-300 rounded-full mt-2 dark:bg-gray-700"></div>
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-gray-300 rounded w-1/4 dark:bg-gray-700"></div>
+                    <div className="h-3 bg-gray-300 rounded w-1/2 dark:bg-gray-700"></div>
+                  </div>
+                  <div className="h-3 bg-gray-300 rounded w-24 dark:bg-gray-700"></div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {logs.length > 0 ? (
               logs.map((log) => (
                 <div key={log.id} className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg dark:bg-gray-800/50 dark:hover:bg-gray-800">
                   <div className="w-2 h-2 bg-blue-500 rounded-full mt-2" />
@@ -98,7 +105,8 @@ export default function AuditLogsPage() {
             ) : (
               <p className="text-center text-muted-foreground py-8">No audit logs found</p>
             )}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

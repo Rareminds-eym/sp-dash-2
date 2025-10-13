@@ -110,7 +110,7 @@ export async function GET(request) {
       }
     }
 
-    // GET /api/users - List all users
+    // GET /api/users - List all users (OPTIMIZED)
     if (path === '/users') {
       const { data: users, error } = await supabase
         .from('users')
@@ -122,19 +122,24 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
       }
       
-      // Manually fetch organization names if needed
+      // Fetch all organizations in bulk
       if (users && users.length > 0) {
-        for (let user of users) {
-          if (user.organizationId) {
-            const { data: org, error: orgError } = await supabase
-              .from('organizations')
-              .select('name')
-              .eq('id', user.organizationId)
-              .maybeSingle()
-            if (!orgError && org) {
-              user.organizations = org
+        const orgIds = users.map(u => u.organizationId).filter(Boolean)
+        
+        if (orgIds.length > 0) {
+          const { data: orgs } = await supabase
+            .from('organizations')
+            .select('id, name')
+            .in('id', orgIds)
+          
+          const orgMap = {}
+          orgs?.forEach(org => { orgMap[org.id] = org })
+          
+          users.forEach(user => {
+            if (user.organizationId && orgMap[user.organizationId]) {
+              user.organizations = orgMap[user.organizationId]
             }
-          }
+          })
         }
       }
       
@@ -152,7 +157,7 @@ export async function GET(request) {
       return NextResponse.json(orgs || [])
     }
 
-    // GET /api/recruiters - List all recruiter organizations
+    // GET /api/recruiters - List all recruiter organizations (OPTIMIZED)
     if (path === '/recruiters') {
       const { data: recruiters, error } = await supabase
         .from('organizations')
@@ -165,15 +170,23 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Failed to fetch recruiters' }, { status: 500 })
       }
 
-      // Count users for each recruiter organization and add default verification fields if missing
+      // Fetch all users in bulk and count by organization
       if (recruiters && recruiters.length > 0) {
-        for (let recruiter of recruiters) {
-          const { data: users } = await supabase
-            .from('users')
-            .select('id')
-            .eq('organizationId', recruiter.id)
-          
-          recruiter.userCount = users?.length || 0
+        const recruiterIds = recruiters.map(r => r.id)
+        
+        const { data: users } = await supabase
+          .from('users')
+          .select('id, organizationId')
+          .in('organizationId', recruiterIds)
+        
+        // Count users by organization
+        const userCountMap = {}
+        users?.forEach(user => {
+          userCountMap[user.organizationId] = (userCountMap[user.organizationId] || 0) + 1
+        })
+        
+        recruiters.forEach(recruiter => {
+          recruiter.userCount = userCountMap[recruiter.id] || 0
           
           // Add default values if verification fields don't exist
           if (!recruiter.hasOwnProperty('verificationStatus')) {
@@ -182,13 +195,13 @@ export async function GET(request) {
           if (!recruiter.hasOwnProperty('isActive')) {
             recruiter.isActive = true
           }
-        }
+        })
       }
 
       return NextResponse.json(recruiters || [])
     }
 
-    // GET /api/students - List all students
+    // GET /api/students - List all students (OPTIMIZED)
     if (path === '/students') {
       const { data: students, error } = await supabase
         .from('students')
@@ -200,124 +213,131 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Failed to fetch students' }, { status: 500 })
       }
       
-      // Manually fetch related data
+      // Fetch all related data in parallel
       if (students && students.length > 0) {
-        for (let student of students) {
-          if (student.userId) {
-            const { data: user } = await supabase
-              .from('users')
-              .select('email')
-              .eq('id', student.userId)
-              .maybeSingle()
-            if (user) {
-              student.users = user
-            }
+        const userIds = students.map(s => s.userId).filter(Boolean)
+        const universityIds = students.map(s => s.universityId).filter(Boolean)
+        
+        const [usersResult, orgsResult] = await Promise.all([
+          userIds.length > 0 ? supabase.from('users').select('id, email').in('id', userIds) : { data: [] },
+          universityIds.length > 0 ? supabase.from('organizations').select('id, name').in('id', universityIds) : { data: [] }
+        ])
+        
+        // Create lookup maps
+        const userMap = {}
+        usersResult.data?.forEach(user => { userMap[user.id] = user })
+        
+        const orgMap = {}
+        orgsResult.data?.forEach(org => { orgMap[org.id] = org })
+        
+        // Map data to students
+        students.forEach(student => {
+          if (student.userId && userMap[student.userId]) {
+            student.users = userMap[student.userId]
           }
-          if (student.universityId) {
-            const { data: org } = await supabase
-              .from('organizations')
-              .select('name')
-              .eq('id', student.universityId)
-              .maybeSingle()
-            if (org) {
-              student.organizations = org
-            }
+          if (student.universityId && orgMap[student.universityId]) {
+            student.organizations = orgMap[student.universityId]
           }
-        }
+        })
       }
       
       return NextResponse.json(students || [])
     }
 
-    // GET /api/passports - List all skill passports with pagination
+    // GET /api/passports - List all skill passports with pagination (OPTIMIZED)
     if (path === '/passports') {
       // Get pagination parameters from query string
       const url = new URL(request.url)
       const page = parseInt(url.searchParams.get('page') || '1')
-      const limit = parseInt(url.searchParams.get('limit') || '50')
+      const limit = parseInt(url.searchParams.get('limit') || '20')
       const offset = (page - 1) * limit
       
-      // Get total count
-      const { count, error: countError } = await supabase
-        .from('skill_passports')
-        .select('*', { count: 'exact', head: true })
+      // Get total count and passports in parallel
+      const [countResult, passportsResult] = await Promise.all([
+        supabase.from('skill_passports').select('*', { count: 'exact', head: true }),
+        supabase.from('skill_passports').select('*').order('createdAt', { ascending: false }).range(offset, offset + limit - 1)
+      ])
       
-      if (countError) {
-        console.error('Error counting passports:', countError)
+      if (countResult.error) {
+        console.error('Error counting passports:', countResult.error)
       }
       
-      // Fetch paginated passports
-      const { data: passports, error } = await supabase
-        .from('skill_passports')
-        .select('*')
-        .order('createdAt', { ascending: false })
-        .range(offset, offset + limit - 1)
-
-      if (error) {
-        console.error('Error fetching passports:', error)
+      if (passportsResult.error) {
+        console.error('Error fetching passports:', passportsResult.error)
         return NextResponse.json({ error: 'Failed to fetch passports' }, { status: 500 })
       }
       
-      // Manually fetch related data
-      if (passports && passports.length > 0) {
-        for (let passport of passports) {
-          if (passport.studentId) {
-            const { data: student, error: studentError } = await supabase
-              .from('students')
-              .select('*')
-              .eq('id', passport.studentId)
-              .maybeSingle()
-            
-            if (studentError) {
-              console.error('Error fetching student:', studentError)
-            }
-            if (student) {
-              // Parse the profile JSON string if it exists
-              if (student.profile && typeof student.profile === 'string') {
-                try {
-                  // Replace NaN values with null to make it valid JSON
-                  const cleanedProfile = student.profile.replace(/:\s*NaN/g, ': null')
-                  student.profile = JSON.parse(cleanedProfile)
-                } catch (parseError) {
-                  console.error('Error parsing student profile:', parseError)
-                  student.profile = {}
+      const passports = passportsResult.data || []
+      const count = countResult.count || 0
+      
+      // If we have passports, fetch all related data in bulk
+      if (passports.length > 0) {
+        const studentIds = passports.map(p => p.studentId).filter(Boolean)
+        
+        if (studentIds.length > 0) {
+          // Fetch all students and their users in parallel
+          const [studentsResult, usersResult] = await Promise.all([
+            supabase.from('students').select('*').in('id', studentIds),
+            supabase.from('students').select('userId').in('id', studentIds).then(async (result) => {
+              if (result.data && result.data.length > 0) {
+                const userIds = result.data.map(s => s.userId).filter(Boolean)
+                if (userIds.length > 0) {
+                  return await supabase.from('users').select('id, email, metadata').in('id', userIds)
                 }
               }
-              
-              // Get user data for student (email and metadata with name)
-              if (student.userId) {
-                const { data: user, error: userError } = await supabase
-                  .from('users')
-                  .select('email, metadata')
-                  .eq('id', student.userId)
-                  .maybeSingle()
-                
-                if (userError) {
-                  console.error('Error fetching user for student:', userError)
-                }
-                if (user) {
-                  student.users = user
-                }
+              return { data: [] }
+            })
+          ])
+          
+          const students = studentsResult.data || []
+          const users = usersResult.data || []
+          
+          // Create lookup maps for O(1) access
+          const studentMap = {}
+          students.forEach(student => {
+            // Parse profile if it's a string
+            if (student.profile && typeof student.profile === 'string') {
+              try {
+                const cleanedProfile = student.profile.replace(/:\s*NaN/g, ': null')
+                student.profile = JSON.parse(cleanedProfile)
+              } catch (parseError) {
+                student.profile = {}
+              }
+            }
+            studentMap[student.id] = student
+          })
+          
+          const userMap = {}
+          users.forEach(user => {
+            userMap[user.id] = user
+          })
+          
+          // Map data to passports
+          passports.forEach(passport => {
+            if (passport.studentId && studentMap[passport.studentId]) {
+              const student = studentMap[passport.studentId]
+              if (student.userId && userMap[student.userId]) {
+                student.users = userMap[student.userId]
               }
               passport.students = student
             }
-          }
+          })
         }
       }
       
       // Return paginated response
       return NextResponse.json({
-        data: passports || [],
+        data: passports,
         pagination: {
           page,
           limit,
-          total: count || 0,
-          totalPages: Math.ceil((count || 0) / limit)
+          total: count,
+          totalPages: Math.ceil(count / limit)
         }
       })
     }
 
-    // GET /api/verifications - List recent verifications
+    // GET /api/verifications - List recent verifications (OPTIMIZED)
     if (path === '/verifications') {
       const { data: verifications, error } = await supabase
         .from('verifications')
@@ -330,26 +350,31 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Failed to fetch verifications' }, { status: 500 })
       }
       
-      // Manually fetch user emails
+      // Fetch all user emails in bulk
       if (verifications && verifications.length > 0) {
-        for (let verification of verifications) {
-          if (verification.performedBy) {
-            const { data: user } = await supabase
-              .from('users')
-              .select('email')
-              .eq('id', verification.performedBy)
-              .maybeSingle()
-            if (user) {
-              verification.users = user
+        const userIds = verifications.map(v => v.performedBy).filter(Boolean)
+        
+        if (userIds.length > 0) {
+          const { data: users } = await supabase
+            .from('users')
+            .select('id, email')
+            .in('id', userIds)
+          
+          const userMap = {}
+          users?.forEach(user => { userMap[user.id] = user })
+          
+          verifications.forEach(verification => {
+            if (verification.performedBy && userMap[verification.performedBy]) {
+              verification.users = userMap[verification.performedBy]
             }
-          }
+          })
         }
       }
       
       return NextResponse.json(verifications || [])
     }
 
-    // GET /api/audit-logs - List audit logs
+    // GET /api/audit-logs - List audit logs (OPTIMIZED)
     if (path === '/audit-logs') {
       const { data: logs, error } = await supabase
         .from('audit_logs')
@@ -362,19 +387,24 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Failed to fetch audit logs' }, { status: 500 })
       }
       
-      // Manually fetch user emails
+      // Fetch all user emails in bulk
       if (logs && logs.length > 0) {
-        for (let log of logs) {
-          if (log.actorId) {
-            const { data: user } = await supabase
-              .from('users')
-              .select('email')
-              .eq('id', log.actorId)
-              .maybeSingle()
-            if (user) {
-              log.users = user
+        const userIds = logs.map(l => l.actorId).filter(Boolean)
+        
+        if (userIds.length > 0) {
+          const { data: users } = await supabase
+            .from('users')
+            .select('id, email')
+            .in('id', userIds)
+          
+          const userMap = {}
+          users?.forEach(user => { userMap[user.id] = user })
+          
+          logs.forEach(log => {
+            if (log.actorId && userMap[log.actorId]) {
+              log.users = userMap[log.actorId]
             }
-          }
+          })
         }
       }
       
