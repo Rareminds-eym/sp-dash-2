@@ -34,29 +34,44 @@ print("\n📋 Step 1: Building auth user mapping...")
 auth_user_map = {}
 
 try:
-    response = supabase.auth.admin.list_users()
-    users = response
-    if hasattr(users, 'users'):
-        users = users.users
+    page = 1
+    per_page = 1000
     
-    for user in users:
-        if hasattr(user, 'user_metadata'):
-            metadata = user.user_metadata
+    while True:
+        response = supabase.auth.admin.list_users(page=page, per_page=per_page)
+        users = response
+        if hasattr(users, 'users'):
+            users_list = users.users
         else:
-            metadata = user.get('user_metadata', {})
+            users_list = users if isinstance(users, list) else []
         
-        if metadata.get('role') == 'recruiter':
-            if hasattr(user, 'email'):
-                email = user.email.lower()
-                user_id = user.id
+        if not users_list:
+            break
+        
+        for user in users_list:
+            if hasattr(user, 'user_metadata'):
+                metadata = user.user_metadata
+                email = user.email.lower() if hasattr(user, 'email') else ''
+                user_id = user.id if hasattr(user, 'id') else ''
             else:
+                metadata = user.get('user_metadata', {})
                 email = user.get('email', '').lower()
-                user_id = user.get('id')
+                user_id = user.get('id', '')
             
             if email:
                 auth_user_map[email] = user_id
+        
+        if len(users_list) < per_page:
+            break
+        page += 1
     
-    print(f"✅ Found {len(auth_user_map)} existing recruiter auth users")
+    print(f"✅ Found {len(auth_user_map)} total auth users")
+    
+    # Count recruiter auth users specifically
+    recruiter_count = 0
+    for email, uid in list(auth_user_map.items())[:20]:
+        print(f"   • {email[:40]}... -> {uid}")
+        
 except Exception as e:
     print(f"⚠️  Could not fetch auth users: {str(e)}")
 
