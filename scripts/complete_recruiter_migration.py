@@ -143,10 +143,12 @@ class CompleteMigration:
         # Step 1: Create auth user
         print(f"   Creating auth user...")
         user_id, error = self.create_auth_user_for_recruiter(email, company_name)
-        if error and error != "AUTH_EXISTS":
+        if error and error not in ["AUTH_EXISTS", "EXISTS"]:
             print(f"   ❌ Auth creation failed: {error}")
             return False, f"Auth failed: {error}"
-        if error == "AUTH_EXISTS":
+        if error == "EXISTS":
+            print(f"   ⚠️  User already exists, using existing ID: {user_id}")
+        elif error == "AUTH_EXISTS":
             print(f"   ⚠️  Auth user already exists")
         else:
             print(f"   ✅ Auth user created: {user_id}")
