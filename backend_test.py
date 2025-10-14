@@ -30,67 +30,95 @@ def print_test_result(test_name, success, message=""):
         print(f"   📝 {message}")
 
 def test_duplicate_recruiters_removal():
-    """Test GET /api/recruiters endpoint"""
-    print("=" * 60)
-    print("TESTING GET /api/recruiters")
-    print("=" * 60)
+    """Test Feature 1: Duplicate Recruiters Removal Verification"""
+    print_test_header("FEATURE 1: DUPLICATE RECRUITERS REMOVAL VERIFICATION")
     
     try:
-        response = requests.get(f"{BASE_URL}/recruiters", headers=HEADERS, timeout=30)
+        # Test 1: Verify recruiter count is now 133 (down from 161)
+        print("\n🔍 Test 1: Verify recruiter count reduced to 133")
+        response = requests.get(f"{BASE_URL}/recruiters", timeout=30)
         
-        if response.status_code == 200:
-            data = response.json()
-            total_recruiters = len(data)
+        if response.status_code != 200:
+            print_test_result("GET /api/recruiters", False, f"HTTP {response.status_code}: {response.text}")
+            return False
             
-            log_test("GET /api/recruiters - Status Code", "PASS", f"Status: {response.status_code}")
-            log_test("GET /api/recruiters - Response Type", "PASS", f"Returned array with {total_recruiters} recruiters")
-            
-            # Check if we have the expected 161 recruiters
-            if total_recruiters == 161:
-                log_test("GET /api/recruiters - Total Count", "PASS", f"Expected 161 recruiters, got {total_recruiters}")
-            else:
-                log_test("GET /api/recruiters - Total Count", "WARN", f"Expected 161 recruiters, got {total_recruiters}")
-            
-            # Check structure of first recruiter if available
-            if data and len(data) > 0:
-                first_recruiter = data[0]
-                required_fields = ['id', 'name', 'type', 'state', 'website', 'phone', 'email', 'address', 'verificationStatus', 'isActive', 'userCount']
-                
-                missing_fields = []
-                for field in required_fields:
-                    if field not in first_recruiter:
-                        missing_fields.append(field)
-                
-                if not missing_fields:
-                    log_test("GET /api/recruiters - Required Fields", "PASS", "All required fields present")
-                else:
-                    log_test("GET /api/recruiters - Required Fields", "FAIL", f"Missing fields: {missing_fields}")
-                
-                # Check for specific recruiter from Excel data
-                axn_recruiter = None
-                for recruiter in data:
-                    if "AXN INFOTECH" in recruiter.get('name', '').upper():
-                        axn_recruiter = recruiter
-                        break
-                
-                if axn_recruiter:
-                    log_test("GET /api/recruiters - Excel Data Verification", "PASS", f"Found AXN INFOTECH recruiter: {axn_recruiter['name']}")
-                else:
-                    log_test("GET /api/recruiters - Excel Data Verification", "WARN", "AXN INFOTECH recruiter not found in results")
-                
-                # Show sample recruiter data
-                print("Sample Recruiter Data:")
-                print(json.dumps(first_recruiter, indent=2))
-                print()
-                
-            return data
+        recruiters = response.json()
+        recruiter_count = len(recruiters)
+        
+        print_test_result("GET /api/recruiters endpoint", True, f"Returns {recruiter_count} recruiters")
+        
+        if recruiter_count == 133:
+            print_test_result("Recruiter count verification", True, "Count is exactly 133 as expected")
         else:
-            log_test("GET /api/recruiters - Status Code", "FAIL", f"Status: {response.status_code}, Response: {response.text}")
-            return None
+            print_test_result("Recruiter count verification", False, f"Expected 133, got {recruiter_count}")
+            return False
+        
+        # Test 2: Verify no duplicate email addresses exist
+        print("\n🔍 Test 2: Verify no duplicate email addresses")
+        emails = [r.get('email', '').lower().strip() for r in recruiters if r.get('email')]
+        email_counts = Counter(emails)
+        duplicates = {email: count for email, count in email_counts.items() if count > 1}
+        
+        if duplicates:
+            print_test_result("Duplicate email check", False, f"Found duplicates: {duplicates}")
+            return False
+        else:
+            print_test_result("Duplicate email check", True, "No duplicate emails found")
+        
+        # Test 3: Verify specific emails that had duplicates now have only 1 record
+        print("\n🔍 Test 3: Verify specific previously duplicate emails")
+        target_emails = [
+            "hr@octsindia.com",
+            "info@panacorp.org", 
+            "corporate@tafe.com",
+            "career@isquarebs.com"
+        ]
+        
+        all_specific_tests_passed = True
+        for email in target_emails:
+            count = email_counts.get(email.lower(), 0)
+            if count == 1:
+                print_test_result(f"Email {email}", True, "Has exactly 1 record")
+            elif count == 0:
+                print_test_result(f"Email {email}", True, f"Not found (may have been completely removed)")
+            else:
+                print_test_result(f"Email {email}", False, f"Has {count} records, expected 1")
+                all_specific_tests_passed = False
+        
+        if not all_specific_tests_passed:
+            return False
+        
+        # Test 4: Verify metrics endpoint reflects new count
+        print("\n🔍 Test 4: Verify metrics activeRecruiters count")
+        response = requests.get(f"{BASE_URL}/metrics", timeout=30)
+        
+        if response.status_code != 200:
+            print_test_result("GET /api/metrics", False, f"HTTP {response.status_code}: {response.text}")
+            return False
             
+        metrics = response.json()
+        active_recruiters = metrics.get('activeRecruiters', 0)
+        
+        print_test_result("GET /api/metrics endpoint", True, f"activeRecruiters = {active_recruiters}")
+        
+        if active_recruiters == 133:
+            print_test_result("Metrics activeRecruiters count", True, "Count matches expected 133")
+        else:
+            print_test_result("Metrics activeRecruiters count", False, f"Expected 133, got {active_recruiters}")
+            return False
+        
+        print(f"\n🎉 FEATURE 1 SUMMARY: All duplicate recruiter removal tests PASSED")
+        print(f"   • Recruiter count reduced from 161 to {recruiter_count}")
+        print(f"   • No duplicate emails found")
+        print(f"   • Metrics endpoint shows activeRecruiters = {active_recruiters}")
+        return True
+        
+    except requests.exceptions.RequestException as e:
+        print_test_result("Network request", False, f"Request failed: {str(e)}")
+        return False
     except Exception as e:
-        log_test("GET /api/recruiters - Request", "FAIL", f"Exception: {str(e)}")
-        return None
+        print_test_result("Test execution", False, f"Unexpected error: {str(e)}")
+        return False
 
 def test_get_metrics():
     """Test GET /api/metrics endpoint for activeRecruiters count"""
