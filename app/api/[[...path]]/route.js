@@ -463,16 +463,28 @@ export async function GET(request) {
 
     // GET /api/analytics/state-wise - State-wise distribution
     if (path === '/analytics/state-wise') {
-      const { data: orgs, error } = await supabase
-        .from('organizations')
-        .select('state, type')
+      // Fetch from both universities and recruiters tables
+      const [universitiesResult, recruitersResult] = await Promise.all([
+        supabase.from('universities').select('state'),
+        supabase.from('recruiters').select('state')
+      ])
 
-      if (error) throw error
+      if (universitiesResult.error) throw universitiesResult.error
+      if (recruitersResult.error) throw recruitersResult.error
 
       const stateCounts = {}
-      orgs.forEach(org => {
-        if (org.state) {
-          stateCounts[org.state] = (stateCounts[org.state] || 0) + 1
+      
+      // Count universities by state
+      universitiesResult.data?.forEach(univ => {
+        if (univ.state) {
+          stateCounts[univ.state] = (stateCounts[univ.state] || 0) + 1
+        }
+      })
+      
+      // Count recruiters by state
+      recruitersResult.data?.forEach(rec => {
+        if (rec.state) {
+          stateCounts[rec.state] = (stateCounts[rec.state] || 0) + 1
         }
       })
 
