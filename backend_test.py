@@ -12,7 +12,7 @@ from collections import Counter
 import sys
 
 # Configuration
-BASE_URL = "https://no-dupe-recruits.preview.emergentagent.com/api"
+BASE_URL = "https://campus-data-load.preview.emergentagent.com/api"
 SUPER_ADMIN_EMAIL = "superadmin@rareminds.in"
 SUPER_ADMIN_PASSWORD = "password123"
 

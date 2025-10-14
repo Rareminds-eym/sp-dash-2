@@ -7,7 +7,7 @@ import requests
 import json
 import sys
 
-BASE_URL = "https://no-dupe-recruits.preview.emergentagent.com/api"
+BASE_URL = "https://campus-data-load.preview.emergentagent.com/api"
 
 def test_login():
     """Test login with correct credentials"""
