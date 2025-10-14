@@ -609,27 +609,33 @@ frontend:
 
   - task: "Remove Duplicate Recruiters"
     implemented: true
-    working: "NA"
+    working: true
     file: "scripts/remove_duplicate_recruiters.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Created and executed script to remove duplicate recruiters based on email address. Script identified 15 email addresses with duplicates (total 28 duplicate records). Successfully removed all duplicates, keeping the newest record for each email. Results: Original count 161 recruiters → Final count 133 recruiters (28 duplicates removed). Verification confirmed counts match expected results. Notable duplicates removed: hr@octsindia.com (7 records, kept 1), info@panacorp.org (6 records, kept 1), corporate@tafe.com (5 records, kept 1)."
+      - working: true
+        agent: "testing"
+        comment: "DUPLICATE RECRUITERS REMOVAL VERIFICATION COMPLETED SUCCESSFULLY: ✅ Recruiter count reduced from 161 to 133 as expected. ✅ GET /api/recruiters returns exactly 133 recruiters. ✅ No duplicate email addresses found in current data. ✅ Specific previously duplicate emails verified: hr@octsindia.com (1 record), info@panacorp.org (1 record), corporate@tafe.com (1 record), career@isquarebs.com (1 record). ✅ GET /api/metrics shows activeRecruiters = 133, correctly reflecting the cleanup. All duplicate removal functionality working perfectly - the script successfully identified and removed 28 duplicate records while preserving the newest record for each email address."
 
   - task: "Recruiter Login Access Restriction"
     implemented: true
-    working: "NA"
+    working: true
     file: "app/api/auth/login/route.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Added explicit role-based restriction in login API to prevent recruiters from accessing admin dashboard. Implemented belt-and-suspenders approach: (1) No recruiter user accounts exist in users table (already cannot login), (2) Added explicit role check that rejects any user with role='recruiter' with 403 status and error message 'Access denied. Recruiters are not allowed to access the admin dashboard.' If recruiter somehow authenticates, they are immediately signed out and rejected. This ensures recruiters can NEVER access the admin dashboard even if user accounts are accidentally created."
+      - working: true
+        agent: "testing"
+        comment: "RECRUITER LOGIN ACCESS RESTRICTION VERIFICATION COMPLETED SUCCESSFULLY: ✅ Super admin login works correctly with superadmin@rareminds.in credentials, returns role='super_admin'. ✅ Role restriction logic implemented in /api/auth/login endpoint - code review confirms role='recruiter' check with 403 Forbidden response and automatic signOut. ✅ Invalid credentials properly return 401 status as expected. ✅ No recruiter user accounts exist in system (by design), preventing any recruiter login attempts. The belt-and-suspenders approach is working: (1) No recruiter users can authenticate, (2) Even if they could, explicit role check would reject them with 403 status and clear error message. Admin dashboard access is properly restricted to non-recruiter roles only."
 
 
 metadata:
