@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
+"""
+Backend Testing Script for Recruiter Functionality
+Tests the recruiter-related API endpoints as requested in the review.
+"""
 
 import requests
 import json
 import sys
-from supabase import create_client, Client
+from datetime import datetime
 
 # Configuration
-BASE_URL = "https://recruiter-sync.preview.emergentagent.com"
-SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwb29sZWR1aW55eXp4Z3Jjd2tvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTk5NDY5OCwiZXhwIjoyMDc1NTcwNjk4fQ.WIrwkA_-2oCjwmD6WpCf9N38hYXEwrIIXXHB4x5km10"
-
-# Test credentials
-TEST_EMAIL = "superadmin@rareminds.in"
-TEST_PASSWORD = "password123"
+BASE_URL = "https://recruiter-sync.preview.emergentagent.com/api"
+HEADERS = {
+    'Content-Type': 'application/json',
+    'User-Agent': 'Backend-Test-Script/1.0'
+}
 
 def test_organization_data_investigation():
     """
