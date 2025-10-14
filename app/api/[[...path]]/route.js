@@ -266,25 +266,27 @@ export async function GET(request) {
         const userIds = students.map(s => s.userId).filter(Boolean)
         const universityIds = students.map(s => s.universityId).filter(Boolean)
         
-        const [usersResult, orgsResult] = await Promise.all([
+        const [usersResult, universitiesResult] = await Promise.all([
           userIds.length > 0 ? supabase.from('users').select('id, email').in('id', userIds) : { data: [] },
-          universityIds.length > 0 ? supabase.from('organizations').select('id, name').in('id', universityIds) : { data: [] }
+          universityIds.length > 0 ? supabase.from('universities').select('organizationid, name').in('organizationid', universityIds) : { data: [] }
         ])
         
         // Create lookup maps
         const userMap = {}
         usersResult.data?.forEach(user => { userMap[user.id] = user })
         
-        const orgMap = {}
-        orgsResult.data?.forEach(org => { orgMap[org.id] = org })
+        const univMap = {}
+        universitiesResult.data?.forEach(univ => { 
+          univMap[univ.organizationid] = { id: univ.organizationid, name: univ.name } 
+        })
         
         // Map data to students
         students.forEach(student => {
           if (student.userId && userMap[student.userId]) {
             student.users = userMap[student.userId]
           }
-          if (student.universityId && orgMap[student.universityId]) {
-            student.organizations = orgMap[student.universityId]
+          if (student.universityId && univMap[student.universityId]) {
+            student.organizations = univMap[student.universityId]
           }
         })
       }
