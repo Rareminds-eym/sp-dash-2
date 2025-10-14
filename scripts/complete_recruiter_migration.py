@@ -52,8 +52,14 @@ class CompleteMigration:
             return []
     
     def create_auth_user_for_recruiter(self, email, company_name):
-        """Create user in Supabase Auth"""
+        """Create user in Supabase Auth or get existing user ID"""
         try:
+            # First check if user already exists in users table
+            users_response = supabase.table('users').select('id').eq('email', email).execute()
+            if users_response.data and len(users_response.data) > 0:
+                return users_response.data[0]['id'], "EXISTS"
+            
+            # Try to create new auth user
             auth_response = supabase.auth.admin.create_user({
                 "email": email,
                 "password": DEFAULT_PASSWORD,
@@ -68,14 +74,14 @@ class CompleteMigration:
         except Exception as e:
             error_msg = str(e)
             if "already been registered" in error_msg or "User already registered" in error_msg:
-                # Try to fetch existing user
+                # Try to fetch existing user from users table
                 try:
                     users_response = supabase.table('users').select('id').eq('email', email).execute()
                     if users_response.data and len(users_response.data) > 0:
-                        return users_response.data[0]['id'], None
+                        return users_response.data[0]['id'], "EXISTS"
                 except:
                     pass
-                return None, "AUTH_EXISTS"
+                return None, "AUTH_EXISTS_NO_ID"
             return None, error_msg
     
     def create_user_record(self, user_id, email, company_name):
