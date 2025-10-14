@@ -607,6 +607,30 @@ frontend:
         agent: "testing"
         comment: "RECRUITER SUPABASE AUTH TESTING COMPLETED - CRITICAL ISSUE IDENTIFIED: ❌ Authentication Failure: No recruiter users can authenticate with password 'Recruiter@2025'. ❌ Missing User Accounts: 0 recruiter users found in users table despite 161 organizations being imported. ❌ Auth Integration: Import script created organizations but failed to create corresponding Supabase Auth accounts and user records. ROOT CAUSE: The import script's user creation phase failed or was incomplete. IMPACT: Recruiters cannot login to the system despite being imported. RECOMMENDATION: Re-run the user account creation portion of the import script to create missing recruiter user accounts in both Supabase Auth and users table."
 
+  - task: "Remove Duplicate Recruiters"
+    implemented: true
+    working: "NA"
+    file: "scripts/remove_duplicate_recruiters.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created and executed script to remove duplicate recruiters based on email address. Script identified 15 email addresses with duplicates (total 28 duplicate records). Successfully removed all duplicates, keeping the newest record for each email. Results: Original count 161 recruiters → Final count 133 recruiters (28 duplicates removed). Verification confirmed counts match expected results. Notable duplicates removed: hr@octsindia.com (7 records, kept 1), info@panacorp.org (6 records, kept 1), corporate@tafe.com (5 records, kept 1)."
+
+  - task: "Recruiter Login Access Restriction"
+    implemented: true
+    working: "NA"
+    file: "app/api/auth/login/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added explicit role-based restriction in login API to prevent recruiters from accessing admin dashboard. Implemented belt-and-suspenders approach: (1) No recruiter user accounts exist in users table (already cannot login), (2) Added explicit role check that rejects any user with role='recruiter' with 403 status and error message 'Access denied. Recruiters are not allowed to access the admin dashboard.' If recruiter somehow authenticates, they are immediately signed out and rejected. This ensures recruiters can NEVER access the admin dashboard even if user accounts are accidentally created."
+
 
 metadata:
   created_by: "testing_agent"
