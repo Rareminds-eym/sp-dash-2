@@ -1,0 +1,742 @@
+[
+  {
+    "recruiter": "AXN INFOTECH PVT LTD - Tally Coimbatore",
+    "email": "axninfotech@gmail.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "PUPA CHEMICAL INDUSTRIES",
+    "email": "roshan@pupahomecare.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "S group of industries",
+    "email": "sgoikarur@gmail.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Zealsoft Technology Solutions",
+    "email": "hr@zealsoft.net",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "iSQUARE Business Solution Pvt. Ltd.",
+    "email": "career@isquarebs.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Aarel Infotech",
+    "email": "saravanan@aarelit.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Avgira Technologies",
+    "email": "avgiraindia@gmail.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Abservetech",
+    "email": "support@abservetech.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Easywin Software Solutions",
+    "email": "sundar@easywinits.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Tritech data solutions",
+    "email": "tritechdatasolution@gmail.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Prasan Invensys",
+    "email": "info@prasaninvensys.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Objectways Technologies",
+    "email": "careers@objectways.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "LAKSHMI HOTEL",
+    "email": "res@lakshmihotel.in",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "New V.V.B. Jothiprakasam Paints Private Limited",
+    "email": "vvbjppaints@gmail.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "O.M.S.Tamarind Merchants Private Limited",
+    "email": "omstamarind@gmail.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Prognamik Technologies Pvt Ltd",
+    "email": "info@prognamik.in",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Sathya Technosoft India Pvt Ltd",
+    "email": "info@sathya.store",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Legend Lifts Solutions",
+    "email": "admin@legendlifts.in",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "QBlue",
+    "email": "enquiretoqblue@gmail.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Jotis",
+    "email": "gogreen@jotis.in",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "SMA Chemicals",
+    "email": "smachemicals.vpm@gmail.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Thaiman Agro Foods Pvt Ltd",
+    "email": "info@thaimanagrofoods.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "NK Chemiosys Private Limited",
+    "email": "rnd@chemiosys.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Techny Chemy",
+    "email": "info@technychemy.in",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Vijay Dairy",
+    "email": "jobs@vijaymilk.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Olir Designs Private Limited",
+    "email": "hello@olirdesigns.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Sardonyx Technologies Private Limited",
+    "email": "jobs@sardonyx.in",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "VEBBOX software solutions",
+    "email": "info@vebbox.in",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "J.A SOLUTIONS",
+    "email": "info@jasolutions.in",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Bloomfieldx Analytics Private Limited",
+    "email": "hello@bloomfieldx.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Joy Innovations",
+    "email": "support@joyinnovations.net",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "OCTS - IT & SOFTWARE",
+    "email": "jobs@octsindia.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "ABI-Tech Solution -Custom Software Development",
+    "email": "abitech.officialindia@gmail.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Sigma ePlus",
+    "email": "sigmaeplus@gmail.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Sigma ePlus",
+    "email": "sigmaeplus@gmail.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "iSquare Business Solutions",
+    "email": "career@isquarebs.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Elysium Technologies",
+    "email": "info@elysiumtechnologies.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "IIFl Samasta Finance- madurai",
+    "email": "ananth.s@iiflsamasta.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Abserve Tech",
+    "email": "hr@abservetech.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Share Soft",
+    "email": "info@sharesoft.in",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Trioangle Technologies",
+    "email": "email@centuryminds.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Orion India Systems Pvt Ltd",
+    "email": "career.india@orioninc.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Wahmi Softwares and Solutions Pvt Ltd",
+    "email": "info@wahmisoft.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Hypercognito Computings",
+    "email": "info@hypercognito.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "I-India scientific and fabrication.",
+    "email": "global.iindiasf@gmail.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Brandmakerz Digital Marketing Agency",
+    "email": "info@brandmakerzofficial.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "INTER DECCAAN SOLUTIONS",
+    "email": "interdeccaansolutions@gmail.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Frontline Technologies",
+    "email": "info@frontlinetech.in",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Atlas Corporation Used and Waste Oil Recycler - Admin",
+    "email": "info@atlascorp.in",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Shri Attik",
+    "email": "info@shriattik.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "MAKE VISION ANALYTICS A.I software solutions",
+    "email": "makelabsmail@gmail.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "VineAtZ OPC Private Limited",
+    "email": "info@vineatz.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "QR Solutions",
+    "email": "venkatraman@qrsolutions.in",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Techzarinfo",
+    "email": "career@techzarinfo.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Marco Technology Solutions Private Ltd.",
+    "email": "hireme@marcroglobal.co.uk",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Fantasy Solution",
+    "email": "info@fantasysolution.in",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Ak Infopark Pvt Ltd",
+    "email": "hrm@akinfopark.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Prime med Labs",
+    "email": "info@primemedlabs.in",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Vivek Laboratories",
+    "email": "viveklaboratories@gmail.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Tube Investments of India Ltd.",
+    "email": "info@tii.murugappa.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "EL Forge Limited",
+    "email": "vsri@elforge.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "EL Forge Limited",
+    "email": "elforge2@elforge.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Ucal fuel Systems",
+    "email": "marketing@ucal.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Nelcast Limited",
+    "email": "nelcast@nelcast.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Igarashi Motors",
+    "email": "igarashi@igarashimotors.co.in",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Z F Commercial Vehicle Controle Systems India",
+    "email": "muthulakshmi.m@zf.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "L.G.Balakrishnan & Bros Ltd.",
+    "email": "info@lgb.co.in",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Ceat Ltd",
+    "email": "customercare@ceat.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Chennai Forge Products Pvt Ltd",
+    "email": "info@chennaiforgeproducts.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Lear Corporation",
+    "email": "shankar@lear.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Lucas-TVS",
+    "email": "ags.padi@lucastvs.co.in",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Magal Engg. Tech Pvt Ltd",
+    "email": "sales@magaltech.co.in",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Power Gear Limited",
+    "email": "enquiries@powergearlimited.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Pricol Limited",
+    "email": "connect@pricol.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Steel Strips Wheels Limted",
+    "email": "careers@sswlindia.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Surin Automotive",
+    "email": "contactus@surinauto.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Surin Automotive Pvt Ltd",
+    "email": "contactus@surinauto.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Tafe Access Ltd",
+    "email": "corporate@tafe.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Tafe Access Ltd",
+    "email": "corporate@tafe.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Tafe Access Ltd",
+    "email": "corporate@tafe.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Tafe Access Ltd",
+    "email": "corporate@tafe.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Tafe Access Ltd",
+    "email": "corporate@tafe.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "VK Building Services Pvt. Ltd",
+    "email": "infochn@vkbs.in",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "FLSmidth",
+    "email": "info@flsmidth.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Renfra Power Pvt Ltd",
+    "email": "nasheer@renfrapower.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Seedling Agro",
+    "email": "seedlingfarm@gmail.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Speed Team Wind Tech Pvt",
+    "email": "info@speedteam.in",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Amar Sava Sangam",
+    "email": "mail@amarseva.org",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Muthiahs Farm",
+    "email": "selva.kumar190575@gmail.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Grihum Housing Finance",
+    "email": "career@grihumhousing.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "JVS Air Systems",
+    "email": "customercare@jvsairsystems.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Benzz Park",
+    "email": "reservation@benzzpark.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "SUSPA Pneumatics (India) Ltd.",
+    "email": "hr@in.suspa.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Rane Engine Valves Ltd",
+    "email": "sr.venkatraj@ranegroup.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Acoustics India Private Limite",
+    "email": "marketing@acousticsind.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Acoustics India Private Limite",
+    "email": "ehouse@acousticsind.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Pj Infotech",
+    "email": "pjinfotec@gmail.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "RIBO Industries Private Limited",
+    "email": "marketing@ribo.in",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "SRI Energy, Inc.",
+    "email": "sales@srienergy.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "T V Sundram Iyengar & Sons Ltd.",
+    "email": "careers@ashokleyland.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "SRF Limited",
+    "email": "info@srf.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Global TVS Bus Body Builders",
+    "email": "info@globaltvs.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "MVS Fabricators",
+    "email": "mvsfabricators@gmail.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Ashley Alteams India Limited",
+    "email": "reachus@ashleyalteams.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Pickyourtrail",
+    "email": "karthiga.d@pickyourtrail.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Nikah Marriage consultant",
+    "email": "support@nikah.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Dharani Sugars And Chemicals Limited",
+    "email": "secretarial@dharanisugars-pgp.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Sun Thermo Process",
+    "email": "msk@sunthermo.in",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Boomika Tours & travels",
+    "email": "www.sivakumar1438@email.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "ABT Industries  ltd - CVD",
+    "email": "corporate@abtimited.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "V. V. V. & Sons Edible Oils Limited ( Idhayam)",
+    "email": "online@idhayam.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Vijay Dairy",
+    "email": "sekhar@vijaymilk.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Milky Mist",
+    "email": "nantha@milkymist.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "R G Bronez Pvt Ltd",
+    "email": "sales@rgbronze.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Orbiton Life Sciences Private Limited",
+    "email": "info@orbitonls.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Enviro Care Pvt Ltd",
+    "email": "mis@envirocareindia.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Green Signal Bio Pharma Private Limited",
+    "email": "md@gsbpl.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Krishnaveni Carbon Products Private Limited Unit - IV",
+    "email": "hrdu4@krishcarbon.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Shakti Cords Private Limited",
+    "email": "careers@indtextile.in",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Baptist Healthcare",
+    "email": "info@baptisthealthcare.in",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Bluemein Technologies",
+    "email": "info@bluemein.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Muthoot Finance",
+    "email": "hrvlr@muthootgroup.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Vanchinad Finance",
+    "email": "info@vanchinadfinance.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Geojit Financial Services Ltd",
+    "email": "nagercoil@geojit.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Joshua Computers",
+    "email": "joshuacomputersngl@gmail.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Panacorp Software Solutions",
+    "email": "info@panacorp.org",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Panacorp Software Solutions",
+    "email": "info@panacorp.org",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Panacorp Software Solutions",
+    "email": "info@panacorp.org",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Panacorp Software Solutions Pvt Ltd",
+    "email": "info@panacorp.org",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Panacorp Software Solutions Pvt Ltd",
+    "email": "info@panacorp.org",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Seaview kanyakumari",
+    "email": "sales@hotelseaview.in",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Nutri Dairy Products Pvt Ltd",
+    "email": "aswaadarwin@gmail.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Cogniventor",
+    "email": "office@cogniventor.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Nutri Dairy Products Pvt Ltd",
+    "email": "aswaadarwin@gmail.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Panacorp Software Solutions Pvt Ltd",
+    "email": "info@panacorp.org",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "VM PETS MART",
+    "email": "info@vmpetsmart.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Race Pharmaceuticals (P) Ltd.",
+    "email": "racepharmaceuticals2000@gmail.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Aeon Formulations Pvt Ltd",
+    "email": "venkatesaperumal-venkey@aeonf.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Dgtal Accountant",
+    "email": "ganesh@dgtal.accountant",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Kaivalya Technologies Private Limited",
+    "email": "works@kaivalyatech.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Overseas Cyber Technical Services (OCTS)",
+    "email": "hr@octsindia.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Overseas Cyber Technical Services (OCTS)",
+    "email": "hr@octsindia.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Overseas Cyber Technical Services (OCTS)",
+    "email": "hr@octsindia.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Overseas Cyber Technical Services (OCTS)",
+    "email": "hr@octsindia.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Overseas Cyber Technical Services (OCTS)",
+    "email": "hr@octsindia.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Overseas Cyber Technical Services (OCTS)",
+    "email": "hr@octsindia.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Overseas Cyber Technical Services (OCTS)",
+    "email": "hr@octsindia.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  },
+  {
+    "recruiter": "Overseas Cyber Technical Services (OCTS)",
+    "email": "hr@octsindia.com",
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
+  }
+]

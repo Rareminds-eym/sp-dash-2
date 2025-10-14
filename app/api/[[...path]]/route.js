@@ -1213,3 +1213,110 @@ export async function DELETE(request) {
     )
   }
 }
+
+
+// PUT handler for updating resources
+export async function PUT(request) {
+  const { pathname } = new URL(request.url)
+  const path = pathname.replace('/api', '')
+
+  try {
+    const body = await request.json()
+
+    // PUT /api/profile - Update user profile
+    if (path === '/profile') {
+      const { email, name, organizationName } = body
+
+      if (!email) {
+        return NextResponse.json(
+          { error: 'Email is required' },
+          { status: 400 }
+        )
+      }
+
+      // First, find the user by email
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('id, organizationId, metadata')
+        .eq('email', email)
+        .single()
+
+      if (userError || !user) {
+        console.error('User lookup error:', userError)
+        return NextResponse.json(
+          { error: 'User not found' },
+          { status: 404 }
+        )
+      }
+
+      console.log('User found:', { id: user.id, organizationId: user.organizationId, metadata: user.metadata })
+
+      // Update user metadata with name
+      const updatedMetadata = {
+        ...(user.metadata || {}),
+        name: name || user.metadata?.name
+      }
+
+      const { error: updateUserError } = await supabase
+        .from('users')
+        .update({ 
+          metadata: updatedMetadata
+        })
+        .eq('id', user.id)
+
+      if (updateUserError) {
+        console.error('Error updating user:', updateUserError)
+        throw updateUserError
+      }
+
+      console.log('User metadata updated successfully')
+
+      // If organizationName is provided and user has an organizationId, update the organization
+      // Validate UUID format (UUID v4 format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx)
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      
+      if (organizationName && user.organizationId && uuidRegex.test(user.organizationId)) {
+        console.log('Attempting to update organization:', user.organizationId, 'with name:', organizationName)
+        
+        const { data: orgData, error: updateOrgError } = await supabase
+          .from('organizations')
+          .update({ name: organizationName })
+          .eq('id', user.organizationId)
+          .select()
+
+        if (updateOrgError) {
+          console.error('Error updating organization:', updateOrgError)
+          // Don't throw error here, just log it - user update already succeeded
+        } else {
+          console.log('Organization updated successfully:', orgData)
+        }
+      } else {
+        console.log('Skipping organization update. organizationId:', user.organizationId, 'isValidUUID:', user.organizationId ? uuidRegex.test(user.organizationId) : false)
+      }
+
+      // Log audit
+      await logAudit(user.id, 'update_profile', user.id, { name, organizationName })
+
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Profile updated successfully',
+        data: {
+          name,
+          organizationName
+        }
+      })
+    }
+
+    return NextResponse.json(
+      { error: 'Endpoint not found' },
+      { status: 404 }
+    )
+  } catch (error) {
+    console.error('API Error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error', details: error.message },
+      { status: 500 }
+    )
+  }
+}
+

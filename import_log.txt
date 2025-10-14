@@ -1,0 +1,613 @@
+================================================================================
+RECRUITER DATA IMPORT SCRIPT
+================================================================================
+
+Loaded 148 recruiters and 148 auth users
+
+[1/148] Processing: AXN INFOTECH PVT LTD - Tally Coimbatore
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[2/148] Processing: PUPA CHEMICAL INDUSTRIES
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[3/148] Processing: S group of industries
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[4/148] Processing: Zealsoft Technology Solutions
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[5/148] Processing: iSQUARE Business Solution Pvt. Ltd.
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[6/148] Processing: Aarel Infotech
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[7/148] Processing: Avgira Technologies
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[8/148] Processing: Abservetech
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[9/148] Processing: Easywin Software Solutions
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[10/148] Processing: Tritech data solutions
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[11/148] Processing: Prasan Invensys
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[12/148] Processing: Objectways Technologies
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[13/148] Processing: LAKSHMI HOTEL
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[14/148] Processing: New V.V.B. Jothiprakasam Paints Private Limited
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[15/148] Processing: O.M.S.Tamarind Merchants Private Limited
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[16/148] Processing: Prognamik Technologies Pvt Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[17/148] Processing: Sathya Technosoft India Pvt Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[18/148] Processing: Legend Lifts Solutions
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[19/148] Processing: QBlue
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[20/148] Processing: Jotis
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[21/148] Processing: SMA Chemicals
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[22/148] Processing: Thaiman Agro Foods Pvt Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[23/148] Processing: NK Chemiosys Private Limited
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[24/148] Processing: Techny Chemy
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[25/148] Processing: Vijay Dairy
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[26/148] Processing: Olir Designs Private Limited
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[27/148] Processing: Sardonyx Technologies Private Limited
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[28/148] Processing: VEBBOX software solutions
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[29/148] Processing: J.A SOLUTIONS
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[30/148] Processing: Bloomfieldx Analytics Private Limited
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[31/148] Processing: Joy Innovations
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[32/148] Processing: OCTS - IT & SOFTWARE
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[33/148] Processing: ABI-Tech Solution -Custom Software Development
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[34/148] Processing: Sigma ePlus
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[35/148] Processing: Sigma ePlus
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[36/148] Processing: iSquare Business Solutions
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[37/148] Processing: Elysium Technologies
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[38/148] Processing: IIFl Samasta Finance- madurai
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[39/148] Processing: Abserve Tech
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[40/148] Processing: Share Soft
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[41/148] Processing: Trioangle Technologies
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[42/148] Processing: Orion India Systems Pvt Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[43/148] Processing: Wahmi Softwares and Solutions Pvt Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[44/148] Processing: Hypercognito Computings
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[45/148] Processing: I-India scientific and fabrication.
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[46/148] Processing: Brandmakerz Digital Marketing Agency
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[47/148] Processing: INTER DECCAAN SOLUTIONS
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[48/148] Processing: Frontline Technologies
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[49/148] Processing: Atlas Corporation Used and Waste Oil Recycler - Admin
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[50/148] Processing: Shri Attik
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[51/148] Processing: MAKE VISION ANALYTICS A.I software solutions
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[52/148] Processing: VineAtZ OPC Private Limited
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[53/148] Processing: QR Solutions
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[54/148] Processing: Techzarinfo
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[55/148] Processing: Marco Technology Solutions Private Ltd.
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[56/148] Processing: Fantasy Solution
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[57/148] Processing: Ak Infopark Pvt Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[58/148] Processing: Prime med Labs
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[59/148] Processing: Vivek Laboratories
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[60/148] Processing: Tube Investments of India Ltd.
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[61/148] Processing: EL Forge Limited
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[62/148] Processing: EL Forge Limited
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[63/148] Processing: Ucal fuel Systems
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[64/148] Processing: Nelcast Limited
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[65/148] Processing: Igarashi Motors
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[66/148] Processing: Z F Commercial Vehicle Controle Systems India
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[67/148] Processing: L.G.Balakrishnan & Bros Ltd.
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[68/148] Processing: Ceat Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[69/148] Processing: Chennai Forge Products Pvt Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[70/148] Processing: Lear Corporation
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[71/148] Processing: Lucas-TVS
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[72/148] Processing: Magal Engg. Tech Pvt Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[73/148] Processing: Power Gear Limited
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[74/148] Processing: Pricol Limited
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[75/148] Processing: Steel Strips Wheels Limted
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[76/148] Processing: Surin Automotive
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[77/148] Processing: Surin Automotive Pvt Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[78/148] Processing: Tafe Access Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[79/148] Processing: Tafe Access Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[80/148] Processing: Tafe Access Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[81/148] Processing: Tafe Access Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[82/148] Processing: Tafe Access Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[83/148] Processing: VK Building Services Pvt. Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[84/148] Processing: FLSmidth
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[85/148] Processing: Renfra Power Pvt Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[86/148] Processing: Seedling Agro
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[87/148] Processing: Speed Team Wind Tech Pvt
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[88/148] Processing: Amar Sava Sangam
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[89/148] Processing: Muthiahs Farm
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[90/148] Processing: Grihum Housing Finance
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[91/148] Processing: JVS Air Systems
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[92/148] Processing: Benzz Park
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[93/148] Processing: SUSPA Pneumatics (India) Ltd.
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[94/148] Processing: Rane Engine Valves Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[95/148] Processing: Acoustics India Private Limite
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[96/148] Processing: Acoustics India Private Limite
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[97/148] Processing: Pj Infotech
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[98/148] Processing: RIBO Industries Private Limited
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[99/148] Processing: SRI Energy, Inc.
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[100/148] Processing: T V Sundram Iyengar & Sons Ltd.
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[101/148] Processing: SRF Limited
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[102/148] Processing: Global TVS Bus Body Builders
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[103/148] Processing: MVS Fabricators
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[104/148] Processing: Ashley Alteams India Limited
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[105/148] Processing: Pickyourtrail
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[106/148] Processing: Nikah Marriage consultant
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[107/148] Processing: Dharani Sugars And Chemicals Limited
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[108/148] Processing: Sun Thermo Process
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[109/148] Processing: Boomika Tours & travels
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[110/148] Processing: ABT Industries  ltd - CVD
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[111/148] Processing: V. V. V. & Sons Edible Oils Limited ( Idhayam)
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[112/148] Processing: Vijay Dairy
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[113/148] Processing: Milky Mist
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[114/148] Processing: R G Bronez Pvt Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[115/148] Processing: Orbiton Life Sciences Private Limited
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[116/148] Processing: Enviro Care Pvt Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[117/148] Processing: Green Signal Bio Pharma Private Limited
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[118/148] Processing: Krishnaveni Carbon Products Private Limited Unit - IV
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[119/148] Processing: Shakti Cords Private Limited
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[120/148] Processing: Baptist Healthcare
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[121/148] Processing: Bluemein Technologies
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[122/148] Processing: Muthoot Finance
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[123/148] Processing: Vanchinad Finance
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[124/148] Processing: Geojit Financial Services Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[125/148] Processing: Joshua Computers
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[126/148] Processing: Panacorp Software Solutions
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[127/148] Processing: Panacorp Software Solutions
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[128/148] Processing: Panacorp Software Solutions
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[129/148] Processing: Panacorp Software Solutions Pvt Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[130/148] Processing: Panacorp Software Solutions Pvt Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[131/148] Processing: Seaview kanyakumari
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[132/148] Processing: Nutri Dairy Products Pvt Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[133/148] Processing: Cogniventor
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[134/148] Processing: Nutri Dairy Products Pvt Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[135/148] Processing: Panacorp Software Solutions Pvt Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[136/148] Processing: VM PETS MART
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[137/148] Processing: Race Pharmaceuticals (P) Ltd.
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[138/148] Processing: Aeon Formulations Pvt Ltd
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[139/148] Processing: Dgtal Accountant
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[140/148] Processing: Kaivalya Technologies Private Limited
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[141/148] Processing: Overseas Cyber Technical Services (OCTS)
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[142/148] Processing: Overseas Cyber Technical Services (OCTS)
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[143/148] Processing: Overseas Cyber Technical Services (OCTS)
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[144/148] Processing: Overseas Cyber Technical Services (OCTS)
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[145/148] Processing: Overseas Cyber Technical Services (OCTS)
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[146/148] Processing: Overseas Cyber Technical Services (OCTS)
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[147/148] Processing: Overseas Cyber Technical Services (OCTS)
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+[148/148] Processing: Overseas Cyber Technical Services (OCTS)
+  ✗ ERROR: Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+================================================================================
+IMPORT SUMMARY
+================================================================================
+Total recruiters processed: 148
+Successful imports: 0
+Failed imports: 148
+Success rate: 0.00%
+
+Errors encountered:
+1. AXN INFOTECH PVT LTD - Tally Coimbatore (axninfotech@gmail.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+2. PUPA CHEMICAL INDUSTRIES (roshan@pupahomecare.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+3. S group of industries (sgoikarur@gmail.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+4. Zealsoft Technology Solutions (hr@zealsoft.net): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+5. iSQUARE Business Solution Pvt. Ltd. (career@isquarebs.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+6. Aarel Infotech (saravanan@aarelit.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+7. Avgira Technologies (avgiraindia@gmail.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+8. Abservetech (support@abservetech.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+9. Easywin Software Solutions (sundar@easywinits.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+10. Tritech data solutions (tritechdatasolution@gmail.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+11. Prasan Invensys (info@prasaninvensys.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+12. Objectways Technologies (careers@objectways.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+13. LAKSHMI HOTEL (res@lakshmihotel.in): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+14. New V.V.B. Jothiprakasam Paints Private Limited (vvbjppaints@gmail.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+15. O.M.S.Tamarind Merchants Private Limited (omstamarind@gmail.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+16. Prognamik Technologies Pvt Ltd (info@prognamik.in): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+17. Sathya Technosoft India Pvt Ltd (info@sathya.store): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+18. Legend Lifts Solutions (admin@legendlifts.in): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+19. QBlue (enquiretoqblue@gmail.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+20. Jotis (gogreen@jotis.in): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+21. SMA Chemicals (smachemicals.vpm@gmail.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+22. Thaiman Agro Foods Pvt Ltd (info@thaimanagrofoods.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+23. NK Chemiosys Private Limited (rnd@chemiosys.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+24. Techny Chemy (info@technychemy.in): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+25. Vijay Dairy (jobs@vijaymilk.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+26. Olir Designs Private Limited (hello@olirdesigns.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+27. Sardonyx Technologies Private Limited (jobs@sardonyx.in): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+28. VEBBOX software solutions (info@vebbox.in): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+29. J.A SOLUTIONS (info@jasolutions.in): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+30. Bloomfieldx Analytics Private Limited (hello@bloomfieldx.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+31. Joy Innovations (support@joyinnovations.net): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+32. OCTS - IT & SOFTWARE (jobs@octsindia.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+33. ABI-Tech Solution -Custom Software Development (abitech.officialindia@gmail.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+34. Sigma ePlus (sigmaeplus@gmail.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+35. Sigma ePlus (sigmaeplus@gmail.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+36. iSquare Business Solutions (career@isquarebs.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+37. Elysium Technologies (info@elysiumtechnologies.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+38. IIFl Samasta Finance- madurai (ananth.s@iiflsamasta.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+39. Abserve Tech (hr@abservetech.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+40. Share Soft (info@sharesoft.in): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+41. Trioangle Technologies (email@centuryminds.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+42. Orion India Systems Pvt Ltd (career.india@orioninc.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+43. Wahmi Softwares and Solutions Pvt Ltd (info@wahmisoft.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+44. Hypercognito Computings (info@hypercognito.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+45. I-India scientific and fabrication. (global.iindiasf@gmail.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+46. Brandmakerz Digital Marketing Agency (info@brandmakerzofficial.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+47. INTER DECCAAN SOLUTIONS (interdeccaansolutions@gmail.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+48. Frontline Technologies (info@frontlinetech.in): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+49. Atlas Corporation Used and Waste Oil Recycler - Admin (info@atlascorp.in): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+50. Shri Attik (info@shriattik.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+51. MAKE VISION ANALYTICS A.I software solutions (makelabsmail@gmail.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+52. VineAtZ OPC Private Limited (info@vineatz.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+53. QR Solutions (venkatraman@qrsolutions.in): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+54. Techzarinfo (career@techzarinfo.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+55. Marco Technology Solutions Private Ltd. (hireme@marcroglobal.co.uk): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+56. Fantasy Solution (info@fantasysolution.in): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+57. Ak Infopark Pvt Ltd (hrm@akinfopark.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+58. Prime med Labs (info@primemedlabs.in): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+59. Vivek Laboratories (viveklaboratories@gmail.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+60. Tube Investments of India Ltd. (info@tii.murugappa.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+61. EL Forge Limited (vsri@elforge.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+62. EL Forge Limited (elforge2@elforge.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+63. Ucal fuel Systems (marketing@ucal.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+64. Nelcast Limited (nelcast@nelcast.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+65. Igarashi Motors (igarashi@igarashimotors.co.in): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+66. Z F Commercial Vehicle Controle Systems India (muthulakshmi.m@zf.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+67. L.G.Balakrishnan & Bros Ltd. (info@lgb.co.in): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+68. Ceat Ltd (customercare@ceat.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+69. Chennai Forge Products Pvt Ltd (info@chennaiforgeproducts.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+70. Lear Corporation (shankar@lear.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+71. Lucas-TVS (ags.padi@lucastvs.co.in): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+72. Magal Engg. Tech Pvt Ltd (sales@magaltech.co.in): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+73. Power Gear Limited (enquiries@powergearlimited.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+74. Pricol Limited (connect@pricol.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+75. Steel Strips Wheels Limted (careers@sswlindia.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+76. Surin Automotive (contactus@surinauto.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+77. Surin Automotive Pvt Ltd (contactus@surinauto.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+78. Tafe Access Ltd (corporate@tafe.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+79. Tafe Access Ltd (corporate@tafe.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+80. Tafe Access Ltd (corporate@tafe.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+81. Tafe Access Ltd (corporate@tafe.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+82. Tafe Access Ltd (corporate@tafe.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+83. VK Building Services Pvt. Ltd (infochn@vkbs.in): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+84. FLSmidth (info@flsmidth.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+85. Renfra Power Pvt Ltd (nasheer@renfrapower.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+86. Seedling Agro (seedlingfarm@gmail.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+87. Speed Team Wind Tech Pvt (info@speedteam.in): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+88. Amar Sava Sangam (mail@amarseva.org): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+89. Muthiahs Farm (selva.kumar190575@gmail.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+90. Grihum Housing Finance (career@grihumhousing.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+91. JVS Air Systems (customercare@jvsairsystems.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+92. Benzz Park (reservation@benzzpark.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+93. SUSPA Pneumatics (India) Ltd. (hr@in.suspa.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+94. Rane Engine Valves Ltd (sr.venkatraj@ranegroup.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+95. Acoustics India Private Limite (marketing@acousticsind.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+96. Acoustics India Private Limite (ehouse@acousticsind.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+97. Pj Infotech (pjinfotec@gmail.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+98. RIBO Industries Private Limited (marketing@ribo.in): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+99. SRI Energy, Inc. (sales@srienergy.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+100. T V Sundram Iyengar & Sons Ltd. (careers@ashokleyland.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+101. SRF Limited (info@srf.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+102. Global TVS Bus Body Builders (info@globaltvs.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+103. MVS Fabricators (mvsfabricators@gmail.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+104. Ashley Alteams India Limited (reachus@ashleyalteams.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+105. Pickyourtrail (karthiga.d@pickyourtrail.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+106. Nikah Marriage consultant (support@nikah.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+107. Dharani Sugars And Chemicals Limited (secretarial@dharanisugars-pgp.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+108. Sun Thermo Process (msk@sunthermo.in): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+109. Boomika Tours & travels (www.sivakumar1438@email.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+110. ABT Industries  ltd - CVD (corporate@abtimited.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+111. V. V. V. & Sons Edible Oils Limited ( Idhayam) (online@idhayam.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+112. Vijay Dairy (sekhar@vijaymilk.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+113. Milky Mist (nantha@milkymist.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+114. R G Bronez Pvt Ltd (sales@rgbronze.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+115. Orbiton Life Sciences Private Limited (info@orbitonls.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+116. Enviro Care Pvt Ltd (mis@envirocareindia.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+117. Green Signal Bio Pharma Private Limited (md@gsbpl.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+118. Krishnaveni Carbon Products Private Limited Unit - IV (hrdu4@krishcarbon.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+119. Shakti Cords Private Limited (careers@indtextile.in): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+120. Baptist Healthcare (info@baptisthealthcare.in): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+121. Bluemein Technologies (info@bluemein.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+122. Muthoot Finance (hrvlr@muthootgroup.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+123. Vanchinad Finance (info@vanchinadfinance.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+124. Geojit Financial Services Ltd (nagercoil@geojit.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+125. Joshua Computers (joshuacomputersngl@gmail.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+126. Panacorp Software Solutions (info@panacorp.org): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+127. Panacorp Software Solutions (info@panacorp.org): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+128. Panacorp Software Solutions (info@panacorp.org): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+129. Panacorp Software Solutions Pvt Ltd (info@panacorp.org): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+130. Panacorp Software Solutions Pvt Ltd (info@panacorp.org): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+131. Seaview kanyakumari (sales@hotelseaview.in): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+132. Nutri Dairy Products Pvt Ltd (aswaadarwin@gmail.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+133. Cogniventor (office@cogniventor.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+134. Nutri Dairy Products Pvt Ltd (aswaadarwin@gmail.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+135. Panacorp Software Solutions Pvt Ltd (info@panacorp.org): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+136. VM PETS MART (info@vmpetsmart.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+137. Race Pharmaceuticals (P) Ltd. (racepharmaceuticals2000@gmail.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+138. Aeon Formulations Pvt Ltd (venkatesaperumal-venkey@aeonf.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+139. Dgtal Accountant (ganesh@dgtal.accountant): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+140. Kaivalya Technologies Private Limited (works@kaivalyatech.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+141. Overseas Cyber Technical Services (OCTS) (hr@octsindia.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+142. Overseas Cyber Technical Services (OCTS) (hr@octsindia.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+143. Overseas Cyber Technical Services (OCTS) (hr@octsindia.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+144. Overseas Cyber Technical Services (OCTS) (hr@octsindia.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+145. Overseas Cyber Technical Services (OCTS) (hr@octsindia.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+146. Overseas Cyber Technical Services (OCTS) (hr@octsindia.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+147. Overseas Cyber Technical Services (OCTS) (hr@octsindia.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+148. Overseas Cyber Technical Services (OCTS) (hr@octsindia.com): Organization insert failed: Could not find the 'address' column of 'organizations' in the schema cache
+
+Errors saved to: import_errors.json
+
+Total recruiter organizations in database: 2
+
+✓ Import process completed!

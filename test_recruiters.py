@@ -7,7 +7,7 @@ import requests
 import json
 import sys
 
-BASE_URL = "https://passport-paginate.preview.emergentagent.com/api"
+BASE_URL = "https://data-insights-116.preview.emergentagent.com/api"
 
 def test_login():
     """Test login with correct credentials"""

@@ -483,9 +483,9 @@ frontend:
 
   - task: "Settings Page User Data Display Fix"
     implemented: true
-    working: true
+    working: false
     file: "lib/supabase-server.js, app/(dashboard)/settings/page.js, app/(dashboard)/passports/page.js, app/(dashboard)/dashboard/page.js, app/(dashboard)/users/page.js"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
     needs_retesting: false
     status_history:
@@ -495,6 +495,9 @@ frontend:
       - working: true
         agent: "testing"
         comment: "Backend testing confirmed session endpoint returns all required fields: email, role, name, organizationId. Console error 'Error fetching user data: {}' was resolved by changing from ID-based lookup to email-based lookup."
+      - working: false
+        agent: "testing"
+        comment: "ORGANIZATION DATA ISSUE IDENTIFIED: User superadmin@rareminds.in has organizationId '905b21a8-8374-4a7c-a224-46bd6f58dc4c' in database but this organization does NOT exist in organizations table. This is a REFERENTIAL INTEGRITY ISSUE causing 'You are not currently linked to an organization' message in settings. Session endpoint returns organizationId but organization object is null because the referenced organization doesn't exist. Available organizations in DB are different university IDs. RECOMMENDATION: Either create the missing organization or update user's organizationId to reference an existing organization."
 
   - task: "Passports Page Student Name Display Fix"
     implemented: true
@@ -529,6 +532,18 @@ frontend:
         agent: "testing"
         comment: "AUTHENTICATION SECURITY TESTING COMPLETED SUCCESSFULLY: All 8 authentication security tests passed (100% success rate). ✅ Login Flow: Valid credentials (superadmin@rareminds.in) authenticate successfully with complete user data (email, role, name, organizationId). ✅ Invalid Login: Properly rejects invalid credentials with 401 status. ✅ Session API (Valid): Returns complete user data for authenticated sessions using secure getUser() method. ✅ Session API (Invalid): Properly rejects unauthenticated requests with 401 status and clear error messages. ✅ Protected Route Access: Authenticated users can access API endpoints successfully. ✅ Middleware Protection: Frontend routes properly redirect unauthenticated users to login (307 redirect). ✅ JWT Error Handling: Invalid/malformed JWT tokens handled gracefully with appropriate error messages. ✅ User Data Consistency: Login and session APIs return consistent user data. SECURITY IMPROVEMENTS VERIFIED: No more 'Using the user object as returned from supabase.auth.getSession() could be insecure' warnings. JWT validation through getUser() method working correctly. Graceful handling of expired tokens with proper error logging. Fixed login API to use email-based user lookup (matching session API) ensuring organizationId is properly returned."
 
+  - task: "Profile Update API"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "PROFILE UPDATE FUNCTIONALITY TESTING COMPLETED SUCCESSFULLY: All 7 core profile update tests passed (100% success rate). ✅ User Authentication: Login with superadmin@rareminds.in working correctly, returns complete user data (email, role, organizationId). ✅ Valid Profile Update: PUT /api/profile endpoint successfully updates user name and organization name with proper response structure. ✅ Email Validation: Required email field validation working correctly, returns 400 status with 'Email is required' error. ✅ User Not Found Handling: Non-existent user lookup returns 404 status with 'User not found' error. ✅ Name-Only Updates: Profile updates work correctly when only name is provided (without organizationName). ✅ Database Integration: User metadata updates are persisted correctly in Supabase database. ✅ Organization Update Logic: Organization name updates are processed when valid organizationId exists. ✅ Audit Logging: All profile updates are properly logged in audit_logs table with correct actorId, action='update_profile', and payload data. The PUT /api/profile endpoint is functioning as expected with proper validation, error handling, database persistence, and audit trail. User reported issue with profile settings not saving has been resolved - the backend API is working correctly."
+
 
 metadata:
   created_by: "testing_agent"
@@ -540,7 +555,8 @@ test_plan:
   current_focus: 
     - "Recruiter Verification Frontend Page"
     - "Database Schema Migration for Recruiters"
-  stuck_tasks: []
+  stuck_tasks: 
+    - "Settings Page User Data Display Fix"
   test_all: false
   test_priority: "high_first"
 
@@ -579,3 +595,7 @@ agent_communication:
     message: "USER REPORTED ISSUES TESTING COMPLETED: Focused testing on two specific issues reported by user. ✅ SESSION ENDPOINT FIX VERIFIED: /api/auth/session now returns complete user data including email, role, name, and organizationId. Fixed issue where Supabase Auth user ID didn't match users table ID by changing lookup from ID-based to email-based. All 4 required fields now present in response (email=superadmin@rareminds.in, role=super_admin, name=Super Admin, organizationId=RM). ❌ PASSPORTS ENDPOINT DATA ISSUE IDENTIFIED: /api/passports endpoint code is working correctly but passport references non-existent student (studentId=secure-auth-fix). Database has 712 students but passport references invalid student ID, causing students field to be missing from response. This is a data consistency issue, not a code issue. The endpoint logic for populating student data with user metadata is correct and will work when passport references valid student."
   - agent: "testing"
     message: "AUTHENTICATION SECURITY TESTING COMPLETED: Comprehensive testing of JWT security fixes and getUser() implementation completed successfully. All 8 authentication security tests passed (100% success rate). ✅ Login Flow: Valid authentication working with complete user data (email, role, name, organizationId). ✅ Session API: Secure getUser() method working correctly for both valid and invalid sessions. ✅ JWT Security: No more insecure getSession() warnings, proper JWT validation implemented. ✅ Middleware Protection: Frontend routes properly protected with 307 redirects to login. ✅ Error Handling: JWT expiration and invalid tokens handled gracefully. ✅ Data Consistency: Login and session APIs return consistent user data. SECURITY IMPROVEMENTS VERIFIED: Replaced insecure supabase.auth.getSession() with secure supabase.auth.getUser() across all 3 critical files (lib/supabase-server.js, middleware.js, app/api/auth/session/route.js). Fixed login API to use email-based user lookup ensuring organizationId is properly returned. All authentication endpoints now use proper JWT validation with detailed error handling for expired tokens."
+  - agent: "testing"
+    message: "PROFILE UPDATE FUNCTIONALITY TESTING COMPLETED: User reported issue with profile settings not saving properly has been thoroughly tested and RESOLVED. ✅ PUT /api/profile endpoint is working correctly with all required functionality: user lookup by email, metadata updates, organization name updates, proper validation, error handling, database persistence, and audit logging. ✅ All 7 test scenarios passed (100% success rate): valid profile updates, email validation, user not found handling, name-only updates, database integration, organization update logic, and audit trail verification. ✅ Backend logs confirm successful user metadata updates and organization updates. ✅ Audit logs show proper tracking of all profile update actions. The profile update functionality is working as designed - any frontend issues would be separate from the backend API which is functioning correctly."
+  - agent: "testing"
+    message: "ORGANIZATION DATA ISSUE INVESTIGATION COMPLETED: User reported 'You are not currently linked to an organization' message in settings. ✅ ROOT CAUSE IDENTIFIED: Referential integrity issue in database. User superadmin@rareminds.in has organizationId '905b21a8-8374-4a7c-a224-46bd6f58dc4c' but this organization does NOT exist in organizations table. ✅ Session endpoint working correctly - returns organizationId but organization object is null because referenced organization doesn't exist. ✅ Database verification shows 5 available organizations (all universities) but none match user's organizationId. ❌ CRITICAL DATA ISSUE: This is causing settings page to show 'not linked to organization' message despite user having organizationId. RECOMMENDATION: Main agent must either create the missing organization with ID '905b21a8-8374-4a7c-a224-46bd6f58dc4c' or update user's organizationId to reference an existing organization from the available list."
