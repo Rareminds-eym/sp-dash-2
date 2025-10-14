@@ -37,13 +37,18 @@ recruiter_orgs = orgs_response.data
 # Create email to org mapping
 org_by_email = {}
 for org in recruiter_orgs:
+    if not org.get('email'):
+        continue
     org_email = org['email'].lower().strip()
     # Clean email (take first if multiple)
     if '/' in org_email:
         org_email = org_email.split('/')[0].strip()
     if ',' in org_email:
         org_email = org_email.split(',')[0].strip()
-    org_by_email[org_email] = org
+    
+    # Validate email
+    if '@' in org_email and '.' in org_email:
+        org_by_email[org_email] = org
 
 print(f"✅ Found {len(recruiter_orgs)} recruiter organizations")
 
