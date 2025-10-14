@@ -86,7 +86,7 @@ stats = {
 
 for org in recruiters[:3]:  # Test with first 3
     company_name = org.get('name', 'Unknown')
-    email = org.get('email', '').lower().strip()
+    email = (org.get('email') or '').lower().strip()
     org_id = org.get('id')
     
     print(f"\n{stats['processed']+1}. {company_name}")
