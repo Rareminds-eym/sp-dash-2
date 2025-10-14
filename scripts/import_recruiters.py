@@ -57,12 +57,34 @@ class RecruiterImporter:
         
         return complete_df
     
+    def clean_email(self, email):
+        """Clean and validate email address"""
+        if pd.isna(email):
+            return None
+        
+        email_str = str(email).strip().lower()
+        
+        # If multiple emails separated by / or , take the first one
+        if '/' in email_str:
+            email_str = email_str.split('/')[0].strip()
+        if ',' in email_str:
+            email_str = email_str.split(',')[0].strip()
+        
+        # Basic email validation
+        if '@' in email_str and '.' in email_str:
+            return email_str
+        
+        return None
+    
     def remove_duplicates(self, df):
         """Remove duplicate email addresses"""
-        print("\n🔍 Checking for duplicate emails...")
+        print("\n🔍 Cleaning and checking emails...")
         
-        # Convert email to lowercase for comparison
-        df['Mail ID'] = df['Mail ID'].str.strip().str.lower()
+        # Clean all emails
+        df['Mail ID'] = df['Mail ID'].apply(self.clean_email)
+        
+        # Remove rows with invalid emails
+        df = df[df['Mail ID'].notna()]
         
         # Keep first occurrence of each email
         df_unique = df.drop_duplicates(subset=['Mail ID'], keep='first')
