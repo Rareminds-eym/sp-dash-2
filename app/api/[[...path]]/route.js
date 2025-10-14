@@ -516,16 +516,21 @@ export async function GET(request) {
 
     // GET /api/analytics/university-reports - University-wise analytics (OPTIMIZED)
     if (path === '/analytics/university-reports') {
-      // Fetch all data in parallel instead of sequential loops
-      const [orgsResult, studentsResult, passportsResult] = await Promise.all([
-        supabase.from('organizations').select('id, name, state').eq('type', 'university'),
+      // Fetch all data in parallel from universities table
+      const [universitiesResult, studentsResult, passportsResult] = await Promise.all([
+        supabase.from('universities').select('organizationid, name, state'),
         supabase.from('students').select('id, universityId'),
         supabase.from('skill_passports').select('studentId, status')
       ])
 
-      if (orgsResult.error) throw orgsResult.error
+      if (universitiesResult.error) throw universitiesResult.error
 
-      const orgs = orgsResult.data || []
+      // Map universities to match expected format
+      const orgs = (universitiesResult.data || []).map(u => ({
+        id: u.organizationid,
+        name: u.name,
+        state: u.state
+      }))
       const students = studentsResult.data || []
       const passports = passportsResult.data || []
 
