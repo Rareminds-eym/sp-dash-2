@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Modernize the Rareminds Super Admin Dashboard with attractive design, modern graphs, and dark/light mode functionality. Original task was backend API testing with RBAC, Supabase backend, and PostgreSQL. Enhancement task completed: dashboard modernization with neumorphism design, enhanced charts, and theme switching."
+user_problem_statement: "Modernize the Rareminds Super Admin Dashboard with attractive design, modern graphs, and dark/light mode functionality. Original task was backend API testing with RBAC, Supabase backend, and PostgreSQL. Enhancement task completed: dashboard modernization with neumorphism design, enhanced charts, and theme switching. New task: Import recruiter data from Excel file (148 rows with 100% complete data) into database without duplicates and signup all recruiters in Supabase Auth."
 
 backend:
   - task: "API Root Endpoint"
