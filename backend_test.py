@@ -148,7 +148,8 @@ def test_recruiter_actions(recruiters_data):
         return
     
     recruiter_id = test_recruiter['id']
-    test_user_id = "test-user-id"  # Mock user ID for testing
+    # Use a proper UUID format for testing
+    test_user_id = "550e8400-e29b-41d4-a716-446655440000"  # Valid UUID for testing
     
     print(f"Using test recruiter: {test_recruiter['name']} (ID: {recruiter_id})")
     print()
