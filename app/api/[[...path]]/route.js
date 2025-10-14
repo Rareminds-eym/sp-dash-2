@@ -953,15 +953,13 @@ export async function POST(request) {
     if (path === '/approve-recruiter') {
       const { recruiterId, userId, note } = body
 
-      // Update recruiter status
+      // Update recruiter status in recruiters table
       const { error: updateError } = await supabase
-        .from('organizations')
+        .from('recruiters')
         .update({ 
-          verificationStatus: 'approved',
-          verifiedAt: new Date().toISOString(),
-          verifiedBy: userId
+          verificationstatus: 'approved'
         })
-        .eq('id', recruiterId)
+        .eq('organizationid', recruiterId)
 
       if (updateError) throw updateError
 
@@ -970,7 +968,7 @@ export async function POST(request) {
         .from('verifications')
         .insert({
           id: uuidv4(),
-          targetTable: 'organizations',
+          targetTable: 'recruiters',
           targetId: recruiterId,
           action: 'approve',
           performedBy: userId,
