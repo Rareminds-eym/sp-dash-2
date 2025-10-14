@@ -56,7 +56,8 @@ class DuplicateRemover:
         email_groups = defaultdict(list)
         
         for recruiter in recruiters:
-            email = recruiter.get('email', '').lower().strip()
+            email = recruiter.get('email', '') or ''
+            email = email.lower().strip()
             if email:
                 email_groups[email].append(recruiter)
         
