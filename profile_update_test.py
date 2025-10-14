@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 
 class ProfileUpdateTester:
-    def __init__(self, base_url="https://profile-fix-15.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://data-insights-116.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.session = requests.Session()
         self.results = []
