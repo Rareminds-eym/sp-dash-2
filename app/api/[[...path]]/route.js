@@ -214,12 +214,12 @@ export async function GET(request) {
 
       // Fetch all users in bulk and count by organization
       if (recruiters && recruiters.length > 0) {
-        const recruiterIds = recruiters.map(r => r.id)
+        const recruiterOrgIds = recruiters.map(r => r.organizationid)
         
         const { data: users } = await supabase
           .from('users')
           .select('id, organizationId')
-          .in('organizationId', recruiterIds)
+          .in('organizationId', recruiterOrgIds)
         
         // Count users by organization
         const userCountMap = {}
@@ -227,20 +227,26 @@ export async function GET(request) {
           userCountMap[user.organizationId] = (userCountMap[user.organizationId] || 0) + 1
         })
         
-        recruiters.forEach(recruiter => {
-          recruiter.userCount = userCountMap[recruiter.id] || 0
-          
-          // Add default values if verification fields don't exist
-          if (!recruiter.hasOwnProperty('verificationStatus')) {
-            recruiter.verificationStatus = 'approved'
-          }
-          if (!recruiter.hasOwnProperty('isActive')) {
-            recruiter.isActive = true
-          }
-        })
+        // Map recruiters to expected format
+        const mappedRecruiters = recruiters.map(recruiter => ({
+          id: recruiter.organizationid,
+          name: recruiter.name,
+          type: 'recruiter',
+          state: recruiter.state,
+          email: recruiter.email,
+          phone: recruiter.phone,
+          website: recruiter.website,
+          verificationStatus: recruiter.verificationstatus || 'approved',
+          isActive: recruiter.isactive !== undefined ? recruiter.isactive : true,
+          createdAt: recruiter.createdat,
+          updatedAt: recruiter.updatedat,
+          userCount: userCountMap[recruiter.organizationid] || 0
+        }))
+        
+        return NextResponse.json(mappedRecruiters)
       }
 
-      return NextResponse.json(recruiters || [])
+      return NextResponse.json([])
     }
 
     // GET /api/students - List all students (OPTIMIZED)
