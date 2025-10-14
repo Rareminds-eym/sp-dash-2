@@ -1,0 +1,219 @@
+{
+  "generatedAt": "2025-10-14T06:41:32.308Z",
+  "statistics": {
+    "total": 130,
+    "withEmail": 128,
+    "withPhone": 128,
+    "withWebsite": 128,
+    "withAddress": 128,
+    "byCity": {
+      "Coimbatore": 3,
+      "Karur": 6,
+      "Madurai": 18,
+      "karur": 1,
+      "THANJAVUR": 1,
+      "madurai": 1,
+      "Tirunelveli": 4,
+      "Tuticorin": 1,
+      "Villupuram": 3,
+      "Tiruchirappalli": 3,
+      "Thanjavur": 7,
+      "Vellore": 2,
+      "Karaikudi": 2,
+      "Puducherry": 4,
+      "KUMBAKONAM": 1,
+      "Nagapattinam": 4,
+      "Krishnagiri": 2,
+      "Trichy": 5,
+      "Kaniyakumari": 3,
+      "Chennai": 18,
+      "Sriperumbudur// Kancheepuram": 2,
+      "Nungambakkam": 2,
+      "Arakkonam": 1,
+      "Kuthukul Valasai , Tenkasi": 1,
+      "Tenkasi": 2,
+      "Ayikudy-, Tenkasi District": 1,
+      "Achampudur, Tenkasi": 1,
+      "Tenkasi , Tirunelveli & Sivakasi": 1,
+      "Mugalivakkam,,Chennai": 1,
+      "Kalivanthapattu": 1,
+      "Pudukkottai": 4,
+      "Pudukottai": 3,
+      "Ekattuthangal": 1,
+      "Viralimalai, Pudukkottai": 1,
+      "Thiruvannamalai": 3,
+      "Chennai Adyar.": 1,
+      "Ramanathapuram": 1,
+      "Viruthunagar": 1,
+      "Erode": 1,
+      "Karumathampatti, Coimbatore": 1,
+      "Nagercoil": 7,
+      "Kanniyakumari": 2
+    },
+    "byCompanyType": {
+      "customer service": 1,
+      "chemical": 2,
+      "IT": 6,
+      "Data entry": 2,
+      "Digital marketing": 1,
+      "Hotels": 1,
+      "paint": 1,
+      "Manifacture": 1,
+      "Website designers": 1,
+      "Angences": 1,
+      "Elevator  Servicing company": 1,
+      "Chemical Industry": 3,
+      "Agro Foods": 1,
+      "R&D Labs": 1,
+      "Chemical Manufacturing": 1,
+      "Dairy Farm": 3,
+      "Design agency": 1,
+      "Software company": 19,
+      "Data science consulting companies": 1,
+      "Financial Service": 1,
+      "Web Develpment": 4,
+      "Biotechnology company": 1,
+      "Marketing agency": 1,
+      "Web Develpoment": 1,
+      "Waste management service": 1,
+      "Chemical Manufacturer": 1,
+      "Medical laboratory": 2,
+      "Automobile Industry": 8,
+      "Tyre Manufacturing": 1,
+      "Machine accessories manufacturer": 1,
+      "OEM Components Manufacturer": 8,
+      "MEP services providers": 1,
+      "Production Shopfloor Trainee": 1,
+      "Both Wind and Solar energy": 1,
+      "Farm Land Promoting, Agriculture, and Farming & Plantations space": 1,
+      "Wind Energy Services": 1,
+      "Communication Executive": 1,
+      "Farm": 1,
+      "Finance": 2,
+      "HVAC contracting companies": 1,
+      "3 star Hotel": 1,
+      "Manufacture of Gas Springs for Automotive": 1,
+      "Auto parts manufacturer": 1,
+      "Engineering Services": 2,
+      "Boiler manufacturer": 1,
+      "Oilfield Equipment Manufactures": 1,
+      "Truck dealer": 1,
+      "Belting Fabrics Factory": 1,
+      "Bus Body Builders": 1,
+      "Steel fabricator": 1,
+      "Automotive": 1,
+      "Travel agency": 2,
+      "Marriage consultant": 1,
+      "Sugar Units": 1,
+      "Food processing company": 1,
+      "Parcel  Service": 1,
+      "Oil Manufacturer": 1,
+      "Manufactacturing": 1,
+      "Pharmaceutical company": 4,
+      "Environmental consultant": 1,
+      "Manufacturer": 3,
+      "Pharmaceutical & Life Sciences": 1,
+      "IT Services & Consulting": 1,
+      "Finance,": 2,
+      "Retail": 1,
+      "Software Solutions,": 1,
+      "Hotel": 1,
+      "Dairy farm": 1,
+      "Global Business Development Company": 1,
+      "Pet store": 1,
+      "Accounting firm": 1,
+      "IT & Service": 1
+    }
+  },
+  "topCities": [
+    [
+      "Madurai",
+      18
+    ],
+    [
+      "Chennai",
+      18
+    ],
+    [
+      "Thanjavur",
+      7
+    ],
+    [
+      "Nagercoil",
+      7
+    ],
+    [
+      "Karur",
+      6
+    ],
+    [
+      "Trichy",
+      5
+    ],
+    [
+      "Tirunelveli",
+      4
+    ],
+    [
+      "Puducherry",
+      4
+    ],
+    [
+      "Nagapattinam",
+      4
+    ],
+    [
+      "Pudukkottai",
+      4
+    ]
+  ],
+  "topIndustries": [
+    [
+      "Software company",
+      19
+    ],
+    [
+      "Automobile Industry",
+      8
+    ],
+    [
+      "OEM Components Manufacturer",
+      8
+    ],
+    [
+      "IT",
+      6
+    ],
+    [
+      "Web Develpment",
+      4
+    ],
+    [
+      "Pharmaceutical company",
+      4
+    ],
+    [
+      "Chemical Industry",
+      3
+    ],
+    [
+      "Dairy Farm",
+      3
+    ],
+    [
+      "Manufacturer",
+      3
+    ],
+    [
+      "chemical",
+      2
+    ]
+  ],
+  "totalRecruiters": 130,
+  "dataCompleteness": {
+    "email": "98.5%",
+    "phone": "98.5%",
+    "website": "98.5%",
+    "address": "98.5%"
+  }
+}
