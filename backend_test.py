@@ -145,6 +145,24 @@ def test_recruiter_actions(recruiters_data):
         log_test("Recruiter Actions - Prerequisites", "FAIL", "No recruiter data available for testing")
         return
     
+    # Get a real user ID from the system for testing
+    try:
+        users_response = requests.get(f"{BASE_URL}/users", headers=HEADERS, timeout=30)
+        if users_response.status_code == 200:
+            users_data = users_response.json()
+            if users_data and len(users_data) > 0:
+                test_user_id = users_data[0]['id']  # Use first user's ID
+                print(f"Using real user ID for testing: {test_user_id}")
+            else:
+                log_test("Recruiter Actions - User ID", "FAIL", "No users found in system")
+                return
+        else:
+            log_test("Recruiter Actions - User ID", "FAIL", f"Could not fetch users: {users_response.status_code}")
+            return
+    except Exception as e:
+        log_test("Recruiter Actions - User ID", "FAIL", f"Error fetching users: {str(e)}")
+        return
+    
     # Find a test recruiter (preferably one that's active)
     test_recruiter = None
     for recruiter in recruiters_data:
@@ -157,8 +175,6 @@ def test_recruiter_actions(recruiters_data):
         return
     
     recruiter_id = test_recruiter['id']
-    # Use a proper UUID format for testing
-    test_user_id = "550e8400-e29b-41d4-a716-446655440000"  # Valid UUID for testing
     
     print(f"Using test recruiter: {test_recruiter['name']} (ID: {recruiter_id})")
     print()
