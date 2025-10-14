@@ -1,0 +1,15 @@
+Total records: 1048015
+Total columns: 9
+Records with 100% data: 148
+Records with >= 90% data: 148
+
+Columns:
+  - S.No : 1048015 non-null (100.0%)
+  - Company Name: 175 non-null (0.0%)
+  - Website: 175 non-null (0.0%)
+  - Number: 167 non-null (0.0%)
+  - Mail ID: 175 non-null (0.0%)
+  - Company type: 162 non-null (0.0%)
+  - Address: 164 non-null (0.0%)
+  - Location: 172 non-null (0.0%)
+  - completeness_percent: 1048015 non-null (100.0%)
