@@ -36,15 +36,30 @@ export async function POST(request) {
       .eq('email', authData.user.email)
       .maybeSingle()
     
-    // Fetch organization data separately if organizationId exists
+    // Fetch organization data from universities or recruiters tables
     let organizationData = null
     if (userData && userData.organizationId) {
-      const { data: orgData } = await supabase
-        .from('organizations')
-        .select('id, name, type')
-        .eq('id', userData.organizationId)
+      // Try to fetch from universities first
+      const { data: univData } = await supabase
+        .from('universities')
+        .select('organizationid, name')
+        .eq('organizationid', userData.organizationId)
         .maybeSingle()
-      organizationData = orgData
+      
+      if (univData) {
+        organizationData = { id: univData.organizationid, name: univData.name, type: 'university' }
+      } else {
+        // Try recruiters table
+        const { data: recData } = await supabase
+          .from('recruiters')
+          .select('organizationid, name')
+          .eq('organizationid', userData.organizationId)
+          .maybeSingle()
+        
+        if (recData) {
+          organizationData = { id: recData.organizationid, name: recData.name, type: 'recruiter' }
+        }
+      }
     }
 
     if (userError) {
