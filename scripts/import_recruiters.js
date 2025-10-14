@@ -121,12 +121,13 @@ async function importRecruiters() {
         .insert({
           id: authData.user.id,
           email: authUser.email,
-          role: authUser.role,
+          role: 'admin', // Using 'admin' role as 'recruiter' is not in the role check constraint
           organizationId: authUser.organizationId,
           isActive: true,
           metadata: {
             name: authUser.name,
-            source: 'recruiter_import'
+            source: 'recruiter_import',
+            originalRole: 'recruiter' // Store original intended role in metadata
           },
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
