@@ -53,19 +53,17 @@ export async function GET(request) {
         // Fallback: Calculate metrics dynamically from database tables if no snapshot exists
         console.log('No snapshot found, calculating metrics dynamically')
         
-        // Count universities (organizations with type = 'university')
+        // Count universities from universities table
         const { data: universities } = await supabase
-          .from('organizations')
+          .from('universities')
           .select('id')
-          .eq('type', 'university')
         
         const activeUniversities = universities?.length || 0
 
-        // Count recruiters (organizations with type = 'recruiter')
+        // Count recruiters from recruiters table
         const { data: recruiters } = await supabase
-          .from('organizations')
+          .from('recruiters')
           .select('id')
-          .eq('type', 'recruiter')
         
         const activeRecruiters = recruiters?.length || 0
 
