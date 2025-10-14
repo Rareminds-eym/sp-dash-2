@@ -16,16 +16,20 @@ BASE_URL = "https://no-dupe-recruits.preview.emergentagent.com/api"
 SUPER_ADMIN_EMAIL = "superadmin@rareminds.in"
 SUPER_ADMIN_PASSWORD = "password123"
 
-def log_test(test_name, status, details=""):
-    """Log test results with timestamp"""
-    timestamp = datetime.now().strftime("%H:%M:%S")
-    status_symbol = "✅" if status == "PASS" else "❌" if status == "FAIL" else "⚠️"
-    print(f"[{timestamp}] {status_symbol} {test_name}")
-    if details:
-        print(f"    {details}")
-    print()
+def print_test_header(test_name):
+    """Print formatted test header"""
+    print(f"\n{'='*60}")
+    print(f"🧪 {test_name}")
+    print(f"{'='*60}")
 
-def test_get_recruiters():
+def print_test_result(test_name, success, message=""):
+    """Print formatted test result"""
+    status = "✅ PASS" if success else "❌ FAIL"
+    print(f"{status} {test_name}")
+    if message:
+        print(f"   📝 {message}")
+
+def test_duplicate_recruiters_removal():
     """Test GET /api/recruiters endpoint"""
     print("=" * 60)
     print("TESTING GET /api/recruiters")
