@@ -203,10 +203,9 @@ export async function GET(request) {
     // GET /api/recruiters - List all recruiter organizations (OPTIMIZED)
     if (path === '/recruiters') {
       const { data: recruiters, error } = await supabase
-        .from('organizations')
+        .from('recruiters')
         .select('*')
-        .eq('type', 'recruiter')
-        .order('createdAt', { ascending: false })
+        .order('createdat', { ascending: false })
 
       if (error) {
         console.error('Error fetching recruiters:', error)
