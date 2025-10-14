@@ -14,6 +14,10 @@ from supabase import create_client, Client
 from datetime import datetime
 import uuid
 import json
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv('/app/.env')
 
 # Supabase credentials
 SUPABASE_URL = os.getenv('NEXT_PUBLIC_SUPABASE_URL')
