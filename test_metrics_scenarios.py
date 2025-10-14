@@ -8,7 +8,7 @@ import json
 from datetime import datetime
 
 # Base URL from environment
-BASE_URL = "https://recruiter-sync.preview.emergentagent.com/api"
+BASE_URL = "https://no-dupe-recruits.preview.emergentagent.com/api"
 
 def test_metrics_scenarios():
     """Test comprehensive metrics scenarios"""

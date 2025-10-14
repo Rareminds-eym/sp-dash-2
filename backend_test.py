@@ -10,7 +10,7 @@ import sys
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://recruiter-sync.preview.emergentagent.com/api"
+BASE_URL = "https://no-dupe-recruits.preview.emergentagent.com/api"
 HEADERS = {
     'Content-Type': 'application/json',
     'User-Agent': 'Backend-Test-Script/1.0'

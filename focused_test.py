@@ -7,7 +7,7 @@ from datetime import datetime
 
 
 # Configuration
-BASE_URL = "https://recruiter-sync.preview.emergentagent.com"
+BASE_URL = "https://no-dupe-recruits.preview.emergentagent.com"
 TEST_EMAIL = "superadmin@rareminds.in"
 TEST_PASSWORD = "password123"
 
