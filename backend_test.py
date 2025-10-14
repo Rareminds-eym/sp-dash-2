@@ -272,13 +272,23 @@ def test_supabase_auth():
             recruiters_data = recruiters_response.json()
             
             if recruiters_data and len(recruiters_data) > 0:
-                # Find a recruiter with a valid email
+                # Find a recruiter with a valid email (handle multiple emails separated by /)
                 test_email = None
                 for recruiter in recruiters_data:
                     email = recruiter.get('email', '')
                     if email and '@' in email:
-                        test_email = email
-                        break
+                        # Handle multiple emails separated by /
+                        if '/' in email:
+                            emails = [e.strip() for e in email.split('/')]
+                            for e in emails:
+                                if '@' in e and '.' in e:
+                                    test_email = e
+                                    break
+                        else:
+                            test_email = email
+                        
+                        if test_email:
+                            break
                 
                 if test_email:
                     log_test("Supabase Auth - Test Email Found", "PASS", f"Using email: {test_email}")
@@ -305,6 +315,41 @@ def test_supabase_auth():
                             log_test("Supabase Auth - Recruiter Login", "FAIL", f"Login response missing user data: {data}")
                     else:
                         log_test("Supabase Auth - Recruiter Login", "FAIL", f"Status: {response.status_code}, Response: {response.text}")
+                        
+                        # Try a few more emails to see if any work
+                        print("Trying additional recruiter emails...")
+                        tested_emails = [test_email]
+                        for recruiter in recruiters_data[:5]:  # Try first 5 recruiters
+                            email = recruiter.get('email', '')
+                            if email and '@' in email and email not in tested_emails:
+                                if '/' in email:
+                                    emails = [e.strip() for e in email.split('/')]
+                                    for e in emails:
+                                        if '@' in e and '.' in e and e not in tested_emails:
+                                            print(f"Trying email: {e}")
+                                            login_payload = {"email": e, "password": "Recruiter@2025"}
+                                            test_response = requests.post(f"{BASE_URL}/auth/login", 
+                                                                        headers=HEADERS, 
+                                                                        json=login_payload, 
+                                                                        timeout=30)
+                                            if test_response.status_code == 200:
+                                                log_test("Supabase Auth - Alternative Email", "PASS", f"Login successful for {e}")
+                                                return
+                                            tested_emails.append(e)
+                                else:
+                                    if email not in tested_emails:
+                                        print(f"Trying email: {email}")
+                                        login_payload = {"email": email, "password": "Recruiter@2025"}
+                                        test_response = requests.post(f"{BASE_URL}/auth/login", 
+                                                                    headers=HEADERS, 
+                                                                    json=login_payload, 
+                                                                    timeout=30)
+                                        if test_response.status_code == 200:
+                                            log_test("Supabase Auth - Alternative Email", "PASS", f"Login successful for {email}")
+                                            return
+                                        tested_emails.append(email)
+                        
+                        log_test("Supabase Auth - Multiple Attempts", "FAIL", f"No recruiter emails could authenticate with password 'Recruiter@2025'")
                 else:
                     log_test("Supabase Auth - Test Email Found", "FAIL", "No valid email found in recruiter data")
             else:
