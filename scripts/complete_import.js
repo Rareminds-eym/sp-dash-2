@@ -68,6 +68,23 @@ async function completeImport() {
     return;
   }
 
+  // Get all auth users upfront
+  console.log('Fetching all auth users...');
+  const { data: allAuthUsers, error: authListError } = await supabase.auth.admin.listUsers();
+  
+  if (authListError) {
+    console.error('Error listing auth users:', authListError);
+    return;
+  }
+
+  console.log(`Found ${allAuthUsers.users.length} auth users in system\n`);
+
+  // Create a map for quick lookup
+  const authUserMap = new Map();
+  allAuthUsers.users.forEach(user => {
+    authUserMap.set(user.email, user.id);
+  });
+
   let authCreated = 0;
   let userCreated = 0;
   let skipped = 0;
@@ -80,50 +97,33 @@ async function completeImport() {
       console.log(`\n[${authCreated + userCreated + skipped + failed + 1}/${missingOrgs.length}] Processing: ${org.name}`);
       console.log(`  Email: ${org.email}`);
 
-      // Step 1: Try to create auth user
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: org.email,
-        password: defaultPassword,
-        email_confirm: true,
-        user_metadata: {
-          name: org.name,
-          role: 'recruiter'
-        }
-      });
+      // Check if auth user exists
+      let authUserId = authUserMap.get(org.email);
 
-      let authUserId;
-
-      if (authError) {
-        if (authError.message.includes('already registered')) {
-          console.log(`  ⚠️  Auth user already exists, looking up...`);
-          // Try to get existing auth user by email
-          const { data: authLookup, error: lookupError } = await supabase.auth.admin.listUsers();
-          
-          if (!lookupError && authLookup) {
-            const existingAuth = authLookup.users.find(u => u.email === org.email);
-            if (existingAuth) {
-              authUserId = existingAuth.id;
-              console.log(`  ✓ Found existing auth user: ${authUserId}`);
-              skipped++;
-            } else {
-              console.log(`  ✗ Could not find existing auth user in list of ${authLookup.users.length} users`);
-              failed++;
-              continue;
-            }
-          } else {
-            console.log(`  ✗ Error listing auth users`);
-            failed++;
-            continue;
+      if (!authUserId) {
+        // Step 1: Try to create auth user
+        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+          email: org.email,
+          password: defaultPassword,
+          email_confirm: true,
+          user_metadata: {
+            name: org.name,
+            role: 'recruiter'
           }
-        } else {
+        });
+
+        if (authError) {
           console.log(`  ✗ Auth error: ${authError.message}`);
           failed++;
           continue;
         }
-      } else {
+
         authUserId = authData.user.id;
         console.log(`  ✓ Auth user created: ${authUserId}`);
         authCreated++;
+      } else {
+        console.log(`  ✓ Auth user already exists: ${authUserId}`);
+        skipped++;
       }
 
       // Step 2: Create user record
