@@ -152,15 +152,52 @@ export async function GET(request) {
       return NextResponse.json(users || [])
     }
 
-    // GET /api/organizations - List all organizations
+    // GET /api/organizations - List all organizations (combined from universities and recruiters)
     if (path === '/organizations') {
-      const { data: orgs, error } = await supabase
-        .from('organizations')
-        .select('*')
-        .order('createdAt', { ascending: false })
+      // Fetch from both universities and recruiters tables
+      const [universitiesResult, recruitersResult] = await Promise.all([
+        supabase.from('universities').select('*').order('createdat', { ascending: false }),
+        supabase.from('recruiters').select('*').order('createdat', { ascending: false })
+      ])
 
-      if (error) throw error
-      return NextResponse.json(orgs || [])
+      if (universitiesResult.error) throw universitiesResult.error
+      if (recruitersResult.error) throw recruitersResult.error
+
+      // Combine results with type field for compatibility
+      const universities = (universitiesResult.data || []).map(u => ({
+        id: u.organizationid,
+        name: u.name,
+        type: 'university',
+        state: u.state,
+        district: u.district,
+        email: u.email,
+        phone: u.phone,
+        website: u.website,
+        verificationStatus: u.verificationstatus,
+        isActive: u.isactive,
+        createdAt: u.createdat,
+        updatedAt: u.updatedat
+      }))
+
+      const recruiters = (recruitersResult.data || []).map(r => ({
+        id: r.organizationid,
+        name: r.name,
+        type: 'recruiter',
+        state: r.state,
+        email: r.email,
+        phone: r.phone,
+        website: r.website,
+        verificationStatus: r.verificationstatus,
+        isActive: r.isactive,
+        createdAt: r.createdat,
+        updatedAt: r.updatedat
+      }))
+
+      const allOrgs = [...universities, ...recruiters].sort((a, b) => 
+        new Date(b.createdAt) - new Date(a.createdAt)
+      )
+
+      return NextResponse.json(allOrgs)
     }
 
     // GET /api/recruiters - List all recruiter organizations (OPTIMIZED)
