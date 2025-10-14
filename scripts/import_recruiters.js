@@ -1,10 +1,26 @@
 const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
+const path = require('path');
+
+// Load environment variables from .env file
+const envPath = path.join(__dirname, '..', '.env');
+const envContent = fs.readFileSync(envPath, 'utf8');
+const envVars = {};
+
+envContent.split('\n').forEach(line => {
+  line = line.trim();
+  if (line && !line.startsWith('#')) {
+    const [key, ...valueParts] = line.split('=');
+    if (key && valueParts.length > 0) {
+      envVars[key.trim()] = valueParts.join('=').trim();
+    }
+  }
+});
 
 // Initialize Supabase client with service role key for admin operations
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  envVars.NEXT_PUBLIC_SUPABASE_URL,
+  envVars.SUPABASE_SERVICE_ROLE_KEY,
   {
     auth: {
       autoRefreshToken: false,
