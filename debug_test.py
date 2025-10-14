@@ -3,7 +3,7 @@
 import requests
 import json
 
-BASE_URL = "https://data-insights-116.preview.emergentagent.com"
+BASE_URL = "https://recruiter-sync.preview.emergentagent.com"
 
 def debug_database_queries():
     """Debug the database queries to understand the issues"""
