@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """
-Backend Testing Script for Recruiter Functionality
-Tests the recruiter-related API endpoints as requested in the review.
+Backend Testing Script for Duplicate Recruiters Removal and Login Access Restriction
+Tests the two new features implemented:
+1. Duplicate recruiters removal verification
+2. Recruiter login access restriction
 """
 
 import requests
 import json
+from collections import Counter
 import sys
-from datetime import datetime
 
 # Configuration
 BASE_URL = "https://no-dupe-recruits.preview.emergentagent.com/api"
-HEADERS = {
-    'Content-Type': 'application/json',
-    'User-Agent': 'Backend-Test-Script/1.0'
-}
+SUPER_ADMIN_EMAIL = "superadmin@rareminds.in"
+SUPER_ADMIN_PASSWORD = "password123"
 
 def log_test(test_name, status, details=""):
     """Log test results with timestamp"""
