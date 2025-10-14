@@ -95,15 +95,23 @@ async function completeImport() {
 
       if (authError) {
         if (authError.message.includes('already registered')) {
-          console.log(`  ⚠️  Auth user already exists`);
-          // Try to get existing auth user
-          const { data: authUsers } = await supabase.auth.admin.listUsers();
-          const existingAuth = authUsers.users.find(u => u.email === org.email);
-          if (existingAuth) {
-            authUserId = existingAuth.id;
-            console.log(`  ✓ Found existing auth user: ${authUserId}`);
+          console.log(`  ⚠️  Auth user already exists, looking up...`);
+          // Try to get existing auth user by email
+          const { data: authLookup, error: lookupError } = await supabase.auth.admin.listUsers();
+          
+          if (!lookupError && authLookup) {
+            const existingAuth = authLookup.users.find(u => u.email === org.email);
+            if (existingAuth) {
+              authUserId = existingAuth.id;
+              console.log(`  ✓ Found existing auth user: ${authUserId}`);
+              skipped++;
+            } else {
+              console.log(`  ✗ Could not find existing auth user in list of ${authLookup.users.length} users`);
+              failed++;
+              continue;
+            }
           } else {
-            console.log(`  ✗ Could not find existing auth user`);
+            console.log(`  ✗ Error listing auth users`);
             failed++;
             continue;
           }
