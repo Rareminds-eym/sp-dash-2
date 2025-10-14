@@ -120,18 +120,26 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
       }
       
-      // Fetch all organizations in bulk
+      // Fetch all organizations from universities and recruiters tables
       if (users && users.length > 0) {
         const orgIds = users.map(u => u.organizationId).filter(Boolean)
         
         if (orgIds.length > 0) {
-          const { data: orgs } = await supabase
-            .from('organizations')
-            .select('id, name')
-            .in('id', orgIds)
+          // Fetch from both universities and recruiters tables
+          const [universitiesResult, recruitersResult] = await Promise.all([
+            supabase.from('universities').select('organizationid, name').in('organizationid', orgIds),
+            supabase.from('recruiters').select('organizationid, name').in('organizationid', orgIds)
+          ])
           
           const orgMap = {}
-          orgs?.forEach(org => { orgMap[org.id] = org })
+          // Map universities
+          universitiesResult.data?.forEach(univ => { 
+            orgMap[univ.organizationid] = { id: univ.organizationid, name: univ.name } 
+          })
+          // Map recruiters
+          recruitersResult.data?.forEach(rec => { 
+            orgMap[rec.organizationid] = { id: rec.organizationid, name: rec.name } 
+          })
           
           users.forEach(user => {
             if (user.organizationId && orgMap[user.organizationId]) {
