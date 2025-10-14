@@ -544,6 +544,18 @@ frontend:
         agent: "testing"
         comment: "PROFILE UPDATE FUNCTIONALITY TESTING COMPLETED SUCCESSFULLY: All 7 core profile update tests passed (100% success rate). ✅ User Authentication: Login with superadmin@rareminds.in working correctly, returns complete user data (email, role, organizationId). ✅ Valid Profile Update: PUT /api/profile endpoint successfully updates user name and organization name with proper response structure. ✅ Email Validation: Required email field validation working correctly, returns 400 status with 'Email is required' error. ✅ User Not Found Handling: Non-existent user lookup returns 404 status with 'User not found' error. ✅ Name-Only Updates: Profile updates work correctly when only name is provided (without organizationName). ✅ Database Integration: User metadata updates are persisted correctly in Supabase database. ✅ Organization Update Logic: Organization name updates are processed when valid organizationId exists. ✅ Audit Logging: All profile updates are properly logged in audit_logs table with correct actorId, action='update_profile', and payload data. The PUT /api/profile endpoint is functioning as expected with proper validation, error handling, database persistence, and audit trail. User reported issue with profile settings not saving has been resolved - the backend API is working correctly."
 
+  - task: "Recruiter Data Import API"
+    implemented: true
+    working: "NA"
+    file: "scripts/import_recruiters.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created Python script to import recruiter data from Excel file. Script filters rows with 100% complete data (148 rows from 1,048,015 total), removes duplicates by email, creates organization records with type='recruiter', creates Supabase Auth users with password 'Recruiter@2025', and creates user records with role='recruiter'. Handles multiple emails in single field by taking first valid email. Successfully imported 128 unique recruiters into database. Total recruiters in database now: 161."
+
 
 metadata:
   created_by: "testing_agent"
