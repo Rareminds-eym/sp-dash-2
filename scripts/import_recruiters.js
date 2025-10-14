@@ -65,7 +65,7 @@ async function importRecruiters() {
           address: recruiter.address,
           city: recruiter.city,
           state: recruiter.state,
-          country: recruiter.country,
+          companyType: recruiter.companyType,
           metadata: recruiter.metadata,
           isActive: recruiter.isActive,
           createdAt: new Date().toISOString(),
