@@ -1022,11 +1022,11 @@ export async function POST(request) {
     if (path === '/suspend-recruiter') {
       const { recruiterId, userId, reason } = body
 
-      // Update recruiter status
+      // Update recruiter status in recruiters table
       const { error: updateError } = await supabase
-        .from('organizations')
-        .update({ isActive: false })
-        .eq('id', recruiterId)
+        .from('recruiters')
+        .update({ isactive: false })
+        .eq('organizationid', recruiterId)
 
       if (updateError) throw updateError
 
@@ -1035,7 +1035,7 @@ export async function POST(request) {
         .from('verifications')
         .insert({
           id: uuidv4(),
-          targetTable: 'organizations',
+          targetTable: 'recruiters',
           targetId: recruiterId,
           action: 'suspend',
           performedBy: userId,
