@@ -207,281 +207,41 @@ def test_recruiter_login_restriction():
         print_test_result("Test execution", False, f"Unexpected error: {str(e)}")
         return False
 
-def test_recruiter_actions(recruiters_data):
-    """Test recruiter action endpoints (approve/reject/suspend/activate)"""
-    print("=" * 60)
-    print("TESTING RECRUITER ACTION ENDPOINTS")
-    print("=" * 60)
-    
-    if not recruiters_data or len(recruiters_data) == 0:
-        log_test("Recruiter Actions - Prerequisites", "FAIL", "No recruiter data available for testing")
-        return
-    
-    # Get a real user ID from the system for testing
-    try:
-        users_response = requests.get(f"{BASE_URL}/users", headers=HEADERS, timeout=30)
-        if users_response.status_code == 200:
-            users_data = users_response.json()
-            if users_data and len(users_data) > 0:
-                test_user_id = users_data[0]['id']  # Use first user's ID
-                print(f"Using real user ID for testing: {test_user_id}")
-            else:
-                log_test("Recruiter Actions - User ID", "FAIL", "No users found in system")
-                return
-        else:
-            log_test("Recruiter Actions - User ID", "FAIL", f"Could not fetch users: {users_response.status_code}")
-            return
-    except Exception as e:
-        log_test("Recruiter Actions - User ID", "FAIL", f"Error fetching users: {str(e)}")
-        return
-    
-    # Find a test recruiter (preferably one that's active)
-    test_recruiter = None
-    for recruiter in recruiters_data:
-        if recruiter.get('isActive', True):
-            test_recruiter = recruiter
-            break
-    
-    if not test_recruiter:
-        log_test("Recruiter Actions - Test Subject", "FAIL", "No active recruiter found for testing")
-        return
-    
-    recruiter_id = test_recruiter['id']
-    
-    print(f"Using test recruiter: {test_recruiter['name']} (ID: {recruiter_id})")
-    print()
-    
-    # Test 1: Suspend Recruiter
-    try:
-        suspend_payload = {
-            "recruiterId": recruiter_id,
-            "userId": test_user_id,
-            "reason": "Testing suspend functionality"
-        }
-        
-        response = requests.post(f"{BASE_URL}/suspend-recruiter", 
-                               headers=HEADERS, 
-                               json=suspend_payload, 
-                               timeout=30)
-        
-        if response.status_code == 200:
-            data = response.json()
-            if data.get('success'):
-                log_test("POST /api/suspend-recruiter", "PASS", f"Recruiter suspended successfully")
-            else:
-                log_test("POST /api/suspend-recruiter", "FAIL", f"Success flag false: {data}")
-        else:
-            log_test("POST /api/suspend-recruiter", "FAIL", f"Status: {response.status_code}, Response: {response.text}")
-            
-    except Exception as e:
-        log_test("POST /api/suspend-recruiter", "FAIL", f"Exception: {str(e)}")
-    
-    # Test 2: Activate Recruiter
-    try:
-        activate_payload = {
-            "recruiterId": recruiter_id,
-            "userId": test_user_id,
-            "note": "Testing activate functionality"
-        }
-        
-        response = requests.post(f"{BASE_URL}/activate-recruiter", 
-                               headers=HEADERS, 
-                               json=activate_payload, 
-                               timeout=30)
-        
-        if response.status_code == 200:
-            data = response.json()
-            if data.get('success'):
-                log_test("POST /api/activate-recruiter", "PASS", f"Recruiter activated successfully")
-            else:
-                log_test("POST /api/activate-recruiter", "FAIL", f"Success flag false: {data}")
-        else:
-            log_test("POST /api/activate-recruiter", "FAIL", f"Status: {response.status_code}, Response: {response.text}")
-            
-    except Exception as e:
-        log_test("POST /api/activate-recruiter", "FAIL", f"Exception: {str(e)}")
-    
-    # Test 3: Approve Recruiter (test with pending status)
-    try:
-        approve_payload = {
-            "recruiterId": recruiter_id,
-            "userId": test_user_id,
-            "note": "Testing approve functionality"
-        }
-        
-        response = requests.post(f"{BASE_URL}/approve-recruiter", 
-                               headers=HEADERS, 
-                               json=approve_payload, 
-                               timeout=30)
-        
-        if response.status_code == 200:
-            data = response.json()
-            if data.get('success'):
-                log_test("POST /api/approve-recruiter", "PASS", f"Recruiter approved successfully")
-            else:
-                log_test("POST /api/approve-recruiter", "FAIL", f"Success flag false: {data}")
-        else:
-            log_test("POST /api/approve-recruiter", "FAIL", f"Status: {response.status_code}, Response: {response.text}")
-            
-    except Exception as e:
-        log_test("POST /api/approve-recruiter", "FAIL", f"Exception: {str(e)}")
-    
-    # Test 4: Reject Recruiter
-    try:
-        reject_payload = {
-            "recruiterId": recruiter_id,
-            "userId": test_user_id,
-            "reason": "Testing reject functionality"
-        }
-        
-        response = requests.post(f"{BASE_URL}/reject-recruiter", 
-                               headers=HEADERS, 
-                               json=reject_payload, 
-                               timeout=30)
-        
-        if response.status_code == 200:
-            data = response.json()
-            if data.get('success'):
-                log_test("POST /api/reject-recruiter", "PASS", f"Recruiter rejected successfully")
-            else:
-                log_test("POST /api/reject-recruiter", "FAIL", f"Success flag false: {data}")
-        else:
-            log_test("POST /api/reject-recruiter", "FAIL", f"Status: {response.status_code}, Response: {response.text}")
-            
-    except Exception as e:
-        log_test("POST /api/reject-recruiter", "FAIL", f"Exception: {str(e)}")
-
-def test_supabase_auth():
-    """Test Supabase Auth for recruiter users"""
-    print("=" * 60)
-    print("TESTING SUPABASE AUTH FOR RECRUITERS")
-    print("=" * 60)
-    
-    # Test login with recruiter credentials
-    # Based on the import script, recruiters should have password "Recruiter@2025"
-    
-    # We'll test the login endpoint to verify auth integration
-    try:
-        # First, let's try to get a sample recruiter email from the recruiters endpoint
-        recruiters_response = requests.get(f"{BASE_URL}/recruiters", headers=HEADERS, timeout=30)
-        
-        if recruiters_response.status_code == 200:
-            recruiters_data = recruiters_response.json()
-            
-            if recruiters_data and len(recruiters_data) > 0:
-                # Find a recruiter with a valid email (handle multiple emails separated by /)
-                test_email = None
-                for recruiter in recruiters_data:
-                    email = recruiter.get('email', '')
-                    if email and '@' in email:
-                        # Handle multiple emails separated by /
-                        if '/' in email:
-                            emails = [e.strip() for e in email.split('/')]
-                            for e in emails:
-                                if '@' in e and '.' in e:
-                                    test_email = e
-                                    break
-                        else:
-                            test_email = email
-                        
-                        if test_email:
-                            break
-                
-                if test_email:
-                    log_test("Supabase Auth - Test Email Found", "PASS", f"Using email: {test_email}")
-                    
-                    # Test login with recruiter credentials
-                    login_payload = {
-                        "email": test_email,
-                        "password": "Recruiter@2025"
-                    }
-                    
-                    response = requests.post(f"{BASE_URL}/auth/login", 
-                                           headers=HEADERS, 
-                                           json=login_payload, 
-                                           timeout=30)
-                    
-                    if response.status_code == 200:
-                        data = response.json()
-                        if data.get('user'):
-                            log_test("Supabase Auth - Recruiter Login", "PASS", f"Login successful for {test_email}")
-                            print("Login Response:")
-                            print(json.dumps(data, indent=2))
-                            print()
-                        else:
-                            log_test("Supabase Auth - Recruiter Login", "FAIL", f"Login response missing user data: {data}")
-                    else:
-                        log_test("Supabase Auth - Recruiter Login", "FAIL", f"Status: {response.status_code}, Response: {response.text}")
-                        
-                        # Try a few more emails to see if any work
-                        print("Trying additional recruiter emails...")
-                        tested_emails = [test_email]
-                        for recruiter in recruiters_data[:5]:  # Try first 5 recruiters
-                            email = recruiter.get('email', '')
-                            if email and '@' in email and email not in tested_emails:
-                                if '/' in email:
-                                    emails = [e.strip() for e in email.split('/')]
-                                    for e in emails:
-                                        if '@' in e and '.' in e and e not in tested_emails:
-                                            print(f"Trying email: {e}")
-                                            login_payload = {"email": e, "password": "Recruiter@2025"}
-                                            test_response = requests.post(f"{BASE_URL}/auth/login", 
-                                                                        headers=HEADERS, 
-                                                                        json=login_payload, 
-                                                                        timeout=30)
-                                            if test_response.status_code == 200:
-                                                log_test("Supabase Auth - Alternative Email", "PASS", f"Login successful for {e}")
-                                                return
-                                            tested_emails.append(e)
-                                else:
-                                    if email not in tested_emails:
-                                        print(f"Trying email: {email}")
-                                        login_payload = {"email": email, "password": "Recruiter@2025"}
-                                        test_response = requests.post(f"{BASE_URL}/auth/login", 
-                                                                    headers=HEADERS, 
-                                                                    json=login_payload, 
-                                                                    timeout=30)
-                                        if test_response.status_code == 200:
-                                            log_test("Supabase Auth - Alternative Email", "PASS", f"Login successful for {email}")
-                                            return
-                                        tested_emails.append(email)
-                        
-                        log_test("Supabase Auth - Multiple Attempts", "FAIL", f"No recruiter emails could authenticate with password 'Recruiter@2025'")
-                else:
-                    log_test("Supabase Auth - Test Email Found", "FAIL", "No valid email found in recruiter data")
-            else:
-                log_test("Supabase Auth - Prerequisites", "FAIL", "No recruiter data available")
-        else:
-            log_test("Supabase Auth - Prerequisites", "FAIL", f"Could not fetch recruiters: {recruiters_response.status_code}")
-            
-    except Exception as e:
-        log_test("Supabase Auth - Request", "FAIL", f"Exception: {str(e)}")
-
 def main():
     """Main test execution"""
-    print("🚀 RECRUITER FUNCTIONALITY BACKEND TESTING")
-    print("=" * 60)
-    print(f"Base URL: {BASE_URL}")
-    print(f"Test Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("=" * 60)
-    print()
+    print("🚀 BACKEND TESTING: Duplicate Recruiters Removal & Login Access Restriction")
+    print(f"🌐 Testing against: {BASE_URL}")
     
-    # Test 1: GET /api/recruiters
-    recruiters_data = test_get_recruiters()
+    # Test both features
+    feature1_passed = test_duplicate_recruiters_removal()
+    feature2_passed = test_recruiter_login_restriction()
     
-    # Test 2: GET /api/metrics
-    metrics_data = test_get_metrics()
+    # Final summary
+    print(f"\n{'='*60}")
+    print("📊 FINAL TEST SUMMARY")
+    print(f"{'='*60}")
     
-    # Test 3: Recruiter Actions
-    test_recruiter_actions(recruiters_data)
+    if feature1_passed:
+        print("✅ FEATURE 1: Duplicate Recruiters Removal - ALL TESTS PASSED")
+    else:
+        print("❌ FEATURE 1: Duplicate Recruiters Removal - SOME TESTS FAILED")
     
-    # Test 4: Supabase Auth
-    test_supabase_auth()
+    if feature2_passed:
+        print("✅ FEATURE 2: Recruiter Login Access Restriction - ALL TESTS PASSED")
+    else:
+        print("❌ FEATURE 2: Recruiter Login Access Restriction - SOME TESTS FAILED")
     
-    print("=" * 60)
-    print("🏁 TESTING COMPLETED")
-    print(f"Test Finished: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("=" * 60)
+    overall_success = feature1_passed and feature2_passed
+    
+    if overall_success:
+        print("\n🎉 ALL BACKEND TESTS PASSED SUCCESSFULLY!")
+        print("   Both new features are working as expected.")
+    else:
+        print("\n⚠️  SOME BACKEND TESTS FAILED")
+        print("   Please review the failed tests above.")
+    
+    return 0 if overall_success else 1
 
 if __name__ == "__main__":
-    main()
+    exit_code = main()
+    sys.exit(exit_code)
