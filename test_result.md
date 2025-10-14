@@ -645,9 +645,7 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus: 
-    - "Remove Duplicate Recruiters"
-    - "Recruiter Login Access Restriction"
+  current_focus: []
   stuck_tasks: 
     - "Settings Page User Data Display Fix"
   test_all: false
