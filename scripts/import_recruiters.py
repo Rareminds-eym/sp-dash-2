@@ -208,6 +208,7 @@ class RecruiterImporter:
         
         email = recruiter_data['Mail ID']
         company_name = recruiter_data['Company Name']
+        org_id = None
         
         print(f"\n📝 Processing: {company_name} ({email})")
         
@@ -226,6 +227,9 @@ class RecruiterImporter:
                 if error == "AUTH_EXISTS":
                     print(f"  ⚠️  Auth user already exists, skipping...")
                     self.stats['already_exists'] += 1
+                    # Cleanup organization since user already exists
+                    if org_id:
+                        supabase.table('organizations').delete().eq('id', org_id).execute()
                     return False
                 raise Exception(f"Auth user creation failed: {error}")
             print(f"  ✅ Auth user created: {auth_user_id}")
@@ -259,6 +263,15 @@ class RecruiterImporter:
             error_msg = f"{company_name} ({email}): {str(e)}"
             self.stats['errors'].append(error_msg)
             print(f"  ❌ Failed: {str(e)}")
+            
+            # Cleanup organization if it was created but import failed
+            if org_id:
+                try:
+                    print(f"  🧹 Cleaning up organization {org_id}...")
+                    supabase.table('organizations').delete().eq('id', org_id).execute()
+                except:
+                    pass
+            
             return False
     
     def generate_report(self):
