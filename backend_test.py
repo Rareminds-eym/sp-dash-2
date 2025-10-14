@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 """
-Backend Testing Script for Duplicate Recruiters Removal and Login Access Restriction
-Tests the two new features implemented:
-1. Duplicate recruiters removal verification
-2. Recruiter login access restriction
+Backend API Testing for Universities and Recruiters Migration
+Tests the updated API endpoints after migrating from organizations table to universities and recruiters tables.
 """
 
 import requests
 import json
-from collections import Counter
-import sys
+import os
+from datetime import datetime
 
-# Configuration
-BASE_URL = "https://campus-data-load.preview.emergentagent.com/api"
-SUPER_ADMIN_EMAIL = "superadmin@rareminds.in"
-SUPER_ADMIN_PASSWORD = "password123"
+# Get base URL from environment
+BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://campus-data-load.preview.emergentagent.com')
+API_BASE = f"{BASE_URL}/api"
+
+# Test credentials
+TEST_EMAIL = "superadmin@rareminds.in"
+TEST_PASSWORD = "password123"
 
 def print_test_header(test_name):
     """Print formatted test header"""
