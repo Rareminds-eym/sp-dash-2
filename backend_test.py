@@ -95,6 +95,15 @@ def test_get_metrics():
     print("=" * 60)
     
     try:
+        # First, update metrics to ensure we have current data
+        print("Updating metrics snapshot to get current data...")
+        update_response = requests.post(f"{BASE_URL}/update-metrics", headers=HEADERS, timeout=30)
+        if update_response.status_code == 200:
+            log_test("POST /api/update-metrics", "PASS", "Metrics updated successfully")
+        else:
+            log_test("POST /api/update-metrics", "WARN", f"Metrics update failed: {update_response.status_code}")
+        
+        # Now test the metrics endpoint
         response = requests.get(f"{BASE_URL}/metrics", headers=HEADERS, timeout=30)
         
         if response.status_code == 200:
@@ -109,7 +118,7 @@ def test_get_metrics():
                 if active_recruiters == 161:
                     log_test("GET /api/metrics - activeRecruiters Count", "PASS", f"Expected 161, got {active_recruiters}")
                 else:
-                    log_test("GET /api/metrics - activeRecruiters Count", "WARN", f"Expected 161, got {active_recruiters}")
+                    log_test("GET /api/metrics - activeRecruiters Count", "WARN", f"Expected 161, got {active_recruiters} (may be due to data filtering or inactive recruiters)")
             else:
                 log_test("GET /api/metrics - activeRecruiters Field", "FAIL", "activeRecruiters field missing from response")
             
