@@ -52,6 +52,21 @@ export async function POST(request) {
       // Continue with auth user data if custom user data fetch fails
     }
 
+    // Check user role - recruiters are not allowed to login to admin dashboard
+    const userRole = userData?.role || authData.user.user_metadata?.role || 'user'
+    if (userRole === 'recruiter') {
+      // Sign out the user
+      await supabase.auth.signOut()
+      
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Access denied. Recruiters are not allowed to access the admin dashboard.' 
+        },
+        { status: 403 }
+      )
+    }
+
     if (userError) {
       console.error('Error fetching user data:', userError)
       // Return basic auth user data if custom user data fetch fails
