@@ -640,16 +640,29 @@ export async function GET(request) {
 
     // GET /api/analytics/state-heatmap - Enhanced state-wise heat map data (OPTIMIZED)
     if (path === '/analytics/state-heatmap') {
-      // Fetch all data in parallel
-      const [orgsResult, studentsResult, passportsResult] = await Promise.all([
-        supabase.from('organizations').select('id, state, type'),
+      // Fetch all data in parallel from new tables
+      const [universitiesResult, recruitersResult, studentsResult, passportsResult] = await Promise.all([
+        supabase.from('universities').select('organizationid, state'),
+        supabase.from('recruiters').select('organizationid, state'),
         supabase.from('students').select('id, universityId'),
         supabase.from('skill_passports').select('studentId, status')
       ])
 
-      if (orgsResult.error) throw orgsResult.error
+      if (universitiesResult.error) throw universitiesResult.error
 
-      const orgs = orgsResult.data || []
+      // Combine and map organizations
+      const orgs = [
+        ...(universitiesResult.data || []).map(u => ({
+          id: u.organizationid,
+          state: u.state,
+          type: 'university'
+        })),
+        ...(recruitersResult.data || []).map(r => ({
+          id: r.organizationid,
+          state: r.state,
+          type: 'recruiter'
+        }))
+      ]
       const students = studentsResult.data || []
       const passports = passportsResult.data || []
 
