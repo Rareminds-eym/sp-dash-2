@@ -640,11 +640,10 @@ metadata:
 
 test_plan:
   current_focus: 
-    - "Recruiter Supabase Auth Integration"
-    - "Recruiter Verification Frontend Page"
+    - "Remove Duplicate Recruiters"
+    - "Recruiter Login Access Restriction"
   stuck_tasks: 
     - "Settings Page User Data Display Fix"
-    - "Recruiter Supabase Auth Integration"
   test_all: false
   test_priority: "high_first"
 
