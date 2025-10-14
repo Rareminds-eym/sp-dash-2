@@ -1085,19 +1085,17 @@ export async function POST(request) {
     // POST /api/update-metrics - Update metrics snapshot
     if (path === '/update-metrics') {
       try {
-        // Count universities
+        // Count universities from universities table
         const { data: universities } = await supabase
-          .from('organizations')
+          .from('universities')
           .select('id')
-          .eq('type', 'university')
         
         const activeUniversities = universities?.length || 0
 
-        // Count recruiters
+        // Count recruiters from recruiters table
         const { data: recruiters } = await supabase
-          .from('organizations')
+          .from('recruiters')
           .select('id')
-          .eq('type', 'recruiter')
         
         const activeRecruiters = recruiters?.length || 0
 
