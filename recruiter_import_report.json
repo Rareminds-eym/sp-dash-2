@@ -1,0 +1,16 @@
+{
+  "timestamp": "2025-10-14T08:43:40.360551",
+  "statistics": {
+    "total_rows": 1048015,
+    "complete_rows": 148,
+    "duplicate_emails": 20,
+    "already_exists": 126,
+    "successfully_imported": 0,
+    "failed": 2,
+    "errors": [
+      "Ak Infopark Pvt Ltd (hrm@akinfopark.com/ info@akinfopark.com): Auth user creation failed: Unable to validate email address: invalid format",
+      "Overseas Cyber Technical Services (OCTS) (hr@octsindia.com / nancysavita.octs@gmail.com): Auth user creation failed: Unable to validate email address: invalid format"
+    ]
+  },
+  "imported_recruiters": []
+}
