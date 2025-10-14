@@ -2,741 +2,151 @@
   {
     "recruiter": "AXN INFOTECH PVT LTD - Tally Coimbatore",
     "email": "axninfotech@gmail.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
   },
   {
     "recruiter": "PUPA CHEMICAL INDUSTRIES",
     "email": "roshan@pupahomecare.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
   },
   {
     "recruiter": "S group of industries",
     "email": "sgoikarur@gmail.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
   },
   {
     "recruiter": "Zealsoft Technology Solutions",
     "email": "hr@zealsoft.net",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
   },
   {
     "recruiter": "iSQUARE Business Solution Pvt. Ltd.",
     "email": "career@isquarebs.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
   },
   {
     "recruiter": "Aarel Infotech",
     "email": "saravanan@aarelit.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
   },
   {
     "recruiter": "Avgira Technologies",
     "email": "avgiraindia@gmail.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
   },
   {
     "recruiter": "Abservetech",
     "email": "support@abservetech.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
   },
   {
     "recruiter": "Easywin Software Solutions",
     "email": "sundar@easywinits.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
   },
   {
     "recruiter": "Tritech data solutions",
     "email": "tritechdatasolution@gmail.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Prasan Invensys",
-    "email": "info@prasaninvensys.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Objectways Technologies",
-    "email": "careers@objectways.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "LAKSHMI HOTEL",
-    "email": "res@lakshmihotel.in",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "New V.V.B. Jothiprakasam Paints Private Limited",
-    "email": "vvbjppaints@gmail.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "O.M.S.Tamarind Merchants Private Limited",
-    "email": "omstamarind@gmail.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Prognamik Technologies Pvt Ltd",
-    "email": "info@prognamik.in",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Sathya Technosoft India Pvt Ltd",
-    "email": "info@sathya.store",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Legend Lifts Solutions",
-    "email": "admin@legendlifts.in",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "QBlue",
-    "email": "enquiretoqblue@gmail.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Jotis",
-    "email": "gogreen@jotis.in",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "SMA Chemicals",
-    "email": "smachemicals.vpm@gmail.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Thaiman Agro Foods Pvt Ltd",
-    "email": "info@thaimanagrofoods.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "NK Chemiosys Private Limited",
-    "email": "rnd@chemiosys.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Techny Chemy",
-    "email": "info@technychemy.in",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Vijay Dairy",
-    "email": "jobs@vijaymilk.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Olir Designs Private Limited",
-    "email": "hello@olirdesigns.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Sardonyx Technologies Private Limited",
-    "email": "jobs@sardonyx.in",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "VEBBOX software solutions",
-    "email": "info@vebbox.in",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "J.A SOLUTIONS",
-    "email": "info@jasolutions.in",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Bloomfieldx Analytics Private Limited",
-    "email": "hello@bloomfieldx.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Joy Innovations",
-    "email": "support@joyinnovations.net",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "OCTS - IT & SOFTWARE",
-    "email": "jobs@octsindia.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "ABI-Tech Solution -Custom Software Development",
-    "email": "abitech.officialindia@gmail.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Organization insert failed: duplicate key value violates unique constraint \"organizations_pkey\""
   },
   {
     "recruiter": "Sigma ePlus",
     "email": "sigmaeplus@gmail.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Sigma ePlus",
-    "email": "sigmaeplus@gmail.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Auth user creation failed: A user with this email address has already been registered"
   },
   {
     "recruiter": "iSquare Business Solutions",
     "email": "career@isquarebs.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Elysium Technologies",
-    "email": "info@elysiumtechnologies.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "IIFl Samasta Finance- madurai",
-    "email": "ananth.s@iiflsamasta.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Abserve Tech",
-    "email": "hr@abservetech.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Share Soft",
-    "email": "info@sharesoft.in",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Trioangle Technologies",
-    "email": "email@centuryminds.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Orion India Systems Pvt Ltd",
-    "email": "career.india@orioninc.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Wahmi Softwares and Solutions Pvt Ltd",
-    "email": "info@wahmisoft.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Hypercognito Computings",
-    "email": "info@hypercognito.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "I-India scientific and fabrication.",
-    "email": "global.iindiasf@gmail.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Brandmakerz Digital Marketing Agency",
-    "email": "info@brandmakerzofficial.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "INTER DECCAAN SOLUTIONS",
-    "email": "interdeccaansolutions@gmail.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Frontline Technologies",
-    "email": "info@frontlinetech.in",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Atlas Corporation Used and Waste Oil Recycler - Admin",
-    "email": "info@atlascorp.in",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Shri Attik",
-    "email": "info@shriattik.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "MAKE VISION ANALYTICS A.I software solutions",
-    "email": "makelabsmail@gmail.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "VineAtZ OPC Private Limited",
-    "email": "info@vineatz.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "QR Solutions",
-    "email": "venkatraman@qrsolutions.in",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Techzarinfo",
-    "email": "career@techzarinfo.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Marco Technology Solutions Private Ltd.",
-    "email": "hireme@marcroglobal.co.uk",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Fantasy Solution",
-    "email": "info@fantasysolution.in",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Ak Infopark Pvt Ltd",
-    "email": "hrm@akinfopark.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Prime med Labs",
-    "email": "info@primemedlabs.in",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Vivek Laboratories",
-    "email": "viveklaboratories@gmail.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Tube Investments of India Ltd.",
-    "email": "info@tii.murugappa.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "EL Forge Limited",
-    "email": "vsri@elforge.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "EL Forge Limited",
-    "email": "elforge2@elforge.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Ucal fuel Systems",
-    "email": "marketing@ucal.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Nelcast Limited",
-    "email": "nelcast@nelcast.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Igarashi Motors",
-    "email": "igarashi@igarashimotors.co.in",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Z F Commercial Vehicle Controle Systems India",
-    "email": "muthulakshmi.m@zf.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "L.G.Balakrishnan & Bros Ltd.",
-    "email": "info@lgb.co.in",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Ceat Ltd",
-    "email": "customercare@ceat.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Chennai Forge Products Pvt Ltd",
-    "email": "info@chennaiforgeproducts.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Lear Corporation",
-    "email": "shankar@lear.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Lucas-TVS",
-    "email": "ags.padi@lucastvs.co.in",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Magal Engg. Tech Pvt Ltd",
-    "email": "sales@magaltech.co.in",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Power Gear Limited",
-    "email": "enquiries@powergearlimited.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Pricol Limited",
-    "email": "connect@pricol.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Steel Strips Wheels Limted",
-    "email": "careers@sswlindia.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Surin Automotive",
-    "email": "contactus@surinauto.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Auth user creation failed: A user with this email address has already been registered"
   },
   {
     "recruiter": "Surin Automotive Pvt Ltd",
     "email": "contactus@surinauto.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Auth user creation failed: A user with this email address has already been registered"
   },
   {
     "recruiter": "Tafe Access Ltd",
     "email": "corporate@tafe.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Auth user creation failed: A user with this email address has already been registered"
   },
   {
     "recruiter": "Tafe Access Ltd",
     "email": "corporate@tafe.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Auth user creation failed: A user with this email address has already been registered"
   },
   {
     "recruiter": "Tafe Access Ltd",
     "email": "corporate@tafe.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Auth user creation failed: A user with this email address has already been registered"
   },
   {
     "recruiter": "Tafe Access Ltd",
     "email": "corporate@tafe.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Tafe Access Ltd",
-    "email": "corporate@tafe.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "VK Building Services Pvt. Ltd",
-    "email": "infochn@vkbs.in",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "FLSmidth",
-    "email": "info@flsmidth.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Renfra Power Pvt Ltd",
-    "email": "nasheer@renfrapower.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Seedling Agro",
-    "email": "seedlingfarm@gmail.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Speed Team Wind Tech Pvt",
-    "email": "info@speedteam.in",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Amar Sava Sangam",
-    "email": "mail@amarseva.org",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Muthiahs Farm",
-    "email": "selva.kumar190575@gmail.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Grihum Housing Finance",
-    "email": "career@grihumhousing.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "JVS Air Systems",
-    "email": "customercare@jvsairsystems.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Benzz Park",
-    "email": "reservation@benzzpark.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "SUSPA Pneumatics (India) Ltd.",
-    "email": "hr@in.suspa.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Rane Engine Valves Ltd",
-    "email": "sr.venkatraj@ranegroup.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Acoustics India Private Limite",
-    "email": "marketing@acousticsind.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Acoustics India Private Limite",
-    "email": "ehouse@acousticsind.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Pj Infotech",
-    "email": "pjinfotec@gmail.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "RIBO Industries Private Limited",
-    "email": "marketing@ribo.in",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "SRI Energy, Inc.",
-    "email": "sales@srienergy.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "T V Sundram Iyengar & Sons Ltd.",
-    "email": "careers@ashokleyland.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "SRF Limited",
-    "email": "info@srf.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Global TVS Bus Body Builders",
-    "email": "info@globaltvs.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "MVS Fabricators",
-    "email": "mvsfabricators@gmail.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Ashley Alteams India Limited",
-    "email": "reachus@ashleyalteams.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Pickyourtrail",
-    "email": "karthiga.d@pickyourtrail.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Nikah Marriage consultant",
-    "email": "support@nikah.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Dharani Sugars And Chemicals Limited",
-    "email": "secretarial@dharanisugars-pgp.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Sun Thermo Process",
-    "email": "msk@sunthermo.in",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Boomika Tours & travels",
-    "email": "www.sivakumar1438@email.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "ABT Industries  ltd - CVD",
-    "email": "corporate@abtimited.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "V. V. V. & Sons Edible Oils Limited ( Idhayam)",
-    "email": "online@idhayam.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Vijay Dairy",
-    "email": "sekhar@vijaymilk.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Milky Mist",
-    "email": "nantha@milkymist.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "R G Bronez Pvt Ltd",
-    "email": "sales@rgbronze.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Orbiton Life Sciences Private Limited",
-    "email": "info@orbitonls.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Enviro Care Pvt Ltd",
-    "email": "mis@envirocareindia.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Green Signal Bio Pharma Private Limited",
-    "email": "md@gsbpl.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Krishnaveni Carbon Products Private Limited Unit - IV",
-    "email": "hrdu4@krishcarbon.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Shakti Cords Private Limited",
-    "email": "careers@indtextile.in",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Baptist Healthcare",
-    "email": "info@baptisthealthcare.in",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Bluemein Technologies",
-    "email": "info@bluemein.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Muthoot Finance",
-    "email": "hrvlr@muthootgroup.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Vanchinad Finance",
-    "email": "info@vanchinadfinance.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Geojit Financial Services Ltd",
-    "email": "nagercoil@geojit.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Joshua Computers",
-    "email": "joshuacomputersngl@gmail.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Auth user creation failed: A user with this email address has already been registered"
   },
   {
     "recruiter": "Panacorp Software Solutions",
     "email": "info@panacorp.org",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Auth user creation failed: A user with this email address has already been registered"
   },
   {
     "recruiter": "Panacorp Software Solutions",
     "email": "info@panacorp.org",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Panacorp Software Solutions",
-    "email": "info@panacorp.org",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Auth user creation failed: A user with this email address has already been registered"
   },
   {
     "recruiter": "Panacorp Software Solutions Pvt Ltd",
     "email": "info@panacorp.org",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Auth user creation failed: A user with this email address has already been registered"
   },
   {
     "recruiter": "Panacorp Software Solutions Pvt Ltd",
     "email": "info@panacorp.org",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Seaview kanyakumari",
-    "email": "sales@hotelseaview.in",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Auth user creation failed: A user with this email address has already been registered"
   },
   {
     "recruiter": "Nutri Dairy Products Pvt Ltd",
     "email": "aswaadarwin@gmail.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Cogniventor",
-    "email": "office@cogniventor.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Nutri Dairy Products Pvt Ltd",
-    "email": "aswaadarwin@gmail.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Auth user creation failed: A user with this email address has already been registered"
   },
   {
     "recruiter": "Panacorp Software Solutions Pvt Ltd",
     "email": "info@panacorp.org",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "VM PETS MART",
-    "email": "info@vmpetsmart.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Race Pharmaceuticals (P) Ltd.",
-    "email": "racepharmaceuticals2000@gmail.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Aeon Formulations Pvt Ltd",
-    "email": "venkatesaperumal-venkey@aeonf.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Dgtal Accountant",
-    "email": "ganesh@dgtal.accountant",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Kaivalya Technologies Private Limited",
-    "email": "works@kaivalyatech.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Auth user creation failed: A user with this email address has already been registered"
   },
   {
     "recruiter": "Overseas Cyber Technical Services (OCTS)",
     "email": "hr@octsindia.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Auth user creation failed: A user with this email address has already been registered"
   },
   {
     "recruiter": "Overseas Cyber Technical Services (OCTS)",
     "email": "hr@octsindia.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Auth user creation failed: A user with this email address has already been registered"
   },
   {
     "recruiter": "Overseas Cyber Technical Services (OCTS)",
     "email": "hr@octsindia.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Auth user creation failed: A user with this email address has already been registered"
   },
   {
     "recruiter": "Overseas Cyber Technical Services (OCTS)",
     "email": "hr@octsindia.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Auth user creation failed: A user with this email address has already been registered"
   },
   {
     "recruiter": "Overseas Cyber Technical Services (OCTS)",
     "email": "hr@octsindia.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Auth user creation failed: A user with this email address has already been registered"
   },
   {
     "recruiter": "Overseas Cyber Technical Services (OCTS)",
     "email": "hr@octsindia.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Auth user creation failed: A user with this email address has already been registered"
   },
   {
     "recruiter": "Overseas Cyber Technical Services (OCTS)",
     "email": "hr@octsindia.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
-  },
-  {
-    "recruiter": "Overseas Cyber Technical Services (OCTS)",
-    "email": "hr@octsindia.com",
-    "error": "Organization insert failed: Could not find the 'country' column of 'organizations' in the schema cache"
+    "error": "Auth user creation failed: A user with this email address has already been registered"
   }
 ]
