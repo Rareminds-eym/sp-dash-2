@@ -125,20 +125,21 @@ export async function GET(request) {
         const orgIds = users.map(u => u.organizationId).filter(Boolean)
         
         if (orgIds.length > 0) {
-          // Fetch from both universities and recruiters tables
+          // Try to fetch from both universities and recruiters tables using id field
+          // Note: organizationid column doesn't exist, using id instead
           const [universitiesResult, recruitersResult] = await Promise.all([
-            supabase.from('universities').select('organizationid, name').in('organizationid', orgIds),
-            supabase.from('recruiters').select('organizationid, name').in('organizationid', orgIds)
+            supabase.from('universities').select('id, name').in('id', orgIds),
+            supabase.from('recruiters').select('id, name').in('id', orgIds)
           ])
           
           const orgMap = {}
-          // Map universities
+          // Map universities (using id)
           universitiesResult.data?.forEach(univ => { 
-            orgMap[univ.organizationid] = { id: univ.organizationid, name: univ.name } 
+            orgMap[univ.id] = { id: univ.id, name: univ.name } 
           })
-          // Map recruiters
+          // Map recruiters (using id)
           recruitersResult.data?.forEach(rec => { 
-            orgMap[rec.organizationid] = { id: rec.organizationid, name: rec.name } 
+            orgMap[rec.id] = { id: rec.id, name: rec.name } 
           })
           
           users.forEach(user => {
