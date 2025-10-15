@@ -14,39 +14,167 @@ from datetime import datetime
 BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://status-changer.preview.emergentagent.com')
 API_BASE = f"{BASE_URL}/api"
 
-def print_test_header(test_name):
-    print(f"\n{'='*60}")
-    print(f"🧪 {test_name}")
-    print(f"{'='*60}")
-
-def print_result(success, message, details=None):
-    status = "✅ PASS" if success else "❌ FAIL"
-    print(f"{status}: {message}")
-    if details:
-        print(f"   Details: {details}")
-
-def test_login():
-    """Test login functionality to get session"""
-    print_test_header("Authentication Test")
+def test_recruiters_endpoint():
+    """Test GET /api/recruiters endpoint and verify status distribution"""
+    print("🔍 Testing GET /api/recruiters endpoint...")
     
     try:
-        response = requests.post(f"{API_BASE}/auth/login", json={
-            "email": TEST_EMAIL,
-            "password": TEST_PASSWORD
-        })
+        # Test basic endpoint
+        response = requests.get(f"{API_BASE}/recruiters", timeout=30)
+        print(f"Status Code: {response.status_code}")
         
-        if response.status_code == 200:
-            data = response.json()
-            print_result(True, f"Login successful for {TEST_EMAIL}")
-            print(f"   User role: {data.get('user', {}).get('role', 'N/A')}")
-            return True
-        else:
-            print_result(False, f"Login failed with status {response.status_code}")
-            print(f"   Response: {response.text}")
+        if response.status_code != 200:
+            print(f"❌ FAILED: Expected 200, got {response.status_code}")
+            print(f"Response: {response.text}")
             return False
             
+        data = response.json()
+        
+        # Check if response has pagination structure
+        if 'data' in data and 'pagination' in data:
+            recruiters = data['data']
+            pagination = data['pagination']
+            total_count = pagination['total']
+            print(f"✅ Paginated response detected. Total recruiters: {total_count}")
+        else:
+            # Direct array response
+            recruiters = data
+            total_count = len(recruiters)
+            print(f"✅ Direct array response. Total recruiters: {total_count}")
+        
+        print(f"📊 Found {len(recruiters)} recruiters in current page")
+        
+        # If paginated, get all recruiters
+        all_recruiters = []
+        if 'pagination' in data:
+            # Get all pages
+            page = 1
+            while True:
+                response = requests.get(f"{API_BASE}/recruiters?page={page}&limit=100", timeout=30)
+                if response.status_code != 200:
+                    break
+                page_data = response.json()
+                if 'data' not in page_data or not page_data['data']:
+                    break
+                all_recruiters.extend(page_data['data'])
+                if len(page_data['data']) < 100:  # Last page
+                    break
+                page += 1
+        else:
+            all_recruiters = recruiters
+        
+        print(f"📊 Total recruiters collected: {len(all_recruiters)}")
+        
+        # Verify total count
+        expected_total = 133
+        if len(all_recruiters) != expected_total:
+            print(f"❌ FAILED: Expected {expected_total} total recruiters, got {len(all_recruiters)}")
+            return False
+        
+        print(f"✅ Total recruiter count matches expected: {expected_total}")
+        
+        # Count status distribution
+        status_counts = Counter()
+        for recruiter in all_recruiters:
+            status = recruiter.get('verificationStatus', 'approved')  # Default to approved if missing
+            status_counts[status] += 1
+        
+        print(f"\n📈 Status Distribution:")
+        for status, count in status_counts.items():
+            print(f"  {status}: {count}")
+        
+        # Verify expected distribution
+        expected_distribution = {
+            'approved': 102,
+            'pending': 15,
+            'rejected': 16
+        }
+        
+        success = True
+        for status, expected_count in expected_distribution.items():
+            actual_count = status_counts.get(status, 0)
+            if actual_count == expected_count:
+                print(f"✅ {status}: {actual_count} (matches expected {expected_count})")
+            else:
+                print(f"❌ {status}: {actual_count} (expected {expected_count})")
+                success = False
+        
+        # Check for unexpected statuses
+        unexpected_statuses = set(status_counts.keys()) - set(expected_distribution.keys())
+        if unexpected_statuses:
+            print(f"⚠️  Unexpected statuses found: {unexpected_statuses}")
+        
+        return success
+        
+    except requests.exceptions.RequestException as e:
+        print(f"❌ FAILED: Request error - {e}")
+        return False
+    except json.JSONDecodeError as e:
+        print(f"❌ FAILED: JSON decode error - {e}")
+        return False
     except Exception as e:
-        print_result(False, f"Login error: {str(e)}")
+        print(f"❌ FAILED: Unexpected error - {e}")
+        return False
+
+def test_specific_recruiters():
+    """Test specific recruiters have correct statuses"""
+    print("\n🔍 Testing specific recruiter statuses...")
+    
+    expected_recruiters = {
+        "Kaivalya Technologies Private Limited": 'pending',
+        "R G Bronez Pvt Ltd": 'rejected',
+        "J.A SOLUTIONS": 'approved'
+    }
+    
+    try:
+        # Get all recruiters
+        all_recruiters = []
+        page = 1
+        while True:
+            response = requests.get(f"{API_BASE}/recruiters?page={page}&limit=100", timeout=30)
+            if response.status_code != 200:
+                break
+            data = response.json()
+            if 'data' in data:
+                recruiters = data['data']
+            else:
+                recruiters = data
+            
+            if not recruiters:
+                break
+            all_recruiters.extend(recruiters)
+            if len(recruiters) < 100:  # Last page
+                break
+            page += 1
+        
+        print(f"📊 Searching through {len(all_recruiters)} recruiters...")
+        
+        # Find specific recruiters
+        found_recruiters = {}
+        for recruiter in all_recruiters:
+            name = recruiter.get('name', '')
+            if name in expected_recruiters:
+                found_recruiters[name] = recruiter.get('verificationStatus', 'approved')
+        
+        print(f"\n🔍 Specific Recruiter Status Check:")
+        success = True
+        
+        for name, expected_status in expected_recruiters.items():
+            if name in found_recruiters:
+                actual_status = found_recruiters[name]
+                if actual_status == expected_status:
+                    print(f"✅ {name}: {actual_status} (matches expected {expected_status})")
+                else:
+                    print(f"❌ {name}: {actual_status} (expected {expected_status})")
+                    success = False
+            else:
+                print(f"❌ {name}: NOT FOUND in database")
+                success = False
+        
+        return success
+        
+    except Exception as e:
+        print(f"❌ FAILED: Error checking specific recruiters - {e}")
         return False
 
 def test_metrics_endpoint():
