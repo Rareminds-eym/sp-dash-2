@@ -72,65 +72,167 @@ def test_total_recruiter_count():
         print(f"❌ Error testing recruiter count: {e}")
         return False, 0
 
-def test_specific_recruiters():
-    """Test specific recruiters have correct statuses"""
-    print("\n🔍 Testing specific recruiter statuses...")
-    
-    expected_recruiters = {
-        "Kaivalya Technologies Private Limited": 'pending',
-        "R G Bronez Pvt Ltd": 'rejected',
-        "J.A SOLUTIONS": 'approved'
-    }
+def test_duplicate_emails():
+    """Test 2: Verify no duplicate email addresses exist"""
+    print("\n🔍 Test 2: Checking for duplicate email addresses...")
     
     try:
-        # Get all recruiters
-        all_recruiters = []
-        page = 1
-        while True:
-            response = requests.get(f"{API_BASE}/recruiters?page={page}&limit=100", timeout=30)
-            if response.status_code != 200:
-                break
-            data = response.json()
-            if 'data' in data:
-                recruiters = data['data']
-            else:
-                recruiters = data
-            
-            if not recruiters:
-                break
-            all_recruiters.extend(recruiters)
-            if len(recruiters) < 100:  # Last page
-                break
-            page += 1
+        all_recruiters = get_all_recruiters()
         
-        print(f"📊 Searching through {len(all_recruiters)} recruiters...")
-        
-        # Find specific recruiters
-        found_recruiters = {}
+        # Extract and normalize emails
+        emails = []
         for recruiter in all_recruiters:
-            name = recruiter.get('name', '')
-            if name in expected_recruiters:
-                found_recruiters[name] = recruiter.get('verificationStatus', 'approved')
+            email = recruiter.get('email', '').lower().strip()
+            if email:  # Only include non-empty emails
+                emails.append(email)
         
-        print(f"\n🔍 Specific Recruiter Status Check:")
+        # Count email occurrences
+        email_counts = Counter(emails)
+        duplicates = {email: count for email, count in email_counts.items() if count > 1}
+        
+        if duplicates:
+            print(f"❌ Found {len(duplicates)} duplicate emails:")
+            for email, count in duplicates.items():
+                print(f"   - {email}: {count} occurrences")
+            return False
+        else:
+            print(f"✅ No duplicate email addresses found")
+            print(f"   Total unique emails: {len(email_counts)}")
+            return True
+            
+    except Exception as e:
+        print(f"❌ Error checking duplicate emails: {e}")
+        return False
+
+def test_specific_composite_email_removals():
+    """Test 4: Verify specific recruiters with composite emails were removed"""
+    print("\n🔍 Test 4: Verifying specific composite email removals...")
+    
+    try:
+        all_recruiters = get_all_recruiters()
         success = True
         
-        for name, expected_status in expected_recruiters.items():
-            if name in found_recruiters:
-                actual_status = found_recruiters[name]
-                if actual_status == expected_status:
-                    print(f"✅ {name}: {actual_status} (matches expected {expected_status})")
-                else:
-                    print(f"❌ {name}: {actual_status} (expected {expected_status})")
-                    success = False
-            else:
-                print(f"❌ {name}: NOT FOUND in database")
-                success = False
+        # Check "Overseas Cyber Technical Services (OCTS)" should only have 1 record with email "hr@octsindia.com"
+        print("   Checking Overseas Cyber Technical Services (OCTS)...")
+        octs_recruiters = []
+        for recruiter in all_recruiters:
+            name = recruiter.get('name', '')
+            if 'Overseas Cyber Technical Services' in name or 'OCTS' in name:
+                octs_recruiters.append(recruiter)
+        
+        print(f"     Found {len(octs_recruiters)} OCTS records:")
+        for recruiter in octs_recruiters:
+            print(f"       - Name: {recruiter.get('name')}, Email: {recruiter.get('email')}")
+        
+        octs_hr_email = [r for r in octs_recruiters if r.get('email') == 'hr@octsindia.com']
+        if len(octs_recruiters) == 1 and len(octs_hr_email) == 1:
+            print(f"     ✅ OCTS has exactly 1 record with hr@octsindia.com")
+        else:
+            print(f"     ❌ OCTS should have exactly 1 record with hr@octsindia.com")
+            print(f"        Found: {len(octs_recruiters)} total records, {len(octs_hr_email)} with hr@octsindia.com")
+            success = False
+        
+        # Check "Ak Infopark Pvt Ltd" should only have 1 record with email "hrm@akinfopark.com"
+        print("   Checking Ak Infopark Pvt Ltd...")
+        ak_recruiters = []
+        for recruiter in all_recruiters:
+            name = recruiter.get('name', '')
+            if 'Ak Infopark' in name or 'AK Infopark' in name:
+                ak_recruiters.append(recruiter)
+        
+        print(f"     Found {len(ak_recruiters)} Ak Infopark records:")
+        for recruiter in ak_recruiters:
+            print(f"       - Name: {recruiter.get('name')}, Email: {recruiter.get('email')}")
+        
+        ak_hrm_email = [r for r in ak_recruiters if r.get('email') == 'hrm@akinfopark.com']
+        if len(ak_recruiters) == 1 and len(ak_hrm_email) == 1:
+            print(f"     ✅ Ak Infopark has exactly 1 record with hrm@akinfopark.com")
+        else:
+            print(f"     ❌ Ak Infopark should have exactly 1 record with hrm@akinfopark.com")
+            print(f"        Found: {len(ak_recruiters)} total records, {len(ak_hrm_email)} with hrm@akinfopark.com")
+            success = False
         
         return success
         
     except Exception as e:
-        print(f"❌ FAILED: Error checking specific recruiters - {e}")
+        print(f"❌ Error checking specific composite email removals: {e}")
+        return False
+
+def test_same_name_different_emails():
+    """Test 5: Check that remaining recruiters with same names but different emails still exist"""
+    print("\n🔍 Test 5: Verifying recruiters with same names but different emails...")
+    
+    try:
+        all_recruiters = get_all_recruiters()
+        success = True
+        
+        # Check "Vijay Dairy" (2 records with different emails should still exist)
+        print("   Checking Vijay Dairy...")
+        vijay_recruiters = []
+        for recruiter in all_recruiters:
+            name = recruiter.get('name', '')
+            if 'Vijay Dairy' in name:
+                vijay_recruiters.append(recruiter)
+        
+        vijay_emails = set()
+        print(f"     Found {len(vijay_recruiters)} Vijay Dairy records:")
+        for recruiter in vijay_recruiters:
+            email = recruiter.get('email', '')
+            vijay_emails.add(email)
+            print(f"       - Name: {recruiter.get('name')}, Email: {email}")
+        
+        if len(vijay_recruiters) == 2 and len(vijay_emails) == 2:
+            print(f"     ✅ Vijay Dairy has 2 records with different emails")
+        else:
+            print(f"     ⚠️  Vijay Dairy expected 2 records with different emails")
+            print(f"        Found: {len(vijay_recruiters)} records, {len(vijay_emails)} unique emails")
+        
+        # Check "EL Forge Limited" (2 records with different emails should still exist)
+        print("   Checking EL Forge Limited...")
+        el_forge_recruiters = []
+        for recruiter in all_recruiters:
+            name = recruiter.get('name', '')
+            if 'EL Forge' in name or 'El Forge' in name:
+                el_forge_recruiters.append(recruiter)
+        
+        el_forge_emails = set()
+        print(f"     Found {len(el_forge_recruiters)} EL Forge records:")
+        for recruiter in el_forge_recruiters:
+            email = recruiter.get('email', '')
+            el_forge_emails.add(email)
+            print(f"       - Name: {recruiter.get('name')}, Email: {email}")
+        
+        if len(el_forge_recruiters) == 2 and len(el_forge_emails) == 2:
+            print(f"     ✅ EL Forge Limited has 2 records with different emails")
+        else:
+            print(f"     ⚠️  EL Forge Limited expected 2 records with different emails")
+            print(f"        Found: {len(el_forge_recruiters)} records, {len(el_forge_emails)} unique emails")
+        
+        # Check "Acoustics India Private Limite" (2 records with different emails should still exist)
+        print("   Checking Acoustics India Private Limited...")
+        acoustics_recruiters = []
+        for recruiter in all_recruiters:
+            name = recruiter.get('name', '')
+            if 'Acoustics India' in name:
+                acoustics_recruiters.append(recruiter)
+        
+        acoustics_emails = set()
+        print(f"     Found {len(acoustics_recruiters)} Acoustics India records:")
+        for recruiter in acoustics_recruiters:
+            email = recruiter.get('email', '')
+            acoustics_emails.add(email)
+            print(f"       - Name: {recruiter.get('name')}, Email: {email}")
+        
+        if len(acoustics_recruiters) == 2 and len(acoustics_emails) == 2:
+            print(f"     ✅ Acoustics India has 2 records with different emails")
+        else:
+            print(f"     ⚠️  Acoustics India expected 2 records with different emails")
+            print(f"        Found: {len(acoustics_recruiters)} records, {len(acoustics_emails)} unique emails")
+        
+        return success
+        
+    except Exception as e:
+        print(f"❌ Error checking same name different emails: {e}")
         return False
 
 def test_metrics_endpoint():
