@@ -21,12 +21,12 @@ def check_current_statuses():
     """Check current status distribution"""
     print("Checking current recruiter status distribution...")
     
-    response = supabase.table('recruiters').select('id, name, verificationStatus').execute()
+    response = supabase.table('recruiters').select('id, name, verificationstatus').execute()
     recruiters = response.data
     
     status_counts = {}
     for recruiter in recruiters:
-        status = recruiter.get('verificationStatus', 'unknown')
+        status = recruiter.get('verificationstatus', 'unknown')
         status_counts[status] = status_counts.get(status, 0) + 1
     
     print(f"\nTotal recruiters: {len(recruiters)}")
