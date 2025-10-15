@@ -684,25 +684,39 @@ export async function GET(request) {
 
     // GET /api/analytics/state-heatmap - Enhanced state-wise heat map data (OPTIMIZED)
     if (path === '/analytics/state-heatmap') {
+      // Mapping from old organization IDs to new university IDs
+      const univIdMapping = {
+        'f1ed42b6-ffe7-4108-90bb-6776b6504f7b': '5ca5589e-b49d-4027-baf7-7e2a88ae612a',
+        '609f59c9-6894-499b-8479-e826c219e0df': '632a5084-eeae-4f2e-b4bc-32593f2dcc00',
+        '1b0ab392-4fba-4037-ae99-6cdf1e0a232d': '85ed5785-dcb2-4d26-8100-a5fb492f0988',
+        'bf405453-cd17-4b45-9bc6-c89407272d7f': '2e9cb79d-0fb7-4b52-9588-d2a7262c9f68',
+        'aeaf831c-7e48-400a-90e3-8d879ef84257': '707b0f68-6855-428c-a630-65926f8c8116',
+        'cec6f9e4-ab41-41a1-b889-699bec40ee69': '66baa6ed-50ce-433d-84f9-c296c6d5806d',
+        'b5b42149-b444-47c3-939b-9ac7b1686414': '0dd1623e-a820-4da1-8c8b-a436db386a59',
+        'e0decdad-0553-4b1a-ad15-a16709bf7671': 'fdba4612-5249-4257-87e1-dc4858151ee8',
+        '54e9f738-fdeb-4116-8032-a27cac4a0112': 'b559f0da-c071-47ec-a866-b646751845bb',
+        '2877f238-ec9f-49af-8bb5-6efd30bc3654': '299ac0e3-f50f-41bc-965c-7274cfa9af25'
+      }
+
       // Fetch all data in parallel from new tables
       const [universitiesResult, recruitersResult, studentsResult, passportsResult] = await Promise.all([
-        supabase.from('universities').select('organizationid, state'),
-        supabase.from('recruiters').select('organizationid, state'),
+        supabase.from('universities').select('id, state'),
+        supabase.from('recruiters').select('id, state'),
         supabase.from('students').select('id, universityId'),
         supabase.from('skill_passports').select('studentId, status')
       ])
 
       if (universitiesResult.error) throw universitiesResult.error
 
-      // Combine and map organizations
+      // Combine and map organizations using id field
       const orgs = [
         ...(universitiesResult.data || []).map(u => ({
-          id: u.organizationid,
+          id: u.id,
           state: u.state,
           type: 'university'
         })),
         ...(recruitersResult.data || []).map(r => ({
-          id: r.organizationid,
+          id: r.id,
           state: r.state,
           type: 'recruiter'
         }))
@@ -744,9 +758,11 @@ export async function GET(request) {
         }
       })
 
-      // Add student and passport data using lookup map
+      // Add student and passport data using lookup map with ID mapping
       students.forEach(student => {
-        const university = orgMap[student.universityId]
+        // Map old university ID to new ID
+        const newUnivId = univIdMapping[student.universityId] || student.universityId
+        const university = orgMap[newUnivId]
         if (university?.state && stateMetrics[university.state]) {
           stateMetrics[university.state].students++
           
