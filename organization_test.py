@@ -6,7 +6,7 @@ import sys
 from supabase import create_client, Client
 
 # Configuration
-BASE_URL = "https://fix-recruiting.preview.emergentagent.com"
+BASE_URL = "https://status-changer.preview.emergentagent.com"
 SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwb29sZWR1aW55eXp4Z3Jjd2tvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTk5NDY5OCwiZXhwIjoyMDc1NTcwNjk4fQ.WIrwkA_-2oCjwmD6WpCf9N38hYXEwrIIXXHB4x5km10"
 
