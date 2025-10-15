@@ -224,6 +224,7 @@ export default function RecruitersPageEnhanced({ currentUser }) {
           description: data.message
         })
         fetchRecruiters()
+        fetchOverallStats() // Refresh stats after action
       } else {
         throw new Error(data.error)
       }
