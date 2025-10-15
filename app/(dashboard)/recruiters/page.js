@@ -1,4 +1,4 @@
-import RecruitersPage from '@/components/pages/RecruitersPage'
+import RecruitersPageEnhanced from '@/components/pages/RecruitersPageEnhanced'
 import { getSession } from '@/lib/session'
 
 export const runtime = 'edge'
@@ -6,5 +6,5 @@ export const runtime = 'edge'
 export default async function Recruiters() {
   const session = await getSession()
   
-  return <RecruitersPage currentUser={session?.user} />
+  return <RecruitersPageEnhanced currentUser={session?.user} />
 }
