@@ -37,7 +37,7 @@ import {
     Calendar,
     Users
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import {
   Select,
   SelectContent,
@@ -54,6 +54,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export default function RecruitersPageEnhanced({ currentUser }) {
   const [recruiters, setRecruiters] = useState([])
