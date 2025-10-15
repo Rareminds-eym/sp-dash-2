@@ -82,9 +82,9 @@ def test_duplicate_emails():
         # Extract and normalize emails
         emails = []
         for recruiter in all_recruiters:
-            email = recruiter.get('email', '').lower().strip()
-            if email:  # Only include non-empty emails
-                emails.append(email)
+            email = recruiter.get('email')
+            if email and email.strip():  # Only include non-empty emails
+                emails.append(email.lower().strip())
         
         # Count email occurrences
         email_counts = Counter(emails)
