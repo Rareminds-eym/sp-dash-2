@@ -235,16 +235,16 @@ def test_same_name_different_emails():
         print(f"❌ Error checking same name different emails: {e}")
         return False
 
-def test_metrics_endpoint():
-    """Test GET /api/metrics endpoint shows correct activeRecruiters count"""
-    print("\n🔍 Testing GET /api/metrics endpoint...")
+def test_metrics_endpoint(expected_count):
+    """Test 3: Check GET /api/metrics endpoint reflects the updated count"""
+    print(f"\n🔍 Test 3: Checking GET /api/metrics endpoint...")
     
     try:
         response = requests.get(f"{API_BASE}/metrics", timeout=30)
         print(f"Status Code: {response.status_code}")
         
         if response.status_code != 200:
-            print(f"❌ FAILED: Expected 200, got {response.status_code}")
+            print(f"❌ Metrics endpoint failed with status: {response.status_code}")
             print(f"Response: {response.text}")
             return False
             
@@ -254,32 +254,20 @@ def test_metrics_endpoint():
         # Check activeRecruiters field
         active_recruiters = data.get('activeRecruiters')
         if active_recruiters is None:
-            print(f"❌ FAILED: activeRecruiters field missing from response")
+            print(f"❌ activeRecruiters field missing from response")
             return False
         
-        expected_count = 133
+        print(f"📊 activeRecruiters: {active_recruiters}")
+        
         if active_recruiters == expected_count:
-            print(f"✅ activeRecruiters: {active_recruiters} (matches expected {expected_count})")
+            print(f"✅ Metrics count matches recruiters endpoint: {active_recruiters}")
+            return True
         else:
-            print(f"❌ activeRecruiters: {active_recruiters} (expected {expected_count})")
+            print(f"❌ Metrics count ({active_recruiters}) doesn't match recruiters count ({expected_count})")
             return False
         
-        # Display other metrics for context
-        print(f"\n📊 Other Metrics:")
-        for key, value in data.items():
-            if key != 'activeRecruiters':
-                print(f"  {key}: {value}")
-        
-        return True
-        
-    except requests.exceptions.RequestException as e:
-        print(f"❌ FAILED: Request error - {e}")
-        return False
-    except json.JSONDecodeError as e:
-        print(f"❌ FAILED: JSON decode error - {e}")
-        return False
     except Exception as e:
-        print(f"❌ FAILED: Unexpected error - {e}")
+        print(f"❌ Error testing metrics endpoint: {e}")
         return False
 
 def main():
