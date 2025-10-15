@@ -35,7 +35,8 @@ import {
     Globe,
     MapPin,
     Calendar,
-    Users
+    Users,
+    MoreVertical
 } from 'lucide-react'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import {
