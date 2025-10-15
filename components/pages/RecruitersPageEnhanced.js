@@ -363,6 +363,69 @@ export default function RecruitersPageEnhanced({ currentUser }) {
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     )
   }
+  
+  const handleSearchChange = (e) => {
+    const value = e.target.value
+    setFilters(prev => ({ ...prev, search: value }))
+    
+    // Clear existing debounce timer
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current)
+    }
+    
+    // Set new debounce timer - only trigger pagination reset after 300ms of no typing
+    searchDebounceRef.current = setTimeout(() => {
+      setPagination(prev => ({ ...prev, page: 1 }))
+    }, 300)
+  }
+  
+  const handleStatusChange = async (recruiter, newStatus) => {
+    try {
+      let endpoint = ''
+      let body = {}
+      
+      if (newStatus === 'approved') {
+        endpoint = '/api/approve-recruiter'
+        body = { recruiterId: recruiter.id, userId: currentUser?.id, note: 'Status changed to approved' }
+      } else if (newStatus === 'rejected') {
+        endpoint = '/api/reject-recruiter'
+        body = { recruiterId: recruiter.id, userId: currentUser?.id, reason: 'Status changed to rejected' }
+      } else if (newStatus === 'pending') {
+        // For setting back to pending, we'll use reject-recruiter but with a special note
+        toast({
+          title: 'Info',
+          description: 'Cannot set status back to pending directly. Use approve or reject.',
+          variant: 'default'
+        })
+        return
+      }
+      
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        toast({
+          title: 'Success',
+          description: `Recruiter status changed to ${newStatus}`
+        })
+        fetchRecruiters()
+        fetchOverallStats()
+      } else {
+        throw new Error(data.error)
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to change status',
+        variant: 'destructive'
+      })
+    }
+  }
 
   const getVerificationBadge = (status) => {
     const colors = {
