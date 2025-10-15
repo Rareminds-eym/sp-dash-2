@@ -166,7 +166,7 @@ export async function GET(request) {
 
       // Combine results with type field for compatibility
       const universities = (universitiesResult.data || []).map(u => ({
-        id: u.organizationid,
+        id: u.id,
         name: u.name,
         type: 'university',
         state: u.state,
@@ -181,7 +181,7 @@ export async function GET(request) {
       }))
 
       const recruiters = (recruitersResult.data || []).map(r => ({
-        id: r.organizationid,
+        id: r.id,
         name: r.name,
         type: 'recruiter',
         state: r.state,
