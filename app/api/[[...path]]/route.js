@@ -215,12 +215,12 @@ export async function GET(request) {
 
       // Fetch all users in bulk and count by organization
       if (recruiters && recruiters.length > 0) {
-        const recruiterOrgIds = recruiters.map(r => r.organizationid)
+        const recruiterIds = recruiters.map(r => r.id)
         
         const { data: users } = await supabase
           .from('users')
           .select('id, organizationId')
-          .in('organizationId', recruiterOrgIds)
+          .in('organizationId', recruiterIds)
         
         // Count users by organization
         const userCountMap = {}
@@ -230,7 +230,7 @@ export async function GET(request) {
         
         // Map recruiters to expected format
         const mappedRecruiters = recruiters.map(recruiter => ({
-          id: recruiter.organizationid,
+          id: recruiter.id,
           name: recruiter.name,
           type: 'recruiter',
           state: recruiter.state,
@@ -241,7 +241,7 @@ export async function GET(request) {
           isActive: recruiter.isactive !== undefined ? recruiter.isactive : true,
           createdAt: recruiter.createdat,
           updatedAt: recruiter.updatedat,
-          userCount: userCountMap[recruiter.organizationid] || 0
+          userCount: userCountMap[recruiter.id] || 0
         }))
         
         return NextResponse.json(mappedRecruiters)
