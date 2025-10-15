@@ -275,6 +275,7 @@ export default function RecruitersPageEnhanced({ currentUser }) {
         })
         setSelectedIds([])
         fetchRecruiters()
+        fetchOverallStats() // Refresh stats after bulk action
       } else {
         throw new Error(data.error)
       }
