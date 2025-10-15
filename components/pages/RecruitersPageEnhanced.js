@@ -71,6 +71,11 @@ export default function RecruitersPageEnhanced({ currentUser }) {
   const [detailsDialog, setDetailsDialog] = useState({ open: false, recruiter: null, loading: false })
   const { toast } = useToast()
   
+  // Debug: Log currentUser to console
+  useEffect(() => {
+    console.log('currentUser:', currentUser)
+  }, [currentUser])
+  
   // Overall stats (don't change with filters)
   const [overallStats, setOverallStats] = useState({
     total: 0,
