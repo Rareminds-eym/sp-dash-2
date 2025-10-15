@@ -6,33 +6,37 @@ const supabase = createClient(
 );
 
 async function findMapping() {
-  // Get sample students with all their data
+  // Get a sample student with user data
   const { data: students } = await supabase
     .from('students')
-    .select('*, users(email, metadata)')
-    .limit(20);
+    .select('*')
+    .limit(5);
   
-  console.log('=== SAMPLE STUDENT DATA ===');
+  console.log('=== SAMPLE STUDENTS ===');
   if (students && students.length > 0) {
-    const sample = students[0];
-    console.log('Student fields:', Object.keys(sample));
-    console.log('\nSample student:', JSON.stringify(sample, null, 2));
+    console.log('Student fields:', Object.keys(students[0]));
+    students.forEach(s => {
+      console.log(`\nStudent: ${s.id}`);
+      console.log(`  universityId: ${s.universityId}`);
+      console.log(`  userId: ${s.userId}`);
+      console.log(`  profile: ${JSON.stringify(s.profile)?.substring(0, 100)}`);
+    });
   }
   
-  // Check if there's any profile or organization info
-  const univId = students[0]?.universityId;
-  if (univId) {
-    // Try to find any reference to this ID in users table
-    const { data: users } = await supabase
-      .from('users')
-      .select('*')
-      .eq('organizationId', univId)
-      .limit(1);
-    
-    if (users && users.length > 0) {
-      console.log('\n=== FOUND USER WITH MATCHING ORGANIZATION ID ===');
-      console.log(JSON.stringify(users[0], null, 2));
-    }
+  // Check users table for organization references
+  const oldUnivId = '1b0ab392-4fba-4037-ae99-6cdf1e0a232d'; // Annamalai from student data
+  const { data: users } = await supabase
+    .from('users')
+    .select('email, organizationId, metadata')
+    .eq('organizationId', oldUnivId)
+    .limit(3);
+  
+  console.log('\n=== USERS WITH OLD UNIVERSITY ID ===');
+  if (users && users.length > 0) {
+    console.log(`Found ${users.length} users with organizationId: ${oldUnivId}`);
+    console.log('Sample:', JSON.stringify(users[0], null, 2));
+  } else {
+    console.log('No users found with that organizationId');
   }
 }
 
