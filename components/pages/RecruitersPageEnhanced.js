@@ -106,6 +106,9 @@ export default function RecruitersPageEnhanced({ currentUser }) {
   
   // Active tab
   const [activeTab, setActiveTab] = useState('all')
+  
+  // Debounce timer for search
+  const searchDebounceRef = useRef(null)
 
   useEffect(() => {
     fetchStates()
