@@ -71,7 +71,7 @@ def update_statuses():
         recruiter = recruiters[updated_count]
         try:
             supabase.table('recruiters').update({
-                'verificationStatus': 'pending'
+                'verificationstatus': 'pending'
             }).eq('id', recruiter['id']).execute()
             print(f"  ✓ Updated {recruiter['name']} to 'pending'")
             updated_count += 1
@@ -84,7 +84,7 @@ def update_statuses():
         recruiter = recruiters[updated_count]
         try:
             supabase.table('recruiters').update({
-                'verificationStatus': 'approved'
+                'verificationstatus': 'approved'
             }).eq('id', recruiter['id']).execute()
             print(f"  ✓ Updated {recruiter['name']} to 'approved'")
             updated_count += 1
@@ -97,7 +97,7 @@ def update_statuses():
         recruiter = recruiters[updated_count]
         try:
             supabase.table('recruiters').update({
-                'verificationStatus': 'rejected'
+                'verificationstatus': 'rejected'
             }).eq('id', recruiter['id']).execute()
             print(f"  ✓ Updated {recruiter['name']} to 'rejected'")
             updated_count += 1
