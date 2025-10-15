@@ -118,6 +118,25 @@ export default function RecruitersPageEnhanced({ currentUser }) {
     }
   }
 
+  const fetchOverallStats = async () => {
+    try {
+      // Fetch all recruiters without pagination to get accurate stats
+      const response = await fetch('/api/recruiters?page=1&limit=1000')
+      const data = await response.json()
+      const allRecruiters = data.data || []
+      
+      setOverallStats({
+        total: data.pagination?.total || 0,
+        pending: allRecruiters.filter(r => r.verificationStatus === 'pending').length,
+        approved: allRecruiters.filter(r => r.verificationStatus === 'approved').length,
+        rejected: allRecruiters.filter(r => r.verificationStatus === 'rejected').length,
+        active: allRecruiters.filter(r => r.isActive).length
+      })
+    } catch (error) {
+      console.error('Error fetching overall stats:', error)
+    }
+  }
+
   const fetchRecruiters = async () => {
     try {
       setLoading(true)
