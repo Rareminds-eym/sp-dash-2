@@ -36,20 +36,50 @@ export async function POST(request) {
       .eq('email', authData.user.email)
       .maybeSingle()
     
-    // Fetch organization data separately if organizationId exists
+    // Fetch organization data from universities or recruiters tables
     let organizationData = null
     if (userData && userData.organizationId) {
-      const { data: orgData } = await supabase
-        .from('organizations')
-        .select('id, name, type')
-        .eq('id', userData.organizationId)
+      // Try to fetch from universities first
+      const { data: univData } = await supabase
+        .from('universities')
+        .select('organizationid, name')
+        .eq('organizationid', userData.organizationId)
         .maybeSingle()
-      organizationData = orgData
+      
+      if (univData) {
+        organizationData = { id: univData.organizationid, name: univData.name, type: 'university' }
+      } else {
+        // Try recruiters table
+        const { data: recData } = await supabase
+          .from('recruiters')
+          .select('organizationid, name')
+          .eq('organizationid', userData.organizationId)
+          .maybeSingle()
+        
+        if (recData) {
+          organizationData = { id: recData.organizationid, name: recData.name, type: 'recruiter' }
+        }
+      }
     }
 
     if (userError) {
       console.error('Error fetching user data:', userError)
       // Continue with auth user data if custom user data fetch fails
+    }
+
+    // Check user role - recruiters are not allowed to login to admin dashboard
+    const userRole = userData?.role || authData.user.user_metadata?.role || 'user'
+    if (userRole === 'recruiter') {
+      // Sign out the user
+      await supabase.auth.signOut()
+      
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Access denied. Recruiters are not allowed to access the admin dashboard.' 
+        },
+        { status: 403 }
+      )
     }
 
     if (userError) {
