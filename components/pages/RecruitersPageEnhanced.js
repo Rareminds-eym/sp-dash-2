@@ -532,12 +532,8 @@ export default function RecruitersPageEnhanced({ currentUser }) {
                     <Input
                       placeholder="Search by name, email, or phone..."
                       value={filters.search}
-                      onChange={(e) => {
-                        setFilters(prev => ({ ...prev, search: e.target.value }))
-                        setPagination(prev => ({ ...prev, page: 1 }))
-                      }}
+                      onChange={handleSearchChange}
                       className="pl-10"
-                      disabled={loading}
                     />
                   </div>
                   
