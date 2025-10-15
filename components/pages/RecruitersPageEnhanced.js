@@ -454,7 +454,7 @@ export default function RecruitersPageEnhanced({ currentUser }) {
                       <SelectValue placeholder="Filter by State" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All States</SelectItem>
+                      <SelectItem value="all">All States</SelectItem>
                       {states.map(state => (
                         <SelectItem key={state} value={state}>{state}</SelectItem>
                       ))}
@@ -472,7 +472,7 @@ export default function RecruitersPageEnhanced({ currentUser }) {
                       <SelectValue placeholder="Active Status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All</SelectItem>
+                      <SelectItem value="all">All</SelectItem>
                       <SelectItem value="true">Active Only</SelectItem>
                       <SelectItem value="false">Suspended Only</SelectItem>
                     </SelectContent>
