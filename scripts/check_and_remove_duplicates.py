@@ -99,7 +99,11 @@ def verify_cleanup():
     recruiters = response.data
     
     # Check for duplicates
-    emails = [r.get('email', '').strip().lower() for r in recruiters if r.get('email')]
+    emails = []
+    for r in recruiters:
+        email = r.get('email')
+        if email and isinstance(email, str):
+            emails.append(email.strip().lower())
     unique_emails = set(emails)
     
     print(f"\nTotal recruiters after cleanup: {len(recruiters)}")
