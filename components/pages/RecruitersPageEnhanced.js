@@ -62,6 +62,15 @@ export default function RecruitersPageEnhanced({ currentUser }) {
   const [detailsDialog, setDetailsDialog] = useState({ open: false, recruiter: null, loading: false })
   const { toast } = useToast()
   
+  // Overall stats (don't change with filters)
+  const [overallStats, setOverallStats] = useState({
+    total: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+    active: 0
+  })
+  
   // Pagination state
   const [pagination, setPagination] = useState({
     page: 1,
@@ -92,6 +101,7 @@ export default function RecruitersPageEnhanced({ currentUser }) {
 
   useEffect(() => {
     fetchStates()
+    fetchOverallStats()
   }, [])
 
   useEffect(() => {
