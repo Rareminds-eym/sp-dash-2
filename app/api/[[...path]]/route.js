@@ -108,11 +108,12 @@ export async function GET(request) {
       }
     }
 
-    // GET /api/users - List all users (OPTIMIZED)
+    // GET /api/users - List all users (OPTIMIZED) - Excludes recruiters
     if (path === '/users') {
       const { data: users, error } = await supabase
         .from('users')
         .select('*')
+        .neq('role', 'recruiter')  // Exclude users with role='recruiter'
         .order('createdAt', { ascending: false })
 
       if (error) {
