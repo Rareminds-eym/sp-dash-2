@@ -395,7 +395,7 @@ export default function RecruitersPageEnhanced({ currentUser }) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Recruiters</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
+                <p className="text-2xl font-bold">{overallStats.total}</p>
               </div>
               <Building2 className="h-8 w-8 text-blue-500" />
             </div>
@@ -406,7 +406,7 @@ export default function RecruitersPageEnhanced({ currentUser }) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Pending</p>
-                <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
+                <p className="text-2xl font-bold text-yellow-600">{overallStats.pending}</p>
               </div>
               <Briefcase className="h-8 w-8 text-yellow-500" />
             </div>
@@ -417,7 +417,7 @@ export default function RecruitersPageEnhanced({ currentUser }) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Approved</p>
-                <p className="text-2xl font-bold text-green-600">{stats.approved}</p>
+                <p className="text-2xl font-bold text-green-600">{overallStats.approved}</p>
               </div>
               <CheckCircle2 className="h-8 w-8 text-green-500" />
             </div>
@@ -428,7 +428,7 @@ export default function RecruitersPageEnhanced({ currentUser }) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Active</p>
-                <p className="text-2xl font-bold text-blue-600">{stats.active}</p>
+                <p className="text-2xl font-bold text-blue-600">{overallStats.active}</p>
               </div>
               <UserCheck className="h-8 w-8 text-blue-500" />
             </div>
