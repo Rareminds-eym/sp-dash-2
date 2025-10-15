@@ -73,9 +73,9 @@ export default function RecruitersPageEnhanced({ currentUser }) {
   // Filter state
   const [filters, setFilters] = useState({
     search: '',
-    status: '',
-    active: '',
-    state: '',
+    status: 'all',
+    active: 'all',
+    state: 'all',
     sortBy: 'createdat',
     sortOrder: 'desc'
   })
