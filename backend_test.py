@@ -1,21 +1,18 @@
 #!/usr/bin/env python3
 """
-Backend API Testing for Universities and Recruiters Migration
-Tests the updated API endpoints after migrating from organizations table to universities and recruiters tables.
+Backend Testing Script for Recruiter Status Verification
+Tests the recruiter status distribution and specific recruiter statuses
 """
 
 import requests
 import json
 import os
+from collections import Counter
 from datetime import datetime
 
 # Get base URL from environment
 BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://status-changer.preview.emergentagent.com')
 API_BASE = f"{BASE_URL}/api"
-
-# Test credentials
-TEST_EMAIL = "superadmin@rareminds.in"
-TEST_PASSWORD = "password123"
 
 def print_test_header(test_name):
     print(f"\n{'='*60}")
