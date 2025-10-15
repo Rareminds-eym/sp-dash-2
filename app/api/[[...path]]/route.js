@@ -1019,7 +1019,7 @@ export async function POST(request) {
         .update({ 
           verificationstatus: 'approved'
         })
-        .eq('organizationid', recruiterId)
+        .eq('id', recruiterId)
 
       if (updateError) throw updateError
 
