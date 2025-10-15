@@ -120,7 +120,7 @@ export default function RecruitersPageEnhanced({ currentUser }) {
       
       // Add filters
       if (filters.search) params.append('search', filters.search)
-      if (filters.state) params.append('state', filters.state)
+      if (filters.state && filters.state !== 'all') params.append('state', filters.state)
       
       // Handle tab-based filtering
       if (activeTab === 'pending') {
@@ -129,11 +129,11 @@ export default function RecruitersPageEnhanced({ currentUser }) {
         params.append('status', 'approved')
       } else if (activeTab === 'rejected') {
         params.append('status', 'rejected')
-      } else if (filters.status) {
+      } else if (filters.status && filters.status !== 'all') {
         params.append('status', filters.status)
       }
       
-      if (filters.active !== '') params.append('active', filters.active)
+      if (filters.active && filters.active !== 'all') params.append('active', filters.active)
       
       const response = await fetch(`/api/recruiters?${params}`)
       const data = await response.json()
