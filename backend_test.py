@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """
-Backend Testing Script for Recruiter Status Verification
-Tests the recruiter status distribution and specific recruiter statuses
+Backend Testing Script for Duplicate Recruiter Removal Verification
+Tests the specific requirements from the review request.
 """
 
 import requests
 import json
 import os
 from collections import Counter
-from datetime import datetime
 
 # Get base URL from environment
 BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://status-changer.preview.emergentagent.com')
