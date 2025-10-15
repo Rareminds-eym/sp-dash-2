@@ -1054,7 +1054,7 @@ export async function POST(request) {
           verificationstatus: 'rejected',
           isactive: false
         })
-        .eq('organizationid', recruiterId)
+        .eq('id', recruiterId)
 
       if (updateError) throw updateError
 
