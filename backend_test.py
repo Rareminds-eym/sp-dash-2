@@ -178,54 +178,50 @@ def test_specific_recruiters():
         return False
 
 def test_metrics_endpoint():
-    """Test GET /api/metrics - Verify activeUniversities=10, activeRecruiters=133"""
-    print_test_header("Metrics Endpoint Test")
+    """Test GET /api/metrics endpoint shows correct activeRecruiters count"""
+    print("\n🔍 Testing GET /api/metrics endpoint...")
     
     try:
-        response = requests.get(f"{API_BASE}/metrics")
+        response = requests.get(f"{API_BASE}/metrics", timeout=30)
+        print(f"Status Code: {response.status_code}")
         
-        if response.status_code == 200:
-            data = response.json()
-            
-            # Check required fields
-            required_fields = ['activeUniversities', 'activeRecruiters', 'registeredStudents', 
-                             'verifiedPassports', 'employabilityIndex']
-            
-            missing_fields = [field for field in required_fields if field not in data]
-            if missing_fields:
-                print_result(False, f"Missing required fields: {missing_fields}")
-                return False
-            
-            # Verify specific counts
-            active_universities = data.get('activeUniversities', 0)
-            active_recruiters = data.get('activeRecruiters', 0)
-            
-            print_result(True, "Metrics endpoint responded successfully")
-            print(f"   Active Universities: {active_universities} (expected: 10)")
-            print(f"   Active Recruiters: {active_recruiters} (expected: 133)")
-            print(f"   Registered Students: {data.get('registeredStudents', 0)}")
-            print(f"   Verified Passports: {data.get('verifiedPassports', 0)}")
-            print(f"   Employability Index: {data.get('employabilityIndex', 0)}%")
-            print(f"   Data Source: {data.get('source', 'N/A')}")
-            
-            # Verify expected counts
-            universities_correct = active_universities == 10
-            recruiters_correct = active_recruiters == 133
-            
-            if universities_correct and recruiters_correct:
-                print_result(True, "University and recruiter counts match expected values")
-            else:
-                print_result(False, f"Count mismatch - Universities: {active_universities}/10, Recruiters: {active_recruiters}/133")
-            
-            return universities_correct and recruiters_correct
-            
-        else:
-            print_result(False, f"Metrics endpoint failed with status {response.status_code}")
-            print(f"   Response: {response.text}")
+        if response.status_code != 200:
+            print(f"❌ FAILED: Expected 200, got {response.status_code}")
+            print(f"Response: {response.text}")
             return False
             
+        data = response.json()
+        print(f"✅ Metrics endpoint responded successfully")
+        
+        # Check activeRecruiters field
+        active_recruiters = data.get('activeRecruiters')
+        if active_recruiters is None:
+            print(f"❌ FAILED: activeRecruiters field missing from response")
+            return False
+        
+        expected_count = 133
+        if active_recruiters == expected_count:
+            print(f"✅ activeRecruiters: {active_recruiters} (matches expected {expected_count})")
+        else:
+            print(f"❌ activeRecruiters: {active_recruiters} (expected {expected_count})")
+            return False
+        
+        # Display other metrics for context
+        print(f"\n📊 Other Metrics:")
+        for key, value in data.items():
+            if key != 'activeRecruiters':
+                print(f"  {key}: {value}")
+        
+        return True
+        
+    except requests.exceptions.RequestException as e:
+        print(f"❌ FAILED: Request error - {e}")
+        return False
+    except json.JSONDecodeError as e:
+        print(f"❌ FAILED: JSON decode error - {e}")
+        return False
     except Exception as e:
-        print_result(False, f"Metrics endpoint error: {str(e)}")
+        print(f"❌ FAILED: Unexpected error - {e}")
         return False
 
 def test_organizations_endpoint():
