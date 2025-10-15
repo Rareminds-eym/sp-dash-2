@@ -32,9 +32,11 @@ def find_duplicates():
     # Group by email
     email_groups = defaultdict(list)
     for recruiter in recruiters:
-        email = recruiter.get('email', '').strip().lower()
-        if email:
-            email_groups[email].append(recruiter)
+        email = recruiter.get('email')
+        if email and isinstance(email, str):
+            email = email.strip().lower()
+            if email:
+                email_groups[email].append(recruiter)
     
     # Find duplicates
     duplicates = {email: recs for email, recs in email_groups.items() if len(recs) > 1}
