@@ -201,12 +201,50 @@ export async function GET(request) {
       return NextResponse.json(allOrgs)
     }
 
-    // GET /api/recruiters - List all recruiter organizations (OPTIMIZED)
+    // GET /api/recruiters - List all recruiter organizations with filtering, sorting, and pagination
     if (path === '/recruiters') {
-      const { data: recruiters, error } = await supabase
-        .from('recruiters')
-        .select('*')
-        .order('createdat', { ascending: false })
+      const url = new URL(request.url)
+      
+      // Pagination parameters
+      const page = parseInt(url.searchParams.get('page') || '1')
+      const limit = parseInt(url.searchParams.get('limit') || '20')
+      const offset = (page - 1) * limit
+      
+      // Filter parameters
+      const statusFilter = url.searchParams.get('status') // pending, approved, rejected
+      const activeFilter = url.searchParams.get('active') // true, false
+      const stateFilter = url.searchParams.get('state')
+      const searchTerm = url.searchParams.get('search')
+      
+      // Sorting parameters
+      const sortBy = url.searchParams.get('sortBy') || 'createdat'
+      const sortOrder = url.searchParams.get('sortOrder') || 'desc'
+      
+      // Build query
+      let query = supabase.from('recruiters').select('*', { count: 'exact' })
+      
+      // Apply filters
+      if (statusFilter) {
+        query = query.eq('verificationstatus', statusFilter)
+      }
+      if (activeFilter !== null && activeFilter !== '') {
+        query = query.eq('isactive', activeFilter === 'true')
+      }
+      if (stateFilter) {
+        query = query.eq('state', stateFilter)
+      }
+      if (searchTerm) {
+        query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`)
+      }
+      
+      // Apply sorting
+      const sortField = sortBy === 'name' ? 'name' : sortBy === 'userCount' ? 'createdat' : sortBy
+      query = query.order(sortField, { ascending: sortOrder === 'asc' })
+      
+      // Apply pagination
+      query = query.range(offset, offset + limit - 1)
+      
+      const { data: recruiters, error, count } = await query
 
       if (error) {
         console.error('Error fetching recruiters:', error)
@@ -214,6 +252,7 @@ export async function GET(request) {
       }
 
       // Fetch all users in bulk and count by organization
+      let userCountMap = {}
       if (recruiters && recruiters.length > 0) {
         const recruiterIds = recruiters.map(r => r.id)
         
@@ -223,31 +262,175 @@ export async function GET(request) {
           .in('organizationId', recruiterIds)
         
         // Count users by organization
-        const userCountMap = {}
         users?.forEach(user => {
           userCountMap[user.organizationId] = (userCountMap[user.organizationId] || 0) + 1
         })
-        
-        // Map recruiters to expected format
-        const mappedRecruiters = recruiters.map(recruiter => ({
-          id: recruiter.id,
-          name: recruiter.name,
-          type: 'recruiter',
-          state: recruiter.state,
-          email: recruiter.email,
-          phone: recruiter.phone,
-          website: recruiter.website,
-          verificationStatus: recruiter.verificationstatus || 'approved',
-          isActive: recruiter.isactive !== undefined ? recruiter.isactive : true,
-          createdAt: recruiter.createdat,
-          updatedAt: recruiter.updatedat,
-          userCount: userCountMap[recruiter.id] || 0
-        }))
-        
-        return NextResponse.json(mappedRecruiters)
       }
+      
+      // Map recruiters to expected format
+      let mappedRecruiters = (recruiters || []).map(recruiter => ({
+        id: recruiter.id,
+        name: recruiter.name,
+        type: 'recruiter',
+        state: recruiter.state,
+        email: recruiter.email,
+        phone: recruiter.phone,
+        website: recruiter.website,
+        address: recruiter.address,
+        verificationStatus: recruiter.verificationstatus || 'approved',
+        isActive: recruiter.isactive !== undefined ? recruiter.isactive : true,
+        createdAt: recruiter.createdat,
+        updatedAt: recruiter.updatedat,
+        userCount: userCountMap[recruiter.id] || 0
+      }))
+      
+      // Sort by user count if requested (can't do this in SQL easily with join)
+      if (sortBy === 'userCount') {
+        mappedRecruiters.sort((a, b) => {
+          return sortOrder === 'asc' ? a.userCount - b.userCount : b.userCount - a.userCount
+        })
+      }
+      
+      return NextResponse.json({
+        data: mappedRecruiters,
+        pagination: {
+          page,
+          limit,
+          total: count || 0,
+          totalPages: Math.ceil((count || 0) / limit)
+        }
+      })
+    }
 
-      return NextResponse.json([])
+    // GET /api/recruiter/:id - Get single recruiter details with audit history
+    if (path.startsWith('/recruiter/') && path.split('/').length === 3) {
+      const recruiterId = path.split('/')[2]
+      
+      // Fetch recruiter details
+      const { data: recruiter, error } = await supabase
+        .from('recruiters')
+        .select('*')
+        .eq('id', recruiterId)
+        .single()
+      
+      if (error || !recruiter) {
+        return NextResponse.json({ error: 'Recruiter not found' }, { status: 404 })
+      }
+      
+      // Fetch user count
+      const { data: users } = await supabase
+        .from('users')
+        .select('id')
+        .eq('organizationId', recruiterId)
+      
+      // Fetch audit history for this recruiter
+      const { data: auditLogs } = await supabase
+        .from('audit_logs')
+        .select('*, users!inner(email)')
+        .eq('target', recruiterId)
+        .order('timestamp', { ascending: false })
+        .limit(20)
+      
+      // Fetch verification history
+      const { data: verifications } = await supabase
+        .from('verifications')
+        .select('*, users!inner(email)')
+        .eq('targetId', recruiterId)
+        .order('timestamp', { ascending: false })
+        .limit(20)
+      
+      return NextResponse.json({
+        id: recruiter.id,
+        name: recruiter.name,
+        type: 'recruiter',
+        state: recruiter.state,
+        district: recruiter.district,
+        email: recruiter.email,
+        phone: recruiter.phone,
+        website: recruiter.website,
+        address: recruiter.address,
+        verificationStatus: recruiter.verificationstatus || 'approved',
+        isActive: recruiter.isactive !== undefined ? recruiter.isactive : true,
+        createdAt: recruiter.createdat,
+        updatedAt: recruiter.updatedat,
+        userCount: users?.length || 0,
+        auditHistory: auditLogs || [],
+        verificationHistory: verifications || []
+      })
+    }
+
+    // GET /api/recruiters/export - Export recruiters to CSV
+    if (path === '/recruiters/export') {
+      const url = new URL(request.url)
+      
+      // Apply same filters as main list
+      const statusFilter = url.searchParams.get('status')
+      const activeFilter = url.searchParams.get('active')
+      const stateFilter = url.searchParams.get('state')
+      const searchTerm = url.searchParams.get('search')
+      
+      let query = supabase.from('recruiters').select('*')
+      
+      if (statusFilter) {
+        query = query.eq('verificationstatus', statusFilter)
+      }
+      if (activeFilter !== null && activeFilter !== '') {
+        query = query.eq('isactive', activeFilter === 'true')
+      }
+      if (stateFilter) {
+        query = query.eq('state', stateFilter)
+      }
+      if (searchTerm) {
+        query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`)
+      }
+      
+      query = query.order('createdat', { ascending: false })
+      
+      const { data: recruiters, error } = await query
+      
+      if (error) {
+        return NextResponse.json({ error: 'Failed to export recruiters' }, { status: 500 })
+      }
+      
+      // Create CSV content
+      const headers = ['Name', 'Email', 'Phone', 'State', 'District', 'Website', 'Status', 'Active', 'Created Date']
+      const csvRows = [headers.join(',')]
+      
+      recruiters?.forEach(r => {
+        const row = [
+          `"${r.name || ''}"`,
+          `"${r.email || ''}"`,
+          `"${r.phone || ''}"`,
+          `"${r.state || ''}"`,
+          `"${r.district || ''}"`,
+          `"${r.website || ''}"`,
+          `"${r.verificationstatus || 'approved'}"`,
+          r.isactive ? 'Yes' : 'No',
+          r.createdat ? new Date(r.createdat).toLocaleDateString() : ''
+        ]
+        csvRows.push(row.join(','))
+      })
+      
+      const csvContent = csvRows.join('\n')
+      
+      return new Response(csvContent, {
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': `attachment; filename="recruiters-${new Date().toISOString().split('T')[0]}.csv"`
+        }
+      })
+    }
+
+    // GET /api/recruiters/states - Get unique states for filter dropdown
+    if (path === '/recruiters/states') {
+      const { data: recruiters } = await supabase
+        .from('recruiters')
+        .select('state')
+        .not('state', 'is', null)
+      
+      const uniqueStates = [...new Set(recruiters?.map(r => r.state).filter(Boolean))].sort()
+      
+      return NextResponse.json(uniqueStates)
     }
 
     // GET /api/students - List all students (OPTIMIZED)
