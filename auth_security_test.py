@@ -11,7 +11,7 @@ import sys
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://fix-reports-map.preview.emergentagent.com"
+BASE_URL = "https://fix-recruiting.preview.emergentagent.com"
 API_BASE = f"{BASE_URL}/api"
 
 # Test credentials

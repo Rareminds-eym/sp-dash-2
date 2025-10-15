@@ -7,7 +7,7 @@ from datetime import datetime
 
 
 # Configuration
-BASE_URL = "https://fix-reports-map.preview.emergentagent.com"
+BASE_URL = "https://fix-recruiting.preview.emergentagent.com"
 TEST_EMAIL = "superadmin@rareminds.in"
 TEST_PASSWORD = "password123"
 
