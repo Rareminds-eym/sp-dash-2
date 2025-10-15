@@ -271,26 +271,40 @@ def test_metrics_endpoint(expected_count):
         return False
 
 def main():
-    """Run all recruiter status verification tests"""
-    print("🚀 Starting Recruiter Status Verification Tests")
-    print("=" * 60)
+    """Run all duplicate recruiter removal verification tests"""
+    print("🚀 DUPLICATE RECRUITER REMOVAL VERIFICATION")
+    print("=" * 80)
+    print("Testing the following requirements:")
+    print("1. Total recruiter count should be 130 (down from 133)")
+    print("2. No duplicate email addresses exist")
+    print("3. GET /api/metrics endpoint reflects updated count")
+    print("4. Specific recruiters with composite emails were removed")
+    print("5. Recruiters with same names but different emails still exist")
+    print("=" * 80)
     
     # Test results
     results = {}
     
-    # Test 1: Recruiters endpoint and status distribution
-    results['recruiters_endpoint'] = test_recruiters_endpoint()
+    # Test 1: Total recruiter count
+    success, total_count = test_total_recruiter_count()
+    results['total_count'] = success
     
-    # Test 2: Specific recruiters status check
-    results['specific_recruiters'] = test_specific_recruiters()
+    # Test 2: No duplicate emails
+    results['no_duplicates'] = test_duplicate_emails()
     
-    # Test 3: Metrics endpoint activeRecruiters count
-    results['metrics_endpoint'] = test_metrics_endpoint()
+    # Test 3: Metrics endpoint reflects updated count
+    results['metrics_updated'] = test_metrics_endpoint(total_count)
+    
+    # Test 4: Specific composite email removals
+    results['composite_removals'] = test_specific_composite_email_removals()
+    
+    # Test 5: Same name different emails still exist
+    results['same_name_different_emails'] = test_same_name_different_emails()
     
     # Summary
-    print("\n" + "=" * 60)
-    print("📋 TEST SUMMARY")
-    print("=" * 60)
+    print("\n" + "=" * 80)
+    print("📋 DUPLICATE RECRUITER REMOVAL VERIFICATION SUMMARY")
+    print("=" * 80)
     
     total_tests = len(results)
     passed_tests = sum(1 for result in results.values() if result)
@@ -300,12 +314,13 @@ def main():
         print(f"{test_name}: {status}")
     
     print(f"\nOverall: {passed_tests}/{total_tests} tests passed")
+    print(f"Total recruiters in database: {total_count}")
     
     if passed_tests == total_tests:
-        print("🎉 All recruiter status verification tests PASSED!")
+        print("🎉 All duplicate recruiter removal verification tests PASSED!")
         return True
     else:
-        print("⚠️  Some tests FAILED - see details above")
+        print("⚠️  Some verification tests FAILED - see details above")
         return False
 
 if __name__ == "__main__":
