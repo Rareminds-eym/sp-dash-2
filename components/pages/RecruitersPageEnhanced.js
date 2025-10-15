@@ -369,13 +369,6 @@ export default function RecruitersPageEnhanced({ currentUser }) {
     })
   }
 
-  const stats = {
-    total: pagination.total,
-    pending: recruiters.filter(r => r.verificationStatus === 'pending').length,
-    approved: recruiters.filter(r => r.verificationStatus === 'approved').length,
-    active: recruiters.filter(r => r.isActive).length
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
