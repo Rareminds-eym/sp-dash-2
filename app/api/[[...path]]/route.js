@@ -1118,7 +1118,7 @@ export async function POST(request) {
       const { error: updateError } = await supabase
         .from('recruiters')
         .update({ isactive: true })
-        .eq('organizationid', recruiterId)
+        .eq('id', recruiterId)
 
       if (updateError) throw updateError
 
