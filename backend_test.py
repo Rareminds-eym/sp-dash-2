@@ -10,7 +10,7 @@ import os
 from datetime import datetime
 
 # Get base URL from environment
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://campus-data-load.preview.emergentagent.com')
+BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://fix-reports-map.preview.emergentagent.com')
 API_BASE = f"{BASE_URL}/api"
 
 # Test credentials

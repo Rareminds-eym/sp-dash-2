@@ -3,7 +3,7 @@
 import requests
 import json
 
-BASE_URL = "https://campus-data-load.preview.emergentagent.com"
+BASE_URL = "https://fix-reports-map.preview.emergentagent.com"
 
 def debug_database_queries():
     """Debug the database queries to understand the issues"""
