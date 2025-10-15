@@ -518,16 +518,16 @@ export async function GET(request) {
     if (path === '/analytics/university-reports') {
       // Fetch all data in parallel from universities table
       const [universitiesResult, studentsResult, passportsResult] = await Promise.all([
-        supabase.from('universities').select('organizationid, name, state'),
+        supabase.from('universities').select('id, name, state'),
         supabase.from('students').select('id, universityId'),
         supabase.from('skill_passports').select('studentId, status')
       ])
 
       if (universitiesResult.error) throw universitiesResult.error
 
-      // Map universities to match expected format
+      // Map universities to match expected format using id directly
       const orgs = (universitiesResult.data || []).map(u => ({
-        id: u.organizationid,
+        id: u.id,
         name: u.name,
         state: u.state
       }))
