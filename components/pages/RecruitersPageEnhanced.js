@@ -718,81 +718,77 @@ export default function RecruitersPageEnhanced({ currentUser }) {
                               <Eye className="h-4 w-4" />
                             </Button>
                             
-                            {(currentUser?.role === 'super_admin' || currentUser?.role === 'admin') && (
+                            {/* Quick Actions for Pending Recruiters */}
+                            {recruiter.verificationStatus === 'pending' && (
                               <>
-                                {/* Quick Actions for Pending Recruiters */}
-                                {recruiter.verificationStatus === 'pending' && (
-                                  <>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => handleAction(recruiter, 'approve')}
-                                      className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
-                                    >
-                                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                                      Approve
-                                    </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => handleAction(recruiter, 'reject')}
-                                      className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                                    >
-                                      <XCircle className="h-4 w-4 mr-2" />
-                                      Reject
-                                    </Button>
-                                  </>
-                                )}
-                                
-                                {/* Status Change Dropdown Menu */}
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm">
-                                      <MoreVertical className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="w-56">
-                                    <DropdownMenuLabel>Verification Status</DropdownMenuLabel>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      onClick={() => handleStatusChange(recruiter, 'approved')}
-                                      disabled={recruiter.verificationStatus === 'approved'}
-                                      className="cursor-pointer"
-                                    >
-                                      <CheckCircle2 className="h-4 w-4 mr-2 text-green-600" />
-                                      <span>Set to Approved</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => handleStatusChange(recruiter, 'rejected')}
-                                      disabled={recruiter.verificationStatus === 'rejected'}
-                                      className="cursor-pointer"
-                                    >
-                                      <XCircle className="h-4 w-4 mr-2 text-red-600" />
-                                      <span>Set to Rejected</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuLabel>Active Status</DropdownMenuLabel>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      onClick={() => handleAction(recruiter, 'activate')}
-                                      disabled={recruiter.isActive}
-                                      className="cursor-pointer"
-                                    >
-                                      <UserCheck className="h-4 w-4 mr-2 text-blue-600" />
-                                      <span>Activate</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => handleAction(recruiter, 'suspend')}
-                                      disabled={!recruiter.isActive}
-                                      className="cursor-pointer"
-                                    >
-                                      <UserX className="h-4 w-4 mr-2 text-orange-600" />
-                                      <span>Suspend</span>
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleAction(recruiter, 'approve')}
+                                  className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
+                                >
+                                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                                  Approve
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleAction(recruiter, 'reject')}
+                                  className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                                >
+                                  <XCircle className="h-4 w-4 mr-2" />
+                                  Reject
+                                </Button>
                               </>
                             )}
+                            
+                            {/* Status Change Dropdown Menu */}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-56">
+                                <DropdownMenuLabel>Verification Status</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => handleStatusChange(recruiter, 'approved')}
+                                  disabled={recruiter.verificationStatus === 'approved'}
+                                  className="cursor-pointer"
+                                >
+                                  <CheckCircle2 className="h-4 w-4 mr-2 text-green-600" />
+                                  <span>Set to Approved</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleStatusChange(recruiter, 'rejected')}
+                                  disabled={recruiter.verificationStatus === 'rejected'}
+                                  className="cursor-pointer"
+                                >
+                                  <XCircle className="h-4 w-4 mr-2 text-red-600" />
+                                  <span>Set to Rejected</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuLabel>Active Status</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => handleAction(recruiter, 'activate')}
+                                  disabled={recruiter.isActive}
+                                  className="cursor-pointer"
+                                >
+                                  <UserCheck className="h-4 w-4 mr-2 text-blue-600" />
+                                  <span>Activate</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleAction(recruiter, 'suspend')}
+                                  disabled={!recruiter.isActive}
+                                  className="cursor-pointer"
+                                >
+                                  <UserX className="h-4 w-4 mr-2 text-orange-600" />
+                                  <span>Suspend</span>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </div>
                       ))}
