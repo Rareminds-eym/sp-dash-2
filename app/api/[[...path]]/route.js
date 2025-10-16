@@ -560,7 +560,7 @@ export async function GET(request) {
           const users = usersResult.data || []
           
           // Fetch universities
-          const orgIds = students.map(s => s.organizationId).filter(Boolean)
+          const orgIds = students.map(s => s.universityId || s.organizationId).filter(Boolean)
           let universities = []
           if (orgIds.length > 0) {
             const { data: univData } = await supabase.from('universities').select('id, name').in('id', orgIds)
