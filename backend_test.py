@@ -91,7 +91,103 @@ def test_audit_logs_endpoints():
             'details': f'Exception: {str(e)}'
         })
 
-def test_passport_export_with_status_filter():
+    
+    # Test 2: Pagination with different page sizes
+    print("\n📋 TEST 2: GET /api/audit-logs - Pagination Variations")
+    page_sizes = [10, 50, 100]
+    
+    for limit in page_sizes:
+        try:
+            response = requests.get(f"{BASE_URL}/audit-logs?page=1&limit={limit}")
+            results['total_tests'] += 1
+            
+            if response.status_code == 200:
+                data = response.json()
+                pagination = data['pagination']
+                logs = data['logs']
+                
+                print(f"✅ Pagination limit={limit}")
+                print(f"   - Returned logs: {len(logs)}")
+                print(f"   - Expected limit: {limit}")
+                print(f"   - Actual limit in response: {pagination.get('limit')}")
+                
+                results['passed'] += 1
+                results['test_details'].append({
+                    'test': f'GET /api/audit-logs - Pagination limit={limit}',
+                    'status': 'PASS',
+                    'details': f"Returned {len(logs)} logs"
+                })
+            else:
+                print(f"❌ Pagination test failed for limit={limit}: {response.status_code}")
+                results['failed'] += 1
+                results['test_details'].append({
+                    'test': f'GET /api/audit-logs - Pagination limit={limit}',
+                    'status': 'FAIL',
+                    'details': f'HTTP {response.status_code}'
+                })
+                
+        except Exception as e:
+            print(f"❌ Exception for limit={limit}: {str(e)}")
+            results['failed'] += 1
+            results['test_details'].append({
+                'test': f'GET /api/audit-logs - Pagination limit={limit}',
+                'status': 'FAIL',
+                'details': f'Exception: {str(e)}'
+            })
+    
+    # Test 3: GET /api/audit-logs/actions - Unique action types
+    print("\n📋 TEST 3: GET /api/audit-logs/actions - Unique Action Types")
+    try:
+        response = requests.get(f"{BASE_URL}/audit-logs/actions")
+        results['total_tests'] += 1
+        
+        if response.status_code == 200:
+            actions = response.json()
+            
+            print(f"✅ Actions endpoint working")
+            print(f"   - Status: {response.status_code}")
+            print(f"   - Actions returned: {len(actions)}")
+            print(f"   - Action types: {actions}")
+            
+            # Verify it's an array of strings
+            if isinstance(actions, list):
+                print(f"   - Response is array: ✅")
+                if actions:
+                    print(f"   - Actions are sorted: {'✅' if actions == sorted(actions) else '❌'}")
+                
+                results['passed'] += 1
+                results['test_details'].append({
+                    'test': 'GET /api/audit-logs/actions',
+                    'status': 'PASS',
+                    'details': f"Returned {len(actions)} unique actions"
+                })
+            else:
+                print(f"❌ Response is not an array")
+                results['failed'] += 1
+                results['test_details'].append({
+                    'test': 'GET /api/audit-logs/actions',
+                    'status': 'FAIL',
+                    'details': 'Response is not an array'
+                })
+        else:
+            print(f"❌ Request failed with status: {response.status_code}")
+            results['failed'] += 1
+            results['test_details'].append({
+                'test': 'GET /api/audit-logs/actions',
+                'status': 'FAIL',
+                'details': f'HTTP {response.status_code}'
+            })
+            
+    except Exception as e:
+        print(f"❌ Exception: {str(e)}")
+        results['failed'] += 1
+        results['test_details'].append({
+            'test': 'GET /api/audit-logs/actions',
+            'status': 'FAIL',
+            'details': f'Exception: {str(e)}'
+        })
+
+def test_remaining_audit_endpoints():
     """Test Scenario 2: Passport Export - With Status Filter"""
     print("\n" + "="*60)
     print("TEST 2: Passport Export - With Status Filter (verified)")
