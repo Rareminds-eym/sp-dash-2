@@ -8,7 +8,7 @@ import json
 from datetime import datetime
 
 # Base URL from environment
-BASE_URL = "https://recruiter-typing-fix.preview.emergentagent.com/api"
+BASE_URL = "https://search-revamp-2.preview.emergentagent.com/api"
 
 def verify_snapshots_table():
     """Verify metrics snapshots are being stored"""
