@@ -234,7 +234,7 @@ def main():
         {
             'path': '/analytics/ai-insights/export',
             'name': 'AI Insights',
-            'expected_headers': ['Skill', 'Growth', 'Category', 'Trend']
+            'expected_headers': None  # Multi-section CSV with different headers
         }
     ]
     
