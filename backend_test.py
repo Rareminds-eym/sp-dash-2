@@ -308,16 +308,6 @@ def test_duplicate_emails():
 
 if __name__ == "__main__":
     main()
-            print(f"     ✅ Ak Infopark has exactly 1 record with hrm@akinfopark.com")
-        else:
-            print(f"     ❌ Ak Infopark should have exactly 1 record with hrm@akinfopark.com")
-            print(f"        Found: {len(ak_recruiters)} total records, {len(ak_hrm_email)} with hrm@akinfopark.com")
-            success = False
-        
-        return success
-        
-    except Exception as e:
-        print(f"❌ Error checking specific composite email removals: {e}")
         return False
 
 def test_same_name_different_emails():
