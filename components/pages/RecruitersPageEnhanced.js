@@ -938,7 +938,7 @@ export default function RecruitersPageEnhanced({ currentUser }) {
             <div className="space-y-6">
               {/* Basic Info */}
               <div>
-                <h3 className="text-lg font-semibold mb-3">Basic Information</h3>
+                <h3 className="text-sm font-medium text-muted-foreground mb-3">Basic Information</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Name</p>
@@ -963,7 +963,7 @@ export default function RecruitersPageEnhanced({ currentUser }) {
 
               {/* Contact Info */}
               <div>
-                <h3 className="text-lg font-semibold mb-3">Contact Information</h3>
+                <h3 className="text-sm font-medium text-muted-foreground mb-3">Contact Information</h3>
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <Mail className="h-4 w-4 text-muted-foreground" />
@@ -986,7 +986,7 @@ export default function RecruitersPageEnhanced({ currentUser }) {
 
               {/* Metadata */}
               <div>
-                <h3 className="text-lg font-semibold mb-3">Metadata</h3>
+                <h3 className="text-sm font-medium text-muted-foreground mb-3">Metadata</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -1008,7 +1008,7 @@ export default function RecruitersPageEnhanced({ currentUser }) {
               {/* Verification History */}
               {detailsDialog.recruiter.verificationHistory?.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">Verification History</h3>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-3">Verification History</h3>
                   <div className="space-y-2 max-h-[200px] overflow-y-auto">
                     {detailsDialog.recruiter.verificationHistory.map((item, idx) => (
                       <div key={idx} className="p-3 bg-gray-50 dark:bg-gray-800 rounded text-sm">
@@ -1027,7 +1027,7 @@ export default function RecruitersPageEnhanced({ currentUser }) {
               {/* Audit History */}
               {detailsDialog.recruiter.auditHistory?.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">Audit Trail</h3>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-3">Audit Trail</h3>
                   <div className="space-y-2 max-h-[200px] overflow-y-auto">
                     {detailsDialog.recruiter.auditHistory.map((item, idx) => (
                       <div key={idx} className="p-3 bg-gray-50 dark:bg-gray-800 rounded text-sm">
