@@ -544,7 +544,7 @@ export async function GET(request) {
         console.log(`Export: Found ${studentIds.length} student IDs from ${enrichedPassports.length} passports`)
         
         if (studentIds.length > 0) {
-          console.log(`Export: Attempting to fetch ${studentIds.length} students in batches`)
+          console.log(`Export: Fetching ${studentIds.length} students in batches of 100`)
           
           // Supabase has a limit on .in() queries, so batch them
           const batchSize = 100
@@ -553,9 +553,6 @@ export async function GET(request) {
           
           for (let i = 0; i < studentIds.length; i += batchSize) {
             const batch = studentIds.slice(i, i + batchSize)
-            const batchNum = Math.floor(i/batchSize) + 1
-            const totalBatches = Math.ceil(studentIds.length/batchSize)
-            console.log(`Export: Processing batch ${batchNum}/${totalBatches} (${batch.length} students)`)
             
             try {
               const [studentsResult, usersResult] = await Promise.all([
@@ -572,23 +569,20 @@ export async function GET(request) {
               ])
               
               if (studentsResult.error) {
-                console.log(`Export ERROR in batch ${batchNum}:`, studentsResult.error)
+                console.log(`Export ERROR in batch:`, studentsResult.error)
               } else {
                 allStudents.push(...(studentsResult.data || []))
-                console.log(`Export: Batch ${batchNum} fetched ${studentsResult.data?.length || 0} students`)
               }
               
               if (usersResult.error) {
-                console.log(`Export ERROR in users batch ${batchNum}:`, usersResult.error)
+                console.log(`Export ERROR in users batch:`, usersResult.error)
               } else {
                 allUsers.push(...(usersResult.data || []))
               }
             } catch (error) {
-              console.log(`Export ERROR in batch ${batchNum}:`, error)
+              console.log(`Export ERROR in batch:`, error)
             }
           }
-          
-          console.log(`Export: Completed batching. Total students: ${allStudents.length}, Total users: ${allUsers.length}`)
           
           // Create result objects for compatibility with existing code
           const studentsResult = { data: allStudents, error: null }
