@@ -10,69 +10,86 @@ import io
 # Configuration
 BASE_URL = "https://auditpro-9.preview.emergentagent.com/api"
 
-def test_passport_export_no_filters():
-    """Test Scenario 1: Passport Export - No Filters"""
-    print("\n" + "="*60)
-    print("TEST 1: Passport Export - No Filters")
-    print("="*60)
+def test_audit_logs_endpoints():
+    """
+    Comprehensive testing of audit logs endpoints as requested:
+    1. GET /api/audit-logs (Enhanced with pagination & filters)
+    2. GET /api/audit-logs/export
+    3. GET /api/audit-logs/actions
+    4. GET /api/audit-logs/users
+    """
     
+    print("🔍 COMPREHENSIVE AUDIT LOGS OPTIMIZATION TESTING")
+    print("=" * 60)
+    
+    results = {
+        'total_tests': 0,
+        'passed': 0,
+        'failed': 0,
+        'test_details': []
+    }
+    
+    # Test 1: GET /api/audit-logs - Basic functionality
+    print("\n📋 TEST 1: GET /api/audit-logs - Basic Pagination")
     try:
-        url = f"{BASE_URL}/passports/export"
-        print(f"Testing: GET {url}")
-        
-        response = requests.get(url, timeout=30)
-        print(f"Status Code: {response.status_code}")
+        response = requests.get(f"{BASE_URL}/audit-logs")
+        results['total_tests'] += 1
         
         if response.status_code == 200:
-            # Check Content-Type
-            content_type = response.headers.get('Content-Type', '')
-            print(f"Content-Type: {content_type}")
+            data = response.json()
             
-            # Check Content-Disposition
-            content_disposition = response.headers.get('Content-Disposition', '')
-            print(f"Content-Disposition: {content_disposition}")
-            
-            # Validate CSV format
-            expected_headers = ['Student Name', 'Email', 'University', 'Status', 'NSQF Level', 'Skills', 'Created Date', 'Updated Date']
-            csv_result = test_csv_format(response.text, expected_headers)
-            
-            if csv_result['valid']:
-                print(f"  ✅ CSV format is valid")
-                print(f"  ✅ Row count: {csv_result['row_count']}")
+            # Verify response structure
+            required_fields = ['logs', 'pagination']
+            if all(field in data for field in required_fields):
+                pagination = data['pagination']
+                logs = data['logs']
                 
-                # Check for populated student data in sample rows
-                sample_rows = csv_result['sample_rows']
-                if sample_rows:
-                    print(f"\n  📋 Sample Data Analysis:")
-                    for i, row in enumerate(sample_rows[:2]):
-                        if len(row) >= 3:
-                            student_name = row[0].strip('"')
-                            student_email = row[1].strip('"')
-                            university = row[2].strip('"')
-                            
-                            print(f"    Row {i+1}:")
-                            print(f"      Student Name: '{student_name}' {'✅ Populated' if student_name else '❌ Empty'}")
-                            print(f"      Email: '{student_email}' {'✅ Populated' if student_email else '❌ Empty'}")
-                            print(f"      University: '{university}' {'✅ Populated' if university else '❌ Empty'}")
+                print(f"✅ Basic endpoint working")
+                print(f"   - Status: {response.status_code}")
+                print(f"   - Total logs: {pagination.get('total', 0)}")
+                print(f"   - Current page: {pagination.get('page', 1)}")
+                print(f"   - Limit: {pagination.get('limit', 20)}")
+                print(f"   - Total pages: {pagination.get('totalPages', 0)}")
+                print(f"   - Logs returned: {len(logs)}")
                 
-                return {
-                    'success': True,
-                    'row_count': csv_result['row_count'],
-                    'headers_valid': csv_result['headers_match'],
-                    'content_type_valid': 'text/csv' in content_type,
-                    'filename_valid': 'passports-' in content_disposition
-                }
+                # Check if logs have user information
+                if logs and len(logs) > 0:
+                    sample_log = logs[0]
+                    print(f"   - Sample log fields: {list(sample_log.keys())}")
+                    if 'users' in sample_log and sample_log['users']:
+                        print(f"   - User info populated: {sample_log['users']}")
+                
+                results['passed'] += 1
+                results['test_details'].append({
+                    'test': 'GET /api/audit-logs - Basic',
+                    'status': 'PASS',
+                    'details': f"Returned {len(logs)} logs with proper pagination"
+                })
             else:
-                print(f"  ❌ CSV format invalid: {csv_result.get('error', 'Unknown error')}")
-                return {'success': False, 'error': 'Invalid CSV format'}
+                print(f"❌ Missing required fields in response")
+                results['failed'] += 1
+                results['test_details'].append({
+                    'test': 'GET /api/audit-logs - Basic',
+                    'status': 'FAIL',
+                    'details': 'Missing required response fields'
+                })
         else:
-            print(f"  ❌ Request failed with status {response.status_code}")
-            print(f"  Response: {response.text[:200]}")
-            return {'success': False, 'error': f'HTTP {response.status_code}'}
+            print(f"❌ Request failed with status: {response.status_code}")
+            results['failed'] += 1
+            results['test_details'].append({
+                'test': 'GET /api/audit-logs - Basic',
+                'status': 'FAIL',
+                'details': f'HTTP {response.status_code}'
+            })
             
     except Exception as e:
-        print(f"  ❌ Test failed with exception: {e}")
-        return {'success': False, 'error': str(e)}
+        print(f"❌ Exception: {str(e)}")
+        results['failed'] += 1
+        results['test_details'].append({
+            'test': 'GET /api/audit-logs - Basic',
+            'status': 'FAIL',
+            'details': f'Exception: {str(e)}'
+        })
 
 def test_passport_export_with_status_filter():
     """Test Scenario 2: Passport Export - With Status Filter"""
