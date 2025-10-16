@@ -95,15 +95,15 @@ export default function ReportsPage() {
     fetchTabData('universities')
     
     // Listen for refresh events from the layout
-    const handleRefresh = () => {
-      handleRefresh()
+    const handleRefreshEvent = () => {
+      fetchTabData(activeTab)
     }
-    window.addEventListener('refreshPage', handleRefresh)
+    window.addEventListener('refreshPage', handleRefreshEvent)
     
     return () => {
-      window.removeEventListener('refreshPage', handleRefresh)
+      window.removeEventListener('refreshPage', handleRefreshEvent)
     }
-  }, [])
+  }, [activeTab])
 
   const fetchTabData = async (tab) => {
     // If data already loaded for this tab, skip
