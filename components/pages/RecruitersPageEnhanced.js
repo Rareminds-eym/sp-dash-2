@@ -127,8 +127,15 @@ export default function RecruitersPageEnhanced({ currentUser }) {
     }
     window.addEventListener('refreshPage', handleRefresh)
     
+    // Listen for export events from the layout
+    const handleExportEvent = () => {
+      handleExport()
+    }
+    window.addEventListener('exportData', handleExportEvent)
+    
     return () => {
       window.removeEventListener('refreshPage', handleRefresh)
+      window.removeEventListener('exportData', handleExportEvent)
     }
   }, [])
 
