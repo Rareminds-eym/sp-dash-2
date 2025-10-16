@@ -901,7 +901,7 @@ export async function GET(request) {
           if (search) {
             const searchLower = search.toLowerCase()
             const studentName = passport.students?.profile?.name || ''
-            const studentEmail = passport.students?.users?.email || ''
+            const studentEmail = passport.students?.email || passport.students?.users?.email || ''
             const passportId = passport.id || ''
             
             matchesSearch = studentName.toLowerCase().includes(searchLower) ||
@@ -910,7 +910,8 @@ export async function GET(request) {
           }
           
           if (universityFilter && universityFilter !== 'all') {
-            matchesUniversity = passport.students?.organizationId === universityFilter
+            const univId = passport.students?.universityId || passport.students?.organizationId
+            matchesUniversity = univId === universityFilter
           }
           
           return matchesSearch && matchesUniversity
