@@ -505,41 +505,60 @@ export async function GET(request) {
       return NextResponse.json(students || [])
     }
 
-    // GET /api/passports - List all skill passports with pagination (OPTIMIZED)
+    // GET /api/passports - List all skill passports with pagination, search, and filters (ENHANCED)
     if (path === '/passports') {
-      // Get pagination parameters from query string
+      // Get parameters from query string
       const url = new URL(request.url)
       const page = parseInt(url.searchParams.get('page') || '1')
       const limit = parseInt(url.searchParams.get('limit') || '20')
       const offset = (page - 1) * limit
+      const search = url.searchParams.get('search') || ''
+      const statusFilter = url.searchParams.get('status') || ''
+      const nsqfLevelFilter = url.searchParams.get('nsqfLevel') || ''
+      const universityFilter = url.searchParams.get('university') || ''
+      const sortBy = url.searchParams.get('sortBy') || 'createdAt'
+      const sortOrder = url.searchParams.get('sortOrder') || 'desc'
       
-      // Get total count and passports in parallel
-      const [countResult, passportsResult] = await Promise.all([
-        supabase.from('skill_passports').select('*', { count: 'exact', head: true }),
-        supabase.from('skill_passports').select('*').order('createdAt', { ascending: false }).range(offset, offset + limit - 1)
-      ])
+      // Build the query for passports
+      let passportsQuery = supabase.from('skill_passports').select('*', { count: 'exact' })
       
-      if (countResult.error) {
-        console.error('Error counting passports:', countResult.error)
+      // Apply status filter
+      if (statusFilter && statusFilter !== 'all') {
+        passportsQuery = passportsQuery.eq('status', statusFilter)
       }
       
-      if (passportsResult.error) {
-        console.error('Error fetching passports:', passportsResult.error)
+      // Apply NSQF level filter
+      if (nsqfLevelFilter && nsqfLevelFilter !== 'all') {
+        passportsQuery = passportsQuery.eq('nsqfLevel', parseInt(nsqfLevelFilter))
+      }
+      
+      // Apply sorting
+      const ascending = sortOrder === 'asc'
+      if (sortBy === 'nsqfLevel') {
+        passportsQuery = passportsQuery.order('nsqfLevel', { ascending, nullsFirst: false })
+      } else if (sortBy === 'createdAt') {
+        passportsQuery = passportsQuery.order('createdAt', { ascending })
+      }
+      
+      // Execute query with pagination
+      const { data: passports, error: passportsError, count } = await passportsQuery.range(offset, offset + limit - 1)
+      
+      if (passportsError) {
+        console.error('Error fetching passports:', passportsError)
         return NextResponse.json({ error: 'Failed to fetch passports' }, { status: 500 })
       }
       
-      const passports = passportsResult.data || []
-      const count = countResult.count || 0
+      let filteredPassports = passports || []
       
       // If we have passports, fetch all related data in bulk
-      if (passports.length > 0) {
-        const studentIds = passports.map(p => p.studentId).filter(Boolean)
+      if (filteredPassports.length > 0) {
+        const studentIds = filteredPassports.map(p => p.studentId).filter(Boolean)
         
         if (studentIds.length > 0) {
           // Fetch all students and their users in parallel
           const [studentsResult, usersResult] = await Promise.all([
             supabase.from('students').select('*').in('id', studentIds),
-            supabase.from('students').select('userId').in('id', studentIds).then(async (result) => {
+            supabase.from('students').select('userId, organizationId').in('id', studentIds).then(async (result) => {
               if (result.data && result.data.length > 0) {
                 const userIds = result.data.map(s => s.userId).filter(Boolean)
                 if (userIds.length > 0) {
@@ -552,6 +571,14 @@ export async function GET(request) {
           
           const students = studentsResult.data || []
           const users = usersResult.data || []
+          
+          // Fetch universities if needed for filtering
+          const orgIds = students.map(s => s.organizationId).filter(Boolean)
+          let universities = []
+          if (orgIds.length > 0) {
+            const { data: univData } = await supabase.from('universities').select('id, name').in('id', orgIds)
+            universities = univData || []
+          }
           
           // Create lookup maps for O(1) access
           const studentMap = {}
@@ -573,12 +600,20 @@ export async function GET(request) {
             userMap[user.id] = user
           })
           
+          const universityMap = {}
+          universities.forEach(univ => {
+            universityMap[univ.id] = univ
+          })
+          
           // Map data to passports
-          passports.forEach(passport => {
+          filteredPassports.forEach(passport => {
             if (passport.studentId && studentMap[passport.studentId]) {
               const student = studentMap[passport.studentId]
               if (student.userId && userMap[student.userId]) {
                 student.users = userMap[student.userId]
+              }
+              if (student.organizationId && universityMap[student.organizationId]) {
+                student.university = universityMap[student.organizationId]
               }
               passport.students = student
             }
@@ -586,14 +621,52 @@ export async function GET(request) {
         }
       }
       
+      // Apply client-side search filter (for student name/email) and university filter
+      if (search || universityFilter) {
+        filteredPassports = filteredPassports.filter(passport => {
+          let matchesSearch = true
+          let matchesUniversity = true
+          
+          if (search) {
+            const searchLower = search.toLowerCase()
+            const studentName = passport.students?.profile?.name || ''
+            const studentEmail = passport.students?.users?.email || ''
+            const passportId = passport.id || ''
+            
+            matchesSearch = studentName.toLowerCase().includes(searchLower) ||
+                           studentEmail.toLowerCase().includes(searchLower) ||
+                           passportId.toLowerCase().includes(searchLower)
+          }
+          
+          if (universityFilter && universityFilter !== 'all') {
+            matchesUniversity = passport.students?.organizationId === universityFilter
+          }
+          
+          return matchesSearch && matchesUniversity
+        })
+      }
+      
+      // Apply client-side sorting for student name
+      if (sortBy === 'studentName') {
+        filteredPassports.sort((a, b) => {
+          const nameA = a.students?.profile?.name || a.students?.users?.email || ''
+          const nameB = b.students?.profile?.name || b.students?.users?.email || ''
+          if (ascending) {
+            return nameA.localeCompare(nameB)
+          } else {
+            return nameB.localeCompare(nameA)
+          }
+        })
+      }
+      
       // Return paginated response
       return NextResponse.json({
-        data: passports,
+        data: filteredPassports,
         pagination: {
           page,
           limit,
-          total: count,
-          totalPages: Math.ceil(count / limit)
+          total: count || 0,
+          totalPages: Math.ceil((count || 0) / limit)
         }
       })
     }
