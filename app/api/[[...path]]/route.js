@@ -497,6 +497,32 @@ export async function GET(request) {
       return NextResponse.json(uniqueStates)
     }
 
+    // GET /api/passports/universities - Get unique universities for filter dropdown
+    if (path === '/passports/universities') {
+      const { data: universities } = await supabase
+        .from('universities')
+        .select('id, name')
+        .order('name', { ascending: true })
+      
+      return NextResponse.json(universities || [])
+    }
+
+    // GET /api/users/organizations - Get unique organizations for filter dropdown
+    if (path === '/users/organizations') {
+      // Fetch from both universities and recruiters tables
+      const [universitiesResult, recruitersResult] = await Promise.all([
+        supabase.from('universities').select('id, name').order('name', { ascending: true }),
+        supabase.from('recruiters').select('id, name').order('name', { ascending: true })
+      ])
+      
+      const organizations = [
+        ...(universitiesResult.data || []),
+        ...(recruitersResult.data || [])
+      ].sort((a, b) => a.name.localeCompare(b.name))
+      
+      return NextResponse.json(organizations)
+    }
+
     // GET /api/students - List all students (OPTIMIZED)
     if (path === '/students') {
       const { data: students, error } = await supabase
