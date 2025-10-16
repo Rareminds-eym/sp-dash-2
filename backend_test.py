@@ -346,28 +346,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-        
-        response = requests.get(url, timeout=30)
-        print(f"Status Code: {response.status_code}")
-        
-        if response.status_code == 200:
-            expected_headers = ['Student Name', 'Email', 'University', 'Status', 'NSQF Level', 'Skills', 'Created Date', 'Updated Date']
-            csv_result = test_csv_format(response.text, expected_headers)
-            
-            if csv_result['valid']:
-                print(f"  ✅ Filtered export successful")
-                print(f"  ✅ Verified passports count: {csv_result['row_count']}")
-                
-                # Verify all rows have 'verified' status
-                if csv_result['sample_rows']:
-                    print(f"\n  📋 Status Verification:")
-                    for i, row in enumerate(csv_result['sample_rows'][:3]):
-                        if len(row) >= 4:
-                            status = row[3].strip('"')
-                            print(f"    Row {i+1} Status: '{status}' {'✅ Verified' if status == 'verified' else '❌ Not verified'}")
-                
-                return {
-                    'success': True,
                     'row_count': csv_result['row_count'],
                     'filter_working': True
                 }
