@@ -201,11 +201,7 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold gradient-text">Reports & Analytics</h2>
-          <p className="text-muted-foreground mt-1">Comprehensive insights and data visualization</p>
-        </div>
+      <div className="flex items-center justify-end">
         <Button onClick={handleRefresh} disabled={isAnyLoading}>
           <TrendingUp className="h-4 w-4 mr-2" />
           Refresh Data
