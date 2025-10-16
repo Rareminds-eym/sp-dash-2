@@ -541,11 +541,7 @@ export async function GET(request) {
       if (enrichedPassports.length > 0) {
         const studentIds = enrichedPassports.map(p => p.studentId).filter(Boolean)
         
-        console.log(`Export: Found ${studentIds.length} student IDs from ${enrichedPassports.length} passports`)
-        
         if (studentIds.length > 0) {
-          console.log(`Export: Fetching ${studentIds.length} students in batches of 100`)
-          
           // Supabase has a limit on .in() queries, so batch them
           const batchSize = 100
           let allStudents = []
