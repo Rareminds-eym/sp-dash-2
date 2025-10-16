@@ -108,26 +108,64 @@ export async function GET(request) {
       }
     }
 
-    // GET /api/users - List all users (OPTIMIZED) - Excludes recruiters
+    // GET /api/users - List all users with pagination, search, and filters (ENHANCED) - Excludes recruiters
     if (path === '/users') {
-      const { data: users, error } = await supabase
-        .from('users')
-        .select('*')
-        .neq('role', 'recruiter')  // Exclude users with role='recruiter'
-        .order('createdAt', { ascending: false })
+      // Get parameters from query string
+      const url = new URL(request.url)
+      const page = parseInt(url.searchParams.get('page') || '1')
+      const limit = parseInt(url.searchParams.get('limit') || '20')
+      const offset = (page - 1) * limit
+      const search = url.searchParams.get('search') || ''
+      const roleFilter = url.searchParams.get('role') || ''
+      const activeFilter = url.searchParams.get('active') || ''
+      const organizationFilter = url.searchParams.get('organization') || ''
+      const sortBy = url.searchParams.get('sortBy') || 'createdAt'
+      const sortOrder = url.searchParams.get('sortOrder') || 'desc'
+      
+      // Build the query for users
+      let usersQuery = supabase.from('users').select('*', { count: 'exact' }).neq('role', 'recruiter')
+      
+      // Apply role filter
+      if (roleFilter && roleFilter !== 'all') {
+        usersQuery = usersQuery.eq('role', roleFilter)
+      }
+      
+      // Apply active filter
+      if (activeFilter && activeFilter !== 'all') {
+        usersQuery = usersQuery.eq('isActive', activeFilter === 'true')
+      }
+      
+      // Apply organization filter
+      if (organizationFilter && organizationFilter !== 'all') {
+        usersQuery = usersQuery.eq('organizationId', organizationFilter)
+      }
+      
+      // Apply sorting
+      const ascending = sortOrder === 'asc'
+      if (sortBy === 'email') {
+        usersQuery = usersQuery.order('email', { ascending })
+      } else if (sortBy === 'role') {
+        usersQuery = usersQuery.order('role', { ascending })
+      } else if (sortBy === 'createdAt') {
+        usersQuery = usersQuery.order('createdAt', { ascending })
+      }
+      
+      // Execute query with pagination
+      const { data: users, error, count } = await usersQuery.range(offset, offset + limit - 1)
 
       if (error) {
         console.error('Error fetching users:', error)
         return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
       }
       
+      let filteredUsers = users || []
+      
       // Fetch all organizations from universities and recruiters tables
-      if (users && users.length > 0) {
-        const orgIds = users.map(u => u.organizationId).filter(Boolean)
+      if (filteredUsers.length > 0) {
+        const orgIds = filteredUsers.map(u => u.organizationId).filter(Boolean)
         
         if (orgIds.length > 0) {
           // Try to fetch from both universities and recruiters tables using id field
-          // Note: organizationid column doesn't exist, using id instead
           const [universitiesResult, recruitersResult] = await Promise.all([
             supabase.from('universities').select('id, name').in('id', orgIds),
             supabase.from('recruiters').select('id, name').in('id', orgIds)
@@ -143,7 +181,7 @@ export async function GET(request) {
             orgMap[rec.id] = { id: rec.id, name: rec.name } 
           })
           
-          users.forEach(user => {
+          filteredUsers.forEach(user => {
             if (user.organizationId && orgMap[user.organizationId]) {
               user.organizations = orgMap[user.organizationId]
             }
@@ -151,7 +189,32 @@ export async function GET(request) {
         }
       }
       
-      return NextResponse.json(users || [])
+      // Apply client-side search filter (for name in metadata)
+      if (search) {
+        const searchLower = search.toLowerCase()
+        filteredUsers = filteredUsers.filter(user => {
+          const email = user.email || ''
+          const role = user.role || ''
+          const name = user.metadata?.name || ''
+          const orgName = user.organizations?.name || ''
+          
+          return email.toLowerCase().includes(searchLower) ||
+                 role.toLowerCase().includes(searchLower) ||
+                 name.toLowerCase().includes(searchLower) ||
+                 orgName.toLowerCase().includes(searchLower)
+        })
+      }
+      
+      // Return paginated response
+      return NextResponse.json({
+        data: filteredUsers,
+        pagination: {
+          page,
+          limit,
+          total: count || 0,
+          totalPages: Math.ceil((count || 0) / limit)
+        }
+      })
     }
 
     // GET /api/organizations - List all organizations (combined from universities and recruiters)
