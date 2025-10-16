@@ -219,11 +219,7 @@ export default function PassportsPageEnhanced({ currentUser }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Skill Passports</h2>
-          <p className="text-muted-foreground">Verify and manage skill passports</p>
-        </div>
+      <div className="flex items-center justify-end">
         <Button onClick={fetchPassports} variant="outline" disabled={loading}>
           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           Refresh
