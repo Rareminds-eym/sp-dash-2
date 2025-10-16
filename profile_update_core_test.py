@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 
 class CoreProfileTester:
-    def __init__(self, base_url="https://dashboard-parity.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://clean-headings.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.results = []
     

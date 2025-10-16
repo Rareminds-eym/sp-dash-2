@@ -7,7 +7,7 @@ import requests
 import json
 import sys
 
-BASE_URL = "https://dashboard-parity.preview.emergentagent.com/api"
+BASE_URL = "https://clean-headings.preview.emergentagent.com/api"
 
 def test_login():
     """Test login with correct credentials"""
