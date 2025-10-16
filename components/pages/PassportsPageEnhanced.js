@@ -75,6 +75,17 @@ export default function PassportsPageEnhanced({ currentUser }) {
   useEffect(() => {
     fetchUniversities()
     fetchOverallStats()
+    
+    // Listen for refresh events from the layout
+    const handleRefresh = () => {
+      fetchPassports()
+      fetchOverallStats()
+    }
+    window.addEventListener('refreshPage', handleRefresh)
+    
+    return () => {
+      window.removeEventListener('refreshPage', handleRefresh)
+    }
   }, [])
 
   useEffect(() => {
