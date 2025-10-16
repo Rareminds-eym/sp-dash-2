@@ -132,49 +132,12 @@ export default function DashboardLayout({ children }) {
     return currentNav ? currentNav.name : 'Dashboard'
   }
 
-  const handleExport = async (type) => {
-    try {
-      let endpoint = ''
-      let filename = ''
-      
-      if (type === 'passports') {
-        endpoint = '/api/passports/export'
-        filename = `passports-${new Date().toISOString().split('T')[0]}.csv`
-      } else if (type === 'recruiters') {
-        endpoint = '/api/recruiters/export'
-        filename = `recruiters-${new Date().toISOString().split('T')[0]}.csv`
-      }
-      
-      const response = await fetch(endpoint)
-      
-      if (!response.ok) {
-        throw new Error('Export failed')
-      }
-      
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = filename
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      window.URL.revokeObjectURL(url)
-      
-      toast({
-        title: 'Success',
-        description: `${type === 'passports' ? 'Passports' : 'Recruiters'} exported successfully`
-      })
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Export failed',
-        variant: 'destructive'
-      })
-    }
+  const handleExport = () => {
+    // Dispatch custom event for the page to handle export with its filters
+    window.dispatchEvent(new CustomEvent('exportData'))
   }
 
-  const canExport = () => {
+  const canShowMenu = () => {
     return pathname === '/passports' || pathname === '/recruiters'
   }
 
