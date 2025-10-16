@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
-"""
-Backend Testing Script for CSV Export Functionality
-Tests both Passport and Recruiter export endpoints with various scenarios
-"""
 
 import requests
+import json
+import sys
+from datetime import datetime, timedelta
 import csv
 import io
-import json
-from datetime import datetime
 
 # Configuration
 BASE_URL = "https://auditpro-9.preview.emergentagent.com/api"
