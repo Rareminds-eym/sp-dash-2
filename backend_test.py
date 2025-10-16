@@ -10,7 +10,7 @@ import os
 from collections import Counter
 
 # Get base URL from environment
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://clean-headings.preview.emergentagent.com')
+BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://exportdata-check.preview.emergentagent.com')
 API_BASE = f"{BASE_URL}/api"
 
 def get_all_recruiters():
