@@ -619,26 +619,7 @@ export async function GET(request) {
             totalStudentIds: studentIds.length
           })
           
-          // Write debug info to file for inspection
-          try {
-            const fs = require('fs')
-            fs.writeFileSync('/tmp/export_debug.json', JSON.stringify({
-              timestamp: new Date().toISOString(),
-              studentIds: studentIds.slice(0, 5),
-              studentsResult: {
-                error: studentsResult.error,
-                dataLength: studentsResult.data?.length,
-                sampleData: studentsResult.data?.slice(0, 2)
-              },
-              usersResult: {
-                error: usersResult.error,
-                dataLength: usersResult.data?.length,
-                sampleData: usersResult.data?.slice(0, 2)
-              }
-            }, null, 2))
-          } catch (e) {
-            console.log('Failed to write debug file:', e.message)
-          }
+          // Debug info logged to console instead of file
           
           // Fetch universities
           const orgIds = students.map(s => s.universityId || s.organizationId).filter(Boolean)
