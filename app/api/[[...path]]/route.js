@@ -1185,6 +1185,409 @@ export async function GET(request) {
       return NextResponse.json(mockAIInsights)
     }
 
+    // GET /api/analytics/university-reports/export - Export university reports to CSV
+    if (path === '/analytics/university-reports/export') {
+      // Mapping from old organization IDs to new university IDs
+      const univIdMapping = {
+        'f1ed42b6-ffe7-4108-90bb-6776b6504f7b': '5ca5589e-b49d-4027-baf7-7e2a88ae612a',
+        '609f59c9-6894-499b-8479-e826c219e0df': '632a5084-eeae-4f2e-b4bc-32593f2dcc00',
+        '1b0ab392-4fba-4037-ae99-6cdf1e0a232d': '85ed5785-dcb2-4d26-8100-a5fb492f0988',
+        'bf405453-cd17-4b45-9bc6-c89407272d7f': '2e9cb79d-0fb7-4b52-9588-d2a7262c9f68',
+        'aeaf831c-7e48-400a-90e3-8d879ef84257': '707b0f68-6855-428c-a630-65926f8c8116',
+        'cec6f9e4-ab41-41a1-b889-699bec40ee69': '66baa6ed-50ce-433d-84f9-c296c6d5806d',
+        'b5b42149-b444-47c3-939b-9ac7b1686414': '0dd1623e-a820-4da1-8c8b-a436db386a59',
+        'e0decdad-0553-4b1a-ad15-a16709bf7671': 'fdba4612-5249-4257-87e1-dc4858151ee8',
+        '54e9f738-fdeb-4116-8032-a27cac4a0112': 'b559f0da-c071-47ec-a866-b646751845bb',
+        '2877f238-ec9f-49af-8bb5-6efd30bc3654': '299ac0e3-f50f-41bc-965c-7274cfa9af25'
+      }
+
+      const [universitiesResult, studentsResult, passportsResult] = await Promise.all([
+        supabase.from('universities').select('id, name, state'),
+        supabase.from('students').select('id, universityId'),
+        supabase.from('skill_passports').select('studentId, status')
+      ])
+
+      if (universitiesResult.error) {
+        return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 })
+      }
+
+      const orgs = (universitiesResult.data || []).map(u => ({
+        id: u.id,
+        name: u.name,
+        state: u.state
+      }))
+      const students = studentsResult.data || []
+      const passports = passportsResult.data || []
+
+      const studentsByUniversity = {}
+      const passportsByStudent = {}
+
+      students.forEach(student => {
+        const newUnivId = univIdMapping[student.universityId] || student.universityId
+        if (!studentsByUniversity[newUnivId]) {
+          studentsByUniversity[newUnivId] = []
+        }
+        studentsByUniversity[newUnivId].push(student.id)
+      })
+
+      passports.forEach(passport => {
+        if (!passportsByStudent[passport.studentId]) {
+          passportsByStudent[passport.studentId] = []
+        }
+        passportsByStudent[passport.studentId].push(passport.status)
+      })
+
+      const universityReports = orgs.map(org => {
+        const studentIds = studentsByUniversity[org.id] || []
+        const enrollmentCount = studentIds.length
+
+        let totalPassports = 0
+        let verifiedCount = 0
+
+        studentIds.forEach(studentId => {
+          const studentPassports = passportsByStudent[studentId] || []
+          totalPassports += studentPassports.length
+          verifiedCount += studentPassports.filter(status => status === 'verified').length
+        })
+
+        const completionRate = totalPassports > 0 ? ((verifiedCount / totalPassports) * 100).toFixed(1) : 0
+        const verificationRate = enrollmentCount > 0 ? ((totalPassports / enrollmentCount) * 100).toFixed(1) : 0
+
+        return {
+          universityName: org.name,
+          state: org.state,
+          enrollmentCount,
+          totalPassports,
+          verifiedPassports: verifiedCount,
+          completionRate: parseFloat(completionRate),
+          verificationRate: parseFloat(verificationRate)
+        }
+      })
+
+      // Create CSV content
+      const headers = ['University Name', 'State', 'Enrollment Count', 'Total Passports', 'Verified Passports', 'Completion Rate (%)', 'Verification Rate (%)']
+      const csvRows = [headers.join(',')]
+
+      universityReports.forEach(r => {
+        const row = [
+          `"${r.universityName || ''}"`,
+          `"${r.state || ''}"`,
+          r.enrollmentCount,
+          r.totalPassports,
+          r.verifiedPassports,
+          r.completionRate,
+          r.verificationRate
+        ]
+        csvRows.push(row.join(','))
+      })
+
+      const csvContent = csvRows.join('\n')
+
+      return new Response(csvContent, {
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': `attachment; filename="university-reports-${new Date().toISOString().split('T')[0]}.csv"`
+        }
+      })
+    }
+
+    // GET /api/analytics/recruiter-metrics/export - Export recruiter metrics to CSV
+    if (path === '/analytics/recruiter-metrics/export') {
+      const mockRecruiterMetrics = {
+        totalSearches: 1247,
+        profileViews: 3456,
+        contactAttempts: 892,
+        shortlisted: 234,
+        hireIntents: 78,
+        searchTrends: [
+          { month: 'Jan', searches: 120, views: 340, contacts: 80 },
+          { month: 'Feb', searches: 150, views: 420, contacts: 95 },
+          { month: 'Mar', searches: 180, views: 450, contacts: 110 },
+          { month: 'Apr', searches: 200, views: 520, contacts: 125 },
+          { month: 'May', searches: 220, views: 580, contacts: 140 },
+          { month: 'Jun', searches: 240, views: 620, contacts: 155 }
+        ],
+        topSkillsSearched: [
+          { skill: 'JavaScript', searches: 245 },
+          { skill: 'Python', searches: 198 },
+          { skill: 'React', searches: 167 },
+          { skill: 'Node.js', searches: 134 },
+          { skill: 'AI/ML', searches: 123 }
+        ]
+      }
+
+      // Create CSV for search trends
+      const headers1 = ['Month', 'Searches', 'Profile Views', 'Contact Attempts']
+      const csvRows1 = [headers1.join(',')]
+      
+      mockRecruiterMetrics.searchTrends.forEach(trend => {
+        const row = [trend.month, trend.searches, trend.views, trend.contacts]
+        csvRows1.push(row.join(','))
+      })
+
+      csvRows1.push('') // Empty line
+      csvRows1.push('Top Skills Searched')
+      
+      const headers2 = ['Skill', 'Total Searches']
+      csvRows1.push(headers2.join(','))
+      
+      mockRecruiterMetrics.topSkillsSearched.forEach(skill => {
+        const row = [`"${skill.skill}"`, skill.searches]
+        csvRows1.push(row.join(','))
+      })
+
+      csvRows1.push('') // Empty line
+      csvRows1.push('Summary Metrics')
+      csvRows1.push(`Total Searches,${mockRecruiterMetrics.totalSearches}`)
+      csvRows1.push(`Total Profile Views,${mockRecruiterMetrics.profileViews}`)
+      csvRows1.push(`Contact Attempts,${mockRecruiterMetrics.contactAttempts}`)
+      csvRows1.push(`Shortlisted,${mockRecruiterMetrics.shortlisted}`)
+      csvRows1.push(`Hire Intents,${mockRecruiterMetrics.hireIntents}`)
+
+      const csvContent = csvRows1.join('\n')
+
+      return new Response(csvContent, {
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': `attachment; filename="recruiter-metrics-${new Date().toISOString().split('T')[0]}.csv"`
+        }
+      })
+    }
+
+    // GET /api/analytics/placement-conversion/export - Export placement conversion data to CSV
+    if (path === '/analytics/placement-conversion/export') {
+      const mockConversionData = {
+        conversionFunnel: [
+          { stage: 'Verified Profiles', count: 1500, percentage: 100 },
+          { stage: 'Viewed by Recruiters', count: 890, percentage: 59.3 },
+          { stage: 'Applied to Jobs', count: 650, percentage: 43.3 },
+          { stage: 'Shortlisted', count: 320, percentage: 21.3 },
+          { stage: 'Interviewed', count: 180, percentage: 12.0 },
+          { stage: 'Job Offers', count: 95, percentage: 6.3 },
+          { stage: 'Hired', count: 72, percentage: 4.8 },
+          { stage: '6M Retention', count: 58, percentage: 3.9 },
+          { stage: '1Y Retention', count: 45, percentage: 3.0 }
+        ],
+        monthlyConversions: [
+          { month: 'Jan', applied: 85, hired: 12, retained: 8 },
+          { month: 'Feb', applied: 92, hired: 15, retained: 11 },
+          { month: 'Mar', applied: 108, hired: 18, retained: 14 },
+          { month: 'Apr', applied: 125, hired: 22, retained: 17 },
+          { month: 'May', applied: 140, hired: 25, retained: 20 },
+          { month: 'Jun', applied: 156, hired: 28, retained: 23 }
+        ]
+      }
+
+      // Create CSV for conversion funnel
+      const headers1 = ['Stage', 'Count', 'Percentage']
+      const csvRows1 = [headers1.join(',')]
+      
+      mockConversionData.conversionFunnel.forEach(stage => {
+        const row = [`"${stage.stage}"`, stage.count, stage.percentage]
+        csvRows1.push(row.join(','))
+      })
+
+      csvRows1.push('') // Empty line
+      csvRows1.push('Monthly Conversions')
+      
+      const headers2 = ['Month', 'Applied', 'Hired', 'Retained']
+      csvRows1.push(headers2.join(','))
+      
+      mockConversionData.monthlyConversions.forEach(month => {
+        const row = [month.month, month.applied, month.hired, month.retained]
+        csvRows1.push(row.join(','))
+      })
+
+      const csvContent = csvRows1.join('\n')
+
+      return new Response(csvContent, {
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': `attachment; filename="placement-conversion-${new Date().toISOString().split('T')[0]}.csv"`
+        }
+      })
+    }
+
+    // GET /api/analytics/state-heatmap/export - Export state heatmap data to CSV
+    if (path === '/analytics/state-heatmap/export') {
+      const univIdMapping = {
+        'f1ed42b6-ffe7-4108-90bb-6776b6504f7b': '5ca5589e-b49d-4027-baf7-7e2a88ae612a',
+        '609f59c9-6894-499b-8479-e826c219e0df': '632a5084-eeae-4f2e-b4bc-32593f2dcc00',
+        '1b0ab392-4fba-4037-ae99-6cdf1e0a232d': '85ed5785-dcb2-4d26-8100-a5fb492f0988',
+        'bf405453-cd17-4b45-9bc6-c89407272d7f': '2e9cb79d-0fb7-4b52-9588-d2a7262c9f68',
+        'aeaf831c-7e48-400a-90e3-8d879ef84257': '707b0f68-6855-428c-a630-65926f8c8116',
+        'cec6f9e4-ab41-41a1-b889-699bec40ee69': '66baa6ed-50ce-433d-84f9-c296c6d5806d',
+        'b5b42149-b444-47c3-939b-9ac7b1686414': '0dd1623e-a820-4da1-8c8b-a436db386a59',
+        'e0decdad-0553-4b1a-ad15-a16709bf7671': 'fdba4612-5249-4257-87e1-dc4858151ee8',
+        '54e9f738-fdeb-4116-8032-a27cac4a0112': 'b559f0da-c071-47ec-a866-b646751845bb',
+        '2877f238-ec9f-49af-8bb5-6efd30bc3654': '299ac0e3-f50f-41bc-965c-7274cfa9af25'
+      }
+
+      const [universitiesResult, recruitersResult, studentsResult, passportsResult] = await Promise.all([
+        supabase.from('universities').select('id, state'),
+        supabase.from('recruiters').select('id, state'),
+        supabase.from('students').select('id, universityId'),
+        supabase.from('skill_passports').select('studentId, status')
+      ])
+
+      if (universitiesResult.error) {
+        return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 })
+      }
+
+      const orgs = [
+        ...(universitiesResult.data || []).map(u => ({
+          id: u.id,
+          state: u.state,
+          type: 'university'
+        })),
+        ...(recruitersResult.data || []).map(r => ({
+          id: r.id,
+          state: r.state,
+          type: 'recruiter'
+        }))
+      ]
+      const students = studentsResult.data || []
+      const passports = passportsResult.data || []
+
+      const orgMap = {}
+      orgs.forEach(org => { orgMap[org.id] = org })
+
+      const passportsByStudent = {}
+      passports.forEach(passport => {
+        if (!passportsByStudent[passport.studentId]) {
+          passportsByStudent[passport.studentId] = []
+        }
+        passportsByStudent[passport.studentId].push(passport.status)
+      })
+
+      const stateMetrics = {}
+      
+      orgs.forEach(org => {
+        if (org.state) {
+          if (!stateMetrics[org.state]) {
+            stateMetrics[org.state] = {
+              state: org.state,
+              universities: 0,
+              students: 0,
+              verifiedPassports: 0,
+              engagementScore: 0,
+              employabilityIndex: 0
+            }
+          }
+          
+          if (org.type === 'university') {
+            stateMetrics[org.state].universities++
+          }
+        }
+      })
+
+      students.forEach(student => {
+        const newUnivId = univIdMapping[student.universityId] || student.universityId
+        const university = orgMap[newUnivId]
+        if (university?.state && stateMetrics[university.state]) {
+          stateMetrics[university.state].students++
+          
+          const studentPassports = passportsByStudent[student.id] || []
+          const verifiedCount = studentPassports.filter(status => status === 'verified').length
+          stateMetrics[university.state].verifiedPassports += verifiedCount
+        }
+      })
+
+      Object.values(stateMetrics).forEach(state => {
+        state.engagementScore = Math.min(95, Math.floor((state.students / Math.max(state.universities, 1)) * 2 + Math.random() * 20))
+        state.employabilityIndex = Math.min(98, Math.floor((state.verifiedPassports / Math.max(state.students, 1)) * 100 + Math.random() * 15))
+      })
+
+      const stateData = Object.values(stateMetrics)
+
+      // Create CSV content
+      const headers = ['State', 'Universities', 'Students', 'Verified Passports', 'Engagement Score', 'Employability Index']
+      const csvRows = [headers.join(',')]
+
+      stateData.forEach(s => {
+        const row = [
+          `"${s.state || ''}"`,
+          s.universities,
+          s.students,
+          s.verifiedPassports,
+          s.engagementScore,
+          s.employabilityIndex
+        ]
+        csvRows.push(row.join(','))
+      })
+
+      const csvContent = csvRows.join('\n')
+
+      return new Response(csvContent, {
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': `attachment; filename="state-heatmap-${new Date().toISOString().split('T')[0]}.csv"`
+        }
+      })
+    }
+
+    // GET /api/analytics/ai-insights/export - Export AI insights to CSV
+    if (path === '/analytics/ai-insights/export') {
+      const mockAIInsights = {
+        emergingSkills: [
+          { skill: 'Generative AI', growth: '+156%', category: 'AI/ML', trend: 'rising' },
+          { skill: 'Kubernetes', growth: '+89%', category: 'DevOps', trend: 'rising' },
+          { skill: 'TypeScript', growth: '+67%', category: 'Programming', trend: 'rising' },
+          { skill: 'GraphQL', growth: '+45%', category: 'API', trend: 'stable' },
+          { skill: 'Blockchain', growth: '+34%', category: 'Emerging', trend: 'rising' }
+        ],
+        soughtSkillTags: [
+          { tag: 'Full Stack', mentions: 456, avgSalary: 680000 },
+          { tag: 'AI/ML Engineer', mentions: 234, avgSalary: 950000 },
+          { tag: 'DevOps', mentions: 189, avgSalary: 750000 },
+          { tag: 'Data Science', mentions: 167, avgSalary: 820000 },
+          { tag: 'Cloud Architect', mentions: 145, avgSalary: 1200000 }
+        ],
+        topUniversities: [
+          { name: 'IIT Delhi', performanceScore: 94.5, placementRate: 89.2, avgPackage: 1250000, trend: 'rising' },
+          { name: 'IIT Bombay', performanceScore: 93.8, placementRate: 91.5, avgPackage: 1180000, trend: 'stable' },
+          { name: 'IIT Bangalore', performanceScore: 92.6, placementRate: 87.3, avgPackage: 1090000, trend: 'rising' },
+          { name: 'NIT Trichy', performanceScore: 88.4, placementRate: 82.7, avgPackage: 850000, trend: 'stable' },
+          { name: 'BITS Pilani', performanceScore: 87.9, placementRate: 85.1, avgPackage: 920000, trend: 'rising' }
+        ]
+      }
+
+      // Create CSV with multiple sections
+      const csvRows = []
+      
+      csvRows.push('Emerging Skills')
+      csvRows.push(['Skill', 'Growth', 'Category', 'Trend'].join(','))
+      mockAIInsights.emergingSkills.forEach(skill => {
+        const row = [`"${skill.skill}"`, skill.growth, `"${skill.category}"`, skill.trend]
+        csvRows.push(row.join(','))
+      })
+
+      csvRows.push('') // Empty line
+      csvRows.push('Sought Skill Tags')
+      csvRows.push(['Tag', 'Mentions', 'Avg Salary (₹)'].join(','))
+      mockAIInsights.soughtSkillTags.forEach(tag => {
+        const row = [`"${tag.tag}"`, tag.mentions, tag.avgSalary]
+        csvRows.push(row.join(','))
+      })
+
+      csvRows.push('') // Empty line
+      csvRows.push('Top Universities')
+      csvRows.push(['University Name', 'Performance Score', 'Placement Rate (%)', 'Avg Package (₹)', 'Trend'].join(','))
+      mockAIInsights.topUniversities.forEach(univ => {
+        const row = [`"${univ.name}"`, univ.performanceScore, univ.placementRate, univ.avgPackage, univ.trend]
+        csvRows.push(row.join(','))
+      })
+
+      const csvContent = csvRows.join('\n')
+
+      return new Response(csvContent, {
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': `attachment; filename="ai-insights-${new Date().toISOString().split('T')[0]}.csv"`
+        }
+      })
+    }
+
     // Default route
     return NextResponse.json({ 
       message: 'Rareminds Super Admin Dashboard API',
