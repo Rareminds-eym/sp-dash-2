@@ -13,7 +13,7 @@ from datetime import datetime
 # Configuration
 BASE_URL = "https://csv-passport-export.preview.emergentagent.com/api"
 
-def validate_csv_format(content, expected_headers=None):
+def test_passports_csv_export():
     """Validate CSV format and return parsed data"""
     try:
         # Parse CSV content
