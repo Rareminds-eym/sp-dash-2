@@ -211,12 +211,6 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-end">
-        <Button onClick={handleRefresh} disabled={isAnyLoading}>
-          <TrendingUp className="h-4 w-4 mr-2" />
-          Refresh Data
-        </Button>
-      </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList className="grid w-full grid-cols-5">
