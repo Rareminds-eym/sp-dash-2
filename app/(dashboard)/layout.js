@@ -236,6 +236,24 @@ export default function DashboardLayout({ children }) {
               </h1>
             </div>
             <div className="flex items-center gap-3">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleRefresh}
+                      disabled={refreshing}
+                      className="hover:bg-white/50 dark:hover:bg-slate-800/50"
+                    >
+                      <RefreshCw className={cn("h-5 w-5", refreshing && "animate-spin")} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Refresh</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <ThemeToggle />
             </div>
           </div>
