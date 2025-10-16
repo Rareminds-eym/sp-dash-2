@@ -215,12 +215,6 @@ export default function DashboardLayout({ children }) {
               >
                 <Menu className="h-5 w-5" />
               </Button>
-              <div>
-                <h2 className="text-xl font-semibold capitalize bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
-                  {getPageTitle()}
-                </h2>
-                <p className="text-sm text-muted-foreground">Manage your platform</p>
-              </div>
             </div>
             <div className="flex items-center gap-3">
               <ThemeToggle />
