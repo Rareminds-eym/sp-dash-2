@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Backend Testing Script for Reports Page Export Functionality
-Tests all 5 export endpoints for the Reports page.
+CSV Export Functionality Testing for Passports and Recruiters
+Testing both /api/passports/export and /api/recruiters/export endpoints
 """
 
 import requests
@@ -10,6 +10,10 @@ import os
 import csv
 import io
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Get base URL from environment
 BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://csv-passport-export.preview.emergentagent.com')
