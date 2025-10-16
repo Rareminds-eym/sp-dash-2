@@ -769,6 +769,18 @@ frontend:
         agent: "testing"
         comment: "REPORTS PAGE EXPORT FUNCTIONALITY TESTING COMPLETED SUCCESSFULLY: All 5 export endpoints tested and working correctly (100% success rate). ✅ University Reports Export: Returns CSV with proper headers (University Name, State, Enrollment Count, Total Passports, Verified Passports, Completion Rate %, Verification Rate %) and 10 university records. Data accuracy verified - matches GET /api/analytics/university-reports endpoint exactly. ✅ Recruiter Metrics Export: Returns CSV with search trends data (Month, Searches, Profile Views, Contact Attempts), top skills section, and summary metrics. Multi-section format working correctly. ✅ Placement Conversion Export: Returns CSV with conversion funnel stages (Stage, Count, Percentage) and monthly conversions section (Month, Applied, Hired, Retained). ✅ State Heatmap Export: Returns CSV with state-wise data (State, Universities, Students, Verified Passports, Engagement Score, Employability Index) for 6 states. Data accuracy verified - matches GET endpoint. ✅ AI Insights Export: Returns multi-section CSV with emerging skills, sought skill tags, and top universities sections. All exports have proper CSV format, Content-Type: text/csv, Content-Disposition: attachment, and filenames follow pattern [section-name]-YYYY-MM-DD.csv. Data in university-reports and state-heatmap exports matches corresponding GET endpoints perfectly. All export functionality working as designed."
 
+  - task: "Export UI in Header with Filter Support"
+    implemented: true
+    working: "NA"
+    file: "app/(dashboard)/layout.js, components/pages/PassportsPageEnhanced.js, components/pages/RecruitersPageEnhanced.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "EXPORT UI ENHANCEMENT COMPLETED: Moved export functionality to 3-dots (MoreVertical) menu in dashboard header. Changes: 1) Updated layout.js header to show 3-dots dropdown menu on Passports and Recruiters pages (replaces previous Export button). 2) Export menu item triggers custom 'exportData' event. 3) PassportsPageEnhanced.js now listens for exportData event and handles export with current page filters (status, nsqfLevel, university, search). 4) RecruitersPageEnhanced.js updated to listen for exportData event and export with current filters (status from activeTab, state, active, search). 5) Both pages respect all active filters when exporting, ensuring exported data matches what user sees on screen. Export button now appears as 3-dots menu in header (next to Refresh and Theme toggle) for cleaner UI. Ready for testing to verify filter support works correctly."
+
 
 metadata:
   created_by: "testing_agent"
