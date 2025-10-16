@@ -604,7 +604,9 @@ def main():
         print("⚠️  SOME TESTS FAILED. Please review the issues above.")
         return False
 
-def test_duplicate_emails():
+if __name__ == "__main__":
+    success = main()
+    exit(0 if success else 1)
     """Test 2: Verify no duplicate email addresses exist"""
     print("\n🔍 Test 2: Checking for duplicate email addresses...")
     
