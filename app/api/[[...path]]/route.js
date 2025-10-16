@@ -574,6 +574,16 @@ export async function GET(request) {
             universityId: students[0].universityId
           } : 'No students')
           
+          if (students.length === 0) {
+            console.log(`Export ERROR: No students found despite having ${studentIds.length} student IDs`)
+            console.log(`Sample student IDs:`, studentIds.slice(0, 3))
+            console.log(`Students query result:`, { 
+              error: studentsResult.error, 
+              dataLength: studentsResult.data?.length,
+              sampleData: studentsResult.data?.[0]
+            })
+          }
+          
           // Fetch universities
           const orgIds = students.map(s => s.universityId || s.organizationId).filter(Boolean)
           let universities = []
