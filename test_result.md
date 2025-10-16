@@ -747,7 +747,8 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus: []
+  current_focus:
+    - "Reports Page Export Functionality"
   stuck_tasks: 
     - "Settings Page User Data Display Fix"
   test_all: false
