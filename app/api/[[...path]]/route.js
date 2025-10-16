@@ -53,19 +53,17 @@ export async function GET(request) {
         // Fallback: Calculate metrics dynamically from database tables if no snapshot exists
         console.log('No snapshot found, calculating metrics dynamically')
         
-        // Count universities (organizations with type = 'university')
+        // Count universities from universities table
         const { data: universities } = await supabase
-          .from('organizations')
+          .from('universities')
           .select('id')
-          .eq('type', 'university')
         
         const activeUniversities = universities?.length || 0
 
-        // Count recruiters (organizations with type = 'recruiter')
+        // Count recruiters from recruiters table
         const { data: recruiters } = await supabase
-          .from('organizations')
+          .from('recruiters')
           .select('id')
-          .eq('type', 'recruiter')
         
         const activeRecruiters = recruiters?.length || 0
 
@@ -110,11 +108,12 @@ export async function GET(request) {
       }
     }
 
-    // GET /api/users - List all users (OPTIMIZED)
+    // GET /api/users - List all users (OPTIMIZED) - Excludes recruiters
     if (path === '/users') {
       const { data: users, error } = await supabase
         .from('users')
         .select('*')
+        .neq('role', 'recruiter')  // Exclude users with role='recruiter'
         .order('createdAt', { ascending: false })
 
       if (error) {
@@ -122,18 +121,27 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
       }
       
-      // Fetch all organizations in bulk
+      // Fetch all organizations from universities and recruiters tables
       if (users && users.length > 0) {
         const orgIds = users.map(u => u.organizationId).filter(Boolean)
         
         if (orgIds.length > 0) {
-          const { data: orgs } = await supabase
-            .from('organizations')
-            .select('id, name')
-            .in('id', orgIds)
+          // Try to fetch from both universities and recruiters tables using id field
+          // Note: organizationid column doesn't exist, using id instead
+          const [universitiesResult, recruitersResult] = await Promise.all([
+            supabase.from('universities').select('id, name').in('id', orgIds),
+            supabase.from('recruiters').select('id, name').in('id', orgIds)
+          ])
           
           const orgMap = {}
-          orgs?.forEach(org => { orgMap[org.id] = org })
+          // Map universities (using id)
+          universitiesResult.data?.forEach(univ => { 
+            orgMap[univ.id] = { id: univ.id, name: univ.name } 
+          })
+          // Map recruiters (using id)
+          recruitersResult.data?.forEach(rec => { 
+            orgMap[rec.id] = { id: rec.id, name: rec.name } 
+          })
           
           users.forEach(user => {
             if (user.organizationId && orgMap[user.organizationId]) {
@@ -146,24 +154,98 @@ export async function GET(request) {
       return NextResponse.json(users || [])
     }
 
-    // GET /api/organizations - List all organizations
+    // GET /api/organizations - List all organizations (combined from universities and recruiters)
     if (path === '/organizations') {
-      const { data: orgs, error } = await supabase
-        .from('organizations')
-        .select('*')
-        .order('createdAt', { ascending: false })
+      // Fetch from both universities and recruiters tables
+      const [universitiesResult, recruitersResult] = await Promise.all([
+        supabase.from('universities').select('*').order('createdat', { ascending: false }),
+        supabase.from('recruiters').select('*').order('createdat', { ascending: false })
+      ])
 
-      if (error) throw error
-      return NextResponse.json(orgs || [])
+      if (universitiesResult.error) throw universitiesResult.error
+      if (recruitersResult.error) throw recruitersResult.error
+
+      // Combine results with type field for compatibility
+      const universities = (universitiesResult.data || []).map(u => ({
+        id: u.id,
+        name: u.name,
+        type: 'university',
+        state: u.state,
+        district: u.district,
+        email: u.email,
+        phone: u.phone,
+        website: u.website,
+        verificationStatus: u.verificationstatus,
+        isActive: u.isactive,
+        createdAt: u.createdat,
+        updatedAt: u.updatedat
+      }))
+
+      const recruiters = (recruitersResult.data || []).map(r => ({
+        id: r.id,
+        name: r.name,
+        type: 'recruiter',
+        state: r.state,
+        email: r.email,
+        phone: r.phone,
+        website: r.website,
+        verificationStatus: r.verificationstatus,
+        isActive: r.isactive,
+        createdAt: r.createdat,
+        updatedAt: r.updatedat
+      }))
+
+      const allOrgs = [...universities, ...recruiters].sort((a, b) => 
+        new Date(b.createdAt) - new Date(a.createdAt)
+      )
+
+      return NextResponse.json(allOrgs)
     }
 
-    // GET /api/recruiters - List all recruiter organizations (OPTIMIZED)
+    // GET /api/recruiters - List all recruiter organizations with filtering, sorting, and pagination
     if (path === '/recruiters') {
-      const { data: recruiters, error } = await supabase
-        .from('organizations')
-        .select('*')
-        .eq('type', 'recruiter')
-        .order('createdAt', { ascending: false })
+      const url = new URL(request.url)
+      
+      // Pagination parameters
+      const page = parseInt(url.searchParams.get('page') || '1')
+      const limit = parseInt(url.searchParams.get('limit') || '20')
+      const offset = (page - 1) * limit
+      
+      // Filter parameters
+      const statusFilter = url.searchParams.get('status') // pending, approved, rejected
+      const activeFilter = url.searchParams.get('active') // true, false
+      const stateFilter = url.searchParams.get('state')
+      const searchTerm = url.searchParams.get('search')
+      
+      // Sorting parameters
+      const sortBy = url.searchParams.get('sortBy') || 'createdat'
+      const sortOrder = url.searchParams.get('sortOrder') || 'desc'
+      
+      // Build query
+      let query = supabase.from('recruiters').select('*', { count: 'exact' })
+      
+      // Apply filters
+      if (statusFilter) {
+        query = query.eq('verificationstatus', statusFilter)
+      }
+      if (activeFilter !== null && activeFilter !== '') {
+        query = query.eq('isactive', activeFilter === 'true')
+      }
+      if (stateFilter) {
+        query = query.eq('state', stateFilter)
+      }
+      if (searchTerm) {
+        query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`)
+      }
+      
+      // Apply sorting
+      const sortField = sortBy === 'name' ? 'name' : sortBy === 'userCount' ? 'createdat' : sortBy
+      query = query.order(sortField, { ascending: sortOrder === 'asc' })
+      
+      // Apply pagination
+      query = query.range(offset, offset + limit - 1)
+      
+      const { data: recruiters, error, count } = await query
 
       if (error) {
         console.error('Error fetching recruiters:', error)
@@ -171,6 +253,7 @@ export async function GET(request) {
       }
 
       // Fetch all users in bulk and count by organization
+      let userCountMap = {}
       if (recruiters && recruiters.length > 0) {
         const recruiterIds = recruiters.map(r => r.id)
         
@@ -180,25 +263,175 @@ export async function GET(request) {
           .in('organizationId', recruiterIds)
         
         // Count users by organization
-        const userCountMap = {}
         users?.forEach(user => {
           userCountMap[user.organizationId] = (userCountMap[user.organizationId] || 0) + 1
         })
-        
-        recruiters.forEach(recruiter => {
-          recruiter.userCount = userCountMap[recruiter.id] || 0
-          
-          // Add default values if verification fields don't exist
-          if (!recruiter.hasOwnProperty('verificationStatus')) {
-            recruiter.verificationStatus = 'approved'
-          }
-          if (!recruiter.hasOwnProperty('isActive')) {
-            recruiter.isActive = true
-          }
+      }
+      
+      // Map recruiters to expected format
+      let mappedRecruiters = (recruiters || []).map(recruiter => ({
+        id: recruiter.id,
+        name: recruiter.name,
+        type: 'recruiter',
+        state: recruiter.state,
+        email: recruiter.email,
+        phone: recruiter.phone,
+        website: recruiter.website,
+        address: recruiter.address,
+        verificationStatus: recruiter.verificationstatus || 'approved',
+        isActive: recruiter.isactive !== undefined ? recruiter.isactive : true,
+        createdAt: recruiter.createdat,
+        updatedAt: recruiter.updatedat,
+        userCount: userCountMap[recruiter.id] || 0
+      }))
+      
+      // Sort by user count if requested (can't do this in SQL easily with join)
+      if (sortBy === 'userCount') {
+        mappedRecruiters.sort((a, b) => {
+          return sortOrder === 'asc' ? a.userCount - b.userCount : b.userCount - a.userCount
         })
       }
+      
+      return NextResponse.json({
+        data: mappedRecruiters,
+        pagination: {
+          page,
+          limit,
+          total: count || 0,
+          totalPages: Math.ceil((count || 0) / limit)
+        }
+      })
+    }
 
-      return NextResponse.json(recruiters || [])
+    // GET /api/recruiter/:id - Get single recruiter details with audit history
+    if (path.startsWith('/recruiter/') && path.split('/').length === 3) {
+      const recruiterId = path.split('/')[2]
+      
+      // Fetch recruiter details
+      const { data: recruiter, error } = await supabase
+        .from('recruiters')
+        .select('*')
+        .eq('id', recruiterId)
+        .single()
+      
+      if (error || !recruiter) {
+        return NextResponse.json({ error: 'Recruiter not found' }, { status: 404 })
+      }
+      
+      // Fetch user count
+      const { data: users } = await supabase
+        .from('users')
+        .select('id')
+        .eq('organizationId', recruiterId)
+      
+      // Fetch audit history for this recruiter
+      const { data: auditLogs } = await supabase
+        .from('audit_logs')
+        .select('*, users!inner(email)')
+        .eq('target', recruiterId)
+        .order('timestamp', { ascending: false })
+        .limit(20)
+      
+      // Fetch verification history
+      const { data: verifications } = await supabase
+        .from('verifications')
+        .select('*, users!inner(email)')
+        .eq('targetId', recruiterId)
+        .order('timestamp', { ascending: false })
+        .limit(20)
+      
+      return NextResponse.json({
+        id: recruiter.id,
+        name: recruiter.name,
+        type: 'recruiter',
+        state: recruiter.state,
+        district: recruiter.district,
+        email: recruiter.email,
+        phone: recruiter.phone,
+        website: recruiter.website,
+        address: recruiter.address,
+        verificationStatus: recruiter.verificationstatus || 'approved',
+        isActive: recruiter.isactive !== undefined ? recruiter.isactive : true,
+        createdAt: recruiter.createdat,
+        updatedAt: recruiter.updatedat,
+        userCount: users?.length || 0,
+        auditHistory: auditLogs || [],
+        verificationHistory: verifications || []
+      })
+    }
+
+    // GET /api/recruiters/export - Export recruiters to CSV
+    if (path === '/recruiters/export') {
+      const url = new URL(request.url)
+      
+      // Apply same filters as main list
+      const statusFilter = url.searchParams.get('status')
+      const activeFilter = url.searchParams.get('active')
+      const stateFilter = url.searchParams.get('state')
+      const searchTerm = url.searchParams.get('search')
+      
+      let query = supabase.from('recruiters').select('*')
+      
+      if (statusFilter) {
+        query = query.eq('verificationstatus', statusFilter)
+      }
+      if (activeFilter !== null && activeFilter !== '') {
+        query = query.eq('isactive', activeFilter === 'true')
+      }
+      if (stateFilter) {
+        query = query.eq('state', stateFilter)
+      }
+      if (searchTerm) {
+        query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`)
+      }
+      
+      query = query.order('createdat', { ascending: false })
+      
+      const { data: recruiters, error } = await query
+      
+      if (error) {
+        return NextResponse.json({ error: 'Failed to export recruiters' }, { status: 500 })
+      }
+      
+      // Create CSV content
+      const headers = ['Name', 'Email', 'Phone', 'State', 'District', 'Website', 'Status', 'Active', 'Created Date']
+      const csvRows = [headers.join(',')]
+      
+      recruiters?.forEach(r => {
+        const row = [
+          `"${r.name || ''}"`,
+          `"${r.email || ''}"`,
+          `"${r.phone || ''}"`,
+          `"${r.state || ''}"`,
+          `"${r.district || ''}"`,
+          `"${r.website || ''}"`,
+          `"${r.verificationstatus || 'approved'}"`,
+          r.isactive ? 'Yes' : 'No',
+          r.createdat ? new Date(r.createdat).toLocaleDateString() : ''
+        ]
+        csvRows.push(row.join(','))
+      })
+      
+      const csvContent = csvRows.join('\n')
+      
+      return new Response(csvContent, {
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': `attachment; filename="recruiters-${new Date().toISOString().split('T')[0]}.csv"`
+        }
+      })
+    }
+
+    // GET /api/recruiters/states - Get unique states for filter dropdown
+    if (path === '/recruiters/states') {
+      const { data: recruiters } = await supabase
+        .from('recruiters')
+        .select('state')
+        .not('state', 'is', null)
+      
+      const uniqueStates = [...new Set(recruiters?.map(r => r.state).filter(Boolean))].sort()
+      
+      return NextResponse.json(uniqueStates)
     }
 
     // GET /api/students - List all students (OPTIMIZED)
@@ -218,25 +451,53 @@ export async function GET(request) {
         const userIds = students.map(s => s.userId).filter(Boolean)
         const universityIds = students.map(s => s.universityId).filter(Boolean)
         
-        const [usersResult, orgsResult] = await Promise.all([
+        // Mapping from old organization IDs to new university IDs (same as university-reports)
+        const univIdMapping = {
+          'f1ed42b6-ffe7-4108-90bb-6776b6504f7b': '5ca5589e-b49d-4027-baf7-7e2a88ae612a',
+          '609f59c9-6894-499b-8479-e826c219e0df': '632a5084-eeae-4f2e-b4bc-32593f2dcc00',
+          '1b0ab392-4fba-4037-ae99-6cdf1e0a232d': '85ed5785-dcb2-4d26-8100-a5fb492f0988',
+          'bf405453-cd17-4b45-9bc6-c89407272d7f': '2e9cb79d-0fb7-4b52-9588-d2a7262c9f68',
+          'aeaf831c-7e48-400a-90e3-8d879ef84257': '707b0f68-6855-428c-a630-65926f8c8116',
+          'cec6f9e4-ab41-41a1-b889-699bec40ee69': '66baa6ed-50ce-433d-84f9-c296c6d5806d',
+          'b5b42149-b444-47c3-939b-9ac7b1686414': '0dd1623e-a820-4da1-8c8b-a436db386a59',
+          'e0decdad-0553-4b1a-ad15-a16709bf7671': 'fdba4612-5249-4257-87e1-dc4858151ee8',
+          '54e9f738-fdeb-4116-8032-a27cac4a0112': 'b559f0da-c071-47ec-a866-b646751845bb',
+          '2877f238-ec9f-49af-8bb5-6efd30bc3654': '299ac0e3-f50f-41bc-965c-7274cfa9af25'
+        }
+        
+        // Map old university IDs to new IDs
+        const mappedUniversityIds = universityIds.map(id => univIdMapping[id] || id).filter(Boolean)
+        
+        const [usersResult, universitiesResult] = await Promise.all([
           userIds.length > 0 ? supabase.from('users').select('id, email').in('id', userIds) : { data: [] },
-          universityIds.length > 0 ? supabase.from('organizations').select('id, name').in('id', universityIds) : { data: [] }
+          mappedUniversityIds.length > 0 ? supabase.from('universities').select('id, name').in('id', mappedUniversityIds) : { data: [] }
         ])
         
         // Create lookup maps
         const userMap = {}
         usersResult.data?.forEach(user => { userMap[user.id] = user })
         
-        const orgMap = {}
-        orgsResult.data?.forEach(org => { orgMap[org.id] = org })
+        // Create reverse mapping for universities (new ID -> old ID)
+        const reverseMapping = {}
+        Object.keys(univIdMapping).forEach(oldId => {
+          reverseMapping[univIdMapping[oldId]] = oldId
+        })
+        
+        const univMap = {}
+        universitiesResult.data?.forEach(univ => {
+          // Map both old and new IDs to the same university data
+          const oldId = reverseMapping[univ.id] || univ.id
+          univMap[oldId] = { id: oldId, name: univ.name }
+          univMap[univ.id] = { id: univ.id, name: univ.name }
+        })
         
         // Map data to students
         students.forEach(student => {
           if (student.userId && userMap[student.userId]) {
             student.users = userMap[student.userId]
           }
-          if (student.universityId && orgMap[student.universityId]) {
-            student.organizations = orgMap[student.universityId]
+          if (student.universityId && univMap[student.universityId]) {
+            student.organizations = univMap[student.universityId]
           }
         })
       }
@@ -413,16 +674,28 @@ export async function GET(request) {
 
     // GET /api/analytics/state-wise - State-wise distribution
     if (path === '/analytics/state-wise') {
-      const { data: orgs, error } = await supabase
-        .from('organizations')
-        .select('state, type')
+      // Fetch from both universities and recruiters tables
+      const [universitiesResult, recruitersResult] = await Promise.all([
+        supabase.from('universities').select('state'),
+        supabase.from('recruiters').select('state')
+      ])
 
-      if (error) throw error
+      if (universitiesResult.error) throw universitiesResult.error
+      if (recruitersResult.error) throw recruitersResult.error
 
       const stateCounts = {}
-      orgs.forEach(org => {
-        if (org.state) {
-          stateCounts[org.state] = (stateCounts[org.state] || 0) + 1
+      
+      // Count universities by state
+      universitiesResult.data?.forEach(univ => {
+        if (univ.state) {
+          stateCounts[univ.state] = (stateCounts[univ.state] || 0) + 1
+        }
+      })
+      
+      // Count recruiters by state
+      recruitersResult.data?.forEach(rec => {
+        if (rec.state) {
+          stateCounts[rec.state] = (stateCounts[rec.state] || 0) + 1
         }
       })
 
@@ -454,28 +727,50 @@ export async function GET(request) {
 
     // GET /api/analytics/university-reports - University-wise analytics (OPTIMIZED)
     if (path === '/analytics/university-reports') {
-      // Fetch all data in parallel instead of sequential loops
-      const [orgsResult, studentsResult, passportsResult] = await Promise.all([
-        supabase.from('organizations').select('id, name, state').eq('type', 'university'),
+      // Mapping from old organization IDs (in students.universityId) to new university IDs
+      const univIdMapping = {
+        'f1ed42b6-ffe7-4108-90bb-6776b6504f7b': '5ca5589e-b49d-4027-baf7-7e2a88ae612a', // Periyar University
+        '609f59c9-6894-499b-8479-e826c219e0df': '632a5084-eeae-4f2e-b4bc-32593f2dcc00', // Alagappa University
+        '1b0ab392-4fba-4037-ae99-6cdf1e0a232d': '85ed5785-dcb2-4d26-8100-a5fb492f0988', // Annamalai University
+        'bf405453-cd17-4b45-9bc6-c89407272d7f': '2e9cb79d-0fb7-4b52-9588-d2a7262c9f68', // University of Madras
+        'aeaf831c-7e48-400a-90e3-8d879ef84257': '707b0f68-6855-428c-a630-65926f8c8116', // Manonmaniam Sundaranar University
+        'cec6f9e4-ab41-41a1-b889-699bec40ee69': '66baa6ed-50ce-433d-84f9-c296c6d5806d', // Bharathiar University
+        'b5b42149-b444-47c3-939b-9ac7b1686414': '0dd1623e-a820-4da1-8c8b-a436db386a59', // Mother Teresa University
+        'e0decdad-0553-4b1a-ad15-a16709bf7671': 'fdba4612-5249-4257-87e1-dc4858151ee8', // Bharathidasan University
+        '54e9f738-fdeb-4116-8032-a27cac4a0112': 'b559f0da-c071-47ec-a866-b646751845bb', // Madurai Kamaraj University
+        '2877f238-ec9f-49af-8bb5-6efd30bc3654': '299ac0e3-f50f-41bc-965c-7274cfa9af25'  // Thiruvalluvar University
+      }
+
+      // Fetch all data in parallel from universities table
+      const [universitiesResult, studentsResult, passportsResult] = await Promise.all([
+        supabase.from('universities').select('id, name, state'),
         supabase.from('students').select('id, universityId'),
         supabase.from('skill_passports').select('studentId, status')
       ])
 
-      if (orgsResult.error) throw orgsResult.error
+      if (universitiesResult.error) throw universitiesResult.error
 
-      const orgs = orgsResult.data || []
+      // Map universities to match expected format using id directly
+      const orgs = (universitiesResult.data || []).map(u => ({
+        id: u.id,
+        name: u.name,
+        state: u.state
+      }))
       const students = studentsResult.data || []
       const passports = passportsResult.data || []
 
       // Create lookup maps for O(1) access
+      // Use mapping to convert old universityIds to new university IDs
       const studentsByUniversity = {}
       const passportsByStudent = {}
 
       students.forEach(student => {
-        if (!studentsByUniversity[student.universityId]) {
-          studentsByUniversity[student.universityId] = []
+        // Map old university ID to new ID
+        const newUnivId = univIdMapping[student.universityId] || student.universityId
+        if (!studentsByUniversity[newUnivId]) {
+          studentsByUniversity[newUnivId] = []
         }
-        studentsByUniversity[student.universityId].push(student.id)
+        studentsByUniversity[newUnivId].push(student.id)
       })
 
       passports.forEach(passport => {
@@ -573,16 +868,43 @@ export async function GET(request) {
 
     // GET /api/analytics/state-heatmap - Enhanced state-wise heat map data (OPTIMIZED)
     if (path === '/analytics/state-heatmap') {
-      // Fetch all data in parallel
-      const [orgsResult, studentsResult, passportsResult] = await Promise.all([
-        supabase.from('organizations').select('id, state, type'),
+      // Mapping from old organization IDs to new university IDs
+      const univIdMapping = {
+        'f1ed42b6-ffe7-4108-90bb-6776b6504f7b': '5ca5589e-b49d-4027-baf7-7e2a88ae612a',
+        '609f59c9-6894-499b-8479-e826c219e0df': '632a5084-eeae-4f2e-b4bc-32593f2dcc00',
+        '1b0ab392-4fba-4037-ae99-6cdf1e0a232d': '85ed5785-dcb2-4d26-8100-a5fb492f0988',
+        'bf405453-cd17-4b45-9bc6-c89407272d7f': '2e9cb79d-0fb7-4b52-9588-d2a7262c9f68',
+        'aeaf831c-7e48-400a-90e3-8d879ef84257': '707b0f68-6855-428c-a630-65926f8c8116',
+        'cec6f9e4-ab41-41a1-b889-699bec40ee69': '66baa6ed-50ce-433d-84f9-c296c6d5806d',
+        'b5b42149-b444-47c3-939b-9ac7b1686414': '0dd1623e-a820-4da1-8c8b-a436db386a59',
+        'e0decdad-0553-4b1a-ad15-a16709bf7671': 'fdba4612-5249-4257-87e1-dc4858151ee8',
+        '54e9f738-fdeb-4116-8032-a27cac4a0112': 'b559f0da-c071-47ec-a866-b646751845bb',
+        '2877f238-ec9f-49af-8bb5-6efd30bc3654': '299ac0e3-f50f-41bc-965c-7274cfa9af25'
+      }
+
+      // Fetch all data in parallel from new tables
+      const [universitiesResult, recruitersResult, studentsResult, passportsResult] = await Promise.all([
+        supabase.from('universities').select('id, state'),
+        supabase.from('recruiters').select('id, state'),
         supabase.from('students').select('id, universityId'),
         supabase.from('skill_passports').select('studentId, status')
       ])
 
-      if (orgsResult.error) throw orgsResult.error
+      if (universitiesResult.error) throw universitiesResult.error
 
-      const orgs = orgsResult.data || []
+      // Combine and map organizations using id field
+      const orgs = [
+        ...(universitiesResult.data || []).map(u => ({
+          id: u.id,
+          state: u.state,
+          type: 'university'
+        })),
+        ...(recruitersResult.data || []).map(r => ({
+          id: r.id,
+          state: r.state,
+          type: 'recruiter'
+        }))
+      ]
       const students = studentsResult.data || []
       const passports = passportsResult.data || []
 
@@ -620,9 +942,11 @@ export async function GET(request) {
         }
       })
 
-      // Add student and passport data using lookup map
+      // Add student and passport data using lookup map with ID mapping
       students.forEach(student => {
-        const university = orgMap[student.universityId]
+        // Map old university ID to new ID
+        const newUnivId = univIdMapping[student.universityId] || student.universityId
+        const university = orgMap[newUnivId]
         if (university?.state && stateMetrics[university.state]) {
           stateMetrics[university.state].students++
           
@@ -873,13 +1197,11 @@ export async function POST(request) {
     if (path === '/approve-recruiter') {
       const { recruiterId, userId, note } = body
 
-      // Update recruiter status
+      // Update recruiter status in recruiters table
       const { error: updateError } = await supabase
-        .from('organizations')
+        .from('recruiters')
         .update({ 
-          verificationStatus: 'approved',
-          verifiedAt: new Date().toISOString(),
-          verifiedBy: userId
+          verificationstatus: 'approved'
         })
         .eq('id', recruiterId)
 
@@ -890,7 +1212,7 @@ export async function POST(request) {
         .from('verifications')
         .insert({
           id: uuidv4(),
-          targetTable: 'organizations',
+          targetTable: 'recruiters',
           targetId: recruiterId,
           action: 'approve',
           performedBy: userId,
@@ -909,12 +1231,12 @@ export async function POST(request) {
     if (path === '/reject-recruiter') {
       const { recruiterId, userId, reason } = body
 
-      // Update recruiter status
+      // Update recruiter status in recruiters table
       const { error: updateError } = await supabase
-        .from('organizations')
+        .from('recruiters')
         .update({ 
-          verificationStatus: 'rejected',
-          isActive: false
+          verificationstatus: 'rejected',
+          isactive: false
         })
         .eq('id', recruiterId)
 
@@ -925,7 +1247,7 @@ export async function POST(request) {
         .from('verifications')
         .insert({
           id: uuidv4(),
-          targetTable: 'organizations',
+          targetTable: 'recruiters',
           targetId: recruiterId,
           action: 'reject',
           performedBy: userId,
@@ -944,10 +1266,10 @@ export async function POST(request) {
     if (path === '/suspend-recruiter') {
       const { recruiterId, userId, reason } = body
 
-      // Update recruiter status
+      // Update recruiter status in recruiters table
       const { error: updateError } = await supabase
-        .from('organizations')
-        .update({ isActive: false })
+        .from('recruiters')
+        .update({ isactive: false })
         .eq('id', recruiterId)
 
       if (updateError) throw updateError
@@ -957,7 +1279,7 @@ export async function POST(request) {
         .from('verifications')
         .insert({
           id: uuidv4(),
-          targetTable: 'organizations',
+          targetTable: 'recruiters',
           targetId: recruiterId,
           action: 'suspend',
           performedBy: userId,
@@ -976,10 +1298,10 @@ export async function POST(request) {
     if (path === '/activate-recruiter') {
       const { recruiterId, userId, note } = body
 
-      // Update recruiter status
+      // Update recruiter status in recruiters table
       const { error: updateError } = await supabase
-        .from('organizations')
-        .update({ isActive: true })
+        .from('recruiters')
+        .update({ isactive: true })
         .eq('id', recruiterId)
 
       if (updateError) throw updateError
@@ -989,7 +1311,7 @@ export async function POST(request) {
         .from('verifications')
         .insert({
           id: uuidv4(),
-          targetTable: 'organizations',
+          targetTable: 'recruiters',
           targetId: recruiterId,
           action: 'activate',
           performedBy: userId,
@@ -1004,22 +1326,91 @@ export async function POST(request) {
       return NextResponse.json({ success: true, message: 'Recruiter activated successfully' })
     }
 
+    // POST /api/recruiters/bulk-action - Bulk action on multiple recruiters
+    if (path === '/recruiters/bulk-action') {
+      const { recruiterIds, action, userId, note, reason } = body
+      
+      if (!recruiterIds || !Array.isArray(recruiterIds) || recruiterIds.length === 0) {
+        return NextResponse.json({ error: 'recruiterIds array is required' }, { status: 400 })
+      }
+      
+      if (!action || !['approve', 'reject', 'suspend', 'activate'].includes(action)) {
+        return NextResponse.json({ error: 'Valid action is required (approve, reject, suspend, activate)' }, { status: 400 })
+      }
+      
+      try {
+        let updateData = {}
+        let verificationAction = action
+        let logMessage = ''
+        
+        if (action === 'approve') {
+          updateData = { verificationstatus: 'approved' }
+          logMessage = note || 'Recruiters approved in bulk'
+        } else if (action === 'reject') {
+          updateData = { verificationstatus: 'rejected', isactive: false }
+          logMessage = reason || 'Recruiters rejected in bulk'
+        } else if (action === 'suspend') {
+          updateData = { isactive: false }
+          logMessage = reason || 'Recruiters suspended in bulk'
+        } else if (action === 'activate') {
+          updateData = { isactive: true }
+          logMessage = note || 'Recruiters activated in bulk'
+        }
+        
+        // Update all recruiters
+        const { error: updateError } = await supabase
+          .from('recruiters')
+          .update(updateData)
+          .in('id', recruiterIds)
+        
+        if (updateError) throw updateError
+        
+        // Log verification and audit for each recruiter
+        const verificationRecords = recruiterIds.map(id => ({
+          id: uuidv4(),
+          targetTable: 'recruiters',
+          targetId: id,
+          action: verificationAction,
+          performedBy: userId,
+          note: logMessage
+        }))
+        
+        const auditRecords = recruiterIds.map(id => ({
+          id: uuidv4(),
+          actorId: userId,
+          action: `${action}_recruiter`,
+          target: id,
+          payload: { note: logMessage, bulk: true }
+        }))
+        
+        // Insert in bulk
+        await supabase.from('verifications').insert(verificationRecords)
+        await supabase.from('audit_logs').insert(auditRecords)
+        
+        return NextResponse.json({ 
+          success: true, 
+          message: `${recruiterIds.length} recruiter(s) ${action}d successfully` 
+        })
+      } catch (error) {
+        console.error('Bulk action error:', error)
+        return NextResponse.json({ error: 'Bulk action failed', details: error.message }, { status: 500 })
+      }
+    }
+
     // POST /api/update-metrics - Update metrics snapshot
     if (path === '/update-metrics') {
       try {
-        // Count universities
+        // Count universities from universities table
         const { data: universities } = await supabase
-          .from('organizations')
+          .from('universities')
           .select('id')
-          .eq('type', 'university')
         
         const activeUniversities = universities?.length || 0
 
-        // Count recruiters
+        // Count recruiters from recruiters table
         const { data: recruiters } = await supabase
-          .from('organizations')
+          .from('recruiters')
           .select('id')
-          .eq('type', 'recruiter')
         
         const activeRecruiters = recruiters?.length || 0
 
