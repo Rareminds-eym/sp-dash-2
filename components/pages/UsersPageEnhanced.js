@@ -91,6 +91,24 @@ export default function UsersPageEnhanced({ currentUser }) {
     }
   }
 
+  const fetchOverallStats = async () => {
+    try {
+      // Fetch all users without pagination to get accurate stats
+      const response = await fetch('/api/users?page=1&limit=10000')
+      const data = await response.json()
+      const allUsers = data.data || []
+      
+      setOverallStats({
+        total: data.pagination?.total || 0,
+        active: allUsers.filter(u => u.isActive).length,
+        suspended: allUsers.filter(u => !u.isActive).length,
+        admins: allUsers.filter(u => u.role === 'super_admin' || u.role === 'admin').length
+      })
+    } catch (error) {
+      console.error('Error fetching overall stats:', error)
+    }
+  }
+
   const fetchUsers = async () => {
     try {
       setLoading(true)
