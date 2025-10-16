@@ -621,8 +621,6 @@ export async function GET(request) {
           })
           
           // Map data to passports
-          let enrichedCount = 0
-          let missingStudentCount = 0
           enrichedPassports.forEach(passport => {
             if (passport.studentId && studentMap[passport.studentId]) {
               const student = studentMap[passport.studentId]
@@ -634,19 +632,8 @@ export async function GET(request) {
                 student.university = universityMap[univId]
               }
               passport.students = student
-              enrichedCount++
-            } else {
-              missingStudentCount++
             }
           })
-          
-          console.log(`Export enrichment stats: ${enrichedCount} enriched, ${missingStudentCount} missing students out of ${enrichedPassports.length} total`)
-          console.log(`Sample enriched passport:`, enrichedPassports[0]?.students ? {
-            hasStudents: true,
-            hasEmail: !!enrichedPassports[0].students.email,
-            hasProfile: !!enrichedPassports[0].students.profile,
-            hasProfileName: !!enrichedPassports[0].students.profile?.name
-          } : 'No students object')
         }
       }
       
