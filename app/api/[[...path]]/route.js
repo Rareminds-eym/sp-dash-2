@@ -550,6 +550,8 @@ export async function GET(request) {
         
         if (studentIds.length > 0) {
           console.log(`Export: Attempting to fetch ${studentIds.length} students (limiting to first 100 for testing)`)
+          console.log(`Export: Sample student IDs:`, studentIds.slice(0, 5))
+          console.log(`Export: Student ID types:`, studentIds.slice(0, 3).map(id => ({ id, type: typeof id, length: id?.length })))
           // Fetch all students and their users in parallel
           const [studentsResult, usersResult] = await Promise.all([
             supabase.from('students').select('*').in('id', studentIds.slice(0, 100)),
