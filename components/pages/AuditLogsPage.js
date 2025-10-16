@@ -12,6 +12,16 @@ export default function AuditLogsPage() {
 
   useEffect(() => {
     fetchLogs()
+    
+    // Listen for refresh events from the layout
+    const handleRefresh = () => {
+      fetchLogs()
+    }
+    window.addEventListener('refreshPage', handleRefresh)
+    
+    return () => {
+      window.removeEventListener('refreshPage', handleRefresh)
+    }
   }, [])
 
   const fetchLogs = async () => {
