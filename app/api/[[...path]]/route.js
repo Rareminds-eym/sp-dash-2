@@ -507,6 +507,165 @@ export async function GET(request) {
       return NextResponse.json(universities || [])
     }
 
+    // GET /api/passports/export - Export passports to CSV
+    if (path === '/passports/export') {
+      const url = new URL(request.url)
+      
+      // Apply same filters as main list
+      const statusFilter = url.searchParams.get('status')
+      const nsqfLevelFilter = url.searchParams.get('nsqfLevel')
+      const searchTerm = url.searchParams.get('search')
+      const universityFilter = url.searchParams.get('university')
+      
+      let query = supabase.from('skill_passports').select('*')
+      
+      if (statusFilter && statusFilter !== 'all') {
+        query = query.eq('status', statusFilter)
+      }
+      if (nsqfLevelFilter && nsqfLevelFilter !== 'all') {
+        query = query.eq('nsqfLevel', parseInt(nsqfLevelFilter))
+      }
+      
+      query = query.order('createdAt', { ascending: false })
+      
+      const { data: passports, error: passportsError } = await query
+      
+      if (passportsError) {
+        console.error('Error fetching passports for export:', passportsError)
+        return NextResponse.json({ error: 'Failed to export passports' }, { status: 500 })
+      }
+      
+      // Fetch all related data in bulk
+      let enrichedPassports = passports || []
+      
+      if (enrichedPassports.length > 0) {
+        const studentIds = enrichedPassports.map(p => p.studentId).filter(Boolean)
+        
+        if (studentIds.length > 0) {
+          // Fetch all students and their users in parallel
+          const [studentsResult, usersResult] = await Promise.all([
+            supabase.from('students').select('*').in('id', studentIds),
+            supabase.from('students').select('userId, organizationId').in('id', studentIds).then(async (result) => {
+              if (result.data && result.data.length > 0) {
+                const userIds = result.data.map(s => s.userId).filter(Boolean)
+                if (userIds.length > 0) {
+                  return await supabase.from('users').select('id, email, metadata').in('id', userIds)
+                }
+              }
+              return { data: [] }
+            })
+          ])
+          
+          const students = studentsResult.data || []
+          const users = usersResult.data || []
+          
+          // Fetch universities
+          const orgIds = students.map(s => s.organizationId).filter(Boolean)
+          let universities = []
+          if (orgIds.length > 0) {
+            const { data: univData } = await supabase.from('universities').select('id, name').in('id', orgIds)
+            universities = univData || []
+          }
+          
+          // Create lookup maps
+          const studentMap = {}
+          students.forEach(student => {
+            // Parse profile if it's a string
+            if (student.profile && typeof student.profile === 'string') {
+              try {
+                const cleanedProfile = student.profile.replace(/:\s*NaN/g, ': null')
+                student.profile = JSON.parse(cleanedProfile)
+              } catch (parseError) {
+                student.profile = {}
+              }
+            }
+            studentMap[student.id] = student
+          })
+          
+          const userMap = {}
+          users.forEach(user => {
+            userMap[user.id] = user
+          })
+          
+          const universityMap = {}
+          universities.forEach(univ => {
+            universityMap[univ.id] = univ
+          })
+          
+          // Map data to passports
+          enrichedPassports.forEach(passport => {
+            if (passport.studentId && studentMap[passport.studentId]) {
+              const student = studentMap[passport.studentId]
+              if (student.userId && userMap[student.userId]) {
+                student.users = userMap[student.userId]
+              }
+              if (student.organizationId && universityMap[student.organizationId]) {
+                student.university = universityMap[student.organizationId]
+              }
+              passport.students = student
+            }
+          })
+        }
+      }
+      
+      // Apply client-side filters
+      if (searchTerm || universityFilter) {
+        enrichedPassports = enrichedPassports.filter(passport => {
+          let matchesSearch = true
+          let matchesUniversity = true
+          
+          if (searchTerm) {
+            const searchLower = searchTerm.toLowerCase()
+            const studentName = passport.students?.profile?.name || ''
+            const studentEmail = passport.students?.users?.email || ''
+            const passportId = passport.id || ''
+            
+            matchesSearch = studentName.toLowerCase().includes(searchLower) ||
+                           studentEmail.toLowerCase().includes(searchLower) ||
+                           passportId.toLowerCase().includes(searchLower)
+          }
+          
+          if (universityFilter && universityFilter !== 'all') {
+            matchesUniversity = passport.students?.organizationId === universityFilter
+          }
+          
+          return matchesSearch && matchesUniversity
+        })
+      }
+      
+      // Create CSV content
+      const headers = ['Student Name', 'Email', 'University', 'Status', 'NSQF Level', 'Skills', 'Created Date', 'Updated Date']
+      const csvRows = [headers.join(',')]
+      
+      enrichedPassports.forEach(p => {
+        const studentName = p.students?.profile?.name || p.students?.users?.metadata?.name || ''
+        const studentEmail = p.students?.users?.email || ''
+        const universityName = p.students?.university?.name || ''
+        const skills = Array.isArray(p.skills) ? p.skills.join('; ') : ''
+        
+        const row = [
+          `"${studentName}"`,
+          `"${studentEmail}"`,
+          `"${universityName}"`,
+          `"${p.status || ''}"`,
+          p.nsqfLevel || '',
+          `"${skills}"`,
+          p.createdAt ? new Date(p.createdAt).toLocaleDateString() : '',
+          p.updatedAt ? new Date(p.updatedAt).toLocaleDateString() : ''
+        ]
+        csvRows.push(row.join(','))
+      })
+      
+      const csvContent = csvRows.join('\n')
+      
+      return new Response(csvContent, {
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': `attachment; filename="passports-${new Date().toISOString().split('T')[0]}.csv"`
+        }
+      })
+    }
+
     // GET /api/users/organizations - Get unique organizations for filter dropdown
     if (path === '/users/organizations') {
       // Fetch from both universities and recruiters tables
