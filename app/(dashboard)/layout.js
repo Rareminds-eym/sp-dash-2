@@ -2,6 +2,12 @@
 
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import {
     BarChart3,
@@ -13,6 +19,7 @@ import {
     LogOut,
     Menu,
     Plug,
+    RefreshCw,
     Settings,
     Shield,
     Users,
