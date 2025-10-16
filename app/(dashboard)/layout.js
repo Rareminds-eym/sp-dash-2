@@ -132,6 +132,52 @@ export default function DashboardLayout({ children }) {
     return currentNav ? currentNav.name : 'Dashboard'
   }
 
+  const handleExport = async (type) => {
+    try {
+      let endpoint = ''
+      let filename = ''
+      
+      if (type === 'passports') {
+        endpoint = '/api/passports/export'
+        filename = `passports-${new Date().toISOString().split('T')[0]}.csv`
+      } else if (type === 'recruiters') {
+        endpoint = '/api/recruiters/export'
+        filename = `recruiters-${new Date().toISOString().split('T')[0]}.csv`
+      }
+      
+      const response = await fetch(endpoint)
+      
+      if (!response.ok) {
+        throw new Error('Export failed')
+      }
+      
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+      
+      toast({
+        title: 'Success',
+        description: `${type === 'passports' ? 'Passports' : 'Recruiters'} exported successfully`
+      })
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Export failed',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const canExport = () => {
+    return pathname === '/passports' || pathname === '/recruiters'
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 transition-colors duration-300">
       {/* Mobile sidebar overlay */}
