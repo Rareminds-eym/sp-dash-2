@@ -329,11 +329,20 @@ export default function RecruitersPageEnhanced({ currentUser }) {
     try {
       const params = new URLSearchParams()
       if (filters.search) params.append('search', filters.search)
-      if (filters.status) params.append('status', filters.status)
-      if (filters.state) params.append('state', filters.state)
-      if (filters.active !== '') params.append('active', filters.active)
+      
+      // Use activeTab for status if not 'all'
+      const statusFilter = activeTab !== 'all' ? activeTab : filters.status
+      if (statusFilter && statusFilter !== 'all') params.append('status', statusFilter)
+      
+      if (filters.state && filters.state !== 'all') params.append('state', filters.state)
+      if (filters.active !== 'all' && filters.active !== '') params.append('active', filters.active)
       
       const response = await fetch(`/api/recruiters/export?${params}`)
+      
+      if (!response.ok) {
+        throw new Error('Export failed')
+      }
+      
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
