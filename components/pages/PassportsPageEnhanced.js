@@ -210,6 +210,45 @@ export default function PassportsPageEnhanced({ currentUser }) {
     }
   }
 
+  const handleExport = async () => {
+    try {
+      const params = new URLSearchParams()
+      
+      // Add filters
+      if (filters.search) params.append('search', filters.search)
+      if (filters.status && filters.status !== 'all') params.append('status', filters.status)
+      if (filters.nsqfLevel && filters.nsqfLevel !== 'all') params.append('nsqfLevel', filters.nsqfLevel)
+      if (filters.university && filters.university !== 'all') params.append('university', filters.university)
+      
+      const response = await fetch(`/api/passports/export?${params}`)
+      
+      if (!response.ok) {
+        throw new Error('Export failed')
+      }
+      
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `passports-${new Date().toISOString().split('T')[0]}.csv`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+      
+      toast({
+        title: 'Success',
+        description: 'Passports exported successfully'
+      })
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Export failed',
+        variant: 'destructive'
+      })
+    }
+  }
+
   const handleSearchChange = (e) => {
     const value = e.target.value
     setFilters(prev => ({ ...prev, search: value }))
