@@ -40,6 +40,14 @@ export default function UsersPageEnhanced({ currentUser }) {
   const [actionDialog, setActionDialog] = useState({ open: false, user: null, action: null })
   const { toast } = useToast()
   
+  // Overall stats (don't change with filters)
+  const [overallStats, setOverallStats] = useState({
+    total: 0,
+    active: 0,
+    suspended: 0,
+    admins: 0
+  })
+  
   // Pagination state
   const [pagination, setPagination] = useState({
     page: 1,
@@ -66,6 +74,7 @@ export default function UsersPageEnhanced({ currentUser }) {
 
   useEffect(() => {
     fetchOrganizations()
+    fetchOverallStats()
   }, [])
 
   useEffect(() => {
