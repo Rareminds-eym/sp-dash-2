@@ -93,6 +93,16 @@ export default function ReportsPage() {
   useEffect(() => {
     // Fetch data progressively - start with first tab
     fetchTabData('universities')
+    
+    // Listen for refresh events from the layout
+    const handleRefresh = () => {
+      handleRefresh()
+    }
+    window.addEventListener('refreshPage', handleRefresh)
+    
+    return () => {
+      window.removeEventListener('refreshPage', handleRefresh)
+    }
   }, [])
 
   const fetchTabData = async (tab) => {
