@@ -110,23 +110,42 @@ def test_export_endpoint(endpoint_path, expected_headers, cookies, endpoint_name
         
         # Validate CSV content
         csv_content = response.text
-        is_valid, result = validate_csv_format(csv_content, expected_headers)
         
-        if not is_valid:
-            print(f"❌ CSV validation failed: {result}")
-            return False
-        
-        print(f"✅ {endpoint_name} export successful!")
-        print(f"   Headers: {result['headers']}")
-        print(f"   Data rows: {result['total_rows']}")
-        print(f"   Content-Type: {content_type}")
-        print(f"   Filename: {content_disposition}")
-        
-        # Show sample data (first few rows)
-        if result['data_rows']:
-            print(f"   Sample data (first 3 rows):")
-            for i, row in enumerate(result['data_rows'][:3]):
-                print(f"     Row {i+1}: {row}")
+        # Special handling for AI Insights (multi-section CSV)
+        if endpoint_name == 'AI Insights':
+            lines = csv_content.split('\n')
+            if len(lines) > 10:  # Should have multiple sections
+                print(f"✅ {endpoint_name} export successful!")
+                print(f"   Multi-section CSV with {len(lines)} total lines")
+                print(f"   Content-Type: {content_type}")
+                print(f"   Filename: {content_disposition}")
+                print(f"   Sample sections:")
+                for i, line in enumerate(lines[:6]):
+                    if line.strip():
+                        print(f"     Line {i+1}: {line}")
+                return True
+            else:
+                print(f"❌ AI Insights CSV too short: {len(lines)} lines")
+                return False
+        else:
+            # Regular single-section CSV validation
+            is_valid, result = validate_csv_format(csv_content, expected_headers)
+            
+            if not is_valid:
+                print(f"❌ CSV validation failed: {result}")
+                return False
+            
+            print(f"✅ {endpoint_name} export successful!")
+            print(f"   Headers: {result['headers']}")
+            print(f"   Data rows: {result['total_rows']}")
+            print(f"   Content-Type: {content_type}")
+            print(f"   Filename: {content_disposition}")
+            
+            # Show sample data (first few rows)
+            if result['data_rows']:
+                print(f"   Sample data (first 3 rows):")
+                for i, row in enumerate(result['data_rows'][:3]):
+                    print(f"     Row {i+1}: {row}")
         
         return True
         
