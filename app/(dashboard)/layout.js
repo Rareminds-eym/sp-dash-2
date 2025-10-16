@@ -56,6 +56,7 @@ export default function DashboardLayout({ children }) {
   const [refreshing, setRefreshing] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
+  const { toast } = useToast()
 
   useEffect(() => {
     // Fetch current user session
