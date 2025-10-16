@@ -599,8 +599,9 @@ export async function GET(request) {
               if (student.userId && userMap[student.userId]) {
                 student.users = userMap[student.userId]
               }
-              if (student.organizationId && universityMap[student.organizationId]) {
-                student.university = universityMap[student.organizationId]
+              const univId = student.universityId || student.organizationId
+              if (univId && universityMap[univId]) {
+                student.university = universityMap[univId]
               }
               passport.students = student
             }
