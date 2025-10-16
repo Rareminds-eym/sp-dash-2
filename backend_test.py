@@ -607,36 +607,3 @@ def main():
 if __name__ == "__main__":
     success = main()
     exit(0 if success else 1)
-    """Test 2: Verify no duplicate email addresses exist"""
-    print("\n🔍 Test 2: Checking for duplicate email addresses...")
-    
-    try:
-        all_recruiters = get_all_recruiters()
-        
-        # Extract and normalize emails
-        emails = []
-        for recruiter in all_recruiters:
-            email = recruiter.get('email')
-            if email and email.strip():  # Only include non-empty emails
-                emails.append(email.lower().strip())
-        
-        # Count email occurrences
-        email_counts = Counter(emails)
-        duplicates = {email: count for email, count in email_counts.items() if count > 1}
-        
-        if duplicates:
-            print(f"❌ Found {len(duplicates)} duplicate emails:")
-            for email, count in duplicates.items():
-                print(f"   - {email}: {count} occurrences")
-            return False
-        else:
-            print(f"✅ No duplicate email addresses found")
-            print(f"   Total unique emails: {len(email_counts)}")
-            return True
-            
-    except Exception as e:
-        print(f"❌ Error checking duplicate emails: {e}")
-        return False
-
-if __name__ == "__main__":
-    main()
