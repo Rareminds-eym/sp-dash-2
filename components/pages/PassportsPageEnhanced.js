@@ -40,6 +40,14 @@ export default function PassportsPageEnhanced({ currentUser }) {
   const [actionDialog, setActionDialog] = useState({ open: false, passport: null, action: null })
   const { toast } = useToast()
   
+  // Overall stats (don't change with filters)
+  const [overallStats, setOverallStats] = useState({
+    total: 0,
+    verified: 0,
+    pending: 0,
+    rejected: 0
+  })
+  
   // Pagination state
   const [pagination, setPagination] = useState({
     page: 1,
@@ -66,6 +74,7 @@ export default function PassportsPageEnhanced({ currentUser }) {
 
   useEffect(() => {
     fetchUniversities()
+    fetchOverallStats()
   }, [])
 
   useEffect(() => {
