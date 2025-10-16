@@ -566,6 +566,14 @@ export async function GET(request) {
           const students = studentsResult.data || []
           const users = usersResult.data || []
           
+          console.log(`Export: Fetched ${students.length} students and ${users.length} users`)
+          console.log(`Sample student:`, students[0] ? {
+            id: students[0].id,
+            email: students[0].email,
+            hasProfile: !!students[0].profile,
+            universityId: students[0].universityId
+          } : 'No students')
+          
           // Fetch universities
           const orgIds = students.map(s => s.universityId || s.organizationId).filter(Boolean)
           let universities = []
