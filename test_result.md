@@ -119,15 +119,18 @@ backend:
 
   - task: "CSV Export - Passports Endpoint"
     implemented: true
-    working: false
+    working: "NA"
     file: "app/api/[[...path]]/route.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: false
         agent: "testing"
         comment: "GET /api/passports/export endpoint has CRITICAL DATA MAPPING ISSUE. ✅ CSV format working correctly: proper headers (Student Name, Email, University, Status, NSQF Level, Skills, Created Date, Updated Date), Content-Type, and filename. ✅ Row count accurate: 712 passports exported matching GET /api/passports count. ❌ CRITICAL ISSUE: Student data fields are empty in CSV export (Student Name, Email, University all blank). ROOT CAUSE: Export endpoint data mapping logic expects p.students?.users?.email but actual data structure has p.students.email directly. GET /api/passports returns complete student data (name: 'Nithya Devi', email: 'nithya01devi2002@gmail.com') but export endpoint fails to map this data correctly. RECOMMENDATION: Fix data mapping logic in lines 641-643 of export endpoint to match actual data structure from GET endpoint."
+      - working: "NA"
+        agent: "main"
+        comment: "FIXED DATA MAPPING ISSUE: Identified root cause - students table uses 'universityId' field, not 'organizationId' as code expected. Also, student.email is direct field, not through users table. Updated both /api/passports/export and /api/passports endpoints to: 1) Use student.universityId || student.organizationId for university lookup. 2) Use student.email directly as primary source. 3) Fixed university filter to check universityId. These changes should populate Student Name, Email, and University fields correctly in export. Ready for testing."
 
   - task: "API Root Endpoint"
     implemented: true
