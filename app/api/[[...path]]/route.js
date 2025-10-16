@@ -565,18 +565,18 @@ export async function GET(request) {
               ])
               
               if (studentsResult.error) {
-                console.log(`Export ERROR in batch:`, studentsResult.error)
+                console.error('Export error fetching students:', studentsResult.error)
               } else {
                 allStudents.push(...(studentsResult.data || []))
               }
               
               if (usersResult.error) {
-                console.log(`Export ERROR in users batch:`, usersResult.error)
+                console.error('Export error fetching users:', usersResult.error)
               } else {
                 allUsers.push(...(usersResult.data || []))
               }
             } catch (error) {
-              console.log(`Export ERROR in batch:`, error)
+              console.error('Export batch error:', error)
             }
           }
           
