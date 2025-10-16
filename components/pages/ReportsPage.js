@@ -235,8 +235,8 @@ export default function ReportsPage() {
         {/* University Reports Tab */}
         <TabsContent value="universities" className="space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-blue-600" />
+            <h3 className="text-base font-medium flex items-center gap-2 text-muted-foreground">
+              <BarChart3 className="h-4 w-4" />
               University-wise Reports
             </h3>
             <div className="flex gap-2">
