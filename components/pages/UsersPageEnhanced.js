@@ -75,6 +75,17 @@ export default function UsersPageEnhanced({ currentUser }) {
   useEffect(() => {
     fetchOrganizations()
     fetchOverallStats()
+    
+    // Listen for refresh events from the layout
+    const handleRefresh = () => {
+      fetchUsers()
+      fetchOverallStats()
+    }
+    window.addEventListener('refreshPage', handleRefresh)
+    
+    return () => {
+      window.removeEventListener('refreshPage', handleRefresh)
+    }
   }, [])
 
   useEffect(() => {
