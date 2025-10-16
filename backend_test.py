@@ -338,20 +338,98 @@ def verify_data_consistency():
 
 def main():
     """Main test execution"""
-    print(f"🚀 Starting Passports CSV Export Testing")
-    print(f"📅 Test Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"🌐 Base URL: {BASE_URL}")
-    
-    success = test_passports_csv_export()
-    
-    print(f"\n" + "=" * 80)
-    if success:
-        print("🎉 ALL TESTS PASSED - CSV EXPORT DATA MAPPING FIX VERIFIED")
-    else:
-        print("💥 TESTS FAILED - CSV EXPORT DATA MAPPING ISSUES DETECTED")
+    print("🚀 STARTING CSV EXPORT FUNCTIONALITY TESTING")
     print("=" * 80)
     
-    return success
+    # Track test results
+    results = {}
+    
+    # Verify data consistency first
+    consistency_data = verify_data_consistency()
+    
+    # Run all test scenarios
+    results['passport_no_filters'] = test_passport_export_no_filters()
+    results['passport_status_filter'] = test_passport_export_with_status_filter()
+    results['passport_search_filter'] = test_passport_export_with_search()
+    results['recruiter_no_filters'] = test_recruiter_export_no_filters()
+    results['recruiter_with_filters'] = test_recruiter_export_with_filters()
+    
+    # Generate summary report
+    print("\n" + "="*80)
+    print("📊 TEST SUMMARY REPORT")
+    print("="*80)
+    
+    total_tests = len(results)
+    passed_tests = sum(1 for result in results.values() if result.get('success', False))
+    
+    print(f"Total Tests: {total_tests}")
+    print(f"Passed: {passed_tests}")
+    print(f"Failed: {total_tests - passed_tests}")
+    print(f"Success Rate: {(passed_tests/total_tests)*100:.1f}%")
+    
+    print(f"\n📋 DETAILED RESULTS:")
+    
+    for test_name, result in results.items():
+        status = "✅ PASS" if result.get('success', False) else "❌ FAIL"
+        print(f"  {test_name}: {status}")
+        if not result.get('success', False):
+            print(f"    Error: {result.get('error', 'Unknown error')}")
+        elif 'row_count' in result:
+            print(f"    Rows exported: {result['row_count']}")
+    
+    # Data consistency check
+    if consistency_data and results.get('passport_no_filters', {}).get('success'):
+        passport_export_count = results['passport_no_filters'].get('row_count', 0)
+        api_passport_count = consistency_data['total_passports']
+        
+        print(f"\n🔍 DATA CONSISTENCY CHECK:")
+        print(f"  Passport API Count: {api_passport_count}")
+        print(f"  Passport Export Count: {passport_export_count}")
+        
+        if passport_export_count == api_passport_count:
+            print(f"  ✅ Passport counts match perfectly")
+        else:
+            print(f"  ⚠️  Passport counts differ (API: {api_passport_count}, Export: {passport_export_count})")
+    
+    if consistency_data and results.get('recruiter_no_filters', {}).get('success'):
+        recruiter_export_count = results['recruiter_no_filters'].get('row_count', 0)
+        api_recruiter_count = consistency_data['total_recruiters']
+        
+        print(f"  Recruiter API Count: {api_recruiter_count}")
+        print(f"  Recruiter Export Count: {recruiter_export_count}")
+        
+        if recruiter_export_count == api_recruiter_count:
+            print(f"  ✅ Recruiter counts match perfectly")
+        else:
+            print(f"  ⚠️  Recruiter counts differ (API: {api_recruiter_count}, Export: {recruiter_export_count})")
+    
+    # Critical issues check
+    print(f"\n🚨 CRITICAL ISSUES CHECK:")
+    
+    passport_test = results.get('passport_no_filters', {})
+    if passport_test.get('success'):
+        print(f"  ✅ Passport export endpoint working")
+        print(f"  ✅ CSV format validation passed")
+        print(f"  ✅ Content-Type and filename headers correct")
+    else:
+        print(f"  ❌ CRITICAL: Passport export endpoint failing")
+    
+    recruiter_test = results.get('recruiter_no_filters', {})
+    if recruiter_test.get('success'):
+        print(f"  ✅ Recruiter export endpoint working")
+    else:
+        print(f"  ❌ CRITICAL: Recruiter export endpoint failing")
+    
+    print(f"\n🎯 FOCUS AREAS:")
+    print(f"  • Student data population in passport exports")
+    print(f"  • Filter functionality accuracy")
+    print(f"  • CSV format compliance")
+    print(f"  • Data consistency between API and export endpoints")
+    
+    print(f"\n✅ CSV EXPORT TESTING COMPLETED")
+    print("="*80)
+    
+    return passed_tests == total_tests
 
 if __name__ == "__main__":
     main()
