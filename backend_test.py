@@ -11,7 +11,7 @@ import json
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://csv-export-issue.preview.emergentagent.com/api"
+BASE_URL = "https://auditpro-9.preview.emergentagent.com/api"
 
 def test_csv_format(content, expected_headers):
     """Helper function to validate CSV format and headers"""
