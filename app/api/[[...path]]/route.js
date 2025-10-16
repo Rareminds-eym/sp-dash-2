@@ -602,24 +602,7 @@ export async function GET(request) {
           const students = studentsResult.data || []
           const users = usersResult.data || []
           
-          console.log(`Export: Fetched ${students.length} students and ${users.length} users`)
-          console.log(`Sample student:`, students[0] ? {
-            id: students[0].id,
-            email: students[0].email,
-            hasProfile: !!students[0].profile,
-            universityId: students[0].universityId
-          } : 'No students')
-          
-          console.log(`Export DEBUG: Students query details:`, {
-            studentsResultError: studentsResult.error,
-            studentsResultDataLength: studentsResult.data?.length,
-            usersResultError: usersResult.error,
-            usersResultDataLength: usersResult.data?.length,
-            sampleStudentId: studentIds[0],
-            totalStudentIds: studentIds.length
-          })
-          
-          // Debug info logged to console instead of file
+          console.log(`Export: Successfully fetched ${students.length} students and ${users.length} users`)
           
           // Fetch universities
           const orgIds = students.map(s => s.universityId || s.organizationId).filter(Boolean)
