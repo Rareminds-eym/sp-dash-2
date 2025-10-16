@@ -119,6 +119,17 @@ export default function RecruitersPageEnhanced({ currentUser }) {
   useEffect(() => {
     fetchStates()
     fetchOverallStats()
+    
+    // Listen for refresh events from the layout
+    const handleRefresh = () => {
+      fetchRecruiters()
+      fetchOverallStats()
+    }
+    window.addEventListener('refreshPage', handleRefresh)
+    
+    return () => {
+      window.removeEventListener('refreshPage', handleRefresh)
+    }
   }, [])
 
   useEffect(() => {
