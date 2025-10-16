@@ -453,11 +453,7 @@ export default function RecruitersPageEnhanced({ currentUser }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Recruiter Management</h2>
-          <p className="text-muted-foreground">Verify and manage recruiter organizations</p>
-        </div>
+      <div className="flex items-center justify-end">
         <div className="flex gap-2">
           <Button onClick={handleExport} variant="outline">
             <Download className="h-4 w-4 mr-2" />
