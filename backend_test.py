@@ -40,10 +40,11 @@ def test_passports_csv_export():
             return False
             
         passports_data = passports_response.json()
-        passports = passports_data.get('passports', [])
+        passports = passports_data.get('data', [])
         
         if not passports:
             print("❌ No passport records found")
+            print(f"Response structure: {list(passports_data.keys())}")
             return False
             
         print(f"✅ Successfully fetched {len(passports)} passport records")
