@@ -843,7 +843,7 @@ export async function GET(request) {
           const users = usersResult.data || []
           
           // Fetch universities if needed for filtering
-          const orgIds = students.map(s => s.organizationId).filter(Boolean)
+          const orgIds = students.map(s => s.universityId || s.organizationId).filter(Boolean)
           let universities = []
           if (orgIds.length > 0) {
             const { data: univData } = await supabase.from('universities').select('id, name').in('id', orgIds)
@@ -882,8 +882,9 @@ export async function GET(request) {
               if (student.userId && userMap[student.userId]) {
                 student.users = userMap[student.userId]
               }
-              if (student.organizationId && universityMap[student.organizationId]) {
-                student.university = universityMap[student.organizationId]
+              const univId = student.universityId || student.organizationId
+              if (univId && universityMap[univId]) {
+                student.university = universityMap[univId]
               }
               passport.students = student
             }
