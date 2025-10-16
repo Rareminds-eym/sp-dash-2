@@ -542,11 +542,6 @@ export async function GET(request) {
         const studentIds = enrichedPassports.map(p => p.studentId).filter(Boolean)
         
         console.log(`Export: Found ${studentIds.length} student IDs from ${enrichedPassports.length} passports`)
-        console.log(`Sample passport structure:`, {
-          passport: enrichedPassports[0],
-          hasStudentId: !!enrichedPassports[0]?.studentId,
-          studentIdValue: enrichedPassports[0]?.studentId
-        })
         
         if (studentIds.length > 0) {
           console.log(`Export: Attempting to fetch ${studentIds.length} students in batches`)
