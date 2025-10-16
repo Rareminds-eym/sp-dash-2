@@ -198,31 +198,81 @@ def test_data_accuracy(cookies):
         print(f"❌ Data accuracy test error: {str(e)}")
         return False
 
-def test_total_recruiter_count():
-    """Test 1: GET /api/recruiters endpoint to verify total recruiter count"""
-    print("🔍 Test 1: Verifying total recruiter count...")
+def main():
+    """Main test function"""
+    print("🚀 Starting Reports Page Export Functionality Testing")
+    print("=" * 60)
     
-    try:
-        all_recruiters = get_all_recruiters()
-        total_count = len(all_recruiters)
-        
-        print(f"📊 Total recruiters found: {total_count}")
-        
-        # User expects 130, but previous test showed 133
-        if total_count == 130:
-            print(f"✅ Recruiter count matches user expectation: 130")
-            return True, total_count
-        elif total_count == 133:
-            print(f"⚠️  Recruiter count is 133 (from previous test), user expects 130")
-            print(f"   This suggests 3 additional duplicates may need removal")
-            return True, total_count  # Still consider success for testing purposes
-        else:
-            print(f"❌ Unexpected recruiter count: {total_count}")
-            return False, total_count
-            
-    except Exception as e:
-        print(f"❌ Error testing recruiter count: {e}")
-        return False, 0
+    # Test login first
+    cookies = test_login()
+    if not cookies:
+        print("❌ Cannot proceed without authentication")
+        return
+    
+    # Define export endpoints to test
+    export_tests = [
+        {
+            'path': '/analytics/university-reports/export',
+            'name': 'University Reports',
+            'expected_headers': ['University Name', 'State', 'Enrollment Count', 'Total Passports', 'Verified Passports', 'Completion Rate (%)', 'Verification Rate (%)']
+        },
+        {
+            'path': '/analytics/recruiter-metrics/export',
+            'name': 'Recruiter Metrics',
+            'expected_headers': ['Month', 'Searches', 'Profile Views', 'Contact Attempts']
+        },
+        {
+            'path': '/analytics/placement-conversion/export',
+            'name': 'Placement Conversion',
+            'expected_headers': ['Stage', 'Count', 'Percentage']
+        },
+        {
+            'path': '/analytics/state-heatmap/export',
+            'name': 'State Heatmap',
+            'expected_headers': ['State', 'Universities', 'Students', 'Verified Passports', 'Engagement Score', 'Employability Index']
+        },
+        {
+            'path': '/analytics/ai-insights/export',
+            'name': 'AI Insights',
+            'expected_headers': ['Skill', 'Growth', 'Category', 'Trend']
+        }
+    ]
+    
+    # Test each export endpoint
+    successful_tests = 0
+    total_tests = len(export_tests)
+    
+    for test_config in export_tests:
+        success = test_export_endpoint(
+            test_config['path'],
+            test_config['expected_headers'],
+            cookies,
+            test_config['name']
+        )
+        if success:
+            successful_tests += 1
+    
+    # Test data accuracy
+    print(f"\n" + "=" * 60)
+    test_data_accuracy(cookies)
+    
+    # Final summary
+    print(f"\n" + "=" * 60)
+    print("📋 EXPORT ENDPOINTS TESTING SUMMARY")
+    print("=" * 60)
+    print(f"✅ Successful tests: {successful_tests}/{total_tests}")
+    print(f"❌ Failed tests: {total_tests - successful_tests}/{total_tests}")
+    
+    if successful_tests == total_tests:
+        print("\n🎉 ALL EXPORT ENDPOINTS WORKING CORRECTLY!")
+        print("✅ All 5 export endpoints return proper CSV files")
+        print("✅ All CSV files have correct headers and data format")
+        print("✅ All files have proper Content-Type and Content-Disposition headers")
+        print("✅ All filenames follow the correct pattern with today's date")
+    else:
+        print(f"\n⚠️  {total_tests - successful_tests} export endpoint(s) need attention")
+    
+    print("\n" + "=" * 60)
 
 def test_duplicate_emails():
     """Test 2: Verify no duplicate email addresses exist"""
