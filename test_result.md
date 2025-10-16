@@ -105,6 +105,30 @@
 user_problem_statement: "Modernize the Rareminds Super Admin Dashboard with attractive design, modern graphs, and dark/light mode functionality. Original task was backend API testing with RBAC, Supabase backend, and PostgreSQL. Enhancement task completed: dashboard modernization with neumorphism design, enhanced charts, and theme switching. New task: Import recruiter data from Excel file (148 rows with 100% complete data) into database without duplicates and signup all recruiters in Supabase Auth."
 
 backend:
+  - task: "CSV Export - Recruiters Endpoint"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "GET /api/recruiters/export endpoint working correctly. ✅ Returns proper CSV format with correct headers (Name, Email, Phone, State, District, Website, Status, Active, Created Date). ✅ Data accuracy verified: 130 recruiters exported matching GET /api/recruiters count. ✅ Filtering functionality working (status=approved&active=true returns 101 rows). ✅ CSV format compliance: proper Content-Type (text/csv), Content-Disposition (attachment), and filename (recruiters-YYYY-MM-DD.csv). ✅ Data fields properly populated with recruiter names, emails, and all required information. All tests passed successfully."
+
+  - task: "CSV Export - Passports Endpoint"
+    implemented: true
+    working: false
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "GET /api/passports/export endpoint has CRITICAL DATA MAPPING ISSUE. ✅ CSV format working correctly: proper headers (Student Name, Email, University, Status, NSQF Level, Skills, Created Date, Updated Date), Content-Type, and filename. ✅ Row count accurate: 712 passports exported matching GET /api/passports count. ❌ CRITICAL ISSUE: Student data fields are empty in CSV export (Student Name, Email, University all blank). ROOT CAUSE: Export endpoint data mapping logic expects p.students?.users?.email but actual data structure has p.students.email directly. GET /api/passports returns complete student data (name: 'Nithya Devi', email: 'nithya01devi2002@gmail.com') but export endpoint fails to map this data correctly. RECOMMENDATION: Fix data mapping logic in lines 641-643 of export endpoint to match actual data structure from GET endpoint."
+
   - task: "API Root Endpoint"
     implemented: true
     working: true
