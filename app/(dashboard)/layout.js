@@ -293,6 +293,36 @@ export default function DashboardLayout({ children }) {
               </h1>
             </div>
             <div className="flex items-center gap-3">
+              {canExport() && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="hover:bg-white/50 dark:hover:bg-slate-800/50"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Export
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Export Data</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {pathname === '/passports' && (
+                      <DropdownMenuItem onClick={() => handleExport('passports')}>
+                        <FileText className="h-4 w-4 mr-2" />
+                        Export Passports
+                      </DropdownMenuItem>
+                    )}
+                    {pathname === '/recruiters' && (
+                      <DropdownMenuItem onClick={() => handleExport('recruiters')}>
+                        <Briefcase className="h-4 w-4 mr-2" />
+                        Export Recruiters
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
