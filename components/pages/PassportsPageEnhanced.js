@@ -91,6 +91,24 @@ export default function PassportsPageEnhanced({ currentUser }) {
     }
   }
 
+  const fetchOverallStats = async () => {
+    try {
+      // Fetch all passports without pagination to get accurate stats
+      const response = await fetch('/api/passports?page=1&limit=10000')
+      const data = await response.json()
+      const allPassports = data.data || []
+      
+      setOverallStats({
+        total: data.pagination?.total || 0,
+        verified: allPassports.filter(p => p.status === 'verified').length,
+        pending: allPassports.filter(p => p.status === 'pending').length,
+        rejected: allPassports.filter(p => p.status === 'rejected').length
+      })
+    } catch (error) {
+      console.error('Error fetching overall stats:', error)
+    }
+  }
+
   const fetchPassports = async () => {
     try {
       setLoading(true)
