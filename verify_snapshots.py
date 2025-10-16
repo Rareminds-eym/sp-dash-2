@@ -8,7 +8,7 @@ import json
 from datetime import datetime
 
 # Base URL from environment
-BASE_URL = "https://exportdata-check.preview.emergentagent.com/api"
+BASE_URL = "https://csv-passport-export.preview.emergentagent.com/api"
 
 def verify_snapshots_table():
     """Verify metrics snapshots are being stored"""

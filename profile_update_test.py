@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 
 class ProfileUpdateTester:
-    def __init__(self, base_url="https://exportdata-check.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://csv-passport-export.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.session = requests.Session()
         self.results = []

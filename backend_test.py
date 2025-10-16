@@ -12,7 +12,7 @@ import io
 from datetime import datetime
 
 # Get base URL from environment
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://exportdata-check.preview.emergentagent.com')
+BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://csv-passport-export.preview.emergentagent.com')
 API_BASE = f"{BASE_URL}/api"
 
 # Test credentials
