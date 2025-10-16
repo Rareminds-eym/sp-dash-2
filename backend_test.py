@@ -306,48 +306,8 @@ def test_duplicate_emails():
         print(f"❌ Error checking duplicate emails: {e}")
         return False
 
-def test_specific_composite_email_removals():
-    """Test 4: Verify specific recruiters with composite emails were removed"""
-    print("\n🔍 Test 4: Verifying specific composite email removals...")
-    
-    try:
-        all_recruiters = get_all_recruiters()
-        success = True
-        
-        # Check "Overseas Cyber Technical Services (OCTS)" should only have 1 record with email "hr@octsindia.com"
-        print("   Checking Overseas Cyber Technical Services (OCTS)...")
-        octs_recruiters = []
-        for recruiter in all_recruiters:
-            name = recruiter.get('name', '')
-            if 'Overseas Cyber Technical Services' in name or 'OCTS' in name:
-                octs_recruiters.append(recruiter)
-        
-        print(f"     Found {len(octs_recruiters)} OCTS records:")
-        for recruiter in octs_recruiters:
-            print(f"       - Name: {recruiter.get('name')}, Email: {recruiter.get('email')}")
-        
-        octs_hr_email = [r for r in octs_recruiters if r.get('email') == 'hr@octsindia.com']
-        if len(octs_recruiters) == 1 and len(octs_hr_email) == 1:
-            print(f"     ✅ OCTS has exactly 1 record with hr@octsindia.com")
-        else:
-            print(f"     ❌ OCTS should have exactly 1 record with hr@octsindia.com")
-            print(f"        Found: {len(octs_recruiters)} total records, {len(octs_hr_email)} with hr@octsindia.com")
-            success = False
-        
-        # Check "Ak Infopark Pvt Ltd" should only have 1 record with email "hrm@akinfopark.com"
-        print("   Checking Ak Infopark Pvt Ltd...")
-        ak_recruiters = []
-        for recruiter in all_recruiters:
-            name = recruiter.get('name', '')
-            if 'Ak Infopark' in name or 'AK Infopark' in name:
-                ak_recruiters.append(recruiter)
-        
-        print(f"     Found {len(ak_recruiters)} Ak Infopark records:")
-        for recruiter in ak_recruiters:
-            print(f"       - Name: {recruiter.get('name')}, Email: {recruiter.get('email')}")
-        
-        ak_hrm_email = [r for r in ak_recruiters if r.get('email') == 'hrm@akinfopark.com']
-        if len(ak_recruiters) == 1 and len(ak_hrm_email) == 1:
+if __name__ == "__main__":
+    main()
             print(f"     ✅ Ak Infopark has exactly 1 record with hrm@akinfopark.com")
         else:
             print(f"     ❌ Ak Infopark should have exactly 1 record with hrm@akinfopark.com")
