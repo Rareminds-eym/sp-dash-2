@@ -178,18 +178,69 @@ export default function ReportsPage() {
   }
 
   const handleExport = async (type, section) => {
-    toast({
-      title: 'Export Started',
-      description: `Preparing ${section} ${type} export...`
-    })
-    
-    // Simulate export
-    setTimeout(() => {
+    try {
+      toast({
+        title: 'Export Started',
+        description: `Preparing ${section} export...`
+      })
+
+      let endpoint = ''
+      let filename = ''
+
+      // Map section to API endpoint
+      switch(section) {
+        case 'University Reports':
+          endpoint = '/api/analytics/university-reports/export'
+          filename = `university-reports-${new Date().toISOString().split('T')[0]}.csv`
+          break
+        case 'Recruiter Metrics':
+          endpoint = '/api/analytics/recruiter-metrics/export'
+          filename = `recruiter-metrics-${new Date().toISOString().split('T')[0]}.csv`
+          break
+        case 'Placement Analytics':
+          endpoint = '/api/analytics/placement-conversion/export'
+          filename = `placement-conversion-${new Date().toISOString().split('T')[0]}.csv`
+          break
+        case 'State Analytics':
+          endpoint = '/api/analytics/state-heatmap/export'
+          filename = `state-heatmap-${new Date().toISOString().split('T')[0]}.csv`
+          break
+        case 'AI Insights':
+          endpoint = '/api/analytics/ai-insights/export'
+          filename = `ai-insights-${new Date().toISOString().split('T')[0]}.csv`
+          break
+        default:
+          throw new Error('Unknown section')
+      }
+
+      const response = await fetch(endpoint)
+      
+      if (!response.ok) {
+        throw new Error('Export failed')
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+
       toast({
         title: 'Export Complete',
-        description: `${section} ${type} file has been downloaded`
+        description: `${section} file has been downloaded successfully`
       })
-    }, 2000)
+    } catch (error) {
+      console.error('Export error:', error)
+      toast({
+        title: 'Export Failed',
+        description: 'Unable to export data. Please try again.',
+        variant: 'destructive'
+      })
+    }
   }
 
   const getTrendIcon = (trend) => {
