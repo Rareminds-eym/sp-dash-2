@@ -638,9 +638,30 @@ export async function GET(request) {
       const csvRows = [headers.join(',')]
       
       enrichedPassports.forEach(p => {
-        const studentName = p.students?.profile?.name || p.students?.users?.metadata?.name || ''
-        const studentEmail = p.students?.users?.email || ''
-        const universityName = p.students?.university?.name || ''
+        // Extract student data with multiple fallbacks
+        let studentName = ''
+        let studentEmail = ''
+        let universityName = ''
+        
+        if (p.students) {
+          // Try to get name from profile or metadata
+          studentName = p.students.profile?.name || 
+                       p.students.users?.metadata?.name || 
+                       p.students.metadata?.name || 
+                       p.students.name || 
+                       ''
+          
+          // Try to get email from users or directly
+          studentEmail = p.students.users?.email || 
+                        p.students.email || 
+                        ''
+          
+          // Try to get university name
+          universityName = p.students.university?.name || 
+                          p.students.organization?.name || 
+                          ''
+        }
+        
         const skills = Array.isArray(p.skills) ? p.skills.join('; ') : ''
         
         const row = [
