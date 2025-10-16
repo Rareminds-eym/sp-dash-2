@@ -796,7 +796,7 @@ metadata:
 
 test_plan:
   current_focus:
-    - "CSV Export - Passports Endpoint"
+    - "All tasks completed successfully"
   stuck_tasks: 
     - "Settings Page User Data Display Fix"
   test_all: false
