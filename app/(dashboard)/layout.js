@@ -28,6 +28,7 @@ import {
     LayoutDashboard,
     LogOut,
     Menu,
+    MoreVertical,
     Plug,
     RefreshCw,
     Settings,
