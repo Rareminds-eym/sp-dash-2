@@ -549,10 +549,11 @@ export async function GET(request) {
         })
         
         if (studentIds.length > 0) {
+          console.log(`Export: Attempting to fetch ${studentIds.length} students (limiting to first 100 for testing)`)
           // Fetch all students and their users in parallel
           const [studentsResult, usersResult] = await Promise.all([
-            supabase.from('students').select('*').in('id', studentIds),
-            supabase.from('students').select('userId, organizationId').in('id', studentIds).then(async (result) => {
+            supabase.from('students').select('*').in('id', studentIds.slice(0, 100)),
+            supabase.from('students').select('userId, organizationId').in('id', studentIds.slice(0, 100)).then(async (result) => {
               if (result.data && result.data.length > 0) {
                 const userIds = result.data.map(s => s.userId).filter(Boolean)
                 if (userIds.length > 0) {
