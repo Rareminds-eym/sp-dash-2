@@ -1010,13 +1010,59 @@ export async function GET(request) {
       return NextResponse.json(verifications || [])
     }
 
-    // GET /api/audit-logs - List audit logs (OPTIMIZED)
+    // GET /api/audit-logs - List audit logs with pagination, filtering, and search (ENHANCED)
     if (path === '/audit-logs') {
-      const { data: logs, error } = await supabase
+      const { searchParams } = new URL(request.url)
+      
+      // Pagination parameters
+      const page = parseInt(searchParams.get('page') || '1')
+      const limit = parseInt(searchParams.get('limit') || '20')
+      const offset = (page - 1) * limit
+      
+      // Filter parameters
+      const action = searchParams.get('action') // Filter by action type
+      const userId = searchParams.get('userId') // Filter by user
+      const dateFrom = searchParams.get('dateFrom') // Filter by start date
+      const dateTo = searchParams.get('dateTo') // Filter by end date
+      const search = searchParams.get('search') // Search in target, action, IP
+      
+      // Sorting parameters
+      const sortBy = searchParams.get('sortBy') || 'createdAt'
+      const sortOrder = searchParams.get('sortOrder') || 'desc'
+      
+      // Build query
+      let query = supabase
         .from('audit_logs')
-        .select('*')
-        .order('createdAt', { ascending: false })
-        .limit(100)
+        .select('*', { count: 'exact' })
+      
+      // Apply filters
+      if (action) {
+        query = query.eq('action', action)
+      }
+      
+      if (userId) {
+        query = query.eq('actorId', userId)
+      }
+      
+      if (dateFrom) {
+        query = query.gte('createdAt', dateFrom)
+      }
+      
+      if (dateTo) {
+        query = query.lte('createdAt', dateTo)
+      }
+      
+      if (search) {
+        query = query.or(`target.ilike.%${search}%,action.ilike.%${search}%,ip.ilike.%${search}%`)
+      }
+      
+      // Apply sorting
+      query = query.order(sortBy, { ascending: sortOrder === 'asc' })
+      
+      // Apply pagination
+      query = query.range(offset, offset + limit - 1)
+      
+      const { data: logs, error, count } = await query
 
       if (error) {
         console.error('Error fetching audit logs:', error)
@@ -1030,11 +1076,17 @@ export async function GET(request) {
         if (userIds.length > 0) {
           const { data: users } = await supabase
             .from('users')
-            .select('id, email')
+            .select('id, email, metadata')
             .in('id', userIds)
           
           const userMap = {}
-          users?.forEach(user => { userMap[user.id] = user })
+          users?.forEach(user => { 
+            userMap[user.id] = {
+              id: user.id,
+              email: user.email,
+              name: user.metadata?.name || user.email
+            }
+          })
           
           logs.forEach(log => {
             if (log.actorId && userMap[log.actorId]) {
@@ -1044,7 +1096,154 @@ export async function GET(request) {
         }
       }
       
-      return NextResponse.json(logs || [])
+      return NextResponse.json({
+        logs: logs || [],
+        pagination: {
+          page,
+          limit,
+          total: count || 0,
+          totalPages: Math.ceil((count || 0) / limit)
+        }
+      })
+    }
+
+    // GET /api/audit-logs/export - Export audit logs to CSV
+    if (path === '/audit-logs/export') {
+      const { searchParams } = new URL(request.url)
+      
+      // Filter parameters (same as list endpoint)
+      const action = searchParams.get('action')
+      const userId = searchParams.get('userId')
+      const dateFrom = searchParams.get('dateFrom')
+      const dateTo = searchParams.get('dateTo')
+      const search = searchParams.get('search')
+      
+      // Build query (no pagination for export)
+      let query = supabase
+        .from('audit_logs')
+        .select('*')
+        .order('createdAt', { ascending: false })
+        .limit(5000) // Max 5000 records for export
+      
+      // Apply same filters as list endpoint
+      if (action) query = query.eq('action', action)
+      if (userId) query = query.eq('actorId', userId)
+      if (dateFrom) query = query.gte('createdAt', dateFrom)
+      if (dateTo) query = query.lte('createdAt', dateTo)
+      if (search) query = query.or(`target.ilike.%${search}%,action.ilike.%${search}%,ip.ilike.%${search}%`)
+      
+      const { data: logs, error } = await query
+
+      if (error) {
+        console.error('Error fetching audit logs for export:', error)
+        return NextResponse.json({ error: 'Failed to fetch audit logs' }, { status: 500 })
+      }
+      
+      // Fetch user emails
+      if (logs && logs.length > 0) {
+        const userIds = [...new Set(logs.map(l => l.actorId).filter(Boolean))]
+        
+        if (userIds.length > 0) {
+          const { data: users } = await supabase
+            .from('users')
+            .select('id, email, metadata')
+            .in('id', userIds)
+          
+          const userMap = {}
+          users?.forEach(user => { 
+            userMap[user.id] = {
+              email: user.email,
+              name: user.metadata?.name || user.email
+            }
+          })
+          
+          logs.forEach(log => {
+            if (log.actorId && userMap[log.actorId]) {
+              log.users = userMap[log.actorId]
+            }
+          })
+        }
+      }
+      
+      // Generate CSV
+      const csvHeaders = ['Timestamp', 'User', 'Email', 'Action', 'Target', 'IP Address', 'Details']
+      const csvRows = logs.map(log => [
+        new Date(log.createdAt).toLocaleString(),
+        log.users?.name || 'System',
+        log.users?.email || 'N/A',
+        log.action.replace(/_/g, ' ').toUpperCase(),
+        log.target || 'N/A',
+        log.ip || 'N/A',
+        JSON.stringify(log.payload || {}).substring(0, 100)
+      ])
+      
+      const csv = [
+        csvHeaders.join(','),
+        ...csvRows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n')
+      
+      const today = new Date().toISOString().split('T')[0]
+      
+      return new NextResponse(csv, {
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': `attachment; filename="audit-logs-${today}.csv"`
+        }
+      })
+    }
+
+    // GET /api/audit-logs/actions - Get unique action types
+    if (path === '/audit-logs/actions') {
+      const { data: logs, error } = await supabase
+        .from('audit_logs')
+        .select('action')
+        .limit(1000)
+
+      if (error) {
+        console.error('Error fetching action types:', error)
+        return NextResponse.json({ error: 'Failed to fetch action types' }, { status: 500 })
+      }
+
+      const uniqueActions = [...new Set(logs.map(l => l.action))].filter(Boolean).sort()
+      return NextResponse.json(uniqueActions)
+    }
+
+    // GET /api/audit-logs/users - Get users who have performed actions
+    if (path === '/audit-logs/users') {
+      const { data: logs, error } = await supabase
+        .from('audit_logs')
+        .select('actorId')
+        .not('actorId', 'is', null)
+        .limit(1000)
+
+      if (error) {
+        console.error('Error fetching actor users:', error)
+        return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
+      }
+
+      const uniqueUserIds = [...new Set(logs.map(l => l.actorId))]
+      
+      if (uniqueUserIds.length > 0) {
+        const { data: users, error: usersError } = await supabase
+          .from('users')
+          .select('id, email, metadata')
+          .in('id', uniqueUserIds)
+        
+        if (usersError) {
+          console.error('Error fetching users:', usersError)
+          return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
+        }
+        
+        const usersWithNames = users.map(u => ({
+          id: u.id,
+          email: u.email,
+          name: u.metadata?.name || u.email
+        }))
+        
+        return NextResponse.json(usersWithNames)
+      }
+      
+      return NextResponse.json([])
     }
 
     // GET /api/analytics/state-wise - State-wise distribution
