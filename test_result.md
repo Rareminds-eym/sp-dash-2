@@ -774,7 +774,8 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus: []
+  current_focus:
+    - "CSV Export - Passports Endpoint"
   stuck_tasks: 
     - "Settings Page User Data Display Fix"
   test_all: false
@@ -782,7 +783,7 @@ test_plan:
 
 agent_communication:
   - agent: "testing"
-    message: "Comprehensive backend testing completed. All 14 backend APIs tested successfully with 100% pass rate. Database is properly seeded with test data. All CRUD operations, authentication, audit logging, and data relationships working correctly. Supabase integration functioning properly."
+    message: "CSV EXPORT FUNCTIONALITY TESTING COMPLETED: Comprehensive testing of both /api/passports/export and /api/recruiters/export endpoints completed. ✅ RECRUITERS EXPORT: Working perfectly - all 130 recruiters exported with complete data (names, emails, contact info), proper CSV format, filtering functionality, and data accuracy verified. ❌ PASSPORTS EXPORT: CRITICAL ISSUE IDENTIFIED - CSV format and structure working correctly (712 rows exported) but student data fields (Student Name, Email, University) are empty due to data mapping mismatch between GET /api/passports (which has correct data) and export endpoint logic. Export expects p.students?.users?.email but data is at p.students.email. REQUIRES IMMEDIATE FIX in export endpoint data mapping logic (lines 641-643)."
   - agent: "testing"
     message: "Post-UI modernization verification completed. All 14 backend APIs retested and confirmed working correctly after frontend theme updates. 100% success rate maintained. Backend functionality remains intact despite UI changes. Database connections stable, authentication working, all CRUD operations functional."
   - agent: "main"
