@@ -2,17 +2,35 @@
 
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import {
     BarChart3,
     Briefcase,
     ChevronRight,
+    Download,
     FileText,
     History,
     LayoutDashboard,
     LogOut,
     Menu,
+    MoreVertical,
     Plug,
+    RefreshCw,
     Settings,
     Shield,
     Users,
@@ -24,10 +42,10 @@ import Link from 'next/link'
 
 const navigation = [
   { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
-  { name: 'Users', icon: Users, href: '/users' },
-  { name: 'Recruiters', icon: Briefcase, href: '/recruiters' },
-  { name: 'Passports', icon: FileText, href: '/passports' },
-  { name: 'Reports', icon: BarChart3, href: '/reports' },
+  { name: 'User Management', icon: Users, href: '/users' },
+  { name: 'Recruiter Management', icon: Briefcase, href: '/recruiters' },
+  { name: 'Skill Passports', icon: FileText, href: '/passports' },
+  { name: 'Reports & Analytics', icon: BarChart3, href: '/reports' },
   { name: 'Audit Logs', icon: History, href: '/audit-logs' },
   { name: 'Integrations', icon: Plug, href: '/integrations' },
   { name: 'Settings', icon: Settings, href: '/settings' },
@@ -36,8 +54,10 @@ const navigation = [
 export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [user, setUser] = useState(null)
+  const [refreshing, setRefreshing] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
+  const { toast } = useToast()
 
   useEffect(() => {
     // Fetch current user session
@@ -50,6 +70,14 @@ export default function DashboardLayout({ children }) {
       })
       .catch(err => console.error('Failed to fetch session:', err))
   }, [])
+
+  const handleRefresh = () => {
+    setRefreshing(true)
+    // Trigger a page refresh by dispatching a custom event
+    window.dispatchEvent(new CustomEvent('refreshPage'))
+    // Reset refreshing state after a delay
+    setTimeout(() => setRefreshing(false), 1000)
+  }
 
   const handleLogout = async () => {
     try {
@@ -103,6 +131,15 @@ export default function DashboardLayout({ children }) {
   const getPageTitle = () => {
     const currentNav = navigation.find(nav => nav.href === pathname)
     return currentNav ? currentNav.name : 'Dashboard'
+  }
+
+  const handleExport = () => {
+    // Dispatch custom event for the page to handle export with its filters
+    window.dispatchEvent(new CustomEvent('exportData'))
+  }
+
+  const canShowMenu = () => {
+    return pathname === '/passports' || pathname === '/recruiters'
   }
 
   return (
@@ -215,15 +252,51 @@ export default function DashboardLayout({ children }) {
               >
                 <Menu className="h-5 w-5" />
               </Button>
-              <div>
-                <h2 className="text-xl font-semibold capitalize bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
-                  {getPageTitle()}
-                </h2>
-                <p className="text-sm text-muted-foreground">Manage your platform</p>
-              </div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+                {getPageTitle()}
+              </h1>
             </div>
             <div className="flex items-center gap-3">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleRefresh}
+                      disabled={refreshing}
+                      className="hover:bg-white/50 dark:hover:bg-slate-800/50"
+                    >
+                      <RefreshCw className={cn("h-5 w-5", refreshing && "animate-spin")} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Refresh</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <ThemeToggle />
+              {canShowMenu() && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="hover:bg-white/50 dark:hover:bg-slate-800/50"
+                    >
+                      <MoreVertical className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleExport}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Export to CSV
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </div>
         </header>

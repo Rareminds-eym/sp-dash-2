@@ -119,6 +119,24 @@ export default function RecruitersPageEnhanced({ currentUser }) {
   useEffect(() => {
     fetchStates()
     fetchOverallStats()
+    
+    // Listen for refresh events from the layout
+    const handleRefresh = () => {
+      fetchRecruiters()
+      fetchOverallStats()
+    }
+    window.addEventListener('refreshPage', handleRefresh)
+    
+    // Listen for export events from the layout
+    const handleExportEvent = () => {
+      handleExport()
+    }
+    window.addEventListener('exportData', handleExportEvent)
+    
+    return () => {
+      window.removeEventListener('refreshPage', handleRefresh)
+      window.removeEventListener('exportData', handleExportEvent)
+    }
   }, [])
 
   useEffect(() => {
@@ -311,11 +329,20 @@ export default function RecruitersPageEnhanced({ currentUser }) {
     try {
       const params = new URLSearchParams()
       if (filters.search) params.append('search', filters.search)
-      if (filters.status) params.append('status', filters.status)
-      if (filters.state) params.append('state', filters.state)
-      if (filters.active !== '') params.append('active', filters.active)
+      
+      // Use activeTab for status if not 'all'
+      const statusFilter = activeTab !== 'all' ? activeTab : filters.status
+      if (statusFilter && statusFilter !== 'all') params.append('status', statusFilter)
+      
+      if (filters.state && filters.state !== 'all') params.append('state', filters.state)
+      if (filters.active !== 'all' && filters.active !== '') params.append('active', filters.active)
       
       const response = await fetch(`/api/recruiters/export?${params}`)
+      
+      if (!response.ok) {
+        throw new Error('Export failed')
+      }
+      
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -453,23 +480,6 @@ export default function RecruitersPageEnhanced({ currentUser }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Recruiter Management</h2>
-          <p className="text-muted-foreground">Verify and manage recruiter organizations</p>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={handleExport} variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-          <Button onClick={fetchRecruiters} variant="outline" disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
-      </div>
-
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="neu-card">
@@ -942,7 +952,7 @@ export default function RecruitersPageEnhanced({ currentUser }) {
             <div className="space-y-6">
               {/* Basic Info */}
               <div>
-                <h3 className="text-lg font-semibold mb-3">Basic Information</h3>
+                <h3 className="text-sm font-medium text-muted-foreground mb-3">Basic Information</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Name</p>
@@ -967,7 +977,7 @@ export default function RecruitersPageEnhanced({ currentUser }) {
 
               {/* Contact Info */}
               <div>
-                <h3 className="text-lg font-semibold mb-3">Contact Information</h3>
+                <h3 className="text-sm font-medium text-muted-foreground mb-3">Contact Information</h3>
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <Mail className="h-4 w-4 text-muted-foreground" />
@@ -990,7 +1000,7 @@ export default function RecruitersPageEnhanced({ currentUser }) {
 
               {/* Metadata */}
               <div>
-                <h3 className="text-lg font-semibold mb-3">Metadata</h3>
+                <h3 className="text-sm font-medium text-muted-foreground mb-3">Metadata</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -1012,7 +1022,7 @@ export default function RecruitersPageEnhanced({ currentUser }) {
               {/* Verification History */}
               {detailsDialog.recruiter.verificationHistory?.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">Verification History</h3>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-3">Verification History</h3>
                   <div className="space-y-2 max-h-[200px] overflow-y-auto">
                     {detailsDialog.recruiter.verificationHistory.map((item, idx) => (
                       <div key={idx} className="p-3 bg-gray-50 dark:bg-gray-800 rounded text-sm">
@@ -1031,7 +1041,7 @@ export default function RecruitersPageEnhanced({ currentUser }) {
               {/* Audit History */}
               {detailsDialog.recruiter.auditHistory?.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">Audit Trail</h3>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-3">Audit Trail</h3>
                   <div className="space-y-2 max-h-[200px] overflow-y-auto">
                     {detailsDialog.recruiter.auditHistory.map((item, idx) => (
                       <div key={idx} className="p-3 bg-gray-50 dark:bg-gray-800 rounded text-sm">

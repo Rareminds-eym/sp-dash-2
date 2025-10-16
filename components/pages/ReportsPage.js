@@ -93,7 +93,17 @@ export default function ReportsPage() {
   useEffect(() => {
     // Fetch data progressively - start with first tab
     fetchTabData('universities')
-  }, [])
+    
+    // Listen for refresh events from the layout
+    const handleRefreshEvent = () => {
+      fetchTabData(activeTab)
+    }
+    window.addEventListener('refreshPage', handleRefreshEvent)
+    
+    return () => {
+      window.removeEventListener('refreshPage', handleRefreshEvent)
+    }
+  }, [activeTab])
 
   const fetchTabData = async (tab) => {
     // If data already loaded for this tab, skip
@@ -168,18 +178,69 @@ export default function ReportsPage() {
   }
 
   const handleExport = async (type, section) => {
-    toast({
-      title: 'Export Started',
-      description: `Preparing ${section} ${type} export...`
-    })
-    
-    // Simulate export
-    setTimeout(() => {
+    try {
+      toast({
+        title: 'Export Started',
+        description: `Preparing ${section} export...`
+      })
+
+      let endpoint = ''
+      let filename = ''
+
+      // Map section to API endpoint
+      switch(section) {
+        case 'University Reports':
+          endpoint = '/api/analytics/university-reports/export'
+          filename = `university-reports-${new Date().toISOString().split('T')[0]}.csv`
+          break
+        case 'Recruiter Metrics':
+          endpoint = '/api/analytics/recruiter-metrics/export'
+          filename = `recruiter-metrics-${new Date().toISOString().split('T')[0]}.csv`
+          break
+        case 'Placement Analytics':
+          endpoint = '/api/analytics/placement-conversion/export'
+          filename = `placement-conversion-${new Date().toISOString().split('T')[0]}.csv`
+          break
+        case 'State Analytics':
+          endpoint = '/api/analytics/state-heatmap/export'
+          filename = `state-heatmap-${new Date().toISOString().split('T')[0]}.csv`
+          break
+        case 'AI Insights':
+          endpoint = '/api/analytics/ai-insights/export'
+          filename = `ai-insights-${new Date().toISOString().split('T')[0]}.csv`
+          break
+        default:
+          throw new Error('Unknown section')
+      }
+
+      const response = await fetch(endpoint)
+      
+      if (!response.ok) {
+        throw new Error('Export failed')
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+
       toast({
         title: 'Export Complete',
-        description: `${section} ${type} file has been downloaded`
+        description: `${section} file has been downloaded successfully`
       })
-    }, 2000)
+    } catch (error) {
+      console.error('Export error:', error)
+      toast({
+        title: 'Export Failed',
+        description: 'Unable to export data. Please try again.',
+        variant: 'destructive'
+      })
+    }
   }
 
   const getTrendIcon = (trend) => {
@@ -201,16 +262,6 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold gradient-text">Reports & Analytics</h2>
-          <p className="text-muted-foreground mt-1">Comprehensive insights and data visualization</p>
-        </div>
-        <Button onClick={handleRefresh} disabled={isAnyLoading}>
-          <TrendingUp className="h-4 w-4 mr-2" />
-          Refresh Data
-        </Button>
-      </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList className="grid w-full grid-cols-5">
@@ -239,8 +290,8 @@ export default function ReportsPage() {
         {/* University Reports Tab */}
         <TabsContent value="universities" className="space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-blue-600" />
+            <h3 className="text-base font-medium flex items-center gap-2 text-muted-foreground">
+              <BarChart3 className="h-4 w-4" />
               University-wise Reports
             </h3>
             <div className="flex gap-2">
@@ -252,15 +303,6 @@ export default function ReportsPage() {
               >
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => handleExport('Excel', 'University Reports')}
-                disabled={loading.university}
-              >
-                <FileSpreadsheet className="h-4 w-4 mr-2" />
-                Export Excel
               </Button>
             </div>
           </div>
@@ -340,8 +382,8 @@ export default function ReportsPage() {
         {/* Recruiter Metrics Tab */}
         <TabsContent value="recruiters" className="space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold flex items-center gap-2">
-              <Activity className="h-5 w-5 text-green-600" />
+            <h3 className="text-base font-medium flex items-center gap-2 text-muted-foreground">
+              <Activity className="h-4 w-4" />
               Recruiter Engagement Metrics
             </h3>
             <div className="flex gap-2">
@@ -494,8 +536,8 @@ export default function ReportsPage() {
         {/* Placement Conversion Tab */}
         <TabsContent value="placements" className="space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold flex items-center gap-2">
-              <Target className="h-5 w-5 text-purple-600" />
+            <h3 className="text-base font-medium flex items-center gap-2 text-muted-foreground">
+              <Target className="h-4 w-4" />
               Placement Conversion Analytics
             </h3>
             <div className="flex gap-2">
@@ -582,8 +624,8 @@ export default function ReportsPage() {
         {/* State Heat Map Tab */}
         <TabsContent value="heatmap" className="space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold flex items-center gap-2">
-              <Globe className="h-5 w-5 text-orange-600" />
+            <h3 className="text-base font-medium flex items-center gap-2 text-muted-foreground">
+              <Globe className="h-4 w-4" />
               State/District Heat Map
             </h3>
             <div className="flex gap-2">
@@ -657,8 +699,8 @@ export default function ReportsPage() {
         {/* AI Insights Tab */}
         <TabsContent value="insights" className="space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold flex items-center gap-2">
-              <Brain className="h-5 w-5 text-pink-600" />
+            <h3 className="text-base font-medium flex items-center gap-2 text-muted-foreground">
+              <Brain className="h-4 w-4" />
               AI Insight Panel
             </h3>
             <div className="flex gap-2">

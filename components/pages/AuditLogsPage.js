@@ -12,6 +12,16 @@ export default function AuditLogsPage() {
 
   useEffect(() => {
     fetchLogs()
+    
+    // Listen for refresh events from the layout
+    const handleRefresh = () => {
+      fetchLogs()
+    }
+    window.addEventListener('refreshPage', handleRefresh)
+    
+    return () => {
+      window.removeEventListener('refreshPage', handleRefresh)
+    }
   }, [])
 
   const fetchLogs = async () => {
@@ -40,16 +50,6 @@ export default function AuditLogsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Audit Logs</h2>
-          <p className="text-muted-foreground">Track all system activities and changes</p>
-        </div>
-        <Button onClick={fetchLogs} variant="outline" disabled={loading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-      </div>
 
       <Card className="neu-card">
         <CardHeader>

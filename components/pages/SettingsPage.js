@@ -135,10 +135,6 @@ export default function SettingsPage({ user }) {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <div>
-        <h2 className="text-2xl font-bold">Settings</h2>
-        <p className="text-muted-foreground">Manage your account and application settings</p>
-      </div>
 
       {/* Profile Settings */}
       <Card className="neu-card">
