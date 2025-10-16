@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Backend API Testing Script for Passports CSV Export
-Tests the data mapping fix for student information in CSV export
+Backend Testing Script for CSV Export Functionality
+Tests both Passport and Recruiter export endpoints with various scenarios
 """
 
 import requests
-import json
 import csv
 import io
+import json
 from datetime import datetime
 
 # Configuration
