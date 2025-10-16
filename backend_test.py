@@ -10,37 +10,6 @@ import io
 # Configuration
 BASE_URL = "https://auditpro-9.preview.emergentagent.com/api"
 
-def test_csv_format(content, expected_headers):
-    """Helper function to validate CSV format and headers"""
-    try:
-        # Parse CSV content
-        csv_reader = csv.reader(io.StringIO(content))
-        headers = next(csv_reader)
-        rows = list(csv_reader)
-        
-        print(f"  ✅ CSV Headers: {headers}")
-        print(f"  ✅ Expected Headers: {expected_headers}")
-        
-        # Check if headers match expected
-        headers_match = headers == expected_headers
-        if headers_match:
-            print(f"  ✅ Headers match expected format")
-        else:
-            print(f"  ❌ Headers don't match. Got: {headers}, Expected: {expected_headers}")
-        
-        print(f"  ✅ Total rows (excluding header): {len(rows)}")
-        
-        return {
-            'valid': True,
-            'headers': headers,
-            'row_count': len(rows),
-            'headers_match': headers_match,
-            'sample_rows': rows[:3] if rows else []
-        }
-    except Exception as e:
-        print(f"  ❌ CSV parsing error: {e}")
-        return {'valid': False, 'error': str(e)}
-
 def test_passport_export_no_filters():
     """Test Scenario 1: Passport Export - No Filters"""
     print("\n" + "="*60)
