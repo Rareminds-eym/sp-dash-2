@@ -1,53 +1,17 @@
 #!/usr/bin/env python3
 """
-CSV Export Functionality Testing for Passports and Recruiters
-Testing both /api/passports/export and /api/recruiters/export endpoints
+Backend API Testing Script for Passports CSV Export
+Tests the data mapping fix for student information in CSV export
 """
 
 import requests
 import json
-import os
 import csv
 import io
 from datetime import datetime
-from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
-
-# Get base URL from environment
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://csv-passport-export.preview.emergentagent.com')
-API_BASE = f"{BASE_URL}/api"
-
-# Test credentials
-TEST_EMAIL = "superadmin@rareminds.in"
-TEST_PASSWORD = "password123"
-
-def test_login():
-    """Test login and get session for authenticated requests"""
-    print("🔐 Testing login...")
-    
-    login_data = {
-        "email": TEST_EMAIL,
-        "password": TEST_PASSWORD
-    }
-    
-    try:
-        response = requests.post(f"{API_BASE}/auth/login", json=login_data)
-        print(f"Login response status: {response.status_code}")
-        
-        if response.status_code == 200:
-            result = response.json()
-            print(f"✅ Login successful for user: {result.get('email', 'Unknown')}")
-            print(f"   Role: {result.get('role', 'Unknown')}")
-            return response.cookies
-        else:
-            print(f"❌ Login failed: {response.text}")
-            return None
-            
-    except Exception as e:
-        print(f"❌ Login error: {str(e)}")
-        return None
+# Configuration
+BASE_URL = "https://csv-passport-export.preview.emergentagent.com/api"
 
 def validate_csv_format(content, expected_headers=None):
     """Validate CSV format and return parsed data"""
