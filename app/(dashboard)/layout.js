@@ -24,10 +24,10 @@ import Link from 'next/link'
 
 const navigation = [
   { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
-  { name: 'Users', icon: Users, href: '/users' },
-  { name: 'Recruiters', icon: Briefcase, href: '/recruiters' },
-  { name: 'Passports', icon: FileText, href: '/passports' },
-  { name: 'Reports', icon: BarChart3, href: '/reports' },
+  { name: 'User Management', icon: Users, href: '/users' },
+  { name: 'Recruiter Management', icon: Briefcase, href: '/recruiters' },
+  { name: 'Skill Passports', icon: FileText, href: '/passports' },
+  { name: 'Reports & Analytics', icon: BarChart3, href: '/reports' },
   { name: 'Audit Logs', icon: History, href: '/audit-logs' },
   { name: 'Integrations', icon: Plug, href: '/integrations' },
   { name: 'Settings', icon: Settings, href: '/settings' },
