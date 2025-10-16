@@ -465,16 +465,10 @@ export default function RecruitersPageEnhanced({ currentUser }) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-end">
-        <div className="flex gap-2">
-          <Button onClick={handleExport} variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-          <Button onClick={fetchRecruiters} variant="outline" disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
+        <Button onClick={handleExport} variant="outline">
+          <Download className="h-4 w-4 mr-2" />
+          Export
+        </Button>
       </div>
 
       {/* Stats Cards */}
