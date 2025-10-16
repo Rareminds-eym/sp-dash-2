@@ -60,11 +60,11 @@ export async function GET(request) {
         
         const activeUniversities = universities?.length || 0
 
-        // Count active recruiters from recruiters table (only where isActive=true)
+        // Count active recruiters from recruiters table (only where isactive=true)
         const { data: recruiters } = await supabase
           .from('recruiters')
           .select('id')
-          .eq('isActive', true)
+          .eq('isactive', true)
         
         const activeRecruiters = recruiters?.length || 0
 
@@ -2185,11 +2185,11 @@ export async function POST(request) {
         
         const activeUniversities = universities?.length || 0
 
-        // Count active recruiters from recruiters table (only where isActive=true)
+        // Count active recruiters from recruiters table (only where isactive=true)
         const { data: recruiters } = await supabase
           .from('recruiters')
           .select('id')
-          .eq('isActive', true)
+          .eq('isactive', true)
         
         const activeRecruiters = recruiters?.length || 0
 
