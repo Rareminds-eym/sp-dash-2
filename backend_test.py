@@ -11,7 +11,7 @@ import io
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://csv-passport-export.preview.emergentagent.com/api"
+BASE_URL = "https://csv-export-revamp.preview.emergentagent.com/api"
 
 def test_passports_csv_export():
     """
