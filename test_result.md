@@ -119,11 +119,11 @@ backend:
 
   - task: "CSV Export - Passports Endpoint"
     implemented: true
-    working: "NA"
+    working: false
     file: "app/api/[[...path]]/route.js"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: false
         agent: "testing"
@@ -131,6 +131,9 @@ backend:
       - working: "NA"
         agent: "main"
         comment: "FIXED DATA MAPPING ISSUE: Identified root cause - students table uses 'universityId' field, not 'organizationId' as code expected. Also, student.email is direct field, not through users table. Updated both /api/passports/export and /api/passports endpoints to: 1) Use student.universityId || student.organizationId for university lookup. 2) Use student.email directly as primary source. 3) Fixed university filter to check universityId. These changes should populate Student Name, Email, and University fields correctly in export. Ready for testing."
+      - working: false
+        agent: "testing"
+        comment: "COMPREHENSIVE CSV EXPORT TESTING COMPLETED - CRITICAL ISSUE PERSISTS: ✅ All 5 test scenarios executed successfully (100% endpoint availability). ✅ CSV format compliance verified: proper headers, Content-Type (text/csv), Content-Disposition (attachment), and filename format. ✅ Row counts accurate: 712 total passports, 3 verified passports, 130 total recruiters, 101 approved+active recruiters. ✅ Filter functionality working: status=verified returns 3 rows, recruiter filters work correctly. ❌ CRITICAL ISSUE: Student data fields (Student Name, Email, University) are COMPLETELY EMPTY in ALL passport export rows. ROOT CAUSE ANALYSIS: GET /api/passports correctly returns populated student data (email: 'rajadharshini3106@gmail.com', name: 'R.Rajadharshini', university: 'Annamalai University') but GET /api/passports/export returns empty fields for same data. The data mapping logic in export endpoint (lines 596-608) is not executing properly - passport.students objects are not being populated despite identical code to regular endpoint. Search functionality also broken: search for 'rajadharshini3106@gmail.com' returns 1 result in regular API but 0 results in export. RECOMMENDATION: Debug why student data mapping fails specifically in export endpoint despite having same logic as working regular endpoint."
 
   - task: "API Root Endpoint"
     implemented: true
