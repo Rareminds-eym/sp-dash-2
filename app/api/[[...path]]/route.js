@@ -651,9 +651,9 @@ export async function GET(request) {
                        p.students.name || 
                        ''
           
-          // Try to get email from users or directly
-          studentEmail = p.students.users?.email || 
-                        p.students.email || 
+          // Try to get email from direct field first, then users
+          studentEmail = p.students.email || 
+                        p.students.users?.email || 
                         ''
           
           // Try to get university name
