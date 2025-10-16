@@ -43,6 +43,7 @@ const navigation = [
 export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [user, setUser] = useState(null)
+  const [refreshing, setRefreshing] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
 
@@ -57,6 +58,14 @@ export default function DashboardLayout({ children }) {
       })
       .catch(err => console.error('Failed to fetch session:', err))
   }, [])
+
+  const handleRefresh = () => {
+    setRefreshing(true)
+    // Trigger a page refresh by dispatching a custom event
+    window.dispatchEvent(new CustomEvent('refreshPage'))
+    // Reset refreshing state after a delay
+    setTimeout(() => setRefreshing(false), 1000)
+  }
 
   const handleLogout = async () => {
     try {
