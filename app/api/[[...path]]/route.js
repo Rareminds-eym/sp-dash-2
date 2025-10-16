@@ -549,22 +549,55 @@ export async function GET(request) {
         })
         
         if (studentIds.length > 0) {
-          console.log(`Export: Attempting to fetch ${studentIds.length} students (limiting to first 100 for testing)`)
-          console.log(`Export: Sample student IDs:`, studentIds.slice(0, 5))
-          console.log(`Export: Student ID types:`, studentIds.slice(0, 3).map(id => ({ id, type: typeof id, length: id?.length })))
-          // Fetch all students and their users in parallel
-          const [studentsResult, usersResult] = await Promise.all([
-            supabase.from('students').select('*').in('id', studentIds.slice(0, 100)),
-            supabase.from('students').select('userId, organizationId').in('id', studentIds.slice(0, 100)).then(async (result) => {
-              if (result.data && result.data.length > 0) {
-                const userIds = result.data.map(s => s.userId).filter(Boolean)
-                if (userIds.length > 0) {
-                  return await supabase.from('users').select('id, email, metadata').in('id', userIds)
-                }
+          console.log(`Export: Attempting to fetch ${studentIds.length} students in batches`)
+          
+          // Supabase has a limit on .in() queries, so batch them
+          const batchSize = 100
+          let allStudents = []
+          let allUsers = []
+          
+          for (let i = 0; i < studentIds.length; i += batchSize) {
+            const batch = studentIds.slice(i, i + batchSize)
+            const batchNum = Math.floor(i/batchSize) + 1
+            const totalBatches = Math.ceil(studentIds.length/batchSize)
+            console.log(`Export: Processing batch ${batchNum}/${totalBatches} (${batch.length} students)`)
+            
+            try {
+              const [studentsResult, usersResult] = await Promise.all([
+                supabase.from('students').select('*').in('id', batch),
+                supabase.from('students').select('userId, organizationId').in('id', batch).then(async (result) => {
+                  if (result.data && result.data.length > 0) {
+                    const userIds = result.data.map(s => s.userId).filter(Boolean)
+                    if (userIds.length > 0) {
+                      return await supabase.from('users').select('id, email, metadata').in('id', userIds)
+                    }
+                  }
+                  return { data: [] }
+                })
+              ])
+              
+              if (studentsResult.error) {
+                console.log(`Export ERROR in batch ${batchNum}:`, studentsResult.error)
+              } else {
+                allStudents.push(...(studentsResult.data || []))
+                console.log(`Export: Batch ${batchNum} fetched ${studentsResult.data?.length || 0} students`)
               }
-              return { data: [] }
-            })
-          ])
+              
+              if (usersResult.error) {
+                console.log(`Export ERROR in users batch ${batchNum}:`, usersResult.error)
+              } else {
+                allUsers.push(...(usersResult.data || []))
+              }
+            } catch (error) {
+              console.log(`Export ERROR in batch ${batchNum}:`, error)
+            }
+          }
+          
+          console.log(`Export: Completed batching. Total students: ${allStudents.length}, Total users: ${allUsers.length}`)
+          
+          // Create result objects for compatibility with existing code
+          const studentsResult = { data: allStudents, error: null }
+          const usersResult = { data: allUsers, error: null }
           
           const students = studentsResult.data || []
           const users = usersResult.data || []
