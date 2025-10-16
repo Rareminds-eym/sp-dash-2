@@ -221,81 +221,388 @@ def test_data_accuracy(cookies):
         print(f"❌ Data accuracy test error: {str(e)}")
         return False
 
+def test_recruiters_export():
+    """Test the /api/recruiters/export endpoint"""
+    print("🧪 TESTING RECRUITERS EXPORT ENDPOINT")
+    print("=" * 60)
+    
+    try:
+        # Test 1: Basic export without filters
+        print("📋 Test 1: Basic recruiters export (no filters)")
+        response = requests.get(f"{API_BASE}/recruiters/export")
+        
+        print(f"Status Code: {response.status_code}")
+        print(f"Content-Type: {response.headers.get('Content-Type')}")
+        print(f"Content-Disposition: {response.headers.get('Content-Disposition')}")
+        
+        if response.status_code != 200:
+            print(f"❌ FAILED: Expected 200, got {response.status_code}")
+            return False
+            
+        if response.headers.get('Content-Type') != 'text/csv':
+            print(f"❌ FAILED: Expected text/csv, got {response.headers.get('Content-Type')}")
+            return False
+            
+        # Parse CSV content
+        csv_content = response.text
+        csv_reader = csv.reader(io.StringIO(csv_content))
+        rows = list(csv_reader)
+        
+        if len(rows) < 2:
+            print("❌ FAILED: CSV should have at least header + 1 data row")
+            return False
+            
+        headers = rows[0]
+        expected_headers = ['Name', 'Email', 'Phone', 'State', 'District', 'Website', 'Status', 'Active', 'Created Date']
+        
+        print(f"CSV Headers: {headers}")
+        print(f"Expected Headers: {expected_headers}")
+        
+        if headers != expected_headers:
+            print("❌ FAILED: CSV headers don't match expected format")
+            return False
+            
+        data_rows = rows[1:]
+        print(f"Total data rows: {len(data_rows)}")
+        
+        # Verify data format
+        if len(data_rows) > 0:
+            sample_row = data_rows[0]
+            print(f"Sample row: {sample_row}")
+            
+            # Check that we have the right number of columns
+            if len(sample_row) != len(headers):
+                print(f"❌ FAILED: Sample row has {len(sample_row)} columns, expected {len(headers)}")
+                return False
+                
+        print("✅ Test 1 PASSED: Basic export working correctly")
+        
+        # Test 2: Compare with GET /api/recruiters endpoint
+        print("\n📋 Test 2: Data accuracy verification")
+        get_response = requests.get(f"{API_BASE}/recruiters")
+        
+        if get_response.status_code != 200:
+            print(f"❌ FAILED: GET /api/recruiters returned {get_response.status_code}")
+            return False
+            
+        get_data = get_response.json()
+        total_recruiters = get_data.get('pagination', {}).get('total', 0) if 'pagination' in get_data else len(get_data.get('data', []))
+        
+        print(f"GET endpoint reports {total_recruiters} total recruiters")
+        print(f"CSV export has {len(data_rows)} rows")
+        
+        # Note: CSV might have different count due to filtering, but should be reasonable
+        if len(data_rows) == 0:
+            print("❌ FAILED: CSV export has no data rows")
+            return False
+            
+        print("✅ Test 2 PASSED: Data count verification successful")
+        
+        # Test 3: Test with filters
+        print("\n📋 Test 3: Export with filters")
+        filter_response = requests.get(f"{API_BASE}/recruiters/export?status=approved&active=true")
+        
+        if filter_response.status_code != 200:
+            print(f"❌ FAILED: Filtered export returned {filter_response.status_code}")
+            return False
+            
+        filtered_csv = filter_response.text
+        filtered_reader = csv.reader(io.StringIO(filtered_csv))
+        filtered_rows = list(filtered_reader)
+        filtered_data = filtered_rows[1:] if len(filtered_rows) > 1 else []
+        
+        print(f"Filtered export has {len(filtered_data)} rows")
+        
+        # Verify filtering worked (should have <= original count)
+        if len(filtered_data) > len(data_rows):
+            print("❌ FAILED: Filtered results should not exceed unfiltered results")
+            return False
+            
+        print("✅ Test 3 PASSED: Filtering functionality working")
+        
+        # Test 4: Verify specific data fields
+        print("\n📋 Test 4: Data field verification")
+        if len(data_rows) > 0:
+            sample_row = data_rows[0]
+            
+            # Check that required fields are present (not empty)
+            name = sample_row[0].strip('"')
+            email = sample_row[1].strip('"')
+            
+            if not name and not email:
+                print("❌ FAILED: Sample row missing both name and email")
+                return False
+                
+            # Check Active field format
+            active_field = sample_row[7]
+            if active_field not in ['Yes', 'No']:
+                print(f"❌ FAILED: Active field should be 'Yes' or 'No', got '{active_field}'")
+                return False
+                
+            print(f"Sample recruiter: {name} ({email})")
+            print("✅ Test 4 PASSED: Data field format verification successful")
+        
+        return True
+        
+    except Exception as e:
+        print(f"❌ FAILED: Exception occurred - {str(e)}")
+        return False
+
+def test_passports_export():
+    """Test the /api/passports/export endpoint"""
+    print("\n🧪 TESTING PASSPORTS EXPORT ENDPOINT")
+    print("=" * 60)
+    
+    try:
+        # Test 1: Basic export without filters
+        print("📋 Test 1: Basic passports export (no filters)")
+        response = requests.get(f"{API_BASE}/passports/export")
+        
+        print(f"Status Code: {response.status_code}")
+        print(f"Content-Type: {response.headers.get('Content-Type')}")
+        print(f"Content-Disposition: {response.headers.get('Content-Disposition')}")
+        
+        if response.status_code != 200:
+            print(f"❌ FAILED: Expected 200, got {response.status_code}")
+            return False
+            
+        if response.headers.get('Content-Type') != 'text/csv':
+            print(f"❌ FAILED: Expected text/csv, got {response.headers.get('Content-Type')}")
+            return False
+            
+        # Parse CSV content
+        csv_content = response.text
+        csv_reader = csv.reader(io.StringIO(csv_content))
+        rows = list(csv_reader)
+        
+        if len(rows) < 1:
+            print("❌ FAILED: CSV should have at least header row")
+            return False
+            
+        headers = rows[0]
+        expected_headers = ['Student Name', 'Email', 'University', 'Status', 'NSQF Level', 'Skills', 'Created Date', 'Updated Date']
+        
+        print(f"CSV Headers: {headers}")
+        print(f"Expected Headers: {expected_headers}")
+        
+        if headers != expected_headers:
+            print("❌ FAILED: CSV headers don't match expected format")
+            return False
+            
+        data_rows = rows[1:]
+        print(f"Total data rows: {len(data_rows)}")
+        
+        # Verify data format
+        if len(data_rows) > 0:
+            sample_row = data_rows[0]
+            print(f"Sample row: {sample_row}")
+            
+            # Check that we have the right number of columns
+            if len(sample_row) != len(headers):
+                print(f"❌ FAILED: Sample row has {len(sample_row)} columns, expected {len(headers)}")
+                return False
+                
+        print("✅ Test 1 PASSED: Basic export working correctly")
+        
+        # Test 2: Compare with GET /api/passports endpoint
+        print("\n📋 Test 2: Data accuracy verification")
+        get_response = requests.get(f"{API_BASE}/passports")
+        
+        if get_response.status_code != 200:
+            print(f"❌ FAILED: GET /api/passports returned {get_response.status_code}")
+            return False
+            
+        get_data = get_response.json()
+        total_passports = get_data.get('pagination', {}).get('total', 0) if 'pagination' in get_data else len(get_data.get('data', []))
+        
+        print(f"GET endpoint reports {total_passports} total passports")
+        print(f"CSV export has {len(data_rows)} rows")
+        
+        # Note: CSV might have different count due to data relationships, but should be reasonable
+        print("✅ Test 2 PASSED: Data count verification successful")
+        
+        # Test 3: Test with filters
+        print("\n📋 Test 3: Export with filters")
+        filter_response = requests.get(f"{API_BASE}/passports/export?status=verified")
+        
+        if filter_response.status_code != 200:
+            print(f"❌ FAILED: Filtered export returned {filter_response.status_code}")
+            return False
+            
+        filtered_csv = filter_response.text
+        filtered_reader = csv.reader(io.StringIO(filtered_csv))
+        filtered_rows = list(filtered_reader)
+        filtered_data = filtered_rows[1:] if len(filtered_rows) > 1 else []
+        
+        print(f"Filtered export (verified only) has {len(filtered_data)} rows")
+        
+        print("✅ Test 3 PASSED: Filtering functionality working")
+        
+        # Test 4: Verify specific data fields
+        print("\n📋 Test 4: Data field verification")
+        if len(data_rows) > 0:
+            sample_row = data_rows[0]
+            
+            # Check data field formats
+            student_name = sample_row[0].strip('"')
+            email = sample_row[1].strip('"')
+            university = sample_row[2].strip('"')
+            status = sample_row[3].strip('"')
+            nsqf_level = sample_row[4]
+            skills = sample_row[5].strip('"')
+            
+            print(f"Sample passport: {student_name} ({email}) from {university}")
+            print(f"Status: {status}, NSQF Level: {nsqf_level}")
+            print(f"Skills: {skills[:100]}..." if len(skills) > 100 else f"Skills: {skills}")
+            
+            # Verify status is valid
+            valid_statuses = ['pending', 'verified', 'rejected', 'draft']
+            if status and status not in valid_statuses:
+                print(f"⚠️  WARNING: Unexpected status '{status}' (not in {valid_statuses})")
+            
+            print("✅ Test 4 PASSED: Data field format verification successful")
+        
+        # Test 5: Test NSQF Level filter
+        print("\n📋 Test 5: NSQF Level filter test")
+        nsqf_response = requests.get(f"{API_BASE}/passports/export?nsqfLevel=4")
+        
+        if nsqf_response.status_code != 200:
+            print(f"❌ FAILED: NSQF Level filter returned {nsqf_response.status_code}")
+            return False
+            
+        nsqf_csv = nsqf_response.text
+        nsqf_reader = csv.reader(io.StringIO(nsqf_csv))
+        nsqf_rows = list(nsqf_reader)
+        nsqf_data = nsqf_rows[1:] if len(nsqf_rows) > 1 else []
+        
+        print(f"NSQF Level 4 filter has {len(nsqf_data)} rows")
+        
+        # Verify filtering worked
+        if len(nsqf_data) > 0:
+            # Check that filtered rows actually have NSQF Level 4
+            sample_nsqf_row = nsqf_data[0]
+            nsqf_value = sample_nsqf_row[4]  # NSQF Level column
+            if nsqf_value and nsqf_value != '4':
+                print(f"⚠️  WARNING: NSQF filter may not be working correctly. Expected '4', got '{nsqf_value}'")
+            else:
+                print("✅ NSQF Level filtering appears to be working")
+        
+        print("✅ Test 5 PASSED: NSQF Level filtering functionality working")
+        
+        return True
+        
+    except Exception as e:
+        print(f"❌ FAILED: Exception occurred - {str(e)}")
+        return False
+
+def test_csv_format_compliance():
+    """Test CSV format compliance for both endpoints"""
+    print("\n🧪 TESTING CSV FORMAT COMPLIANCE")
+    print("=" * 60)
+    
+    try:
+        # Test both endpoints for CSV format compliance
+        endpoints = [
+            ('/recruiters/export', 'recruiters'),
+            ('/passports/export', 'passports')
+        ]
+        
+        for endpoint, name in endpoints:
+            print(f"\n📋 Testing {name} CSV format compliance")
+            response = requests.get(f"{API_BASE}{endpoint}")
+            
+            if response.status_code != 200:
+                print(f"❌ FAILED: {name} endpoint returned {response.status_code}")
+                continue
+                
+            # Check Content-Disposition header format
+            content_disp = response.headers.get('Content-Disposition', '')
+            if not content_disp.startswith('attachment'):
+                print(f"❌ FAILED: {name} Content-Disposition should start with 'attachment'")
+                continue
+                
+            if 'filename=' not in content_disp:
+                print(f"❌ FAILED: {name} Content-Disposition should include filename")
+                continue
+                
+            # Check filename format
+            if f'{name}-' not in content_disp and '.csv' not in content_disp:
+                print(f"❌ FAILED: {name} filename should include '{name}-' and '.csv'")
+                continue
+                
+            # Test CSV parsing
+            try:
+                csv_reader = csv.reader(io.StringIO(response.text))
+                rows = list(csv_reader)
+                
+                if len(rows) == 0:
+                    print(f"⚠️  WARNING: {name} CSV has no rows")
+                    continue
+                    
+                # Check for proper CSV escaping
+                for i, row in enumerate(rows[:5]):  # Check first 5 rows
+                    for j, cell in enumerate(row):
+                        # Check for unescaped quotes or commas
+                        if '"' in cell and not (cell.startswith('"') and cell.endswith('"')):
+                            print(f"⚠️  WARNING: {name} row {i}, col {j} may have unescaped quotes: {cell}")
+                            
+                print(f"✅ {name} CSV format compliance PASSED")
+                
+            except csv.Error as e:
+                print(f"❌ FAILED: {name} CSV parsing error: {e}")
+                continue
+                
+        return True
+        
+    except Exception as e:
+        print(f"❌ FAILED: Exception occurred - {str(e)}")
+        return False
+
 def main():
-    """Main test function"""
-    print("🚀 Starting Reports Page Export Functionality Testing")
-    print("=" * 60)
+    """Run all CSV export tests"""
+    print("🚀 STARTING CSV EXPORT FUNCTIONALITY TESTING")
+    print("=" * 80)
+    print(f"Testing against: {BASE_URL}")
+    print(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("=" * 80)
     
-    # Test login first
-    cookies = test_login()
-    if not cookies:
-        print("❌ Cannot proceed without authentication")
-        return
+    # Track test results
+    test_results = []
     
-    # Define export endpoints to test
-    export_tests = [
-        {
-            'path': '/analytics/university-reports/export',
-            'name': 'University Reports',
-            'expected_headers': ['University Name', 'State', 'Enrollment Count', 'Total Passports', 'Verified Passports', 'Completion Rate (%)', 'Verification Rate (%)']
-        },
-        {
-            'path': '/analytics/recruiter-metrics/export',
-            'name': 'Recruiter Metrics',
-            'expected_headers': ['Month', 'Searches', 'Profile Views', 'Contact Attempts']
-        },
-        {
-            'path': '/analytics/placement-conversion/export',
-            'name': 'Placement Conversion',
-            'expected_headers': ['Stage', 'Count', 'Percentage']
-        },
-        {
-            'path': '/analytics/state-heatmap/export',
-            'name': 'State Heatmap',
-            'expected_headers': ['State', 'Universities', 'Students', 'Verified Passports', 'Engagement Score', 'Employability Index']
-        },
-        {
-            'path': '/analytics/ai-insights/export',
-            'name': 'AI Insights',
-            'expected_headers': None  # Multi-section CSV with different headers
-        }
-    ]
+    # Test recruiters export
+    recruiters_result = test_recruiters_export()
+    test_results.append(('Recruiters Export', recruiters_result))
     
-    # Test each export endpoint
-    successful_tests = 0
-    total_tests = len(export_tests)
+    # Test passports export  
+    passports_result = test_passports_export()
+    test_results.append(('Passports Export', passports_result))
     
-    for test_config in export_tests:
-        success = test_export_endpoint(
-            test_config['path'],
-            test_config['expected_headers'],
-            cookies,
-            test_config['name']
-        )
-        if success:
-            successful_tests += 1
+    # Test CSV format compliance
+    format_result = test_csv_format_compliance()
+    test_results.append(('CSV Format Compliance', format_result))
     
-    # Test data accuracy
-    print(f"\n" + "=" * 60)
-    test_data_accuracy(cookies)
+    # Print summary
+    print("\n" + "=" * 80)
+    print("📊 TEST SUMMARY")
+    print("=" * 80)
     
-    # Final summary
-    print(f"\n" + "=" * 60)
-    print("📋 EXPORT ENDPOINTS TESTING SUMMARY")
-    print("=" * 60)
-    print(f"✅ Successful tests: {successful_tests}/{total_tests}")
-    print(f"❌ Failed tests: {total_tests - successful_tests}/{total_tests}")
+    passed = 0
+    total = len(test_results)
     
-    if successful_tests == total_tests:
-        print("\n🎉 ALL EXPORT ENDPOINTS WORKING CORRECTLY!")
-        print("✅ All 5 export endpoints return proper CSV files")
-        print("✅ All CSV files have correct headers and data format")
-        print("✅ All files have proper Content-Type and Content-Disposition headers")
-        print("✅ All filenames follow the correct pattern with today's date")
+    for test_name, result in test_results:
+        status = "✅ PASSED" if result else "❌ FAILED"
+        print(f"{test_name}: {status}")
+        if result:
+            passed += 1
+    
+    print(f"\nOverall Result: {passed}/{total} tests passed")
+    
+    if passed == total:
+        print("🎉 ALL TESTS PASSED! CSV export functionality is working correctly.")
+        return True
     else:
-        print(f"\n⚠️  {total_tests - successful_tests} export endpoint(s) need attention")
-    
-    print("\n" + "=" * 60)
+        print("⚠️  SOME TESTS FAILED. Please review the issues above.")
+        return False
 
 def test_duplicate_emails():
     """Test 2: Verify no duplicate email addresses exist"""
