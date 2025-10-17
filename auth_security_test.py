@@ -11,7 +11,7 @@ import sys
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://auditpro-9.preview.emergentagent.com"
+BASE_URL = "https://smart-search-14.preview.emergentagent.com"
 API_BASE = f"{BASE_URL}/api"
 
 # Test credentials

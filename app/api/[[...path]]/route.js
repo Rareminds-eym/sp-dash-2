@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../../../lib/supabase';
+import { filterAndRankResults, generateSearchPatterns, fuzzyMatch } from '../../../lib/search-utils';
 
 export const runtime = 'edge';
 
@@ -190,20 +191,13 @@ export async function GET(request) {
         }
       }
       
-      // Apply client-side search filter (for name in metadata)
+      // Apply industrial-grade search with fuzzy matching and relevance ranking
       if (search) {
-        const searchLower = search.toLowerCase()
-        filteredUsers = filteredUsers.filter(user => {
-          const email = user.email || ''
-          const role = user.role || ''
-          const name = user.metadata?.name || ''
-          const orgName = user.organizations?.name || ''
-          
-          return email.toLowerCase().includes(searchLower) ||
-                 role.toLowerCase().includes(searchLower) ||
-                 name.toLowerCase().includes(searchLower) ||
-                 orgName.toLowerCase().includes(searchLower)
-        })
+        // Define search fields with proper paths
+        const searchFields = ['email', 'role', 'metadata.name', 'organizations.name'];
+        
+        // Use advanced search with 0.7 threshold (flexible matching - up to 30% difference)
+        filteredUsers = filterAndRankResults(filteredUsers, searchFields, search, 0.7);
       }
       
       // Return paginated response
@@ -299,7 +293,8 @@ export async function GET(request) {
         query = query.eq('state', stateFilter)
       }
       if (searchTerm) {
-        query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`)
+        // PostgreSQL ILIKE for partial matching at database level
+        query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,state.ilike.%${searchTerm}%,website.ilike.%${searchTerm}%`)
       }
       
       // Apply sorting
@@ -342,12 +337,19 @@ export async function GET(request) {
         phone: recruiter.phone,
         website: recruiter.website,
         address: recruiter.address,
+        district: recruiter.district,
         verificationStatus: recruiter.verificationstatus || 'approved',
         isActive: recruiter.isactive !== undefined ? recruiter.isactive : true,
         createdAt: recruiter.createdat,
         updatedAt: recruiter.updatedat,
         userCount: userCountMap[recruiter.id] || 0
       }))
+      
+      // Apply industrial-grade fuzzy search and relevance ranking (client-side for accuracy)
+      if (searchTerm) {
+        const searchFields = ['name', 'email', 'phone', 'district', 'website', 'state'];
+        mappedRecruiters = filterAndRankResults(mappedRecruiters, searchFields, searchTerm, 0.7);
+      }
       
       // Sort by user count if requested (can't do this in SQL easily with join)
       if (sortBy === 'userCount') {
@@ -436,17 +438,25 @@ export async function GET(request) {
       
       let query = supabase.from('recruiters').select('*')
       
-      if (statusFilter) {
+      // Apply status filter (check for 'all' as well)
+      if (statusFilter && statusFilter !== 'all') {
         query = query.eq('verificationstatus', statusFilter)
       }
-      if (activeFilter !== null && activeFilter !== '') {
+      
+      // Apply active/suspended filter (check for 'all' as well)
+      if (activeFilter && activeFilter !== 'all' && activeFilter !== '') {
         query = query.eq('isactive', activeFilter === 'true')
       }
-      if (stateFilter) {
+      
+      // Apply state filter (check for 'all' as well)
+      if (stateFilter && stateFilter !== 'all') {
         query = query.eq('state', stateFilter)
       }
+      
+      // Apply search filter
       if (searchTerm) {
-        query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`)
+        // PostgreSQL ILIKE for partial matching at database level
+        query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,state.ilike.%${searchTerm}%,website.ilike.%${searchTerm}%`)
       }
       
       query = query.order('createdat', { ascending: false })
@@ -457,11 +467,29 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Failed to export recruiters' }, { status: 500 })
       }
       
+      // Apply industrial-grade fuzzy search and relevance ranking for more accurate results
+      let filteredRecruiters = recruiters || [];
+      if (searchTerm) {
+        // Map to include all fields for search
+        const mappedRecruiters = filteredRecruiters.map(r => ({
+          ...r,
+          name: r.name,
+          email: r.email,
+          phone: r.phone,
+          district: r.district,
+          website: r.website,
+          state: r.state
+        }));
+        
+        const searchFields = ['name', 'email', 'phone', 'district', 'website', 'state'];
+        filteredRecruiters = filterAndRankResults(mappedRecruiters, searchFields, searchTerm, 0.7);
+      }
+      
       // Create CSV content
       const headers = ['Name', 'Email', 'Phone', 'State', 'District', 'Website', 'Status', 'Active', 'Created Date']
       const csvRows = [headers.join(',')]
       
-      recruiters?.forEach(r => {
+      filteredRecruiters?.forEach(r => {
         const row = [
           `"${r.name || ''}"`,
           `"${r.email || ''}"`,
@@ -518,7 +546,35 @@ export async function GET(request) {
       const searchTerm = url.searchParams.get('search')
       const universityFilter = url.searchParams.get('university')
       
+      // STEP 1: If we have university filter, first get all student IDs from that university
+      let studentIdsFromUniversity = null
+      if (universityFilter && universityFilter !== 'all') {
+        const { data: studentsFromUniv } = await supabase
+          .from('students')
+          .select('id')
+          .or(`universityId.eq.${universityFilter},organizationId.eq.${universityFilter}`)
+        
+        studentIdsFromUniversity = studentsFromUniv?.map(s => s.id) || []
+        
+        // If university filter is applied but no students found, return empty CSV
+        if (studentIdsFromUniversity.length === 0) {
+          const csvContent = 'Student Name,Email,University,Status,NSQF Level,Skills,Created Date,Updated Date'
+          return new Response(csvContent, {
+            headers: {
+              'Content-Type': 'text/csv',
+              'Content-Disposition': `attachment; filename="passports-${new Date().toISOString().split('T')[0]}.csv"`
+            }
+          })
+        }
+      }
+      
+      // STEP 2: Build passport query with filters
       let query = supabase.from('skill_passports').select('*')
+      
+      // Apply university filter by studentId if available
+      if (studentIdsFromUniversity) {
+        query = query.in('studentId', studentIdsFromUniversity)
+      }
       
       if (statusFilter && statusFilter !== 'all') {
         query = query.eq('status', statusFilter)
@@ -638,30 +694,25 @@ export async function GET(request) {
         }
       }
       
-      // Apply client-side filters
-      if (searchTerm || universityFilter) {
+      // Apply industrial-grade fuzzy search (client-side since it requires student data)
+      if (searchTerm) {
         enrichedPassports = enrichedPassports.filter(passport => {
-          let matchesSearch = true
-          let matchesUniversity = true
+          const studentName = passport.students?.profile?.name || '';
+          const studentEmail = passport.students?.email || passport.students?.users?.email || '';
+          const passportId = passport.id || '';
+          const universityName = passport.students?.university?.name || '';
+          const skills = Array.isArray(passport.skills) ? passport.skills.join(' ') : (passport.skills || '');
           
-          if (searchTerm) {
-            const searchLower = searchTerm.toLowerCase()
-            const studentName = passport.students?.profile?.name || ''
-            const studentEmail = passport.students?.email || passport.students?.users?.email || ''
-            const passportId = passport.id || ''
-            
-            matchesSearch = studentName.toLowerCase().includes(searchLower) ||
-                           studentEmail.toLowerCase().includes(searchLower) ||
-                           passportId.toLowerCase().includes(searchLower)
-          }
-          
-          if (universityFilter && universityFilter !== 'all') {
-            const univId = passport.students?.universityId || passport.students?.organizationId
-            matchesUniversity = univId === universityFilter
-          }
-          
-          return matchesSearch && matchesUniversity
-        })
+          return fuzzyMatch(studentName, searchTerm, 0.7) ||
+                 fuzzyMatch(studentEmail, searchTerm, 0.7) ||
+                 fuzzyMatch(passportId, searchTerm, 0.7) ||
+                 fuzzyMatch(universityName, searchTerm, 0.7) ||
+                 fuzzyMatch(skills, searchTerm, 0.7);
+        });
+        
+        // Apply relevance ranking
+        const searchFields = ['students.profile.name', 'students.email', 'students.users.email', 'id', 'students.university.name', 'skills'];
+        enrichedPassports = filterAndRankResults(enrichedPassports, searchFields, searchTerm, 0.7);
       }
       
       // Create CSV content
@@ -922,30 +973,40 @@ export async function GET(request) {
         }
       }
       
-      // Apply client-side search filter (for student name/email) and university filter
+      // Apply industrial-grade fuzzy search and relevance ranking with university filter
       if (search || universityFilter) {
         filteredPassports = filteredPassports.filter(passport => {
-          let matchesSearch = true
-          let matchesUniversity = true
+          let matchesSearch = true;
+          let matchesUniversity = true;
           
           if (search) {
-            const searchLower = search.toLowerCase()
-            const studentName = passport.students?.profile?.name || ''
-            const studentEmail = passport.students?.email || passport.students?.users?.email || ''
-            const passportId = passport.id || ''
+            // Use fuzzy matching with flexible threshold for typo tolerance
+            const studentName = passport.students?.profile?.name || '';
+            const studentEmail = passport.students?.email || passport.students?.users?.email || '';
+            const passportId = passport.id || '';
+            const universityName = passport.students?.university?.name || '';
+            const skills = Array.isArray(passport.skills) ? passport.skills.join(' ') : (passport.skills || '');
             
-            matchesSearch = studentName.toLowerCase().includes(searchLower) ||
-                           studentEmail.toLowerCase().includes(searchLower) ||
-                           passportId.toLowerCase().includes(searchLower)
+            matchesSearch = fuzzyMatch(studentName, search, 0.7) ||
+                           fuzzyMatch(studentEmail, search, 0.7) ||
+                           fuzzyMatch(passportId, search, 0.7) ||
+                           fuzzyMatch(universityName, search, 0.7) ||
+                           fuzzyMatch(skills, search, 0.7);
           }
           
           if (universityFilter && universityFilter !== 'all') {
-            const univId = passport.students?.universityId || passport.students?.organizationId
-            matchesUniversity = univId === universityFilter
+            const univId = passport.students?.universityId || passport.students?.organizationId;
+            matchesUniversity = univId === universityFilter;
           }
           
-          return matchesSearch && matchesUniversity
-        })
+          return matchesSearch && matchesUniversity;
+        });
+        
+        // Apply relevance ranking if search term exists
+        if (search) {
+          const searchFields = ['students.profile.name', 'students.email', 'students.users.email', 'id', 'students.university.name', 'skills'];
+          filteredPassports = filterAndRankResults(filteredPassports, searchFields, search, 0.7);
+        }
       }
       
       // Apply client-side sorting for student name
@@ -1053,6 +1114,7 @@ export async function GET(request) {
       }
       
       if (search) {
+        // PostgreSQL ILIKE with extended fields for comprehensive search
         query = query.or(`target.ilike.%${search}%,action.ilike.%${search}%,ip.ilike.%${search}%`)
       }
       
@@ -1070,8 +1132,9 @@ export async function GET(request) {
       }
       
       // Fetch all user emails in bulk
-      if (logs && logs.length > 0) {
-        const userIds = logs.map(l => l.actorId).filter(Boolean)
+      let enrichedLogs = logs || [];
+      if (enrichedLogs.length > 0) {
+        const userIds = enrichedLogs.map(l => l.actorId).filter(Boolean)
         
         if (userIds.length > 0) {
           const { data: users } = await supabase
@@ -1088,7 +1151,7 @@ export async function GET(request) {
             }
           })
           
-          logs.forEach(log => {
+          enrichedLogs.forEach(log => {
             if (log.actorId && userMap[log.actorId]) {
               log.users = userMap[log.actorId]
             }
@@ -1096,8 +1159,14 @@ export async function GET(request) {
         }
       }
       
+      // Apply industrial-grade fuzzy search and relevance ranking (client-side for accuracy)
+      if (search) {
+        const searchFields = ['target', 'action', 'ip', 'users.email', 'users.name'];
+        enrichedLogs = filterAndRankResults(enrichedLogs, searchFields, search, 0.7);
+      }
+      
       return NextResponse.json({
-        logs: logs || [],
+        logs: enrichedLogs,
         pagination: {
           page,
           limit,
@@ -1140,8 +1209,9 @@ export async function GET(request) {
       }
       
       // Fetch user emails
-      if (logs && logs.length > 0) {
-        const userIds = [...new Set(logs.map(l => l.actorId).filter(Boolean))]
+      let enrichedLogs = logs || [];
+      if (enrichedLogs.length > 0) {
+        const userIds = [...new Set(enrichedLogs.map(l => l.actorId).filter(Boolean))]
         
         if (userIds.length > 0) {
           const { data: users } = await supabase
@@ -1157,7 +1227,7 @@ export async function GET(request) {
             }
           })
           
-          logs.forEach(log => {
+          enrichedLogs.forEach(log => {
             if (log.actorId && userMap[log.actorId]) {
               log.users = userMap[log.actorId]
             }
@@ -1165,9 +1235,15 @@ export async function GET(request) {
         }
       }
       
+      // Apply industrial-grade fuzzy search and relevance ranking for export
+      if (search) {
+        const searchFields = ['target', 'action', 'ip', 'users.email', 'users.name'];
+        enrichedLogs = filterAndRankResults(enrichedLogs, searchFields, search, 0.7);
+      }
+      
       // Generate CSV
       const csvHeaders = ['Timestamp', 'User', 'Email', 'Action', 'Target', 'IP Address', 'Details']
-      const csvRows = logs.map(log => [
+      const csvRows = enrichedLogs.map(log => [
         new Date(log.createdAt).toLocaleString(),
         log.users?.name || 'System',
         log.users?.email || 'N/A',
@@ -1599,6 +1675,9 @@ export async function GET(request) {
 
     // GET /api/analytics/university-reports/export - Export university reports to CSV
     if (path === '/analytics/university-reports/export') {
+      const url = new URL(request.url)
+      const stateFilter = url.searchParams.get('state')
+      
       // Mapping from old organization IDs to new university IDs
       const univIdMapping = {
         'f1ed42b6-ffe7-4108-90bb-6776b6504f7b': '5ca5589e-b49d-4027-baf7-7e2a88ae612a',
@@ -1613,8 +1692,13 @@ export async function GET(request) {
         '2877f238-ec9f-49af-8bb5-6efd30bc3654': '299ac0e3-f50f-41bc-965c-7274cfa9af25'
       }
 
+      let universityQuery = supabase.from('universities').select('id, name, state')
+      if (stateFilter) {
+        universityQuery = universityQuery.eq('state', stateFilter)
+      }
+      
       const [universitiesResult, studentsResult, passportsResult] = await Promise.all([
-        supabase.from('universities').select('id, name, state'),
+        universityQuery,
         supabase.from('students').select('id, universityId'),
         supabase.from('skill_passports').select('studentId, status')
       ])
@@ -1822,6 +1906,9 @@ export async function GET(request) {
 
     // GET /api/analytics/state-heatmap/export - Export state heatmap data to CSV
     if (path === '/analytics/state-heatmap/export') {
+      const url = new URL(request.url)
+      const stateFilter = url.searchParams.get('state')
+      
       const univIdMapping = {
         'f1ed42b6-ffe7-4108-90bb-6776b6504f7b': '5ca5589e-b49d-4027-baf7-7e2a88ae612a',
         '609f59c9-6894-499b-8479-e826c219e0df': '632a5084-eeae-4f2e-b4bc-32593f2dcc00',
@@ -1835,9 +1922,17 @@ export async function GET(request) {
         '2877f238-ec9f-49af-8bb5-6efd30bc3654': '299ac0e3-f50f-41bc-965c-7274cfa9af25'
       }
 
+      let universityQuery = supabase.from('universities').select('id, state')
+      let recruiterQuery = supabase.from('recruiters').select('id, state')
+      
+      if (stateFilter) {
+        universityQuery = universityQuery.eq('state', stateFilter)
+        recruiterQuery = recruiterQuery.eq('state', stateFilter)
+      }
+      
       const [universitiesResult, recruitersResult, studentsResult, passportsResult] = await Promise.all([
-        supabase.from('universities').select('id, state'),
-        supabase.from('recruiters').select('id, state'),
+        universityQuery,
+        recruiterQuery,
         supabase.from('students').select('id, universityId'),
         supabase.from('skill_passports').select('studentId, status')
       ])

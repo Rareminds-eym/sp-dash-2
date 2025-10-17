@@ -1,348 +1,379 @@
 #!/usr/bin/env python3
+"""
+Backend Test Script for Export Filter Functionality
+Testing both Recruiter Management and Skill Passport export filters
+"""
 
 import requests
 import json
-import sys
-from datetime import datetime, timedelta
 import csv
 import io
+from datetime import datetime
 
 # Configuration
-BASE_URL = "https://auditpro-9.preview.emergentagent.com/api"
+BASE_URL = "https://smart-search-14.preview.emergentagent.com"
+API_BASE = f"{BASE_URL}/api"
 
-def test_audit_logs_endpoints():
-    """
-    Comprehensive testing of audit logs endpoints as requested:
-    1. GET /api/audit-logs (Enhanced with pagination & filters)
-    2. GET /api/audit-logs/export
-    3. GET /api/audit-logs/actions
-    4. GET /api/audit-logs/users
-    """
-    
-    print("🔍 COMPREHENSIVE AUDIT LOGS OPTIMIZATION TESTING")
-    print("=" * 60)
-    
-    results = {
-        'total_tests': 0,
-        'passed': 0,
-        'failed': 0,
-        'test_details': []
-    }
-    
-    # Test 1: GET /api/audit-logs - Basic functionality
-    print("\n📋 TEST 1: GET /api/audit-logs - Basic Pagination")
-    try:
-        response = requests.get(f"{BASE_URL}/audit-logs")
-        results['total_tests'] += 1
+# Authentication credentials
+LOGIN_CREDENTIALS = {
+    "email": "superadmin@rareminds.in",
+    "password": "password123"
+}
+
+class ExportFilterTester:
+    def __init__(self):
+        self.session = requests.Session()
+        self.auth_token = None
+        self.test_results = []
         
-        if response.status_code == 200:
-            data = response.json()
-            
-            # Verify response structure
-            required_fields = ['logs', 'pagination']
-            if all(field in data for field in required_fields):
-                pagination = data['pagination']
-                logs = data['logs']
-                
-                print(f"✅ Basic endpoint working")
-                print(f"   - Status: {response.status_code}")
-                print(f"   - Total logs: {pagination.get('total', 0)}")
-                print(f"   - Current page: {pagination.get('page', 1)}")
-                print(f"   - Limit: {pagination.get('limit', 20)}")
-                print(f"   - Total pages: {pagination.get('totalPages', 0)}")
-                print(f"   - Logs returned: {len(logs)}")
-                
-                # Check if logs have user information
-                if logs and len(logs) > 0:
-                    sample_log = logs[0]
-                    print(f"   - Sample log fields: {list(sample_log.keys())}")
-                    if 'users' in sample_log and sample_log['users']:
-                        print(f"   - User info populated: {sample_log['users']}")
-                
-                results['passed'] += 1
-                results['test_details'].append({
-                    'test': 'GET /api/audit-logs - Basic',
-                    'status': 'PASS',
-                    'details': f"Returned {len(logs)} logs with proper pagination"
-                })
-            else:
-                print(f"❌ Missing required fields in response")
-                results['failed'] += 1
-                results['test_details'].append({
-                    'test': 'GET /api/audit-logs - Basic',
-                    'status': 'FAIL',
-                    'details': 'Missing required response fields'
-                })
-        else:
-            print(f"❌ Request failed with status: {response.status_code}")
-            results['failed'] += 1
-            results['test_details'].append({
-                'test': 'GET /api/audit-logs - Basic',
-                'status': 'FAIL',
-                'details': f'HTTP {response.status_code}'
-            })
-            
-    except Exception as e:
-        print(f"❌ Exception: {str(e)}")
-        results['failed'] += 1
-        results['test_details'].append({
-            'test': 'GET /api/audit-logs - Basic',
-            'status': 'FAIL',
-            'details': f'Exception: {str(e)}'
-        })
-
-    
-    # Test 2: Pagination with different page sizes
-    print("\n📋 TEST 2: GET /api/audit-logs - Pagination Variations")
-    page_sizes = [10, 50, 100]
-    
-    for limit in page_sizes:
+    def authenticate(self):
+        """Authenticate with the API"""
+        print("🔐 Authenticating...")
         try:
-            response = requests.get(f"{BASE_URL}/audit-logs?page=1&limit={limit}")
-            results['total_tests'] += 1
-            
+            response = self.session.post(f"{API_BASE}/auth/login", json=LOGIN_CREDENTIALS)
             if response.status_code == 200:
                 data = response.json()
-                pagination = data['pagination']
-                logs = data['logs']
-                
-                print(f"✅ Pagination limit={limit}")
-                print(f"   - Returned logs: {len(logs)}")
-                print(f"   - Expected limit: {limit}")
-                print(f"   - Actual limit in response: {pagination.get('limit')}")
-                
-                results['passed'] += 1
-                results['test_details'].append({
-                    'test': f'GET /api/audit-logs - Pagination limit={limit}',
-                    'status': 'PASS',
-                    'details': f"Returned {len(logs)} logs"
-                })
+                print(f"✅ Authentication successful: {data.get('user', {}).get('email', 'Unknown')}")
+                return True
             else:
-                print(f"❌ Pagination test failed for limit={limit}: {response.status_code}")
-                results['failed'] += 1
-                results['test_details'].append({
-                    'test': f'GET /api/audit-logs - Pagination limit={limit}',
-                    'status': 'FAIL',
-                    'details': f'HTTP {response.status_code}'
-                })
-                
+                print(f"❌ Authentication failed: {response.status_code} - {response.text}")
+                return False
         except Exception as e:
-            print(f"❌ Exception for limit={limit}: {str(e)}")
-            results['failed'] += 1
-            results['test_details'].append({
-                'test': f'GET /api/audit-logs - Pagination limit={limit}',
-                'status': 'FAIL',
-                'details': f'Exception: {str(e)}'
-            })
+            print(f"❌ Authentication error: {str(e)}")
+            return False
     
-    # Test 3: GET /api/audit-logs/actions - Unique action types
-    print("\n📋 TEST 3: GET /api/audit-logs/actions - Unique Action Types")
-    try:
-        response = requests.get(f"{BASE_URL}/audit-logs/actions")
-        results['total_tests'] += 1
-        
-        if response.status_code == 200:
-            actions = response.json()
+    def count_csv_rows(self, csv_content):
+        """Count rows in CSV content (excluding header)"""
+        try:
+            reader = csv.reader(io.StringIO(csv_content))
+            rows = list(reader)
+            return len(rows) - 1 if len(rows) > 0 else 0  # Subtract header row
+        except Exception as e:
+            print(f"❌ Error counting CSV rows: {str(e)}")
+            return -1
+    
+    def test_api_endpoint(self, endpoint, params=None):
+        """Test regular API endpoint and return count"""
+        try:
+            # Add high limit to get all records for comparison
+            if params is None:
+                params = {}
+            params['limit'] = 1000  # High limit to get all records
             
-            print(f"✅ Actions endpoint working")
-            print(f"   - Status: {response.status_code}")
-            print(f"   - Actions returned: {len(actions)}")
-            print(f"   - Action types: {actions}")
-            
-            # Verify it's an array of strings
-            if isinstance(actions, list):
-                print(f"   - Response is array: ✅")
-                if actions:
-                    print(f"   - Actions are sorted: {'✅' if actions == sorted(actions) else '❌'}")
-                
-                results['passed'] += 1
-                results['test_details'].append({
-                    'test': 'GET /api/audit-logs/actions',
-                    'status': 'PASS',
-                    'details': f"Returned {len(actions)} unique actions"
-                })
+            response = self.session.get(f"{API_BASE}{endpoint}", params=params)
+            if response.status_code == 200:
+                data = response.json()
+                if isinstance(data, dict) and 'data' in data:
+                    return len(data['data'])
+                elif isinstance(data, list):
+                    return len(data)
+                else:
+                    return 0
             else:
-                print(f"❌ Response is not an array")
-                results['failed'] += 1
-                results['test_details'].append({
-                    'test': 'GET /api/audit-logs/actions',
-                    'status': 'FAIL',
-                    'details': 'Response is not an array'
-                })
-        else:
-            print(f"❌ Request failed with status: {response.status_code}")
-            results['failed'] += 1
-            results['test_details'].append({
-                'test': 'GET /api/audit-logs/actions',
-                'status': 'FAIL',
-                'details': f'HTTP {response.status_code}'
-            })
-            
-    except Exception as e:
-        print(f"❌ Exception: {str(e)}")
-        results['failed'] += 1
-        results['test_details'].append({
-            'test': 'GET /api/audit-logs/actions',
-            'status': 'FAIL',
-            'details': f'Exception: {str(e)}'
-        })
-
+                print(f"❌ API endpoint failed: {response.status_code} - {response.text}")
+                return -1
+        except Exception as e:
+            print(f"❌ API endpoint error: {str(e)}")
+            return -1
     
-    # Test 4: GET /api/audit-logs/users - Users who performed actions
-    print("\n📋 TEST 4: GET /api/audit-logs/users - Users with Actions")
-    try:
-        response = requests.get(f"{BASE_URL}/audit-logs/users")
-        results['total_tests'] += 1
-        
-        if response.status_code == 200:
-            users = response.json()
-            
-            print(f"✅ Users endpoint working")
-            print(f"   - Status: {response.status_code}")
-            print(f"   - Users returned: {len(users)}")
-            
-            # Verify structure
-            if isinstance(users, list):
-                print(f"   - Response is array: ✅")
-                if users:
-                    sample_user = users[0]
-                    required_user_fields = ['id', 'email', 'name']
-                    if all(field in sample_user for field in required_user_fields):
-                        print(f"   - User structure correct: ✅")
-                        print(f"   - Sample user: {sample_user}")
-                        
-                        # Check for duplicates
-                        user_ids = [u['id'] for u in users]
-                        unique_ids = set(user_ids)
-                        print(f"   - No duplicate users: {'✅' if len(user_ids) == len(unique_ids) else '❌'}")
-                    else:
-                        print(f"   - Missing required user fields: {required_user_fields}")
-                
-                results['passed'] += 1
-                results['test_details'].append({
-                    'test': 'GET /api/audit-logs/users',
-                    'status': 'PASS',
-                    'details': f"Returned {len(users)} unique users"
-                })
+    def test_export_endpoint(self, endpoint, params=None):
+        """Test export endpoint and return CSV row count"""
+        try:
+            response = self.session.get(f"{API_BASE}{endpoint}", params=params)
+            if response.status_code == 200:
+                if response.headers.get('content-type') == 'text/csv':
+                    return self.count_csv_rows(response.text)
+                else:
+                    print(f"❌ Export endpoint returned non-CSV content: {response.headers.get('content-type')}")
+                    return -1
             else:
-                print(f"❌ Response is not an array")
-                results['failed'] += 1
-                results['test_details'].append({
-                    'test': 'GET /api/audit-logs/users',
-                    'status': 'FAIL',
-                    'details': 'Response is not an array'
-                })
-        else:
-            print(f"❌ Request failed with status: {response.status_code}")
-            results['failed'] += 1
-            results['test_details'].append({
-                'test': 'GET /api/audit-logs/users',
-                'status': 'FAIL',
-                'details': f'HTTP {response.status_code}'
-            })
-            
-    except Exception as e:
-        print(f"❌ Exception: {str(e)}")
-        results['failed'] += 1
-        results['test_details'].append({
-            'test': 'GET /api/audit-logs/users',
-            'status': 'FAIL',
-            'details': f'Exception: {str(e)}'
-        })
+                print(f"❌ Export endpoint failed: {response.status_code} - {response.text}")
+                return -1
+        except Exception as e:
+            print(f"❌ Export endpoint error: {str(e)}")
+            return -1
     
-    # Test 5: CSV Export
-    print("\n📋 TEST 5: GET /api/audit-logs/export - CSV Export")
-    try:
-        response = requests.get(f"{BASE_URL}/audit-logs/export")
-        results['total_tests'] += 1
+    def run_test_case(self, test_name, api_endpoint, export_endpoint, params=None):
+        """Run a single test case comparing API and export counts"""
+        print(f"\n📋 Testing: {test_name}")
+        print(f"   Filters: {params if params else 'None'}")
         
-        if response.status_code == 200:
-            # Check Content-Type
-            content_type = response.headers.get('Content-Type', '')
-            content_disposition = response.headers.get('Content-Disposition', '')
-            
-            print(f"✅ CSV export working")
-            print(f"   - Status: {response.status_code}")
-            print(f"   - Content-Type: {content_type}")
-            print(f"   - Content-Disposition: {content_disposition}")
-            
-            # Verify CSV format
-            csv_content = response.text
-            lines = csv_content.split('\n')
-            
-            if lines:
-                headers = lines[0]
-                expected_headers = ['Timestamp', 'User', 'Email', 'Action', 'Target', 'IP Address', 'Details']
-                
-                print(f"   - CSV headers: {headers}")
-                print(f"   - Total lines: {len(lines)}")
-                
-                # Check if headers match expected
-                header_check = all(header in headers for header in expected_headers)
-                print(f"   - Headers correct: {'✅' if header_check else '❌'}")
-                
-                # Check filename format
-                filename_check = 'audit-logs-' in content_disposition and '.csv' in content_disposition
-                print(f"   - Filename format correct: {'✅' if filename_check else '❌'}")
-            
-            results['passed'] += 1
-            results['test_details'].append({
-                'test': 'GET /api/audit-logs/export - Basic CSV',
-                'status': 'PASS',
-                'details': f"CSV export with {len(lines)} lines"
-            })
+        # Test regular API endpoint
+        api_count = self.test_api_endpoint(api_endpoint, params)
+        print(f"   API Count: {api_count}")
+        
+        # Test export endpoint
+        export_count = self.test_export_endpoint(export_endpoint, params)
+        print(f"   Export Count: {export_count}")
+        
+        # Compare results
+        if api_count == -1 or export_count == -1:
+            result = "❌ FAILED - Endpoint Error"
+            success = False
+        elif api_count == export_count:
+            result = "✅ PASSED - Counts Match"
+            success = True
         else:
-            print(f"❌ CSV export failed: {response.status_code}")
-            results['failed'] += 1
-            results['test_details'].append({
-                'test': 'GET /api/audit-logs/export - Basic CSV',
-                'status': 'FAIL',
-                'details': f'HTTP {response.status_code}'
-            })
-            
-    except Exception as e:
-        print(f"❌ Exception in CSV export: {str(e)}")
-        results['failed'] += 1
-        results['test_details'].append({
-            'test': 'GET /api/audit-logs/export - Basic CSV',
-            'status': 'FAIL',
-            'details': f'Exception: {str(e)}'
+            result = f"❌ FAILED - Count Mismatch (API: {api_count}, Export: {export_count})"
+            success = False
+        
+        print(f"   Result: {result}")
+        
+        self.test_results.append({
+            'test_name': test_name,
+            'api_count': api_count,
+            'export_count': export_count,
+            'success': success,
+            'result': result,
+            'params': params
         })
+        
+        return success
     
-    # Final Results Summary
-    print("\n" + "=" * 60)
-    print("🏁 AUDIT LOGS TESTING SUMMARY")
-    print("=" * 60)
+    def test_recruiters_export_filters(self):
+        """Test all recruiter export filter scenarios"""
+        print("\n" + "="*60)
+        print("🏢 TESTING RECRUITERS EXPORT FILTERS")
+        print("="*60)
+        
+        test_cases = [
+            {
+                'name': 'Status Filter - Pending',
+                'params': {'status': 'pending'}
+            },
+            {
+                'name': 'Active Filter - True',
+                'params': {'active': 'true'}
+            },
+            {
+                'name': 'State Filter - Tamil Nadu',
+                'params': {'state': 'Tamil Nadu'}
+            },
+            {
+                'name': 'Search Filter - tech',
+                'params': {'search': 'tech'}
+            },
+            {
+                'name': 'Combined Filters - approved+active+solutions',
+                'params': {'status': 'approved', 'active': 'true', 'search': 'solutions'}
+            }
+        ]
+        
+        passed = 0
+        total = len(test_cases)
+        
+        for test_case in test_cases:
+            success = self.run_test_case(
+                test_case['name'],
+                '/recruiters',
+                '/recruiters/export',
+                test_case['params']
+            )
+            if success:
+                passed += 1
+        
+        print(f"\n📊 Recruiters Export Tests: {passed}/{total} passed")
+        return passed, total
     
-    print(f"📊 Total Tests: {results['total_tests']}")
-    print(f"✅ Passed: {results['passed']}")
-    print(f"❌ Failed: {results['failed']}")
-    print(f"📈 Success Rate: {(results['passed']/results['total_tests']*100):.1f}%")
+    def get_university_id(self):
+        """Get a university ID for testing"""
+        try:
+            response = self.session.get(f"{API_BASE}/passports/universities")
+            if response.status_code == 200:
+                universities = response.json()
+                if universities and len(universities) > 0:
+                    return universities[0]['id']
+            return None
+        except:
+            return None
     
-    print(f"\n📋 DETAILED TEST RESULTS:")
-    for test in results['test_details']:
-        status_emoji = "✅" if test['status'] == 'PASS' else "❌"
-        print(f"{status_emoji} {test['test']}: {test['details']}")
+    def get_student_email(self):
+        """Get a student email for search testing"""
+        try:
+            # Get a larger sample to find a student with email
+            response = self.session.get(f"{API_BASE}/passports", params={'limit': 50})
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('data') and len(data['data']) > 0:
+                    for passport in data['data']:
+                        student_email = (passport.get('students', {}).get('email') or 
+                                       passport.get('students', {}).get('users', {}).get('email'))
+                        if student_email:
+                            # Test if this email actually works in the regular API
+                            test_response = self.session.get(f"{API_BASE}/passports", 
+                                                           params={'search': student_email, 'limit': 1000})
+                            if test_response.status_code == 200:
+                                test_data = test_response.json()
+                                if test_data.get('data') and len(test_data['data']) > 0:
+                                    return student_email
+            return None
+        except:
+            return None
     
-    # Determine overall result
-    if results['failed'] == 0:
-        print(f"\n🎉 ALL AUDIT LOGS ENDPOINTS WORKING PERFECTLY!")
-        return True
-    else:
-        print(f"\n⚠️  SOME ISSUES FOUND - {results['failed']} tests failed")
-        return False
+    def test_passports_export_filters(self):
+        """Test all passport export filter scenarios"""
+        print("\n" + "="*60)
+        print("🎓 TESTING PASSPORTS EXPORT FILTERS")
+        print("="*60)
+        
+        # Get dynamic test data
+        university_id = self.get_university_id()
+        student_email = self.get_student_email()
+        
+        print(f"📋 Test Data - University ID: {university_id}")
+        print(f"📋 Test Data - Student Email: {student_email}")
+        
+        test_cases = [
+            {
+                'name': 'Status Filter - Verified',
+                'params': {'status': 'verified'}
+            },
+            {
+                'name': 'NSQF Level Filter - Level 5',
+                'params': {'nsqfLevel': '5'}
+            },
+            {
+                'name': 'University Filter',
+                'params': {'university': university_id} if university_id else None
+            },
+            {
+                'name': 'Search Filter - Student Email',
+                'params': {'search': student_email} if student_email else None
+            },
+            {
+                'name': 'Combined Filters - pending+level4',
+                'params': {'status': 'pending', 'nsqfLevel': '4'}
+            }
+        ]
+        
+        passed = 0
+        total = 0
+        
+        for test_case in test_cases:
+            if test_case['params'] is None:
+                print(f"\n⚠️  Skipping {test_case['name']} - No test data available")
+                continue
+                
+            total += 1
+            success = self.run_test_case(
+                test_case['name'],
+                '/passports',
+                '/passports/export',
+                test_case['params']
+            )
+            if success:
+                passed += 1
+        
+        print(f"\n📊 Passports Export Tests: {passed}/{total} passed")
+        return passed, total
+    
+    def verify_csv_format(self, endpoint, params=None):
+        """Verify CSV format and headers"""
+        try:
+            response = self.session.get(f"{API_BASE}{endpoint}", params=params)
+            if response.status_code == 200:
+                content_type = response.headers.get('content-type', '')
+                content_disposition = response.headers.get('content-disposition', '')
+                
+                csv_format_ok = content_type == 'text/csv'
+                attachment_ok = 'attachment' in content_disposition
+                
+                return csv_format_ok and attachment_ok, response.text[:200]  # First 200 chars
+            return False, "Request failed"
+        except Exception as e:
+            return False, str(e)
+    
+    def run_format_verification(self):
+        """Verify CSV format for both endpoints"""
+        print("\n" + "="*60)
+        print("📄 VERIFYING CSV FORMAT")
+        print("="*60)
+        
+        # Test recruiters export format
+        print("\n🏢 Recruiters Export Format:")
+        format_ok, sample = self.verify_csv_format('/recruiters/export')
+        print(f"   Format Valid: {'✅' if format_ok else '❌'}")
+        print(f"   Sample: {sample}")
+        
+        # Test passports export format
+        print("\n🎓 Passports Export Format:")
+        format_ok, sample = self.verify_csv_format('/passports/export')
+        print(f"   Format Valid: {'✅' if format_ok else '❌'}")
+        print(f"   Sample: {sample}")
+    
+    def print_summary(self):
+        """Print test summary"""
+        print("\n" + "="*60)
+        print("📊 TEST SUMMARY")
+        print("="*60)
+        
+        total_tests = len(self.test_results)
+        passed_tests = sum(1 for result in self.test_results if result['success'])
+        
+        print(f"Total Tests: {total_tests}")
+        print(f"Passed: {passed_tests}")
+        print(f"Failed: {total_tests - passed_tests}")
+        print(f"Success Rate: {(passed_tests/total_tests*100):.1f}%" if total_tests > 0 else "N/A")
+        
+        # Print failed tests
+        failed_tests = [result for result in self.test_results if not result['success']]
+        if failed_tests:
+            print(f"\n❌ FAILED TESTS:")
+            for test in failed_tests:
+                print(f"   • {test['test_name']}: {test['result']}")
+        
+        # Print passed tests
+        passed_test_list = [result for result in self.test_results if result['success']]
+        if passed_test_list:
+            print(f"\n✅ PASSED TESTS:")
+            for test in passed_test_list:
+                print(f"   • {test['test_name']}: API={test['api_count']}, Export={test['export_count']}")
+    
+    def run_all_tests(self):
+        """Run all export filter tests"""
+        print("🚀 Starting Export Filter Testing")
+        print(f"🌐 Base URL: {BASE_URL}")
+        print(f"⏰ Test Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        # Authenticate
+        if not self.authenticate():
+            print("❌ Authentication failed. Cannot proceed with tests.")
+            return False
+        
+        # Run CSV format verification
+        self.run_format_verification()
+        
+        # Run recruiter tests
+        recruiter_passed, recruiter_total = self.test_recruiters_export_filters()
+        
+        # Run passport tests
+        passport_passed, passport_total = self.test_passports_export_filters()
+        
+        # Print summary
+        self.print_summary()
+        
+        # Final result
+        total_passed = recruiter_passed + passport_passed
+        total_tests = recruiter_total + passport_total
+        
+        print(f"\n🎯 FINAL RESULT: {total_passed}/{total_tests} tests passed")
+        
+        if total_passed == total_tests:
+            print("🎉 ALL EXPORT FILTER TESTS PASSED!")
+            return True
+        else:
+            print("⚠️  Some export filter tests failed. Review results above.")
+            return False
 
 def main():
-    """Main test execution"""
-    print("Starting Comprehensive Audit Logs Optimization Testing...")
-    success = test_audit_logs_endpoints()
+    """Main function"""
+    tester = ExportFilterTester()
+    success = tester.run_all_tests()
     
     if success:
-        print("\n✅ AUDIT LOGS TESTING COMPLETED SUCCESSFULLY")
-        sys.exit(0)
+        exit(0)
     else:
-        print("\n❌ AUDIT LOGS TESTING COMPLETED WITH ISSUES")
-        sys.exit(1)
+        exit(1)
 
 if __name__ == "__main__":
     main()
