@@ -1830,6 +1830,9 @@ export async function GET(request) {
 
     // GET /api/analytics/state-heatmap/export - Export state heatmap data to CSV
     if (path === '/analytics/state-heatmap/export') {
+      const url = new URL(request.url)
+      const stateFilter = url.searchParams.get('state')
+      
       const univIdMapping = {
         'f1ed42b6-ffe7-4108-90bb-6776b6504f7b': '5ca5589e-b49d-4027-baf7-7e2a88ae612a',
         '609f59c9-6894-499b-8479-e826c219e0df': '632a5084-eeae-4f2e-b4bc-32593f2dcc00',
@@ -1843,9 +1846,17 @@ export async function GET(request) {
         '2877f238-ec9f-49af-8bb5-6efd30bc3654': '299ac0e3-f50f-41bc-965c-7274cfa9af25'
       }
 
+      let universityQuery = supabase.from('universities').select('id, state')
+      let recruiterQuery = supabase.from('recruiters').select('id, state')
+      
+      if (stateFilter) {
+        universityQuery = universityQuery.eq('state', stateFilter)
+        recruiterQuery = recruiterQuery.eq('state', stateFilter)
+      }
+      
       const [universitiesResult, recruitersResult, studentsResult, passportsResult] = await Promise.all([
-        supabase.from('universities').select('id, state'),
-        supabase.from('recruiters').select('id, state'),
+        universityQuery,
+        recruiterQuery,
         supabase.from('students').select('id, universityId'),
         supabase.from('skill_passports').select('studentId, status')
       ])
