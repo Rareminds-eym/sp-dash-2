@@ -832,7 +832,7 @@ metadata:
 
 test_plan:
   current_focus:
-    - "All tasks completed successfully"
+    - "Industrial-Grade Search Enhancement"
   stuck_tasks: 
     - "Settings Page User Data Display Fix"
   test_all: false
