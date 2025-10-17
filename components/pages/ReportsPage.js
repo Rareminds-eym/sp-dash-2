@@ -89,6 +89,12 @@ export default function ReportsPage() {
   })
   const [activeTab, setActiveTab] = useState('universities')
   const { toast } = useToast()
+  
+  // Filters for each section
+  const [filters, setFilters] = useState({
+    universityState: 'all',
+    stateSelection: 'all'
+  })
 
   useEffect(() => {
     // Fetch data progressively - start with first tab
