@@ -364,19 +364,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-            return {'count': 0, 'error': response.text}
-            
-    except Exception as e:
-        print(f"❌ Exception: {str(e)}")
-        return {'count': 0, 'error': str(e)}
-
-def test_recruiters_export():
-    """Test recruiters export with various filters"""
-    print(f"\n{'#'*80}")
-    print("# TEST 1: RECRUITERS EXPORT WITH FILTERS")
-    print(f"{'#'*80}")
-    
-    results = {}
     
     # 1. Get total recruiters without filters
     results['total'] = test_api_endpoint('/recruiters', description="Total recruiters (no filters)")
