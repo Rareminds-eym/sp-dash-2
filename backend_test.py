@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 import sys
 
 # Base URL from environment
-BASE_URL = "https://dynamic-export.preview.emergentagent.com/api"
+BASE_URL = "https://skill-export-filter.preview.emergentagent.com/api"
 
 def test_api_endpoint(endpoint, params=None, description=""):
     """Test an API endpoint and return response data"""

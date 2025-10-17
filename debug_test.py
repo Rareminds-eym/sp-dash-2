@@ -3,7 +3,7 @@
 import requests
 import json
 
-BASE_URL = "https://dynamic-export.preview.emergentagent.com"
+BASE_URL = "https://skill-export-filter.preview.emergentagent.com"
 
 def debug_database_queries():
     """Debug the database queries to understand the issues"""

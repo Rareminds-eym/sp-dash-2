@@ -8,7 +8,7 @@ import json
 from datetime import datetime
 
 # Base URL from environment
-BASE_URL = "https://dynamic-export.preview.emergentagent.com/api"
+BASE_URL = "https://skill-export-filter.preview.emergentagent.com/api"
 
 def test_metrics_scenarios():
     """Test comprehensive metrics scenarios"""

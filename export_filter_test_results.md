@@ -2,7 +2,7 @@
 
 ## Test Summary
 **Date:** 2025-10-17 04:51:24  
-**Base URL:** https://dynamic-export.preview.emergentagent.com/api
+**Base URL:** https://skill-export-filter.preview.emergentagent.com/api
 
 ## Test Results Overview
 
@@ -79,7 +79,7 @@ All export endpoints return proper CSV format with:
 ### Audit Logs Export
 1. **Action Filter:** `?action=login` → 35 records (both API and export)
 2. **Search Filter:** `?search=admin` → 0 records (both API and export)
-3. **User Filter:** `?userId=33c34d1b-ffbc-48b6-bb2a-0100260478a0` → 75 records (both API and export)
+3. **User Filter:** `?userId=skill-export-filter` → 75 records (both API and export)
 
 ## Sample CSV Headers Verified
 
