@@ -518,7 +518,35 @@ export async function GET(request) {
       const searchTerm = url.searchParams.get('search')
       const universityFilter = url.searchParams.get('university')
       
+      // STEP 1: If we have university filter, first get all student IDs from that university
+      let studentIdsFromUniversity = null
+      if (universityFilter && universityFilter !== 'all') {
+        const { data: studentsFromUniv } = await supabase
+          .from('students')
+          .select('id')
+          .or(`universityId.eq.${universityFilter},organizationId.eq.${universityFilter}`)
+        
+        studentIdsFromUniversity = studentsFromUniv?.map(s => s.id) || []
+        
+        // If university filter is applied but no students found, return empty CSV
+        if (studentIdsFromUniversity.length === 0) {
+          const csvContent = 'Student Name,Email,University,Status,NSQF Level,Skills,Created Date,Updated Date'
+          return new Response(csvContent, {
+            headers: {
+              'Content-Type': 'text/csv',
+              'Content-Disposition': `attachment; filename="passports-${new Date().toISOString().split('T')[0]}.csv"`
+            }
+          })
+        }
+      }
+      
+      // STEP 2: Build passport query with filters
       let query = supabase.from('skill_passports').select('*')
+      
+      // Apply university filter by studentId if available
+      if (studentIdsFromUniversity) {
+        query = query.in('studentId', studentIdsFromUniversity)
+      }
       
       if (statusFilter && statusFilter !== 'all') {
         query = query.eq('status', statusFilter)
@@ -638,29 +666,17 @@ export async function GET(request) {
         }
       }
       
-      // Apply client-side filters
-      if (searchTerm || universityFilter) {
+      // Apply search filter (client-side since it requires student data)
+      if (searchTerm) {
         enrichedPassports = enrichedPassports.filter(passport => {
-          let matchesSearch = true
-          let matchesUniversity = true
+          const searchLower = searchTerm.toLowerCase()
+          const studentName = passport.students?.profile?.name || ''
+          const studentEmail = passport.students?.email || passport.students?.users?.email || ''
+          const passportId = passport.id || ''
           
-          if (searchTerm) {
-            const searchLower = searchTerm.toLowerCase()
-            const studentName = passport.students?.profile?.name || ''
-            const studentEmail = passport.students?.email || passport.students?.users?.email || ''
-            const passportId = passport.id || ''
-            
-            matchesSearch = studentName.toLowerCase().includes(searchLower) ||
-                           studentEmail.toLowerCase().includes(searchLower) ||
-                           passportId.toLowerCase().includes(searchLower)
-          }
-          
-          if (universityFilter && universityFilter !== 'all') {
-            const univId = passport.students?.universityId || passport.students?.organizationId
-            matchesUniversity = univId === universityFilter
-          }
-          
-          return matchesSearch && matchesUniversity
+          return studentName.toLowerCase().includes(searchLower) ||
+                 studentEmail.toLowerCase().includes(searchLower) ||
+                 passportId.toLowerCase().includes(searchLower)
         })
       }
       
