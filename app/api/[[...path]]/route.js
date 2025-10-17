@@ -1481,7 +1481,8 @@ export async function GET(request) {
         }
       })
 
-      return NextResponse.json(universityReports)
+      const response = NextResponse.json(universityReports);
+      return addCacheHeaders(response, 'dynamic');
     }
 
     // GET /api/analytics/recruiter-metrics - Recruiter engagement analytics
