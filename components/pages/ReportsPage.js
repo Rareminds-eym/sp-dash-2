@@ -306,12 +306,27 @@ export default function ReportsPage() {
 
         {/* University Reports Tab */}
         <TabsContent value="universities" className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-medium flex items-center gap-2 text-muted-foreground">
               <BarChart3 className="h-4 w-4" />
               University-wise Reports
             </h3>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Select 
+                value={filters.universityState} 
+                onValueChange={(value) => setFilters(prev => ({ ...prev, universityState: value }))}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter by State" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All States</SelectItem>
+                  {Array.from(new Set(analyticsData.universityReports.map(u => u.state))).filter(Boolean).sort().map(state => (
+                    <SelectItem key={state} value={state}>{state}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button 
                 variant="outline" 
                 size="sm"
@@ -351,7 +366,9 @@ export default function ReportsPage() {
                 </Card>
               ))
             ) : (
-              analyticsData.universityReports.map((university, index) => (
+              analyticsData.universityReports
+                .filter(university => filters.universityState === 'all' || university.state === filters.universityState)
+                .map((university, index) => (
                 <Card key={university.universityId} className="neu-card">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
