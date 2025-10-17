@@ -1375,7 +1375,8 @@ export async function GET(request) {
         count
       }))
 
-      return NextResponse.json(chartData)
+      const response = NextResponse.json(chartData);
+      return addCacheHeaders(response, 'dynamic');
     }
 
     // GET /api/analytics/trends - Employability trends
