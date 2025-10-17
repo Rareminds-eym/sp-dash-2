@@ -58,7 +58,7 @@ export async function GET(request) {
         
         // If we have a snapshot, return it
         if (latestSnapshot && !snapshotError) {
-          return NextResponse.json({
+          const response = NextResponse.json({
             activeUniversities: latestSnapshot.activeUniversities || 0,
             registeredStudents: latestSnapshot.registeredStudents || 0,
             verifiedPassports: latestSnapshot.verifiedPassports || 0,
@@ -66,7 +66,8 @@ export async function GET(request) {
             activeRecruiters: latestSnapshot.activeRecruiters || 0,
             snapshotDate: latestSnapshot.snapshotDate,
             source: 'snapshot'
-          })
+          });
+          return addCacheHeaders(response, 'dynamic');
         }
         
         // Fallback: Calculate metrics dynamically from database tables if no snapshot exists
