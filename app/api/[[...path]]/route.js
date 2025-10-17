@@ -337,12 +337,19 @@ export async function GET(request) {
         phone: recruiter.phone,
         website: recruiter.website,
         address: recruiter.address,
+        district: recruiter.district,
         verificationStatus: recruiter.verificationstatus || 'approved',
         isActive: recruiter.isactive !== undefined ? recruiter.isactive : true,
         createdAt: recruiter.createdat,
         updatedAt: recruiter.updatedat,
         userCount: userCountMap[recruiter.id] || 0
       }))
+      
+      // Apply industrial-grade fuzzy search and relevance ranking (client-side for accuracy)
+      if (searchTerm) {
+        const searchFields = ['name', 'email', 'phone', 'district', 'website', 'state'];
+        mappedRecruiters = filterAndRankResults(mappedRecruiters, searchFields, searchTerm, 0.7);
+      }
       
       // Sort by user count if requested (can't do this in SQL easily with join)
       if (sortBy === 'userCount') {
