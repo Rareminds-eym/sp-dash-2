@@ -45,7 +45,7 @@ def execute_sql_file():
         parsed_url = urlparse(supabase_url)
         project_ref = parsed_url.hostname.split('.')[0]
         
-        print(f"🔐 Database password found in environment")
+        print("🔐 Database password found in environment")
         
         # Construct PostgreSQL connection string
         db_host = f"db.{project_ref}.supabase.co"
@@ -116,10 +116,10 @@ def execute_sql_file():
         import traceback
         traceback.print_exc()
         print("\nPlease execute the SQL manually in Supabase SQL Editor:")
-        print(f"1. Go to Supabase Dashboard > SQL Editor")
-        print(f"2. Open file: /app/scripts/create_performance_indexes_final.sql")
-        print(f"3. Copy all contents and paste in SQL Editor")
-        print(f"4. Click 'Run'")
+        print("1. Go to Supabase Dashboard > SQL Editor")
+        print("2. Open file: /app/scripts/create_performance_indexes_final.sql")
+        print("3. Copy all contents and paste in SQL Editor")
+        print("4. Click 'Run'")
         return False
 
 if __name__ == "__main__":
