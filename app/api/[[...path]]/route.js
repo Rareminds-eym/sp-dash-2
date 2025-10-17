@@ -467,11 +467,29 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Failed to export recruiters' }, { status: 500 })
       }
       
+      // Apply industrial-grade fuzzy search and relevance ranking for more accurate results
+      let filteredRecruiters = recruiters || [];
+      if (searchTerm) {
+        // Map to include all fields for search
+        const mappedRecruiters = filteredRecruiters.map(r => ({
+          ...r,
+          name: r.name,
+          email: r.email,
+          phone: r.phone,
+          district: r.district,
+          website: r.website,
+          state: r.state
+        }));
+        
+        const searchFields = ['name', 'email', 'phone', 'district', 'website', 'state'];
+        filteredRecruiters = filterAndRankResults(mappedRecruiters, searchFields, searchTerm, 0.7);
+      }
+      
       // Create CSV content
       const headers = ['Name', 'Email', 'Phone', 'State', 'District', 'Website', 'Status', 'Active', 'Created Date']
       const csvRows = [headers.join(',')]
       
-      recruiters?.forEach(r => {
+      filteredRecruiters?.forEach(r => {
         const row = [
           `"${r.name || ''}"`,
           `"${r.email || ''}"`,
