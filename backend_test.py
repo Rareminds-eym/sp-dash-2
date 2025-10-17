@@ -190,14 +190,22 @@ class ExportFilterTester:
     def get_student_email(self):
         """Get a student email for search testing"""
         try:
-            response = self.session.get(f"{API_BASE}/passports", params={'limit': 1})
+            # Get a larger sample to find a student with email
+            response = self.session.get(f"{API_BASE}/passports", params={'limit': 50})
             if response.status_code == 200:
                 data = response.json()
                 if data.get('data') and len(data['data']) > 0:
-                    passport = data['data'][0]
-                    student_email = (passport.get('students', {}).get('email') or 
-                                   passport.get('students', {}).get('users', {}).get('email'))
-                    return student_email
+                    for passport in data['data']:
+                        student_email = (passport.get('students', {}).get('email') or 
+                                       passport.get('students', {}).get('users', {}).get('email'))
+                        if student_email:
+                            # Test if this email actually works in the regular API
+                            test_response = self.session.get(f"{API_BASE}/passports", 
+                                                           params={'search': student_email, 'limit': 1000})
+                            if test_response.status_code == 200:
+                                test_data = test_response.json()
+                                if test_data.get('data') and len(test_data['data']) > 0:
+                                    return student_email
             return None
         except:
             return None
