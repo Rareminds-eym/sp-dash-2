@@ -1510,7 +1510,8 @@ export async function GET(request) {
           { skill: 'AI/ML', searches: 123 }
         ]
       }
-      return NextResponse.json(mockRecruiterMetrics)
+      const response = NextResponse.json(mockRecruiterMetrics);
+      return addCacheHeaders(response, 'dynamic');
     }
 
     // GET /api/analytics/placement-conversion - Placement pipeline analytics
