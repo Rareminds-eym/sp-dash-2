@@ -694,18 +694,25 @@ export async function GET(request) {
         }
       }
       
-      // Apply search filter (client-side since it requires student data)
+      // Apply industrial-grade fuzzy search (client-side since it requires student data)
       if (searchTerm) {
         enrichedPassports = enrichedPassports.filter(passport => {
-          const searchLower = searchTerm.toLowerCase()
-          const studentName = passport.students?.profile?.name || ''
-          const studentEmail = passport.students?.email || passport.students?.users?.email || ''
-          const passportId = passport.id || ''
+          const studentName = passport.students?.profile?.name || '';
+          const studentEmail = passport.students?.email || passport.students?.users?.email || '';
+          const passportId = passport.id || '';
+          const universityName = passport.students?.university?.name || '';
+          const skills = Array.isArray(passport.skills) ? passport.skills.join(' ') : (passport.skills || '');
           
-          return studentName.toLowerCase().includes(searchLower) ||
-                 studentEmail.toLowerCase().includes(searchLower) ||
-                 passportId.toLowerCase().includes(searchLower)
-        })
+          return fuzzyMatch(studentName, searchTerm, 0.7) ||
+                 fuzzyMatch(studentEmail, searchTerm, 0.7) ||
+                 fuzzyMatch(passportId, searchTerm, 0.7) ||
+                 fuzzyMatch(universityName, searchTerm, 0.7) ||
+                 fuzzyMatch(skills, searchTerm, 0.7);
+        });
+        
+        // Apply relevance ranking
+        const searchFields = ['students.profile.name', 'students.email', 'students.users.email', 'id', 'students.university.name', 'skills'];
+        enrichedPassports = filterAndRankResults(enrichedPassports, searchFields, searchTerm, 0.7);
       }
       
       // Create CSV content
