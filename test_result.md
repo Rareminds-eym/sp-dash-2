@@ -851,7 +851,7 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Database Performance Optimization - Index Application"
+    - "Performance optimization testing completed"
   stuck_tasks: 
     - "Settings Page User Data Display Fix"
   test_all: false
