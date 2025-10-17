@@ -848,7 +848,7 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Industrial-Grade Search Enhancement"
+    - "Database Performance Optimization - Index Application"
   stuck_tasks: 
     - "Settings Page User Data Display Fix"
   test_all: false
