@@ -55,6 +55,11 @@ class ExportFilterTester:
     def test_api_endpoint(self, endpoint, params=None):
         """Test regular API endpoint and return count"""
         try:
+            # Add high limit to get all records for comparison
+            if params is None:
+                params = {}
+            params['limit'] = 1000  # High limit to get all records
+            
             response = self.session.get(f"{API_BASE}{endpoint}", params=params)
             if response.status_code == 200:
                 data = response.json()
