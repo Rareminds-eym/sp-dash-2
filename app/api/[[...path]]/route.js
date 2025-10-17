@@ -1209,8 +1209,9 @@ export async function GET(request) {
       }
       
       // Fetch user emails
-      if (logs && logs.length > 0) {
-        const userIds = [...new Set(logs.map(l => l.actorId).filter(Boolean))]
+      let enrichedLogs = logs || [];
+      if (enrichedLogs.length > 0) {
+        const userIds = [...new Set(enrichedLogs.map(l => l.actorId).filter(Boolean))]
         
         if (userIds.length > 0) {
           const { data: users } = await supabase
@@ -1226,7 +1227,7 @@ export async function GET(request) {
             }
           })
           
-          logs.forEach(log => {
+          enrichedLogs.forEach(log => {
             if (log.actorId && userMap[log.actorId]) {
               log.users = userMap[log.actorId]
             }
@@ -1234,9 +1235,15 @@ export async function GET(request) {
         }
       }
       
+      // Apply industrial-grade fuzzy search and relevance ranking for export
+      if (search) {
+        const searchFields = ['target', 'action', 'ip', 'users.email', 'users.name'];
+        enrichedLogs = filterAndRankResults(enrichedLogs, searchFields, search, 0.7);
+      }
+      
       // Generate CSV
       const csvHeaders = ['Timestamp', 'User', 'Email', 'Action', 'Target', 'IP Address', 'Details']
-      const csvRows = logs.map(log => [
+      const csvRows = enrichedLogs.map(log => [
         new Date(log.createdAt).toLocaleString(),
         log.users?.name || 'System',
         log.users?.email || 'N/A',
