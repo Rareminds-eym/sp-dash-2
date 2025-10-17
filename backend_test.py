@@ -1,33 +1,63 @@
 #!/usr/bin/env python3
+"""
+Comprehensive Export Filter Testing
+Tests all export endpoints to verify they properly respect applied filters
+"""
 
 import requests
 import json
-import sys
-from datetime import datetime, timedelta
 import csv
 import io
+from datetime import datetime, timedelta
+import sys
 
-# Configuration
+# Base URL from environment
 BASE_URL = "https://dynamic-export.preview.emergentagent.com/api"
 
-def test_audit_logs_endpoints():
-    """
-    Comprehensive testing of audit logs endpoints as requested:
-    1. GET /api/audit-logs (Enhanced with pagination & filters)
-    2. GET /api/audit-logs/export
-    3. GET /api/audit-logs/actions
-    4. GET /api/audit-logs/users
-    """
-    
-    print("🔍 COMPREHENSIVE AUDIT LOGS OPTIMIZATION TESTING")
-    print("=" * 60)
-    
-    results = {
-        'total_tests': 0,
-        'passed': 0,
-        'failed': 0,
-        'test_details': []
-    }
+def test_api_endpoint(endpoint, params=None, description=""):
+    """Test an API endpoint and return response data"""
+    try:
+        url = f"{BASE_URL}{endpoint}"
+        response = requests.get(url, params=params, timeout=30)
+        
+        print(f"\n{'='*60}")
+        print(f"TEST: {description}")
+        print(f"URL: {url}")
+        if params:
+            print(f"Params: {params}")
+        print(f"Status: {response.status_code}")
+        
+        if response.status_code == 200:
+            # Check if it's CSV content
+            content_type = response.headers.get('content-type', '')
+            if 'text/csv' in content_type:
+                # Parse CSV and count rows
+                csv_content = response.text
+                csv_reader = csv.reader(io.StringIO(csv_content))
+                rows = list(csv_reader)
+                row_count = len(rows) - 1 if rows else 0  # Subtract header row
+                print(f"✅ CSV Export Success - {row_count} data rows")
+                
+                # Show first few data rows for verification
+                if len(rows) > 1:
+                    print(f"Headers: {rows[0]}")
+                    for i in range(1, min(4, len(rows))):  # Show first 3 data rows
+                        print(f"Row {i}: {rows[i][:3]}...")  # Show first 3 columns
+                
+                return {'count': row_count, 'headers': rows[0] if rows else [], 'data': rows[1:] if len(rows) > 1 else []}
+            else:
+                # JSON response
+                data = response.json()
+                count = len(data) if isinstance(data, list) else data.get('total', 0)
+                print(f"✅ API Success - {count} records")
+                return {'count': count, 'data': data}
+        else:
+            print(f"❌ Failed - {response.status_code}: {response.text[:200]}")
+            return {'count': 0, 'error': response.text}
+            
+    except Exception as e:
+        print(f"❌ Exception: {str(e)}")
+        return {'count': 0, 'error': str(e)}
     
     # Test 1: GET /api/audit-logs - Basic functionality
     print("\n📋 TEST 1: GET /api/audit-logs - Basic Pagination")
