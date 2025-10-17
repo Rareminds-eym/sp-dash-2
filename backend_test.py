@@ -48,7 +48,21 @@ def test_api_endpoint(endpoint, params=None, description=""):
             else:
                 # JSON response
                 data = response.json()
-                count = len(data) if isinstance(data, list) else data.get('total', 0)
+                # Handle different response formats
+                if isinstance(data, list):
+                    count = len(data)
+                elif isinstance(data, dict):
+                    if 'data' in data:
+                        # Paginated response format
+                        count = len(data['data'])
+                        data = data['data']  # Extract the actual data array
+                    elif 'logs' in data:
+                        # Audit logs format
+                        count = len(data['logs'])
+                    else:
+                        count = data.get('total', 0)
+                else:
+                    count = 0
                 print(f"✅ API Success - {count} records")
                 return {'count': count, 'data': data}
         else:
