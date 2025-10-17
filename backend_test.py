@@ -18,6 +18,11 @@ def test_api_endpoint(endpoint, params=None, description=""):
     """Test an API endpoint and return response data"""
     try:
         url = f"{BASE_URL}{endpoint}"
+        # For API endpoints (not exports), add high limit to get all records for comparison
+        if params is None:
+            params = {}
+        if '/export' not in endpoint and 'limit' not in params:
+            params['limit'] = 1000  # High limit to get all records
         response = requests.get(url, params=params, timeout=30)
         
         print(f"\n{'='*60}")
