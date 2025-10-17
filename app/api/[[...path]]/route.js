@@ -1132,8 +1132,9 @@ export async function GET(request) {
       }
       
       // Fetch all user emails in bulk
-      if (logs && logs.length > 0) {
-        const userIds = logs.map(l => l.actorId).filter(Boolean)
+      let enrichedLogs = logs || [];
+      if (enrichedLogs.length > 0) {
+        const userIds = enrichedLogs.map(l => l.actorId).filter(Boolean)
         
         if (userIds.length > 0) {
           const { data: users } = await supabase
@@ -1150,7 +1151,7 @@ export async function GET(request) {
             }
           })
           
-          logs.forEach(log => {
+          enrichedLogs.forEach(log => {
             if (log.actorId && userMap[log.actorId]) {
               log.users = userMap[log.actorId]
             }
@@ -1158,8 +1159,14 @@ export async function GET(request) {
         }
       }
       
+      // Apply industrial-grade fuzzy search and relevance ranking (client-side for accuracy)
+      if (search) {
+        const searchFields = ['target', 'action', 'ip', 'users.email', 'users.name'];
+        enrichedLogs = filterAndRankResults(enrichedLogs, searchFields, search, 0.7);
+      }
+      
       return NextResponse.json({
-        logs: logs || [],
+        logs: enrichedLogs,
         pagination: {
           page,
           limit,
