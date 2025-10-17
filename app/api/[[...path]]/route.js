@@ -276,7 +276,8 @@ export async function GET(request) {
         new Date(b.createdAt) - new Date(a.createdAt)
       )
 
-      return NextResponse.json(allOrgs)
+      const response = NextResponse.json(allOrgs);
+      return addCacheHeaders(response, 'static');
     }
 
     // GET /api/recruiters - List all recruiter organizations with filtering, sorting, and pagination
