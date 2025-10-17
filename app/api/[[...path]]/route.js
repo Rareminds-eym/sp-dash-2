@@ -436,15 +436,22 @@ export async function GET(request) {
       
       let query = supabase.from('recruiters').select('*')
       
-      if (statusFilter) {
+      // Apply status filter (check for 'all' as well)
+      if (statusFilter && statusFilter !== 'all') {
         query = query.eq('verificationstatus', statusFilter)
       }
-      if (activeFilter !== null && activeFilter !== '') {
+      
+      // Apply active/suspended filter (check for 'all' as well)
+      if (activeFilter && activeFilter !== 'all' && activeFilter !== '') {
         query = query.eq('isactive', activeFilter === 'true')
       }
-      if (stateFilter) {
+      
+      // Apply state filter (check for 'all' as well)
+      if (stateFilter && stateFilter !== 'all') {
         query = query.eq('state', stateFilter)
       }
+      
+      // Apply search filter
       if (searchTerm) {
         query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`)
       }
