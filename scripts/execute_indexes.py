@@ -48,10 +48,12 @@ def execute_sql_file():
         print("🔐 Database password found in environment")
         
         # Construct PostgreSQL connection string
-        db_host = f"db.{project_ref}.supabase.co"
-        db_port = "5432"
+        # Try both formats - new format (aws) and old format (db)
+        # Supabase uses different hostname formats for direct database access
+        db_host = f"aws-0-ap-south-1.pooler.supabase.com"  # Pooler connection
+        db_port = "6543"  # Pooler port (not 5432)
         db_name = "postgres"
-        db_user = "postgres"
+        db_user = "postgres.dpooleduinyyzxgrcwko"  # Username format: postgres.[project-ref]
         
         conn_string = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
         
