@@ -1,18 +1,24 @@
 #!/usr/bin/env python3
 """
-Comprehensive Export Filter Testing
-Tests all export endpoints to verify they properly respect applied filters
+Backend Test Script for Export Filter Functionality
+Testing both Recruiter Management and Skill Passport export filters
 """
 
 import requests
 import json
 import csv
 import io
-from datetime import datetime, timedelta
-import sys
+from datetime import datetime
 
-# Base URL from environment
-BASE_URL = "https://skill-export-filter.preview.emergentagent.com/api"
+# Configuration
+BASE_URL = "https://skill-export-filter.preview.emergentagent.com"
+API_BASE = f"{BASE_URL}/api"
+
+# Authentication credentials
+LOGIN_CREDENTIALS = {
+    "email": "superadmin@rareminds.in",
+    "password": "password123"
+}
 
 def test_api_endpoint(endpoint, params=None, description=""):
     """Test an API endpoint and return response data"""
