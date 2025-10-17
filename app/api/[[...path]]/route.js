@@ -378,7 +378,7 @@ export async function GET(request) {
         })
       }
       
-      return NextResponse.json({
+      const response = NextResponse.json({
         data: mappedRecruiters,
         pagination: {
           page,
@@ -386,7 +386,8 @@ export async function GET(request) {
           total: count || 0,
           totalPages: Math.ceil((count || 0) / limit)
         }
-      })
+      });
+      return addCacheHeaders(response, 'static');
     }
 
     // GET /api/recruiter/:id - Get single recruiter details with audit history
