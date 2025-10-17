@@ -2,7 +2,7 @@
 
 ## Test Summary
 **Date:** 2025-10-17 04:51:24  
-**Base URL:** https://skill-export-filter.preview.emergentagent.com/api
+**Base URL:** https://smart-search-14.preview.emergentagent.com/api
 
 ## Test Results Overview
 

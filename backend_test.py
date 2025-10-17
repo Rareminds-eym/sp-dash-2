@@ -11,7 +11,7 @@ import io
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://skill-export-filter.preview.emergentagent.com"
+BASE_URL = "https://smart-search-14.preview.emergentagent.com"
 API_BASE = f"{BASE_URL}/api"
 
 # Authentication credentials
