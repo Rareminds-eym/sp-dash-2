@@ -20,40 +20,110 @@ LOGIN_CREDENTIALS = {
     "password": "password123"
 }
 
-def test_api_endpoint(endpoint, params=None, description=""):
-    """Test an API endpoint and return response data"""
-    try:
-        url = f"{BASE_URL}{endpoint}"
-        # For API endpoints (not exports), add high limit to get all records for comparison
-        if params is None:
-            params = {}
-        if '/export' not in endpoint and 'limit' not in params:
-            params['limit'] = 1000  # High limit to get all records
-        response = requests.get(url, params=params, timeout=30)
+class ExportFilterTester:
+    def __init__(self):
+        self.session = requests.Session()
+        self.auth_token = None
+        self.test_results = []
         
-        print(f"\n{'='*60}")
-        print(f"TEST: {description}")
-        print(f"URL: {url}")
-        if params:
-            print(f"Params: {params}")
-        print(f"Status: {response.status_code}")
+    def authenticate(self):
+        """Authenticate with the API"""
+        print("🔐 Authenticating...")
+        try:
+            response = self.session.post(f"{API_BASE}/auth/login", json=LOGIN_CREDENTIALS)
+            if response.status_code == 200:
+                data = response.json()
+                print(f"✅ Authentication successful: {data.get('user', {}).get('email', 'Unknown')}")
+                return True
+            else:
+                print(f"❌ Authentication failed: {response.status_code} - {response.text}")
+                return False
+        except Exception as e:
+            print(f"❌ Authentication error: {str(e)}")
+            return False
+    
+    def count_csv_rows(self, csv_content):
+        """Count rows in CSV content (excluding header)"""
+        try:
+            reader = csv.reader(io.StringIO(csv_content))
+            rows = list(reader)
+            return len(rows) - 1 if len(rows) > 0 else 0  # Subtract header row
+        except Exception as e:
+            print(f"❌ Error counting CSV rows: {str(e)}")
+            return -1
+    
+    def test_api_endpoint(self, endpoint, params=None):
+        """Test regular API endpoint and return count"""
+        try:
+            response = self.session.get(f"{API_BASE}{endpoint}", params=params)
+            if response.status_code == 200:
+                data = response.json()
+                if isinstance(data, dict) and 'data' in data:
+                    return len(data['data'])
+                elif isinstance(data, list):
+                    return len(data)
+                else:
+                    return 0
+            else:
+                print(f"❌ API endpoint failed: {response.status_code} - {response.text}")
+                return -1
+        except Exception as e:
+            print(f"❌ API endpoint error: {str(e)}")
+            return -1
+    
+    def test_export_endpoint(self, endpoint, params=None):
+        """Test export endpoint and return CSV row count"""
+        try:
+            response = self.session.get(f"{API_BASE}{endpoint}", params=params)
+            if response.status_code == 200:
+                if response.headers.get('content-type') == 'text/csv':
+                    return self.count_csv_rows(response.text)
+                else:
+                    print(f"❌ Export endpoint returned non-CSV content: {response.headers.get('content-type')}")
+                    return -1
+            else:
+                print(f"❌ Export endpoint failed: {response.status_code} - {response.text}")
+                return -1
+        except Exception as e:
+            print(f"❌ Export endpoint error: {str(e)}")
+            return -1
+    
+    def run_test_case(self, test_name, api_endpoint, export_endpoint, params=None):
+        """Run a single test case comparing API and export counts"""
+        print(f"\n📋 Testing: {test_name}")
+        print(f"   Filters: {params if params else 'None'}")
         
-        if response.status_code == 200:
-            # Check if it's CSV content
-            content_type = response.headers.get('content-type', '')
-            if 'text/csv' in content_type:
-                # Parse CSV and count rows
-                csv_content = response.text
-                csv_reader = csv.reader(io.StringIO(csv_content))
-                rows = list(csv_reader)
-                row_count = len(rows) - 1 if rows else 0  # Subtract header row
-                print(f"✅ CSV Export Success - {row_count} data rows")
-                
-                # Show first few data rows for verification
-                if len(rows) > 1:
-                    print(f"Headers: {rows[0]}")
-                    for i in range(1, min(4, len(rows))):  # Show first 3 data rows
-                        print(f"Row {i}: {rows[i][:3]}...")  # Show first 3 columns
+        # Test regular API endpoint
+        api_count = self.test_api_endpoint(api_endpoint, params)
+        print(f"   API Count: {api_count}")
+        
+        # Test export endpoint
+        export_count = self.test_export_endpoint(export_endpoint, params)
+        print(f"   Export Count: {export_count}")
+        
+        # Compare results
+        if api_count == -1 or export_count == -1:
+            result = "❌ FAILED - Endpoint Error"
+            success = False
+        elif api_count == export_count:
+            result = "✅ PASSED - Counts Match"
+            success = True
+        else:
+            result = f"❌ FAILED - Count Mismatch (API: {api_count}, Export: {export_count})"
+            success = False
+        
+        print(f"   Result: {result}")
+        
+        self.test_results.append({
+            'test_name': test_name,
+            'api_count': api_count,
+            'export_count': export_count,
+            'success': success,
+            'result': result,
+            'params': params
+        })
+        
+        return success
                 
                 return {'count': row_count, 'headers': rows[0] if rows else [], 'data': rows[1:] if len(rows) > 1 else []}
             else:
