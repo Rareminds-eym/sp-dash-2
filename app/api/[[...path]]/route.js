@@ -293,7 +293,8 @@ export async function GET(request) {
         query = query.eq('state', stateFilter)
       }
       if (searchTerm) {
-        query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`)
+        // PostgreSQL ILIKE for partial matching at database level
+        query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,district.ilike.%${searchTerm}%,website.ilike.%${searchTerm}%`)
       }
       
       // Apply sorting
