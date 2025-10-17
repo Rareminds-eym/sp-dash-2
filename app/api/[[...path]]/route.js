@@ -191,20 +191,13 @@ export async function GET(request) {
         }
       }
       
-      // Apply client-side search filter (for name in metadata)
+      // Apply industrial-grade search with fuzzy matching and relevance ranking
       if (search) {
-        const searchLower = search.toLowerCase()
-        filteredUsers = filteredUsers.filter(user => {
-          const email = user.email || ''
-          const role = user.role || ''
-          const name = user.metadata?.name || ''
-          const orgName = user.organizations?.name || ''
-          
-          return email.toLowerCase().includes(searchLower) ||
-                 role.toLowerCase().includes(searchLower) ||
-                 name.toLowerCase().includes(searchLower) ||
-                 orgName.toLowerCase().includes(searchLower)
-        })
+        // Define search fields with proper paths
+        const searchFields = ['email', 'role', 'metadata.name', 'organizations.name'];
+        
+        // Use advanced search with 0.7 threshold (flexible matching - up to 30% difference)
+        filteredUsers = filterAndRankResults(filteredUsers, searchFields, search, 0.7);
       }
       
       // Return paginated response
