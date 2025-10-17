@@ -8,7 +8,7 @@ import csv
 import io
 
 # Configuration
-BASE_URL = "https://auditpro-9.preview.emergentagent.com/api"
+BASE_URL = "https://dynamic-export.preview.emergentagent.com/api"
 
 def test_audit_logs_endpoints():
     """
