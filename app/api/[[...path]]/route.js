@@ -1599,6 +1599,9 @@ export async function GET(request) {
 
     // GET /api/analytics/university-reports/export - Export university reports to CSV
     if (path === '/analytics/university-reports/export') {
+      const url = new URL(request.url)
+      const stateFilter = url.searchParams.get('state')
+      
       // Mapping from old organization IDs to new university IDs
       const univIdMapping = {
         'f1ed42b6-ffe7-4108-90bb-6776b6504f7b': '5ca5589e-b49d-4027-baf7-7e2a88ae612a',
@@ -1613,8 +1616,13 @@ export async function GET(request) {
         '2877f238-ec9f-49af-8bb5-6efd30bc3654': '299ac0e3-f50f-41bc-965c-7274cfa9af25'
       }
 
+      let universityQuery = supabase.from('universities').select('id, name, state')
+      if (stateFilter) {
+        universityQuery = universityQuery.eq('state', stateFilter)
+      }
+      
       const [universitiesResult, studentsResult, passportsResult] = await Promise.all([
-        supabase.from('universities').select('id, name, state'),
+        universityQuery,
         supabase.from('students').select('id, universityId'),
         supabase.from('skill_passports').select('studentId, status')
       ])
