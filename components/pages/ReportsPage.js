@@ -657,12 +657,27 @@ export default function ReportsPage() {
 
         {/* State Heat Map Tab */}
         <TabsContent value="heatmap" className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-medium flex items-center gap-2 text-muted-foreground">
               <Globe className="h-4 w-4" />
               State/District Heat Map
             </h3>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Select 
+                value={filters.stateSelection} 
+                onValueChange={(value) => setFilters(prev => ({ ...prev, stateSelection: value }))}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter by State" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All States</SelectItem>
+                  {analyticsData.stateHeatmap.map(s => (
+                    <SelectItem key={s.state} value={s.state}>{s.state}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button 
                 variant="outline" 
                 size="sm"
@@ -676,7 +691,9 @@ export default function ReportsPage() {
           </div>
 
           <div className="grid gap-4">
-            {analyticsData.stateHeatmap.map((state) => (
+            {analyticsData.stateHeatmap
+              .filter(state => filters.stateSelection === 'all' || state.state === filters.stateSelection)
+              .map((state) => (
               <Card key={state.state} className="neu-card">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2">
