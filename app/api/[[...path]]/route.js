@@ -1114,6 +1114,7 @@ export async function GET(request) {
       }
       
       if (search) {
+        // PostgreSQL ILIKE with extended fields for comprehensive search
         query = query.or(`target.ilike.%${search}%,action.ilike.%${search}%,ip.ilike.%${search}%`)
       }
       
