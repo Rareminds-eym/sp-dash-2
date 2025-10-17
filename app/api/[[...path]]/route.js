@@ -966,30 +966,40 @@ export async function GET(request) {
         }
       }
       
-      // Apply client-side search filter (for student name/email) and university filter
+      // Apply industrial-grade fuzzy search and relevance ranking with university filter
       if (search || universityFilter) {
         filteredPassports = filteredPassports.filter(passport => {
-          let matchesSearch = true
-          let matchesUniversity = true
+          let matchesSearch = true;
+          let matchesUniversity = true;
           
           if (search) {
-            const searchLower = search.toLowerCase()
-            const studentName = passport.students?.profile?.name || ''
-            const studentEmail = passport.students?.email || passport.students?.users?.email || ''
-            const passportId = passport.id || ''
+            // Use fuzzy matching with flexible threshold for typo tolerance
+            const studentName = passport.students?.profile?.name || '';
+            const studentEmail = passport.students?.email || passport.students?.users?.email || '';
+            const passportId = passport.id || '';
+            const universityName = passport.students?.university?.name || '';
+            const skills = Array.isArray(passport.skills) ? passport.skills.join(' ') : (passport.skills || '');
             
-            matchesSearch = studentName.toLowerCase().includes(searchLower) ||
-                           studentEmail.toLowerCase().includes(searchLower) ||
-                           passportId.toLowerCase().includes(searchLower)
+            matchesSearch = fuzzyMatch(studentName, search, 0.7) ||
+                           fuzzyMatch(studentEmail, search, 0.7) ||
+                           fuzzyMatch(passportId, search, 0.7) ||
+                           fuzzyMatch(universityName, search, 0.7) ||
+                           fuzzyMatch(skills, search, 0.7);
           }
           
           if (universityFilter && universityFilter !== 'all') {
-            const univId = passport.students?.universityId || passport.students?.organizationId
-            matchesUniversity = univId === universityFilter
+            const univId = passport.students?.universityId || passport.students?.organizationId;
+            matchesUniversity = univId === universityFilter;
           }
           
-          return matchesSearch && matchesUniversity
-        })
+          return matchesSearch && matchesUniversity;
+        });
+        
+        // Apply relevance ranking if search term exists
+        if (search) {
+          const searchFields = ['students.profile.name', 'students.email', 'students.users.email', 'id', 'students.university.name', 'skills'];
+          filteredPassports = filterAndRankResults(filteredPassports, searchFields, search, 0.7);
+        }
       }
       
       // Apply client-side sorting for student name
