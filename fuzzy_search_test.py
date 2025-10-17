@@ -12,7 +12,7 @@ import time
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://smart-search-14.preview.emergentagent.com"
+BASE_URL = "https://speed-boost-8.preview.emergentagent.com"
 API_BASE = f"{BASE_URL}/api"
 
 # Authentication credentials
