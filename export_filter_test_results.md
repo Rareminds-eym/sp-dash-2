@@ -2,7 +2,7 @@
 
 ## Test Summary
 **Date:** 2025-10-17 04:51:24  
-**Base URL:** https://speed-boost-8.preview.emergentagent.com/api
+**Base URL:** https://supabase-perf-idx.preview.emergentagent.com/api
 
 ## Test Results Overview
 

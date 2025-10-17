@@ -7,7 +7,7 @@ from datetime import datetime
 
 
 # Configuration
-BASE_URL = "https://speed-boost-8.preview.emergentagent.com"
+BASE_URL = "https://supabase-perf-idx.preview.emergentagent.com"
 TEST_EMAIL = "superadmin@rareminds.in"
 TEST_PASSWORD = "password123"
 

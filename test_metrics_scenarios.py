@@ -8,7 +8,7 @@ import json
 from datetime import datetime
 
 # Base URL from environment
-BASE_URL = "https://speed-boost-8.preview.emergentagent.com/api"
+BASE_URL = "https://supabase-perf-idx.preview.emergentagent.com/api"
 
 def test_metrics_scenarios():
     """Test comprehensive metrics scenarios"""

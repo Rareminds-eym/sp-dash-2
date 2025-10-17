@@ -7,7 +7,7 @@ import requests
 import json
 import sys
 
-BASE_URL = "https://speed-boost-8.preview.emergentagent.com/api"
+BASE_URL = "https://supabase-perf-idx.preview.emergentagent.com/api"
 
 def test_login():
     """Test login with correct credentials"""
