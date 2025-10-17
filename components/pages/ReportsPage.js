@@ -192,12 +192,16 @@ export default function ReportsPage() {
 
       let endpoint = ''
       let filename = ''
+      const params = new URLSearchParams()
 
-      // Map section to API endpoint
+      // Map section to API endpoint and add filters
       switch(section) {
         case 'University Reports':
           endpoint = '/api/analytics/university-reports/export'
           filename = `university-reports-${new Date().toISOString().split('T')[0]}.csv`
+          if (filters.universityState && filters.universityState !== 'all') {
+            params.append('state', filters.universityState)
+          }
           break
         case 'Recruiter Metrics':
           endpoint = '/api/analytics/recruiter-metrics/export'
@@ -210,6 +214,9 @@ export default function ReportsPage() {
         case 'State Analytics':
           endpoint = '/api/analytics/state-heatmap/export'
           filename = `state-heatmap-${new Date().toISOString().split('T')[0]}.csv`
+          if (filters.stateSelection && filters.stateSelection !== 'all') {
+            params.append('state', filters.stateSelection)
+          }
           break
         case 'AI Insights':
           endpoint = '/api/analytics/ai-insights/export'
@@ -219,7 +226,9 @@ export default function ReportsPage() {
           throw new Error('Unknown section')
       }
 
-      const response = await fetch(endpoint)
+      const queryString = params.toString()
+      const fullEndpoint = queryString ? `${endpoint}?${queryString}` : endpoint
+      const response = await fetch(fullEndpoint)
       
       if (!response.ok) {
         throw new Error('Export failed')
