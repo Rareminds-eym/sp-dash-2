@@ -3,7 +3,7 @@
 import requests
 import json
 
-BASE_URL = "https://smart-search-14.preview.emergentagent.com"
+BASE_URL = "https://supabase-perf-idx.preview.emergentagent.com"
 
 def debug_database_queries():
     """Debug the database queries to understand the issues"""

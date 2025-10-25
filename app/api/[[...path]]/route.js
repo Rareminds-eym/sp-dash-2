@@ -5,6 +5,24 @@ import { filterAndRankResults, generateSearchPatterns, fuzzyMatch } from '../../
 
 export const runtime = 'edge';
 
+// Helper to add cache headers to response
+function addCacheHeaders(response, cacheType = 'private') {
+  const cacheHeaders = {
+    // Static data (universities, recruiters list) - 5 minutes
+    'static': 'public, max-age=300, stale-while-revalidate=600',
+    // Dynamic data with short TTL (metrics, dashboard) - 1 minute
+    'dynamic': 'public, max-age=60, stale-while-revalidate=120',
+    // User-specific data - 30 seconds
+    'private': 'private, max-age=30',
+    // No cache for mutations
+    'no-cache': 'no-store, must-revalidate'
+  };
+  
+  response.headers.set('Cache-Control', cacheHeaders[cacheType] || cacheHeaders['private']);
+  response.headers.set('X-Cache-Type', cacheType);
+  return response;
+}
+
 // Helper to log audit
 async function logAudit(actorId, action, target, payload = {}, ip = '') {
   try {
@@ -40,7 +58,7 @@ export async function GET(request) {
         
         // If we have a snapshot, return it
         if (latestSnapshot && !snapshotError) {
-          return NextResponse.json({
+          const response = NextResponse.json({
             activeUniversities: latestSnapshot.activeUniversities || 0,
             registeredStudents: latestSnapshot.registeredStudents || 0,
             verifiedPassports: latestSnapshot.verifiedPassports || 0,
@@ -48,7 +66,8 @@ export async function GET(request) {
             activeRecruiters: latestSnapshot.activeRecruiters || 0,
             snapshotDate: latestSnapshot.snapshotDate,
             source: 'snapshot'
-          })
+          });
+          return addCacheHeaders(response, 'dynamic');
         }
         
         // Fallback: Calculate metrics dynamically from database tables if no snapshot exists
@@ -257,7 +276,8 @@ export async function GET(request) {
         new Date(b.createdAt) - new Date(a.createdAt)
       )
 
-      return NextResponse.json(allOrgs)
+      const response = NextResponse.json(allOrgs);
+      return addCacheHeaders(response, 'static');
     }
 
     // GET /api/recruiters - List all recruiter organizations with filtering, sorting, and pagination
@@ -358,7 +378,7 @@ export async function GET(request) {
         })
       }
       
-      return NextResponse.json({
+      const response = NextResponse.json({
         data: mappedRecruiters,
         pagination: {
           page,
@@ -366,7 +386,8 @@ export async function GET(request) {
           total: count || 0,
           totalPages: Math.ceil((count || 0) / limit)
         }
-      })
+      });
+      return addCacheHeaders(response, 'static');
     }
 
     // GET /api/recruiter/:id - Get single recruiter details with audit history
@@ -1354,7 +1375,8 @@ export async function GET(request) {
         count
       }))
 
-      return NextResponse.json(chartData)
+      const response = NextResponse.json(chartData);
+      return addCacheHeaders(response, 'dynamic');
     }
 
     // GET /api/analytics/trends - Employability trends
@@ -1459,7 +1481,8 @@ export async function GET(request) {
         }
       })
 
-      return NextResponse.json(universityReports)
+      const response = NextResponse.json(universityReports);
+      return addCacheHeaders(response, 'dynamic');
     }
 
     // GET /api/analytics/recruiter-metrics - Recruiter engagement analytics
@@ -1487,7 +1510,8 @@ export async function GET(request) {
           { skill: 'AI/ML', searches: 123 }
         ]
       }
-      return NextResponse.json(mockRecruiterMetrics)
+      const response = NextResponse.json(mockRecruiterMetrics);
+      return addCacheHeaders(response, 'dynamic');
     }
 
     // GET /api/analytics/placement-conversion - Placement pipeline analytics
