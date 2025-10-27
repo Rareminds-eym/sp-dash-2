@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://supabase-perf-idx.preview.emergentagent.com"
+BASE_URL = "https://file-purge.preview.emergentagent.com"
 API_BASE = f"{BASE_URL}/api"
 
 # Authentication credentials
