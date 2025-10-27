@@ -25,7 +25,7 @@ import {
   ChevronRight,
   Filter
 } from 'lucide-react'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import {
   Select,
   SelectContent,

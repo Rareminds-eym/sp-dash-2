@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
   Download, 
   FileSpreadsheet, 
@@ -32,7 +33,8 @@ import {
   Star,
   Trophy,
   Zap,
-  TrendingDown
+  TrendingDown,
+  Filter
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -89,6 +91,12 @@ export default function ReportsPage() {
   })
   const [activeTab, setActiveTab] = useState('universities')
   const { toast } = useToast()
+  
+  // Filters for each section
+  const [filters, setFilters] = useState({
+    universityState: 'all',
+    stateSelection: 'all'
+  })
 
   useEffect(() => {
     // Fetch data progressively - start with first tab
@@ -186,12 +194,16 @@ export default function ReportsPage() {
 
       let endpoint = ''
       let filename = ''
+      const params = new URLSearchParams()
 
-      // Map section to API endpoint
+      // Map section to API endpoint and add filters
       switch(section) {
         case 'University Reports':
           endpoint = '/api/analytics/university-reports/export'
           filename = `university-reports-${new Date().toISOString().split('T')[0]}.csv`
+          if (filters.universityState && filters.universityState !== 'all') {
+            params.append('state', filters.universityState)
+          }
           break
         case 'Recruiter Metrics':
           endpoint = '/api/analytics/recruiter-metrics/export'
@@ -204,6 +216,9 @@ export default function ReportsPage() {
         case 'State Analytics':
           endpoint = '/api/analytics/state-heatmap/export'
           filename = `state-heatmap-${new Date().toISOString().split('T')[0]}.csv`
+          if (filters.stateSelection && filters.stateSelection !== 'all') {
+            params.append('state', filters.stateSelection)
+          }
           break
         case 'AI Insights':
           endpoint = '/api/analytics/ai-insights/export'
@@ -213,7 +228,9 @@ export default function ReportsPage() {
           throw new Error('Unknown section')
       }
 
-      const response = await fetch(endpoint)
+      const queryString = params.toString()
+      const fullEndpoint = queryString ? `${endpoint}?${queryString}` : endpoint
+      const response = await fetch(fullEndpoint)
       
       if (!response.ok) {
         throw new Error('Export failed')
@@ -289,12 +306,27 @@ export default function ReportsPage() {
 
         {/* University Reports Tab */}
         <TabsContent value="universities" className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-medium flex items-center gap-2 text-muted-foreground">
               <BarChart3 className="h-4 w-4" />
               University-wise Reports
             </h3>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Select 
+                value={filters.universityState} 
+                onValueChange={(value) => setFilters(prev => ({ ...prev, universityState: value }))}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter by State" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All States</SelectItem>
+                  {Array.from(new Set(analyticsData.universityReports.map(u => u.state))).filter(Boolean).sort().map(state => (
+                    <SelectItem key={state} value={state}>{state}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button 
                 variant="outline" 
                 size="sm"
@@ -334,7 +366,9 @@ export default function ReportsPage() {
                 </Card>
               ))
             ) : (
-              analyticsData.universityReports.map((university, index) => (
+              analyticsData.universityReports
+                .filter(university => filters.universityState === 'all' || university.state === filters.universityState)
+                .map((university, index) => (
                 <Card key={university.universityId} className="neu-card">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
@@ -623,12 +657,27 @@ export default function ReportsPage() {
 
         {/* State Heat Map Tab */}
         <TabsContent value="heatmap" className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-medium flex items-center gap-2 text-muted-foreground">
               <Globe className="h-4 w-4" />
               State/District Heat Map
             </h3>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Select 
+                value={filters.stateSelection} 
+                onValueChange={(value) => setFilters(prev => ({ ...prev, stateSelection: value }))}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter by State" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All States</SelectItem>
+                  {analyticsData.stateHeatmap.map(s => (
+                    <SelectItem key={s.state} value={s.state}>{s.state}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button 
                 variant="outline" 
                 size="sm"
@@ -642,7 +691,9 @@ export default function ReportsPage() {
           </div>
 
           <div className="grid gap-4">
-            {analyticsData.stateHeatmap.map((state) => (
+            {analyticsData.stateHeatmap
+              .filter(state => filters.stateSelection === 'all' || state.state === filters.stateSelection)
+              .map((state) => (
               <Card key={state.state} className="neu-card">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2">
