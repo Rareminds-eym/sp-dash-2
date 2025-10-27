@@ -7,4 +7,3 @@ SEQUENTIAL THINKING - Problem-Solving Server:
    - Keywords that trigger Sequential Thinking: "plan", "strategy", "complex problem", "step by step", "break down", "analyze", "design", "architecture", "algorithm"
    - Use for tasks requiring structured reasoning
    - Apply when the problem has multiple moving parts
-   - dont ask for permission to me for Sequential Thinking excecution, just do it.
