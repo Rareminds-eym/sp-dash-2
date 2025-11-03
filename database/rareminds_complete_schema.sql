@@ -817,6 +817,23 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='companies' AND column_name='approved_at') THEN
         ALTER TABLE companies ADD COLUMN approved_at TIMESTAMP WITH TIME ZONE;
     END IF;
+    
+    -- Aggregated count fields for Admin Dashboard
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='companies' AND column_name='total_branches') THEN
+        ALTER TABLE companies ADD COLUMN total_branches INTEGER DEFAULT 0;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='companies' AND column_name='total_recruiters') THEN
+        ALTER TABLE companies ADD COLUMN total_recruiters INTEGER DEFAULT 0;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='companies' AND column_name='hq_recruiters') THEN
+        ALTER TABLE companies ADD COLUMN hq_recruiters INTEGER DEFAULT 0;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='companies' AND column_name='branch_recruiters') THEN
+        ALTER TABLE companies ADD COLUMN branch_recruiters INTEGER DEFAULT 0;
+    END IF;
 END $$;
 
 CREATE INDEX IF NOT EXISTS idx_companies_code ON companies(code);
