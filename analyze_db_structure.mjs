@@ -6,9 +6,22 @@
 
 import { createClient } from '@supabase/supabase-js';
 import * as fs from 'fs';
+import * as dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error('❌ Error: SUPABASE_URL or SUPABASE_KEY not found in environment');
+  console.error(`   URL: ${SUPABASE_URL ? 'Found' : 'Missing'}`);
+  console.error(`   KEY: ${SUPABASE_KEY ? 'Found' : 'Missing'}`);
+  process.exit(1);
+}
+
+console.log(`✅ Connecting to: ${SUPABASE_URL}\n`);
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
