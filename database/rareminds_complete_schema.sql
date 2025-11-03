@@ -334,6 +334,19 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='colleges_standalone' AND column_name='approved_at') THEN
         ALTER TABLE colleges_standalone ADD COLUMN approved_at TIMESTAMP WITH TIME ZONE;
     END IF;
+    
+    -- Aggregated count fields for Admin Dashboard
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='colleges_standalone' AND column_name='total_courses') THEN
+        ALTER TABLE colleges_standalone ADD COLUMN total_courses INTEGER DEFAULT 0;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='colleges_standalone' AND column_name='total_lecturers') THEN
+        ALTER TABLE colleges_standalone ADD COLUMN total_lecturers INTEGER DEFAULT 0;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='colleges_standalone' AND column_name='total_students') THEN
+        ALTER TABLE colleges_standalone ADD COLUMN total_students INTEGER DEFAULT 0;
+    END IF;
 END $$;
 
 CREATE INDEX IF NOT EXISTS idx_colleges_code ON colleges_standalone(code);
