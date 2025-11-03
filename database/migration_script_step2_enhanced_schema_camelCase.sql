@@ -79,16 +79,16 @@ CREATE TABLE IF NOT EXISTS colleges (
     
     account_status account_status DEFAULT 'pending',
     approval_status approval_status DEFAULT 'pending',
-    approvedBy UUID REFERENCES users(id),
-    approvedAt TIMESTAMP WITH TIME ZONE,
+    "approvedBy" UUID REFERENCES users(id),
+    "approvedAt" TIMESTAMP WITH TIME ZONE,
     
     -- Aggregated counts for Admin Dashboard
-    totalCourses INTEGER DEFAULT 0,
-    totalLecturers INTEGER DEFAULT 0,
-    totalStudents INTEGER DEFAULT 0,
+    "totalCourses" INTEGER DEFAULT 0,
+    "totalLecturers" INTEGER DEFAULT 0,
+    "totalStudents" INTEGER DEFAULT 0,
     
-    createdAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updatedAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     metadata JSONB DEFAULT '{}',
     
     UNIQUE(code)
@@ -102,14 +102,12 @@ BEGIN
         INSERT INTO colleges (
             id, name, code, affiliation, accreditation, address, city, state, 
             country, pincode, phone, email, website, established_year,
-            college_type, accountStatus, approvalStatus, approvedBy, approvedAt,
-            totalCourses, totalLecturers, totalStudents, createdAt, updatedAt, metadata
+            college_type, "accountStatus", "approvalStatus", "approvedBy", "approvedAt", "totalCourses", "totalLecturers", "totalStudents", "createdAt", "updatedAt", metadata
         )
         SELECT 
             id, name, code, affiliation, accreditation, address, city, state,
             country, pincode, phone, email, website, established_year,
-            'standalone', accountStatus, approvalStatus, approvedBy, approvedAt,
-            totalCourses, totalLecturers, totalStudents, createdAt, updatedAt, metadata
+            'standalone', "accountStatus", "approvalStatus", "approvedBy", "approvedAt", "totalCourses", "totalLecturers", "totalStudents", "createdAt", "updatedAt", metadata
         FROM colleges_standalone
         ON CONFLICT (id) DO NOTHING;
     END IF;
@@ -118,11 +116,11 @@ BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'university_colleges') THEN
         INSERT INTO colleges (
             id, university_id, name, code, dean_name, dean_email, dean_phone,
-            established_year, college_type, accountStatus, createdAt, updatedAt, metadata
+            established_year, college_type, "accountStatus", "createdAt", "updatedAt", metadata
         )
         SELECT 
             id, university_id, name, code, dean_name, dean_email, dean_phone,
-            established_year, 'university_department', accountStatus, createdAt, updatedAt, metadata
+            established_year, 'university_department', "accountStatus", "createdAt", "updatedAt", metadata
         FROM university_colleges
         ON CONFLICT (id) DO NOTHING;
     END IF;
@@ -131,7 +129,7 @@ END $$;
 CREATE INDEX IF NOT EXISTS idx_colleges_code ON colleges(code);
 CREATE INDEX IF NOT EXISTS idx_colleges_university ON colleges(university_id);
 CREATE INDEX IF NOT EXISTS idx_colleges_type ON colleges(college_type);
-CREATE INDEX IF NOT EXISTS idx_colleges_status ON colleges(accountStatus, approvalStatus);
+CREATE INDEX IF NOT EXISTS idx_colleges_status ON colleges("accountStatus", "approvalStatus");
 CREATE INDEX IF NOT EXISTS idx_colleges_state ON colleges(state);
 
 -- Update foreign key references for college_courses
@@ -143,7 +141,7 @@ BEGIN
     -- Add new constraint pointing to unified colleges table
     ALTER TABLE college_courses 
     ADD CONSTRAINT college_courses_college_id_fkey 
-    FOREIGN KEY (collegeId) REFERENCES colleges(id) ON DELETE CASCADE;
+    FOREIGN KEY ("collegeId") REFERENCES colleges(id) ON DELETE CASCADE;
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
@@ -154,7 +152,7 @@ BEGIN
     ALTER TABLE college_lecturers DROP CONSTRAINT IF EXISTS college_lecturers_college_id_fkey;
     ALTER TABLE college_lecturers 
     ADD CONSTRAINT college_lecturers_college_id_fkey 
-    FOREIGN KEY (collegeId) REFERENCES colleges(id) ON DELETE CASCADE;
+    FOREIGN KEY ("collegeId") REFERENCES colleges(id) ON DELETE CASCADE;
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
@@ -173,32 +171,32 @@ CREATE TABLE IF NOT EXISTS student_enrollments (
     student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
     
     -- Entity references (ONE ACTIVE AT A TIME per student)
-    schoolId UUID REFERENCES schools(id) ON DELETE SET NULL,
-    collegeId UUID REFERENCES colleges(id) ON DELETE SET NULL,
+    "schoolId" UUID REFERENCES schools(id) ON DELETE SET NULL,
+    "collegeId" UUID REFERENCES colleges(id) ON DELETE SET NULL,
     university_id UUID REFERENCES universities(id) ON DELETE SET NULL,
     
     -- Class/Course references  
-    schoolClassId UUID REFERENCES school_classes(id) ON DELETE SET NULL,
-    collegeCourseId UUID REFERENCES college_courses(id) ON DELETE SET NULL,
-    universityCourseId UUID REFERENCES university_courses(id) ON DELETE SET NULL,
+    "schoolClassId" UUID REFERENCES school_classes(id) ON DELETE SET NULL,
+    "collegeCourseId" UUID REFERENCES college_courses(id) ON DELETE SET NULL,
+    "universityCourseId" UUID REFERENCES university_courses(id) ON DELETE SET NULL,
     
     -- Enrollment details
-    enrollmentNumber VARCHAR(100),
-    enrollmentDate DATE NOT NULL,
-    expectedGraduationDate DATE,
+    "enrollmentNumber" VARCHAR(100),
+    "enrollmentDate" DATE NOT NULL,
+    "expectedGraduationDate" DATE,
     actual_graduation_date DATE,
     enrollment_status enrollment_status DEFAULT 'active',
     
     -- Transfer/withdrawal information
-    withdrawalDate DATE,
+    "withdrawalDate" DATE,
     withdrawal_reason TEXT,
     transfer_to_entity_id UUID,
     transfer_to_class_id UUID,
     transfer_date DATE,
-    transferReason TEXT,
+    "transferReason" TEXT,
     
-    createdAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updatedAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     metadata JSONB DEFAULT '{}',
     
     -- Constraint: Only one class type can be set
@@ -217,11 +215,11 @@ CREATE TABLE IF NOT EXISTS student_enrollments (
 );
 
 CREATE INDEX IF NOT EXISTS idx_student_enrollments_student ON student_enrollments(student_id);
-CREATE INDEX IF NOT EXISTS idx_student_enrollments_status ON student_enrollments(enrollmentStatus);
-CREATE INDEX IF NOT EXISTS idx_student_enrollments_school_class ON student_enrollments(schoolClassId);
-CREATE INDEX IF NOT EXISTS idx_student_enrollments_college_course ON student_enrollments(collegeCourseId);
-CREATE INDEX IF NOT EXISTS idx_student_enrollments_university_course ON student_enrollments(universityCourseId);
-CREATE INDEX IF NOT EXISTS idx_student_enrollments_dates ON student_enrollments(enrollmentDate, expectedGraduationDate);
+CREATE INDEX IF NOT EXISTS idx_student_enrollments_status ON student_enrollments("enrollmentStatus");
+CREATE INDEX IF NOT EXISTS idx_student_enrollments_school_class ON student_enrollments("schoolClassId");
+CREATE INDEX IF NOT EXISTS idx_student_enrollments_college_course ON student_enrollments("collegeCourseId");
+CREATE INDEX IF NOT EXISTS idx_student_enrollments_university_course ON student_enrollments("universityCourseId");
+CREATE INDEX IF NOT EXISTS idx_student_enrollments_dates ON student_enrollments("enrollmentDate", "expectedGraduationDate");
 
 -- Add trigger for student_enrollments
 DROP TRIGGER IF EXISTS update_student_enrollments_updated_at ON student_enrollments;
@@ -235,11 +233,11 @@ FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE OR REPLACE FUNCTION get_active_enrollment(p_student_id UUID)
 RETURNS TABLE (
     enrollment_id UUID,
-    entityType TEXT,
+    "entityType" TEXT,
     entity_name TEXT,
-    className TEXT,
-    enrollmentDate DATE,
-    expectedGraduationDate DATE
+    "className" TEXT,
+    "enrollmentDate" DATE,
+    "expectedGraduationDate" DATE
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -287,26 +285,17 @@ BEGIN
     -- Mark current enrollment as transferred
     UPDATE student_enrollments
     SET enrollmentStatus = 'transferred',
-        transfer_date = CURRENT_DATE,
-        transferReason = p_transfer_reason,
+        transfer_date = CURRENT_DATE, "transferReason" = p_transfer_reason,
         transfer_to_entity_id = p_new_entity_id,
-        transfer_to_class_id = p_new_class_id,
-        updatedAt = NOW()
+        transfer_to_class_id = p_new_class_id, "updatedAt" = NOW()
     WHERE student_id = p_student_id
     AND enrollmentStatus = 'active'
     RETURNING id INTO v_old_enrollment_id;
     
     -- Create new enrollment
     INSERT INTO student_enrollments (
-        student_id,
-        schoolId,
-        collegeId,
-        university_id,
-        schoolClassId,
-        collegeCourseId,
-        universityCourseId,
-        enrollmentDate,
-        enrollmentStatus
+        student_id, "schoolId", "collegeId",
+        university_id, "schoolClassId", "collegeCourseId", "universityCourseId", "enrollmentDate", "enrollmentStatus"
     )
     VALUES (
         p_student_id,
@@ -412,10 +401,7 @@ SELECT
     id as entityId,
     name as entity_name,
     code,
-    state,
-    accountStatus,
-    approvalStatus,
-    totalStudents,
+    state, "accountStatus", "approvalStatus", "totalStudents",
     total_classes as total_classes_courses,
     total_educators as total_staff,
     created_at
@@ -426,10 +412,7 @@ SELECT
     id as entityId,
     name as entity_name,
     code,
-    state,
-    accountStatus,
-    approvalStatus,
-    totalStudents,
+    state, "accountStatus", "approvalStatus", "totalStudents",
     total_courses as total_classes_courses,
     total_lecturers as total_staff,
     created_at
@@ -440,10 +423,7 @@ SELECT
     id as entityId,
     name as entity_name,
     code,
-    state,
-    accountStatus,
-    approvalStatus,
-    totalStudents,
+    state, "accountStatus", "approvalStatus", "totalStudents",
     total_courses as total_classes_courses,
     total_lecturers as total_staff,
     created_at
@@ -454,9 +434,7 @@ SELECT
     id as entityId,
     name as entity_name,
     code,
-    hq_state as state,
-    accountStatus,
-    approvalStatus,
+    hq_state as state, "accountStatus", "approvalStatus",
     0 as totalStudents,
     total_branches as total_classes_courses,
     total_recruiters as total_staff,
@@ -502,7 +480,7 @@ CREATE INDEX IF NOT EXISTS idx_colleges_university_type ON colleges(university_i
 CREATE INDEX IF NOT EXISTS idx_colleges_standalone ON colleges(college_type) WHERE college_type = 'standalone';
 
 -- Composite indexes for enrollments
-CREATE INDEX IF NOT EXISTS idx_enrollments_student_status_date ON student_enrollments(student_id, enrollmentStatus, enrollment_date DESC);
+CREATE INDEX IF NOT EXISTS idx_enrollments_student_status_date ON student_enrollments(student_id, "enrollmentStatus", enrollment_date DESC);
 CREATE INDEX IF NOT EXISTS idx_enrollments_active ON student_enrollments(student_id) WHERE enrollmentStatus = 'active';
 
 -- ============================================================

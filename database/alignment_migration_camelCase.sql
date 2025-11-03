@@ -33,7 +33,7 @@ END $$;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='entitytype') THEN
-        ALTER TABLE users ADD COLUMN entityType entity_type;
+        ALTER TABLE users ADD COLUMN "entityType" entity_type;
     END IF;
 END $$;
 
@@ -47,7 +47,7 @@ END $$;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='accountstatus') THEN
-        ALTER TABLE users ADD COLUMN accountStatus account_status DEFAULT 'pending';
+        ALTER TABLE users ADD COLUMN "accountStatus" account_status DEFAULT 'pending';
     END IF;
 END $$;
 
@@ -86,7 +86,7 @@ END $$;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='universities' AND column_name='approvalstatus') THEN
-        ALTER TABLE universities ADD COLUMN approvalStatus approval_status DEFAULT 'pending';
+        ALTER TABLE universities ADD COLUMN "approvalStatus" approval_status DEFAULT 'pending';
     END IF;
 END $$;
 
@@ -107,7 +107,7 @@ END $$;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='universities' AND column_name='accountstatus') THEN
-        ALTER TABLE universities ADD COLUMN accountStatus account_status DEFAULT 'pending';
+        ALTER TABLE universities ADD COLUMN "accountStatus" account_status DEFAULT 'pending';
     END IF;
 END $$;
 
@@ -146,7 +146,7 @@ END $$;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='students' AND column_name='studenttype') THEN
-        ALTER TABLE students ADD COLUMN studentType student_type;
+        ALTER TABLE students ADD COLUMN "studentType" student_type;
     END IF;
 END $$;
 
@@ -230,7 +230,7 @@ END $$;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='students' AND column_name='gender') THEN
-        ALTER TABLE students ADD COLUMN "gender" VARCHAR(20);
+        ALTER TABLE students ADD COLUMN gender VARCHAR(20);
     END IF;
 END $$;
 
@@ -276,7 +276,7 @@ END $$;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='skill_passports' AND column_name='certifications') THEN
-        ALTER TABLE skill_passports ADD COLUMN "certifications" JSONB DEFAULT '[]';
+        ALTER TABLE skill_passports ADD COLUMN certifications JSONB DEFAULT '[]';
     END IF;
 END $$;
 
@@ -290,7 +290,7 @@ END $$;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='skill_passports' AND column_name='achievements') THEN
-        ALTER TABLE skill_passports ADD COLUMN "achievements" JSONB DEFAULT '[]';
+        ALTER TABLE skill_passports ADD COLUMN achievements JSONB DEFAULT '[]';
     END IF;
 END $$;
 
@@ -329,7 +329,7 @@ END $$;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='recruiters' AND column_name='verificationstatus') THEN
-        ALTER TABLE recruiters ADD COLUMN verificationStatus approval_status DEFAULT 'pending';
+        ALTER TABLE recruiters ADD COLUMN "verificationStatus" approval_status DEFAULT 'pending';
     END IF;
 END $$;
 
@@ -371,14 +371,14 @@ END $$;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='recruiters' AND column_name='designation') THEN
-        ALTER TABLE recruiters ADD COLUMN "designation" VARCHAR(100);
+        ALTER TABLE recruiters ADD COLUMN designation VARCHAR(100);
     END IF;
 END $$;
 
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='recruiters' AND column_name='department') THEN
-        ALTER TABLE recruiters ADD COLUMN "department" VARCHAR(100);
+        ALTER TABLE recruiters ADD COLUMN department VARCHAR(100);
     END IF;
 END $$;
 
@@ -399,7 +399,7 @@ END $$;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='recruiters' AND column_name='accountstatus') THEN
-        ALTER TABLE recruiters ADD COLUMN accountStatus account_status DEFAULT 'active';
+        ALTER TABLE recruiters ADD COLUMN "accountStatus" account_status DEFAULT 'active';
     END IF;
 END $$;
 

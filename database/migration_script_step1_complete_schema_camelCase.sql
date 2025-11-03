@@ -104,7 +104,7 @@ BEGIN
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='entitytype') THEN
-        ALTER TABLE users ADD COLUMN entityType entity_type;
+        ALTER TABLE users ADD COLUMN "entityType" entity_type;
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='entityid') THEN
@@ -112,7 +112,7 @@ BEGIN
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='accountstatus') THEN
-        ALTER TABLE users ADD COLUMN accountStatus account_status DEFAULT 'pending';
+        ALTER TABLE users ADD COLUMN "accountStatus" account_status DEFAULT 'pending';
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='lastpasswordchange') THEN
@@ -135,14 +135,14 @@ END $$;
 -- Add foreign key for created_by
 ALTER TABLE users DROP CONSTRAINT IF EXISTS fk_users_created_by;
 ALTER TABLE users ADD CONSTRAINT fk_users_created_by 
-    FOREIGN KEY (createdBy) REFERENCES users(id) ON DELETE SET NULL;
+    FOREIGN KEY ("createdBy") REFERENCES users(id) ON DELETE SET NULL;
 
 -- Create indexes for users table
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
-CREATE INDEX IF NOT EXISTS idx_users_entity ON users(entityType, entityId);
-CREATE INDEX IF NOT EXISTS idx_users_supabase_auth_id ON users(supabaseAuthId);
-CREATE INDEX IF NOT EXISTS idx_users_account_status ON users(accountStatus);
+CREATE INDEX IF NOT EXISTS idx_users_entity ON users("entityType", "entityId");
+CREATE INDEX IF NOT EXISTS idx_users_supabase_auth_id ON users("supabaseAuthId");
+CREATE INDEX IF NOT EXISTS idx_users_account_status ON users("accountStatus");
 
 -- ============================================================
 -- SCHOOLS TABLE
@@ -164,13 +164,13 @@ CREATE TABLE IF NOT EXISTS schools (
     board VARCHAR(100),
     account_status account_status DEFAULT 'pending',
     approval_status approval_status DEFAULT 'pending',
-    approvedBy UUID REFERENCES users(id),
-    approvedAt TIMESTAMP WITH TIME ZONE,
+    "approvedBy" UUID REFERENCES users(id),
+    "approvedAt" TIMESTAMP WITH TIME ZONE,
     total_classes INTEGER DEFAULT 0,
     total_educators INTEGER DEFAULT 0,
-    totalStudents INTEGER DEFAULT 0,
-    createdAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updatedAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "totalStudents" INTEGER DEFAULT 0,
+    "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     metadata JSONB DEFAULT '{}'
 );
 
@@ -178,11 +178,11 @@ CREATE TABLE IF NOT EXISTS schools (
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='schools' AND column_name='board') THEN
-        ALTER TABLE schools ADD COLUMN "board" VARCHAR(100);
+        ALTER TABLE schools ADD COLUMN board VARCHAR(100);
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='schools' AND column_name='approvalstatus') THEN
-        ALTER TABLE schools ADD COLUMN approvalStatus approval_status DEFAULT 'pending';
+        ALTER TABLE schools ADD COLUMN "approvalStatus" approval_status DEFAULT 'pending';
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='schools' AND column_name='approvedby') THEN
@@ -207,57 +207,57 @@ BEGIN
 END $$;
 
 CREATE INDEX IF NOT EXISTS idx_schools_code ON schools(code);
-CREATE INDEX IF NOT EXISTS idx_schools_status ON schools(accountStatus, approvalStatus);
+CREATE INDEX IF NOT EXISTS idx_schools_status ON schools("accountStatus", "approvalStatus");
 CREATE INDEX IF NOT EXISTS idx_schools_state ON schools(state);
 
 CREATE TABLE IF NOT EXISTS school_classes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    schoolId UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+    "schoolId" UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     grade VARCHAR(20) NOT NULL,
     section VARCHAR(10),
-    academicYear VARCHAR(20) NOT NULL,
+    "academicYear" VARCHAR(20) NOT NULL,
     max_students INTEGER DEFAULT 40,
     current_students INTEGER DEFAULT 0,
     account_status account_status DEFAULT 'active',
-    createdAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updatedAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     metadata JSONB DEFAULT '{}',
-    UNIQUE(schoolId, name, academicYear)
+    UNIQUE("schoolId", name, "academicYear")
 );
 
-CREATE INDEX IF NOT EXISTS idx_school_classes_school ON school_classes(schoolId);
-CREATE INDEX IF NOT EXISTS idx_school_classes_academic_year ON school_classes(academicYear);
+CREATE INDEX IF NOT EXISTS idx_school_classes_school ON school_classes("schoolId");
+CREATE INDEX IF NOT EXISTS idx_school_classes_academic_year ON school_classes("academicYear");
 
 CREATE TABLE IF NOT EXISTS school_educators (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    userId UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    schoolId UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
-    employeeId VARCHAR(50),
-    specialization VARCHAR(100),
+    "userId" UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    "schoolId" UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+    "employeeId" VARCHAR(50),
+    "specialization" VARCHAR(100),
     qualification VARCHAR(255),
-    experienceYears INTEGER,
-    dateOfJoining DATE,
+    "experienceYears" INTEGER,
+    "dateOfJoining" DATE,
     account_status account_status DEFAULT 'active',
-    createdAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updatedAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     metadata JSONB DEFAULT '{}',
-    UNIQUE(schoolId, employeeId)
+    UNIQUE("schoolId", "employeeId")
 );
 
-CREATE INDEX IF NOT EXISTS idx_school_educators_school ON school_educators(schoolId);
-CREATE INDEX IF NOT EXISTS idx_school_educators_user ON school_educators(userId);
+CREATE INDEX IF NOT EXISTS idx_school_educators_school ON school_educators("schoolId");
+CREATE INDEX IF NOT EXISTS idx_school_educators_user ON school_educators("userId");
 
 CREATE TABLE IF NOT EXISTS school_educator_class_assignments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     educator_id UUID NOT NULL REFERENCES school_educators(id) ON DELETE CASCADE,
     class_id UUID NOT NULL REFERENCES school_classes(id) ON DELETE CASCADE,
     subject VARCHAR(100) NOT NULL,
-    academicYear VARCHAR(20) NOT NULL,
+    "academicYear" VARCHAR(20) NOT NULL,
     is_primary BOOLEAN DEFAULT false,
-    assignedAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    assignedBy UUID REFERENCES users(id),
-    UNIQUE(educator_id, class_id, subject, academicYear)
+    "assignedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "assignedBy" UUID REFERENCES users(id),
+    UNIQUE(educator_id, class_id, subject, "academicYear")
 );
 
 CREATE INDEX IF NOT EXISTS idx_educator_assignments_educator ON school_educator_class_assignments(educator_id);
@@ -284,13 +284,13 @@ CREATE TABLE IF NOT EXISTS colleges_standalone (
     accreditation VARCHAR(100),
     account_status account_status DEFAULT 'pending',
     approval_status approval_status DEFAULT 'pending',
-    approvedBy UUID REFERENCES users(id),
-    approvedAt TIMESTAMP WITH TIME ZONE,
-    totalCourses INTEGER DEFAULT 0,
-    totalLecturers INTEGER DEFAULT 0,
-    totalStudents INTEGER DEFAULT 0,
-    createdAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updatedAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "approvedBy" UUID REFERENCES users(id),
+    "approvedAt" TIMESTAMP WITH TIME ZONE,
+    "totalCourses" INTEGER DEFAULT 0,
+    "totalLecturers" INTEGER DEFAULT 0,
+    "totalStudents" INTEGER DEFAULT 0,
+    "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     metadata JSONB DEFAULT '{}'
 );
 
@@ -298,7 +298,7 @@ CREATE TABLE IF NOT EXISTS colleges_standalone (
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='colleges_standalone' AND column_name='approvalstatus') THEN
-        ALTER TABLE colleges_standalone ADD COLUMN approvalStatus approval_status DEFAULT 'pending';
+        ALTER TABLE colleges_standalone ADD COLUMN "approvalStatus" approval_status DEFAULT 'pending';
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='colleges_standalone' AND column_name='approvedby') THEN
@@ -323,60 +323,60 @@ BEGIN
 END $$;
 
 CREATE INDEX IF NOT EXISTS idx_colleges_code ON colleges_standalone(code);
-CREATE INDEX IF NOT EXISTS idx_colleges_status ON colleges_standalone(accountStatus, approvalStatus);
+CREATE INDEX IF NOT EXISTS idx_colleges_status ON colleges_standalone("accountStatus", "approvalStatus");
 CREATE INDEX IF NOT EXISTS idx_colleges_state ON colleges_standalone(state);
 
 CREATE TABLE IF NOT EXISTS college_courses (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    collegeId UUID NOT NULL REFERENCES colleges_standalone(id) ON DELETE CASCADE,
+    "collegeId" UUID NOT NULL REFERENCES colleges_standalone(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     program VARCHAR(100) NOT NULL,
-    specialization VARCHAR(100),
+    "specialization" VARCHAR(100),
     year INTEGER,
     semester INTEGER,
     section VARCHAR(10),
-    academicYear VARCHAR(20) NOT NULL,
+    "academicYear" VARCHAR(20) NOT NULL,
     max_students INTEGER DEFAULT 60,
     current_students INTEGER DEFAULT 0,
     account_status account_status DEFAULT 'active',
-    createdAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updatedAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     metadata JSONB DEFAULT '{}',
-    UNIQUE(collegeId, name, academicYear)
+    UNIQUE("collegeId", name, "academicYear")
 );
 
-CREATE INDEX IF NOT EXISTS idx_college_courses_college ON college_courses(collegeId);
-CREATE INDEX IF NOT EXISTS idx_college_courses_academic_year ON college_courses(academicYear);
+CREATE INDEX IF NOT EXISTS idx_college_courses_college ON college_courses("collegeId");
+CREATE INDEX IF NOT EXISTS idx_college_courses_academic_year ON college_courses("academicYear");
 
 CREATE TABLE IF NOT EXISTS college_lecturers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    userId UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    collegeId UUID NOT NULL REFERENCES colleges_standalone(id) ON DELETE CASCADE,
-    employeeId VARCHAR(50),
+    "userId" UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    "collegeId" UUID NOT NULL REFERENCES colleges_standalone(id) ON DELETE CASCADE,
+    "employeeId" VARCHAR(50),
     department VARCHAR(100),
-    specialization VARCHAR(100),
+    "specialization" VARCHAR(100),
     qualification VARCHAR(255),
-    experienceYears INTEGER,
-    dateOfJoining DATE,
+    "experienceYears" INTEGER,
+    "dateOfJoining" DATE,
     account_status account_status DEFAULT 'active',
-    createdAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updatedAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     metadata JSONB DEFAULT '{}',
-    UNIQUE(collegeId, employeeId)
+    UNIQUE("collegeId", "employeeId")
 );
 
-CREATE INDEX IF NOT EXISTS idx_college_lecturers_college ON college_lecturers(collegeId);
-CREATE INDEX IF NOT EXISTS idx_college_lecturers_user ON college_lecturers(userId);
+CREATE INDEX IF NOT EXISTS idx_college_lecturers_college ON college_lecturers("collegeId");
+CREATE INDEX IF NOT EXISTS idx_college_lecturers_user ON college_lecturers("userId");
 
 CREATE TABLE IF NOT EXISTS college_lecturer_course_assignments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     lecturer_id UUID NOT NULL REFERENCES college_lecturers(id) ON DELETE CASCADE,
     course_id UUID NOT NULL REFERENCES college_courses(id) ON DELETE CASCADE,
     subject VARCHAR(100) NOT NULL,
-    academicYear VARCHAR(20) NOT NULL,
-    assignedAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    assignedBy UUID REFERENCES users(id),
-    UNIQUE(lecturer_id, course_id, subject, academicYear)
+    "academicYear" VARCHAR(20) NOT NULL,
+    "assignedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "assignedBy" UUID REFERENCES users(id),
+    UNIQUE(lecturer_id, course_id, subject, "academicYear")
 );
 
 CREATE INDEX IF NOT EXISTS idx_lecturer_assignments_lecturer ON college_lecturer_course_assignments(lecturer_id);
@@ -394,7 +394,7 @@ BEGIN
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='universities' AND column_name='approvalstatus') THEN
-        ALTER TABLE universities ADD COLUMN approvalStatus approval_status DEFAULT 'pending';
+        ALTER TABLE universities ADD COLUMN "approvalStatus" approval_status DEFAULT 'pending';
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='universities' AND column_name='approvedby') THEN
@@ -406,7 +406,7 @@ BEGIN
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='universities' AND column_name='accountstatus') THEN
-        ALTER TABLE universities ADD COLUMN accountStatus account_status DEFAULT 'pending';
+        ALTER TABLE universities ADD COLUMN "accountStatus" account_status DEFAULT 'pending';
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='universities' AND column_name='totalcolleges') THEN
@@ -427,7 +427,7 @@ BEGIN
 END $$;
 
 CREATE INDEX IF NOT EXISTS idx_universities_code ON universities(code);
-CREATE INDEX IF NOT EXISTS idx_universities_status ON universities(accountStatus, approvalStatus);
+CREATE INDEX IF NOT EXISTS idx_universities_status ON universities("accountStatus", "approvalStatus");
 CREATE INDEX IF NOT EXISTS idx_universities_state ON universities(state);
 
 CREATE TABLE IF NOT EXISTS university_colleges (
@@ -440,8 +440,8 @@ CREATE TABLE IF NOT EXISTS university_colleges (
     dean_phone VARCHAR(20),
     established_year INTEGER,
     account_status account_status DEFAULT 'active',
-    createdAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updatedAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     metadata JSONB DEFAULT '{}',
     UNIQUE(university_id, code)
 );
@@ -450,55 +450,55 @@ CREATE INDEX IF NOT EXISTS idx_university_colleges_university ON university_coll
 
 CREATE TABLE IF NOT EXISTS university_courses (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    collegeId UUID NOT NULL REFERENCES university_colleges(id) ON DELETE CASCADE,
+    "collegeId" UUID NOT NULL REFERENCES university_colleges(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     program VARCHAR(100) NOT NULL,
-    specialization VARCHAR(100),
+    "specialization" VARCHAR(100),
     year INTEGER,
     semester INTEGER,
     section VARCHAR(10),
-    academicYear VARCHAR(20) NOT NULL,
+    "academicYear" VARCHAR(20) NOT NULL,
     max_students INTEGER DEFAULT 60,
     current_students INTEGER DEFAULT 0,
     account_status account_status DEFAULT 'active',
-    createdAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updatedAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     metadata JSONB DEFAULT '{}',
-    UNIQUE(collegeId, name, academicYear)
+    UNIQUE("collegeId", name, "academicYear")
 );
 
-CREATE INDEX IF NOT EXISTS idx_university_courses_college ON university_courses(collegeId);
-CREATE INDEX IF NOT EXISTS idx_university_courses_academic_year ON university_courses(academicYear);
+CREATE INDEX IF NOT EXISTS idx_university_courses_college ON university_courses("collegeId");
+CREATE INDEX IF NOT EXISTS idx_university_courses_academic_year ON university_courses("academicYear");
 
 CREATE TABLE IF NOT EXISTS university_lecturers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    userId UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    collegeId UUID NOT NULL REFERENCES university_colleges(id) ON DELETE CASCADE,
-    employeeId VARCHAR(50),
+    "userId" UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    "collegeId" UUID NOT NULL REFERENCES university_colleges(id) ON DELETE CASCADE,
+    "employeeId" VARCHAR(50),
     department VARCHAR(100),
-    specialization VARCHAR(100),
+    "specialization" VARCHAR(100),
     qualification VARCHAR(255),
-    experienceYears INTEGER,
-    dateOfJoining DATE,
+    "experienceYears" INTEGER,
+    "dateOfJoining" DATE,
     account_status account_status DEFAULT 'active',
-    createdAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updatedAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     metadata JSONB DEFAULT '{}',
-    UNIQUE(collegeId, employeeId)
+    UNIQUE("collegeId", "employeeId")
 );
 
-CREATE INDEX IF NOT EXISTS idx_university_lecturers_college ON university_lecturers(collegeId);
-CREATE INDEX IF NOT EXISTS idx_university_lecturers_user ON university_lecturers(userId);
+CREATE INDEX IF NOT EXISTS idx_university_lecturers_college ON university_lecturers("collegeId");
+CREATE INDEX IF NOT EXISTS idx_university_lecturers_user ON university_lecturers("userId");
 
 CREATE TABLE IF NOT EXISTS university_lecturer_course_assignments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     lecturer_id UUID NOT NULL REFERENCES university_lecturers(id) ON DELETE CASCADE,
     course_id UUID NOT NULL REFERENCES university_courses(id) ON DELETE CASCADE,
     subject VARCHAR(100) NOT NULL,
-    academicYear VARCHAR(20) NOT NULL,
-    assignedAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    assignedBy UUID REFERENCES users(id),
-    UNIQUE(lecturer_id, course_id, subject, academicYear)
+    "academicYear" VARCHAR(20) NOT NULL,
+    "assignedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "assignedBy" UUID REFERENCES users(id),
+    UNIQUE(lecturer_id, course_id, subject, "academicYear")
 );
 
 CREATE INDEX IF NOT EXISTS idx_university_lecturer_assignments_lecturer ON university_lecturer_course_assignments(lecturer_id);
@@ -512,7 +512,7 @@ CREATE INDEX IF NOT EXISTS idx_university_lecturer_assignments_course ON univers
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='students' AND column_name='studenttype') THEN
-        ALTER TABLE students ADD COLUMN studentType student_type;
+        ALTER TABLE students ADD COLUMN "studentType" student_type;
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='students' AND column_name='schoolid') THEN
@@ -564,7 +564,7 @@ BEGIN
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='students' AND column_name='gender') THEN
-        ALTER TABLE students ADD COLUMN "gender" VARCHAR(20);
+        ALTER TABLE students ADD COLUMN gender VARCHAR(20);
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='students' AND column_name='bloodgroup') THEN
@@ -588,16 +588,16 @@ BEGIN
     END IF;
 END $$;
 
-CREATE INDEX IF NOT EXISTS idx_students_user ON students(userId);
-CREATE INDEX IF NOT EXISTS idx_students_type ON students(studentType);
-CREATE INDEX IF NOT EXISTS idx_students_school ON students(schoolId);
-CREATE INDEX IF NOT EXISTS idx_students_college ON students(collegeId);
+CREATE INDEX IF NOT EXISTS idx_students_user ON students("userId");
+CREATE INDEX IF NOT EXISTS idx_students_type ON students("studentType");
+CREATE INDEX IF NOT EXISTS idx_students_school ON students("schoolId");
+CREATE INDEX IF NOT EXISTS idx_students_college ON students("collegeId");
 CREATE INDEX IF NOT EXISTS idx_students_university ON students(university_id);
-CREATE INDEX IF NOT EXISTS idx_students_school_class ON students(schoolClassId);
-CREATE INDEX IF NOT EXISTS idx_students_college_course ON students(collegeCourseId);
-CREATE INDEX IF NOT EXISTS idx_students_university_course ON students(universityCourseId);
+CREATE INDEX IF NOT EXISTS idx_students_school_class ON students("schoolClassId");
+CREATE INDEX IF NOT EXISTS idx_students_college_course ON students("collegeCourseId");
+CREATE INDEX IF NOT EXISTS idx_students_university_course ON students("universityCourseId");
 CREATE INDEX IF NOT EXISTS idx_students_email ON students(email);
-CREATE INDEX IF NOT EXISTS idx_students_enrollment ON students(enrollmentNumber);
+CREATE INDEX IF NOT EXISTS idx_students_enrollment ON students("enrollmentNumber");
 
 -- ============================================================
 -- SKILL PASSPORTS TABLE - Add missing columns
@@ -611,7 +611,7 @@ BEGIN
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='skill_passports' AND column_name='certifications') THEN
-        ALTER TABLE skill_passports ADD COLUMN "certifications" JSONB DEFAULT '[]';
+        ALTER TABLE skill_passports ADD COLUMN certifications JSONB DEFAULT '[]';
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='skill_passports' AND column_name='workexperience') THEN
@@ -619,11 +619,11 @@ BEGIN
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='skill_passports' AND column_name='projects') THEN
-        ALTER TABLE skill_passports ADD COLUMN "projects" JSONB DEFAULT '[]';
+        ALTER TABLE skill_passports ADD COLUMN projects JSONB DEFAULT '[]';
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='skill_passports' AND column_name='achievements') THEN
-        ALTER TABLE skill_passports ADD COLUMN "achievements" JSONB DEFAULT '[]';
+        ALTER TABLE skill_passports ADD COLUMN achievements JSONB DEFAULT '[]';
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='skill_passports' AND column_name='verifiedby') THEN
@@ -645,8 +645,8 @@ END $$;
 
 CREATE INDEX IF NOT EXISTS idx_skill_passports_student ON skill_passports(student_id);
 CREATE INDEX IF NOT EXISTS idx_skill_passports_status ON skill_passports(status);
-CREATE INDEX IF NOT EXISTS idx_skill_passports_nsqf ON skill_passports(nsqfLevel);
-CREATE INDEX IF NOT EXISTS idx_skill_passports_ai_verified ON skill_passports(aiVerified);
+CREATE INDEX IF NOT EXISTS idx_skill_passports_nsqf ON skill_passports("nsqfLevel");
+CREATE INDEX IF NOT EXISTS idx_skill_passports_ai_verified ON skill_passports("aiVerified");
 
 -- ============================================================
 -- COMPANIES TABLE
@@ -673,14 +673,14 @@ CREATE TABLE IF NOT EXISTS companies (
     contact_person_phone VARCHAR(20),
     account_status account_status DEFAULT 'pending',
     approval_status approval_status DEFAULT 'pending',
-    approvedBy UUID REFERENCES users(id),
-    approvedAt TIMESTAMP WITH TIME ZONE,
-    totalBranches INTEGER DEFAULT 0,
+    "approvedBy" UUID REFERENCES users(id),
+    "approvedAt" TIMESTAMP WITH TIME ZONE,
+    "totalBranches" INTEGER DEFAULT 0,
     total_recruiters INTEGER DEFAULT 0,
     hq_recruiters INTEGER DEFAULT 0,
     branch_recruiters INTEGER DEFAULT 0,
-    createdAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updatedAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     metadata JSONB DEFAULT '{}'
 );
 
@@ -688,7 +688,7 @@ CREATE TABLE IF NOT EXISTS companies (
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='companies' AND column_name='approvalstatus') THEN
-        ALTER TABLE companies ADD COLUMN approvalStatus approval_status DEFAULT 'pending';
+        ALTER TABLE companies ADD COLUMN "approvalStatus" approval_status DEFAULT 'pending';
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='companies' AND column_name='approvedby') THEN
@@ -717,16 +717,16 @@ BEGIN
 END $$;
 
 CREATE INDEX IF NOT EXISTS idx_companies_code ON companies(code);
-CREATE INDEX IF NOT EXISTS idx_companies_status ON companies(accountStatus, approvalStatus);
+CREATE INDEX IF NOT EXISTS idx_companies_status ON companies("accountStatus", "approvalStatus");
 CREATE INDEX IF NOT EXISTS idx_companies_industry ON companies(industry);
 CREATE INDEX IF NOT EXISTS idx_companies_state ON companies(hq_state);
 
 CREATE TABLE IF NOT EXISTS company_branches (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    companyId UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    "companyId" UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     code VARCHAR(50) NOT NULL,
-    branchType VARCHAR(50),
+    "branchType" VARCHAR(50),
     address TEXT,
     city VARCHAR(100),
     state VARCHAR(100),
@@ -738,13 +738,13 @@ CREATE TABLE IF NOT EXISTS company_branches (
     branch_head_email VARCHAR(255),
     branch_head_phone VARCHAR(20),
     account_status account_status DEFAULT 'active',
-    createdAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updatedAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     metadata JSONB DEFAULT '{}',
-    UNIQUE(companyId, code)
+    UNIQUE("companyId", code)
 );
 
-CREATE INDEX IF NOT EXISTS idx_company_branches_company ON company_branches(companyId);
+CREATE INDEX IF NOT EXISTS idx_company_branches_company ON company_branches("companyId");
 
 -- ============================================================
 -- RECRUITERS TABLE - Add missing columns
@@ -754,7 +754,7 @@ CREATE INDEX IF NOT EXISTS idx_company_branches_company ON company_branches(comp
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='recruiters' AND column_name='verificationstatus') THEN
-        ALTER TABLE recruiters ADD COLUMN verificationStatus approval_status DEFAULT 'pending';
+        ALTER TABLE recruiters ADD COLUMN "verificationStatus" approval_status DEFAULT 'pending';
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='recruiters' AND column_name='isactive') THEN
@@ -782,11 +782,11 @@ BEGIN
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='recruiters' AND column_name='designation') THEN
-        ALTER TABLE recruiters ADD COLUMN "designation" VARCHAR(100);
+        ALTER TABLE recruiters ADD COLUMN designation VARCHAR(100);
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='recruiters' AND column_name='department') THEN
-        ALTER TABLE recruiters ADD COLUMN "department" VARCHAR(100);
+        ALTER TABLE recruiters ADD COLUMN department VARCHAR(100);
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='recruiters' AND column_name='dateofjoining') THEN
@@ -798,15 +798,15 @@ BEGIN
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='recruiters' AND column_name='accountstatus') THEN
-        ALTER TABLE recruiters ADD COLUMN accountStatus account_status DEFAULT 'active';
+        ALTER TABLE recruiters ADD COLUMN "accountStatus" account_status DEFAULT 'active';
     END IF;
 END $$;
 
-CREATE INDEX IF NOT EXISTS idx_recruiters_company ON recruiters(companyId);
-CREATE INDEX IF NOT EXISTS idx_recruiters_branch ON recruiters(branchId);
-CREATE INDEX IF NOT EXISTS idx_recruiters_user ON recruiters(userId);
+CREATE INDEX IF NOT EXISTS idx_recruiters_company ON recruiters("companyId");
+CREATE INDEX IF NOT EXISTS idx_recruiters_branch ON recruiters("branchId");
+CREATE INDEX IF NOT EXISTS idx_recruiters_user ON recruiters("userId");
 CREATE INDEX IF NOT EXISTS idx_recruiters_email ON recruiters(email);
-CREATE INDEX IF NOT EXISTS idx_recruiters_status ON recruiters(verificationStatus, isActive);
+CREATE INDEX IF NOT EXISTS idx_recruiters_status ON recruiters("verificationStatus", "isActive");
 CREATE INDEX IF NOT EXISTS idx_recruiters_state ON recruiters(state);
 
 -- ============================================================
@@ -838,8 +838,8 @@ BEGIN
 END $$;
 
 CREATE INDEX IF NOT EXISTS idx_verifications_passport ON verifications(passport_id);
-CREATE INDEX IF NOT EXISTS idx_verifications_user ON verifications(userId);
-CREATE INDEX IF NOT EXISTS idx_verifications_status ON verifications(verificationStatus);
+CREATE INDEX IF NOT EXISTS idx_verifications_user ON verifications("userId");
+CREATE INDEX IF NOT EXISTS idx_verifications_status ON verifications("verificationStatus");
 
 -- ============================================================
 -- METRICS SNAPSHOTS TABLE - Add missing columns
@@ -873,7 +873,7 @@ CREATE TABLE IF NOT EXISTS permissions (
     resource VARCHAR(50) NOT NULL,
     action VARCHAR(50) NOT NULL,
     description TEXT,
-    createdAt TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_permissions_name ON permissions(name);
@@ -883,7 +883,7 @@ CREATE TABLE IF NOT EXISTS role_permissions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     role user_role NOT NULL,
     permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
-    createdAt TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(role, permission_id)
 );
 
@@ -922,10 +922,10 @@ BEGIN
     END IF;
 END $$;
 
-CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(userId);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs("userId");
 CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_resource ON audit_logs(resourceType, resourceId);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(createdAt);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_resource ON audit_logs("resourceType", "resourceId");
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs("createdAt");
 
 -- ============================================================
 -- TRIGGERS FOR UPDATED_AT
@@ -1027,7 +1027,7 @@ CREATE INDEX IF NOT EXISTS idx_recruiters_name_trgm ON recruiters USING gin(name
 CREATE INDEX IF NOT EXISTS idx_recruiters_email_trgm ON recruiters USING gin(email gin_trgm_ops);
 
 -- Composite indexes for common queries
-CREATE INDEX IF NOT EXISTS idx_students_university_status ON students(university_id, accountStatus) WHERE university_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_students_university_status ON students(university_id, "accountStatus") WHERE university_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_skill_passports_student_status ON skill_passports(student_id, status);
 
 -- Sorting indexes (DESC for latest first)
