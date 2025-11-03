@@ -50,10 +50,9 @@ def analyze_database():
         ORDER BY table_name;
     """
     
-    tables_result = supabase.rpc('exec_sql', {'query': tables_query}).execute()
+    tables = execute_query(tables_query)
     
-    if tables_result.data:
-        tables = tables_result.data
+    if tables:
         print(f"📊 TOTAL TABLES: {len(tables)}")
         print("-" * 80)
         
@@ -76,11 +75,11 @@ def analyze_database():
                 ORDER BY ordinal_position;
             """
             
-            columns_result = supabase.rpc('exec_sql', {'query': columns_query}).execute()
+            columns = execute_query(columns_query)
             
-            if columns_result.data:
+            if columns:
                 print("\n  📝 COLUMNS:")
-                for col in columns_result.data:
+                for col in columns:
                     null_str = "NULL" if col['is_nullable'] == 'YES' else "NOT NULL"
                     default_str = f", DEFAULT: {col['column_default']}" if col['column_default'] else ""
                     length_str = f"({col['character_maximum_length']})" if col['character_maximum_length'] else ""
@@ -105,12 +104,12 @@ def analyze_database():
                 ORDER BY i.relname, a.attnum;
             """
             
-            indexes_result = supabase.rpc('exec_sql', {'query': indexes_query}).execute()
+            indexes = execute_query(indexes_query)
             
-            if indexes_result.data:
+            if indexes:
                 print("\n  🔑 INDEXES:")
                 current_index = None
-                for idx in indexes_result.data:
+                for idx in indexes:
                     if idx['index_name'] != current_index:
                         index_type_str = "UNIQUE " if idx['is_unique'] else ""
                         primary_str = "PRIMARY KEY " if idx['is_primary'] else ""
@@ -141,11 +140,11 @@ def analyze_database():
                 AND tc.table_schema = 'public';
             """
             
-            fk_result = supabase.rpc('exec_sql', {'query': fk_query}).execute()
+            foreign_keys = execute_query(fk_query)
             
-            if fk_result.data:
+            if foreign_keys:
                 print("\n  🔗 FOREIGN KEYS:")
-                for fk in fk_result.data:
+                for fk in foreign_keys:
                     print(f"    • {fk['constraint_name']}")
                     print(f"        {fk['column_name']} -> {fk['foreign_table_name']}.{fk['foreign_column_name']}")
                     print(f"        ON DELETE: {fk['delete_rule']}, ON UPDATE: {fk['update_rule']}")
@@ -164,11 +163,11 @@ def analyze_database():
                 AND tc.table_schema = 'public';
             """
             
-            unique_result = supabase.rpc('exec_sql', {'query': unique_query}).execute()
+            unique_constraints = execute_query(unique_query)
             
-            if unique_result.data:
+            if unique_constraints:
                 print("\n  ✨ UNIQUE CONSTRAINTS:")
-                for uniq in unique_result.data:
+                for uniq in unique_constraints:
                     print(f"    • {uniq['constraint_name']} on {uniq['column_name']}")
             
             # Get check constraints
@@ -184,11 +183,11 @@ def analyze_database():
                 AND con.contype = 'c';
             """
             
-            check_result = supabase.rpc('exec_sql', {'query': check_query}).execute()
+            check_constraints = execute_query(check_query)
             
-            if check_result.data:
+            if check_constraints:
                 print("\n  ✅ CHECK CONSTRAINTS:")
-                for chk in check_result.data:
+                for chk in check_constraints:
                     print(f"    • {chk['constraint_name']}: {chk['constraint_definition']}")
             
             print()
@@ -211,19 +210,20 @@ def analyze_database():
         ORDER BY event_object_table, trigger_name;
     """
     
-    triggers_result = supabase.rpc('exec_sql', {'query': triggers_query}).execute()
+    triggers = execute_query(triggers_query)
     
-    if triggers_result.data:
-        print(f"\nTotal Triggers: {len(triggers_result.data)}\n")
+    if triggers:
+        print(f"\nTotal Triggers: {len(triggers)}\n")
         current_table = None
-        for trg in triggers_result.data:
+        for trg in triggers:
             if trg['event_object_table'] != current_table:
                 print(f"\n📋 Table: {trg['event_object_table']}")
                 current_table = trg['event_object_table']
             
             print(f"  • {trg['trigger_name']}")
             print(f"      Timing: {trg['action_timing']} {trg['event_manipulation']}")
-            print(f"      Action: {trg['action_statement'][:100]}...")
+            action = trg['action_statement'][:100] if trg['action_statement'] else "N/A"
+            print(f"      Action: {action}...")
     else:
         print("No triggers found")
     
@@ -243,11 +243,11 @@ def analyze_database():
         ORDER BY routine_name;
     """
     
-    functions_result = supabase.rpc('exec_sql', {'query': functions_query}).execute()
+    functions = execute_query(functions_query)
     
-    if functions_result.data:
-        print(f"\nTotal Functions: {len(functions_result.data)}\n")
-        for func in functions_result.data:
+    if functions:
+        print(f"\nTotal Functions: {len(functions)}\n")
+        for func in functions:
             print(f"  • {func['routine_name']} -> {func['return_type']}")
     else:
         print("No functions found")
@@ -266,11 +266,11 @@ def analyze_database():
         ORDER BY table_name;
     """
     
-    views_result = supabase.rpc('exec_sql', {'query': views_query}).execute()
+    views = execute_query(views_query)
     
-    if views_result.data:
-        print(f"\nTotal Views: {len(views_result.data)}\n")
-        for view in views_result.data:
+    if views:
+        print(f"\nTotal Views: {len(views)}\n")
+        for view in views:
             print(f"  • {view['table_name']}")
     else:
         print("No views found")
@@ -293,11 +293,11 @@ def analyze_database():
         ORDER BY sequence_name;
     """
     
-    sequences_result = supabase.rpc('exec_sql', {'query': sequences_query}).execute()
+    sequences = execute_query(sequences_query)
     
-    if sequences_result.data:
-        print(f"\nTotal Sequences: {len(sequences_result.data)}\n")
-        for seq in sequences_result.data:
+    if sequences:
+        print(f"\nTotal Sequences: {len(sequences)}\n")
+        for seq in sequences:
             print(f"  • {seq['sequence_name']}: {seq['data_type']} (start: {seq['start_value']}, increment: {seq['increment']})")
     else:
         print("No sequences found")
