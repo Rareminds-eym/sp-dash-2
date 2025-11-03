@@ -1,0 +1,177 @@
+[dotenv@17.2.3] injecting env (6) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+================================================================================
+DATABASE vs MIGRATION SCRIPTS COMPARISON
+================================================================================
+
+📖 Parsing migration scripts...
+
+📋 Expected Schema Summary:
+   Tables: 26
+   Enums: 8
+   Functions: 5
+   Triggers: 24
+   Indexes: 96
+
+================================================================================
+TABLE-BY-TABLE COMPARISON
+================================================================================
+
+
+📊 Analyzing: schools
+--------------------------------------------------------------------------------
+❌ ERROR: Could not find the table 'public.schools' in the schema cache
+
+📊 Analyzing: school_classes
+--------------------------------------------------------------------------------
+❌ ERROR: Could not find the table 'public.school_classes' in the schema cache
+
+📊 Analyzing: school_educators
+--------------------------------------------------------------------------------
+❌ ERROR: Could not find the table 'public.school_educators' in the schema cache
+
+📊 Analyzing: school_educator_class_assignments
+--------------------------------------------------------------------------------
+❌ ERROR: Could not find the table 'public.school_educator_class_assignments' in the schema cache
+
+📊 Analyzing: colleges_standalone
+--------------------------------------------------------------------------------
+❌ ERROR: Could not find the table 'public.colleges_standalone' in the schema cache
+
+📊 Analyzing: college_courses
+--------------------------------------------------------------------------------
+❌ ERROR: Could not find the table 'public.college_courses' in the schema cache
+
+📊 Analyzing: college_lecturers
+--------------------------------------------------------------------------------
+❌ ERROR: Could not find the table 'public.college_lecturers' in the schema cache
+
+📊 Analyzing: college_lecturer_course_assignments
+--------------------------------------------------------------------------------
+❌ ERROR: Could not find the table 'public.college_lecturer_course_assignments' in the schema cache
+
+📊 Analyzing: university_colleges
+--------------------------------------------------------------------------------
+❌ ERROR: Could not find the table 'public.university_colleges' in the schema cache
+
+📊 Analyzing: university_courses
+--------------------------------------------------------------------------------
+❌ ERROR: Could not find the table 'public.university_courses' in the schema cache
+
+📊 Analyzing: university_lecturers
+--------------------------------------------------------------------------------
+❌ ERROR: Could not find the table 'public.university_lecturers' in the schema cache
+
+📊 Analyzing: university_lecturer_course_assignments
+--------------------------------------------------------------------------------
+❌ ERROR: Could not find the table 'public.university_lecturer_course_assignments' in the schema cache
+
+📊 Analyzing: companies
+--------------------------------------------------------------------------------
+❌ ERROR: Could not find the table 'public.companies' in the schema cache
+
+📊 Analyzing: company_branches
+--------------------------------------------------------------------------------
+❌ ERROR: Could not find the table 'public.company_branches' in the schema cache
+
+📊 Analyzing: permissions
+--------------------------------------------------------------------------------
+❌ ERROR: Could not find the table 'public.permissions' in the schema cache
+
+📊 Analyzing: role_permissions
+--------------------------------------------------------------------------------
+❌ ERROR: Could not find the table 'public.role_permissions' in the schema cache
+
+📊 Analyzing: colleges
+--------------------------------------------------------------------------------
+❌ ERROR: Could not find the table 'public.colleges' in the schema cache
+
+📊 Analyzing: student_enrollments
+--------------------------------------------------------------------------------
+❌ ERROR: Could not find the table 'public.student_enrollments' in the schema cache
+
+📊 Analyzing: users
+--------------------------------------------------------------------------------
+   Expected columns: 10
+   Actual columns: 9
+   ⚠️  Missing columns (9): supabase_auth_id, first_name, last_name, entity_type, entity_id, account_status, last_password_change, profile_image_url, last_login
+   ℹ️  Extra columns (8): email, role, organizationId, isActive, metadata, createdAt, updatedAt, id
+
+📊 Analyzing: universities
+--------------------------------------------------------------------------------
+   Expected columns: 9
+   Actual columns: 12
+   ⚠️  Missing columns (9): university_type, approval_status, approved_by, approved_at, account_status, total_colleges, total_courses, total_lecturers, total_students
+   ℹ️  Extra columns (12): id, name, email, phone, state, district, website, verificationstatus, isactive, createdat, updatedat, code
+
+📊 Analyzing: students
+--------------------------------------------------------------------------------
+   Expected columns: 19
+   Actual columns: 34
+   ⚠️  Missing columns (17): student_type, school_id, college_id, university_college_id, school_class_id, college_course_id, university_course_id, enrollment_number, guardian_name, guardian_phone, guardian_email, guardian_relation, gender, blood_group, enrollment_date, expected_graduation_date, current_cgpa
+   ℹ️  Extra columns (32): studentId, universityId, profile, createdAt, updatedAt, email, name, age, contact_number, alternate_number, district_name, university, branch_field, college_school_name, registration_number, github_link, linkedin_link, twitter_link, facebook_link, instagram_link, portfolio_link, other_social_links, approval_status, created_at, updated_at, embedding, phone, department, cgpa, employability_score, verified, id
+
+📊 Analyzing: skill_passports
+--------------------------------------------------------------------------------
+   Expected columns: 9
+   Actual columns: 11
+   ⚠️  Missing columns (8): nsqf_level, certifications, work_experience, achievements, verified_by, verified_at, ai_verified, ai_verification_score
+   ℹ️  Extra columns (10): studentId, status, aiVerification, nsqfLevel, skills, createdAt, updatedAt, id, certificates, assessments
+
+📊 Analyzing: recruiters
+--------------------------------------------------------------------------------
+   Expected columns: 12
+   Actual columns: 11
+   ⚠️  Missing columns (11): verification_status, is_active, user_count, company_id, branch_id, employee_id, designation, department, date_of_joining, is_hq_recruiter, account_status
+   ℹ️  Extra columns (10): id, name, email, phone, state, website, verificationstatus, isactive, createdat, updatedat
+
+📊 Analyzing: verifications
+--------------------------------------------------------------------------------
+   Expected columns: 5
+   Actual columns: 7
+   ⚠️  Missing columns (5): verification_type, verification_notes, verification_data, verified_by, verified_at
+   ℹ️  Extra columns (7): id, targetTable, targetId, action, performedBy, note, createdAt
+
+📊 Analyzing: metrics_snapshots
+--------------------------------------------------------------------------------
+   Expected columns: 3
+   Actual columns: 9
+   ⚠️  Missing columns (3): total_schools, total_colleges, total_companies
+   ℹ️  Extra columns (9): id, snapshotDate, activeUniversities, registeredStudents, verifiedPassports, aiVerifiedPercent, employabilityIndex, activeRecruiters, createdAt
+
+📊 Analyzing: audit_logs
+--------------------------------------------------------------------------------
+   Expected columns: 6
+   Actual columns: 7
+   ⚠️  Missing columns (6): ip_address, user_agent, old_values, new_values, resource_type, resource_id
+   ℹ️  Extra columns (7): user_id, action, target, payload, ip, createdAt, id
+
+================================================================================
+COMPARISON SUMMARY
+================================================================================
+
+✅ Tables in sync: 0
+⚠️  Tables needing updates: 8
+❌ Missing tables: 18
+ℹ️  Extra tables: 0
+⚠️  Missing columns (total): 68
+ℹ️  Extra columns (total): 95
+
+❌ Missing Tables: schools, school_classes, school_educators, school_educator_class_assignments, colleges_standalone, college_courses, college_lecturers, college_lecturer_course_assignments, university_colleges, university_courses, university_lecturers, university_lecturer_course_assignments, companies, company_branches, permissions, role_permissions, colleges, student_enrollments
+
+✅ Detailed comparison saved to: database_comparison_report.json
+
+================================================================================
+GENERATING ALIGNMENT MIGRATION SCRIPT
+================================================================================
+
+📝 Generated 68 alignment statements
+✅ Alignment migration script saved to: database/alignment_migration.sql
+
+================================================================================
+✅ ANALYSIS COMPLETE
+================================================================================
+
+Generated files:
+  1. database_comparison_report.json - Detailed comparison
+  2. database/alignment_migration.sql - Migration script to align database
+

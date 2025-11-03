@@ -1,0 +1,2039 @@
+{
+  "expectedSchema": {
+    "tables": {
+      "schools": {
+        "columns": [
+          {
+            "name": "id",
+            "type": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()"
+          },
+          {
+            "name": "name",
+            "type": "VARCHAR(255) NOT NULL"
+          },
+          {
+            "name": "code",
+            "type": "VARCHAR(50) UNIQUE NOT NULL"
+          },
+          {
+            "name": "address",
+            "type": "TEXT"
+          },
+          {
+            "name": "city",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "state",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "country",
+            "type": "VARCHAR(100) DEFAULT 'India'"
+          },
+          {
+            "name": "pincode",
+            "type": "VARCHAR(10)"
+          },
+          {
+            "name": "phone",
+            "type": "VARCHAR(20)"
+          },
+          {
+            "name": "email",
+            "type": "VARCHAR(255)"
+          },
+          {
+            "name": "website",
+            "type": "VARCHAR(255)"
+          },
+          {
+            "name": "established_year",
+            "type": "INTEGER"
+          },
+          {
+            "name": "board",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "approved_by",
+            "type": "UUID REFERENCES users(id)"
+          },
+          {
+            "name": "approved_at",
+            "type": "TIMESTAMP WITH TIME ZONE"
+          },
+          {
+            "name": "total_classes",
+            "type": "INTEGER DEFAULT 0"
+          },
+          {
+            "name": "total_educators",
+            "type": "INTEGER DEFAULT 0"
+          },
+          {
+            "name": "total_students",
+            "type": "INTEGER DEFAULT 0"
+          },
+          {
+            "name": "created_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "updated_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "metadata",
+            "type": "JSONB DEFAULT '{}'"
+          },
+          {
+            "name": "approval_status",
+            "type": "approval_status DEFAULT 'pending'"
+          }
+        ]
+      },
+      "school_classes": {
+        "columns": [
+          {
+            "name": "id",
+            "type": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()"
+          },
+          {
+            "name": "school_id",
+            "type": "UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "name",
+            "type": "VARCHAR(100) NOT NULL"
+          },
+          {
+            "name": "grade",
+            "type": "VARCHAR(20) NOT NULL"
+          },
+          {
+            "name": "section",
+            "type": "VARCHAR(10)"
+          },
+          {
+            "name": "academic_year",
+            "type": "VARCHAR(20) NOT NULL"
+          },
+          {
+            "name": "max_students",
+            "type": "INTEGER DEFAULT 40"
+          },
+          {
+            "name": "current_students",
+            "type": "INTEGER DEFAULT 0"
+          },
+          {
+            "name": "created_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "updated_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "metadata",
+            "type": "JSONB DEFAULT '{}'"
+          }
+        ]
+      },
+      "school_educators": {
+        "columns": [
+          {
+            "name": "id",
+            "type": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()"
+          },
+          {
+            "name": "user_id",
+            "type": "UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "school_id",
+            "type": "UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "employee_id",
+            "type": "VARCHAR(50)"
+          },
+          {
+            "name": "specialization",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "qualification",
+            "type": "VARCHAR(255)"
+          },
+          {
+            "name": "experience_years",
+            "type": "INTEGER"
+          },
+          {
+            "name": "date_of_joining",
+            "type": "DATE"
+          },
+          {
+            "name": "created_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "updated_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "metadata",
+            "type": "JSONB DEFAULT '{}'"
+          }
+        ]
+      },
+      "school_educator_class_assignments": {
+        "columns": [
+          {
+            "name": "id",
+            "type": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()"
+          },
+          {
+            "name": "educator_id",
+            "type": "UUID NOT NULL REFERENCES school_educators(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "class_id",
+            "type": "UUID NOT NULL REFERENCES school_classes(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "subject",
+            "type": "VARCHAR(100) NOT NULL"
+          },
+          {
+            "name": "academic_year",
+            "type": "VARCHAR(20) NOT NULL"
+          },
+          {
+            "name": "is_primary",
+            "type": "BOOLEAN DEFAULT false"
+          },
+          {
+            "name": "assigned_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "assigned_by",
+            "type": "UUID REFERENCES users(id)"
+          }
+        ]
+      },
+      "colleges_standalone": {
+        "columns": [
+          {
+            "name": "id",
+            "type": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()"
+          },
+          {
+            "name": "name",
+            "type": "VARCHAR(255) NOT NULL"
+          },
+          {
+            "name": "code",
+            "type": "VARCHAR(50) UNIQUE NOT NULL"
+          },
+          {
+            "name": "address",
+            "type": "TEXT"
+          },
+          {
+            "name": "city",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "state",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "country",
+            "type": "VARCHAR(100) DEFAULT 'India'"
+          },
+          {
+            "name": "pincode",
+            "type": "VARCHAR(10)"
+          },
+          {
+            "name": "phone",
+            "type": "VARCHAR(20)"
+          },
+          {
+            "name": "email",
+            "type": "VARCHAR(255)"
+          },
+          {
+            "name": "website",
+            "type": "VARCHAR(255)"
+          },
+          {
+            "name": "established_year",
+            "type": "INTEGER"
+          },
+          {
+            "name": "affiliation",
+            "type": "VARCHAR(255)"
+          },
+          {
+            "name": "accreditation",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "approved_by",
+            "type": "UUID REFERENCES users(id)"
+          },
+          {
+            "name": "approved_at",
+            "type": "TIMESTAMP WITH TIME ZONE"
+          },
+          {
+            "name": "total_courses",
+            "type": "INTEGER DEFAULT 0"
+          },
+          {
+            "name": "total_lecturers",
+            "type": "INTEGER DEFAULT 0"
+          },
+          {
+            "name": "total_students",
+            "type": "INTEGER DEFAULT 0"
+          },
+          {
+            "name": "created_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "updated_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "metadata",
+            "type": "JSONB DEFAULT '{}'"
+          },
+          {
+            "name": "approval_status",
+            "type": "approval_status DEFAULT 'pending'"
+          }
+        ]
+      },
+      "college_courses": {
+        "columns": [
+          {
+            "name": "id",
+            "type": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()"
+          },
+          {
+            "name": "college_id",
+            "type": "UUID NOT NULL REFERENCES colleges_standalone(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "name",
+            "type": "VARCHAR(255) NOT NULL"
+          },
+          {
+            "name": "program",
+            "type": "VARCHAR(100) NOT NULL"
+          },
+          {
+            "name": "specialization",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "year",
+            "type": "INTEGER"
+          },
+          {
+            "name": "semester",
+            "type": "INTEGER"
+          },
+          {
+            "name": "section",
+            "type": "VARCHAR(10)"
+          },
+          {
+            "name": "academic_year",
+            "type": "VARCHAR(20) NOT NULL"
+          },
+          {
+            "name": "max_students",
+            "type": "INTEGER DEFAULT 60"
+          },
+          {
+            "name": "current_students",
+            "type": "INTEGER DEFAULT 0"
+          },
+          {
+            "name": "created_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "updated_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "metadata",
+            "type": "JSONB DEFAULT '{}'"
+          }
+        ]
+      },
+      "college_lecturers": {
+        "columns": [
+          {
+            "name": "id",
+            "type": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()"
+          },
+          {
+            "name": "user_id",
+            "type": "UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "college_id",
+            "type": "UUID NOT NULL REFERENCES colleges_standalone(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "employee_id",
+            "type": "VARCHAR(50)"
+          },
+          {
+            "name": "department",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "specialization",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "qualification",
+            "type": "VARCHAR(255)"
+          },
+          {
+            "name": "experience_years",
+            "type": "INTEGER"
+          },
+          {
+            "name": "date_of_joining",
+            "type": "DATE"
+          },
+          {
+            "name": "created_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "updated_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "metadata",
+            "type": "JSONB DEFAULT '{}'"
+          }
+        ]
+      },
+      "college_lecturer_course_assignments": {
+        "columns": [
+          {
+            "name": "id",
+            "type": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()"
+          },
+          {
+            "name": "lecturer_id",
+            "type": "UUID NOT NULL REFERENCES college_lecturers(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "course_id",
+            "type": "UUID NOT NULL REFERENCES college_courses(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "subject",
+            "type": "VARCHAR(100) NOT NULL"
+          },
+          {
+            "name": "academic_year",
+            "type": "VARCHAR(20) NOT NULL"
+          },
+          {
+            "name": "assigned_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "assigned_by",
+            "type": "UUID REFERENCES users(id)"
+          }
+        ]
+      },
+      "university_colleges": {
+        "columns": [
+          {
+            "name": "id",
+            "type": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()"
+          },
+          {
+            "name": "university_id",
+            "type": "UUID NOT NULL REFERENCES universities(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "name",
+            "type": "VARCHAR(255) NOT NULL"
+          },
+          {
+            "name": "code",
+            "type": "VARCHAR(50) NOT NULL"
+          },
+          {
+            "name": "dean_name",
+            "type": "VARCHAR(200)"
+          },
+          {
+            "name": "dean_email",
+            "type": "VARCHAR(255)"
+          },
+          {
+            "name": "dean_phone",
+            "type": "VARCHAR(20)"
+          },
+          {
+            "name": "established_year",
+            "type": "INTEGER"
+          },
+          {
+            "name": "created_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "updated_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "metadata",
+            "type": "JSONB DEFAULT '{}'"
+          }
+        ]
+      },
+      "university_courses": {
+        "columns": [
+          {
+            "name": "id",
+            "type": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()"
+          },
+          {
+            "name": "college_id",
+            "type": "UUID NOT NULL REFERENCES university_colleges(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "name",
+            "type": "VARCHAR(255) NOT NULL"
+          },
+          {
+            "name": "program",
+            "type": "VARCHAR(100) NOT NULL"
+          },
+          {
+            "name": "specialization",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "year",
+            "type": "INTEGER"
+          },
+          {
+            "name": "semester",
+            "type": "INTEGER"
+          },
+          {
+            "name": "section",
+            "type": "VARCHAR(10)"
+          },
+          {
+            "name": "academic_year",
+            "type": "VARCHAR(20) NOT NULL"
+          },
+          {
+            "name": "max_students",
+            "type": "INTEGER DEFAULT 60"
+          },
+          {
+            "name": "current_students",
+            "type": "INTEGER DEFAULT 0"
+          },
+          {
+            "name": "created_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "updated_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "metadata",
+            "type": "JSONB DEFAULT '{}'"
+          }
+        ]
+      },
+      "university_lecturers": {
+        "columns": [
+          {
+            "name": "id",
+            "type": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()"
+          },
+          {
+            "name": "user_id",
+            "type": "UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "college_id",
+            "type": "UUID NOT NULL REFERENCES university_colleges(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "employee_id",
+            "type": "VARCHAR(50)"
+          },
+          {
+            "name": "department",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "specialization",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "qualification",
+            "type": "VARCHAR(255)"
+          },
+          {
+            "name": "experience_years",
+            "type": "INTEGER"
+          },
+          {
+            "name": "date_of_joining",
+            "type": "DATE"
+          },
+          {
+            "name": "created_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "updated_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "metadata",
+            "type": "JSONB DEFAULT '{}'"
+          }
+        ]
+      },
+      "university_lecturer_course_assignments": {
+        "columns": [
+          {
+            "name": "id",
+            "type": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()"
+          },
+          {
+            "name": "lecturer_id",
+            "type": "UUID NOT NULL REFERENCES university_lecturers(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "course_id",
+            "type": "UUID NOT NULL REFERENCES university_courses(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "subject",
+            "type": "VARCHAR(100) NOT NULL"
+          },
+          {
+            "name": "academic_year",
+            "type": "VARCHAR(20) NOT NULL"
+          },
+          {
+            "name": "assigned_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "assigned_by",
+            "type": "UUID REFERENCES users(id)"
+          }
+        ]
+      },
+      "companies": {
+        "columns": [
+          {
+            "name": "id",
+            "type": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()"
+          },
+          {
+            "name": "name",
+            "type": "VARCHAR(255) NOT NULL"
+          },
+          {
+            "name": "code",
+            "type": "VARCHAR(50) UNIQUE NOT NULL"
+          },
+          {
+            "name": "industry",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "company_size",
+            "type": "VARCHAR(50)"
+          },
+          {
+            "name": "hq_address",
+            "type": "TEXT"
+          },
+          {
+            "name": "hq_city",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "hq_state",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "hq_country",
+            "type": "VARCHAR(100) DEFAULT 'India'"
+          },
+          {
+            "name": "hq_pincode",
+            "type": "VARCHAR(10)"
+          },
+          {
+            "name": "phone",
+            "type": "VARCHAR(20)"
+          },
+          {
+            "name": "email",
+            "type": "VARCHAR(255)"
+          },
+          {
+            "name": "website",
+            "type": "VARCHAR(255)"
+          },
+          {
+            "name": "established_year",
+            "type": "INTEGER"
+          },
+          {
+            "name": "contact_person_name",
+            "type": "VARCHAR(200)"
+          },
+          {
+            "name": "contact_person_designation",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "contact_person_email",
+            "type": "VARCHAR(255)"
+          },
+          {
+            "name": "contact_person_phone",
+            "type": "VARCHAR(20)"
+          },
+          {
+            "name": "approved_by",
+            "type": "UUID REFERENCES users(id)"
+          },
+          {
+            "name": "approved_at",
+            "type": "TIMESTAMP WITH TIME ZONE"
+          },
+          {
+            "name": "total_branches",
+            "type": "INTEGER DEFAULT 0"
+          },
+          {
+            "name": "total_recruiters",
+            "type": "INTEGER DEFAULT 0"
+          },
+          {
+            "name": "hq_recruiters",
+            "type": "INTEGER DEFAULT 0"
+          },
+          {
+            "name": "branch_recruiters",
+            "type": "INTEGER DEFAULT 0"
+          },
+          {
+            "name": "created_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "updated_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "metadata",
+            "type": "JSONB DEFAULT '{}'"
+          },
+          {
+            "name": "approval_status",
+            "type": "approval_status DEFAULT 'pending'"
+          }
+        ]
+      },
+      "company_branches": {
+        "columns": [
+          {
+            "name": "id",
+            "type": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()"
+          },
+          {
+            "name": "company_id",
+            "type": "UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "name",
+            "type": "VARCHAR(255) NOT NULL"
+          },
+          {
+            "name": "code",
+            "type": "VARCHAR(50) NOT NULL"
+          },
+          {
+            "name": "branch_type",
+            "type": "VARCHAR(50)"
+          },
+          {
+            "name": "address",
+            "type": "TEXT"
+          },
+          {
+            "name": "city",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "state",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "country",
+            "type": "VARCHAR(100) DEFAULT 'India'"
+          },
+          {
+            "name": "pincode",
+            "type": "VARCHAR(10)"
+          },
+          {
+            "name": "phone",
+            "type": "VARCHAR(20)"
+          },
+          {
+            "name": "email",
+            "type": "VARCHAR(255)"
+          },
+          {
+            "name": "branch_head_name",
+            "type": "VARCHAR(200)"
+          },
+          {
+            "name": "branch_head_email",
+            "type": "VARCHAR(255)"
+          },
+          {
+            "name": "branch_head_phone",
+            "type": "VARCHAR(20)"
+          },
+          {
+            "name": "created_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "updated_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "metadata",
+            "type": "JSONB DEFAULT '{}'"
+          }
+        ]
+      },
+      "permissions": {
+        "columns": [
+          {
+            "name": "id",
+            "type": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()"
+          },
+          {
+            "name": "name",
+            "type": "VARCHAR(100) UNIQUE NOT NULL"
+          },
+          {
+            "name": "resource",
+            "type": "VARCHAR(50) NOT NULL"
+          },
+          {
+            "name": "action",
+            "type": "VARCHAR(50) NOT NULL"
+          },
+          {
+            "name": "description",
+            "type": "TEXT"
+          },
+          {
+            "name": "created_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          }
+        ]
+      },
+      "role_permissions": {
+        "columns": [
+          {
+            "name": "id",
+            "type": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()"
+          },
+          {
+            "name": "permission_id",
+            "type": "UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "created_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          }
+        ]
+      },
+      "colleges": {
+        "columns": [
+          {
+            "name": "id",
+            "type": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()"
+          },
+          {
+            "name": "university_id",
+            "type": "UUID REFERENCES universities(id) ON DELETE SET NULL"
+          },
+          {
+            "name": "name",
+            "type": "VARCHAR(255) NOT NULL"
+          },
+          {
+            "name": "code",
+            "type": "VARCHAR(50) NOT NULL"
+          },
+          {
+            "name": "dean_name",
+            "type": "VARCHAR(200)"
+          },
+          {
+            "name": "dean_email",
+            "type": "VARCHAR(255)"
+          },
+          {
+            "name": "dean_phone",
+            "type": "VARCHAR(20)"
+          },
+          {
+            "name": "affiliation",
+            "type": "VARCHAR(255)"
+          },
+          {
+            "name": "accreditation",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "address",
+            "type": "TEXT"
+          },
+          {
+            "name": "city",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "state",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "country",
+            "type": "VARCHAR(100) DEFAULT 'India'"
+          },
+          {
+            "name": "pincode",
+            "type": "VARCHAR(10)"
+          },
+          {
+            "name": "phone",
+            "type": "VARCHAR(20)"
+          },
+          {
+            "name": "email",
+            "type": "VARCHAR(255)"
+          },
+          {
+            "name": "website",
+            "type": "VARCHAR(255)"
+          },
+          {
+            "name": "established_year",
+            "type": "INTEGER"
+          },
+          {
+            "name": "approved_by",
+            "type": "UUID REFERENCES users(id)"
+          },
+          {
+            "name": "approved_at",
+            "type": "TIMESTAMP WITH TIME ZONE"
+          },
+          {
+            "name": "total_courses",
+            "type": "INTEGER DEFAULT 0"
+          },
+          {
+            "name": "total_lecturers",
+            "type": "INTEGER DEFAULT 0"
+          },
+          {
+            "name": "total_students",
+            "type": "INTEGER DEFAULT 0"
+          },
+          {
+            "name": "created_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "updated_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "metadata",
+            "type": "JSONB DEFAULT '{}'"
+          }
+        ]
+      },
+      "student_enrollments": {
+        "columns": [
+          {
+            "name": "id",
+            "type": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()"
+          },
+          {
+            "name": "student_id",
+            "type": "UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "school_id",
+            "type": "UUID REFERENCES schools(id) ON DELETE SET NULL"
+          },
+          {
+            "name": "college_id",
+            "type": "UUID REFERENCES colleges(id) ON DELETE SET NULL"
+          },
+          {
+            "name": "university_id",
+            "type": "UUID REFERENCES universities(id) ON DELETE SET NULL"
+          },
+          {
+            "name": "school_class_id",
+            "type": "UUID REFERENCES school_classes(id) ON DELETE SET NULL"
+          },
+          {
+            "name": "college_course_id",
+            "type": "UUID REFERENCES college_courses(id) ON DELETE SET NULL"
+          },
+          {
+            "name": "university_course_id",
+            "type": "UUID REFERENCES university_courses(id) ON DELETE SET NULL"
+          },
+          {
+            "name": "enrollment_number",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "enrollment_date",
+            "type": "DATE NOT NULL"
+          },
+          {
+            "name": "expected_graduation_date",
+            "type": "DATE"
+          },
+          {
+            "name": "actual_graduation_date",
+            "type": "DATE"
+          },
+          {
+            "name": "withdrawal_date",
+            "type": "DATE"
+          },
+          {
+            "name": "withdrawal_reason",
+            "type": "TEXT"
+          },
+          {
+            "name": "transfer_to_entity_id",
+            "type": "UUID"
+          },
+          {
+            "name": "transfer_to_class_id",
+            "type": "UUID"
+          },
+          {
+            "name": "transfer_date",
+            "type": "DATE"
+          },
+          {
+            "name": "transfer_reason",
+            "type": "TEXT"
+          },
+          {
+            "name": "created_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "updated_at",
+            "type": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+          },
+          {
+            "name": "metadata",
+            "type": "JSONB DEFAULT '{}'"
+          }
+        ]
+      },
+      "users": {
+        "columns": [
+          {
+            "name": "supabase_auth_id",
+            "type": "UUID UNIQUE"
+          },
+          {
+            "name": "first_name",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "last_name",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "entity_type",
+            "type": "entity_type"
+          },
+          {
+            "name": "entity_id",
+            "type": "UUID"
+          },
+          {
+            "name": "account_status",
+            "type": "account_status DEFAULT 'pending'"
+          },
+          {
+            "name": "last_password_change",
+            "type": "TIMESTAMP WITH TIME ZONE"
+          },
+          {
+            "name": "profile_image_url",
+            "type": "TEXT"
+          },
+          {
+            "name": "created_by",
+            "type": "UUID"
+          },
+          {
+            "name": "last_login",
+            "type": "TIMESTAMP WITH TIME ZONE"
+          }
+        ]
+      },
+      "universities": {
+        "columns": [
+          {
+            "name": "university_type",
+            "type": "VARCHAR(50)"
+          },
+          {
+            "name": "approval_status",
+            "type": "approval_status DEFAULT 'pending'"
+          },
+          {
+            "name": "approved_by",
+            "type": "UUID REFERENCES users(id)"
+          },
+          {
+            "name": "approved_at",
+            "type": "TIMESTAMP WITH TIME ZONE"
+          },
+          {
+            "name": "account_status",
+            "type": "account_status DEFAULT 'pending'"
+          },
+          {
+            "name": "total_colleges",
+            "type": "INTEGER DEFAULT 0"
+          },
+          {
+            "name": "total_courses",
+            "type": "INTEGER DEFAULT 0"
+          },
+          {
+            "name": "total_lecturers",
+            "type": "INTEGER DEFAULT 0"
+          },
+          {
+            "name": "total_students",
+            "type": "INTEGER DEFAULT 0"
+          }
+        ]
+      },
+      "students": {
+        "columns": [
+          {
+            "name": "student_type",
+            "type": "student_type"
+          },
+          {
+            "name": "school_id",
+            "type": "UUID REFERENCES schools(id) ON DELETE SET NULL"
+          },
+          {
+            "name": "college_id",
+            "type": "UUID REFERENCES colleges_standalone(id) ON DELETE SET NULL"
+          },
+          {
+            "name": "university_college_id",
+            "type": "UUID REFERENCES university_colleges(id) ON DELETE SET NULL"
+          },
+          {
+            "name": "school_class_id",
+            "type": "UUID REFERENCES school_classes(id) ON DELETE SET NULL"
+          },
+          {
+            "name": "college_course_id",
+            "type": "UUID REFERENCES college_courses(id) ON DELETE SET NULL"
+          },
+          {
+            "name": "university_course_id",
+            "type": "UUID REFERENCES university_courses(id) ON DELETE SET NULL"
+          },
+          {
+            "name": "enrollment_number",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "guardian_name",
+            "type": "VARCHAR(200)"
+          },
+          {
+            "name": "guardian_phone",
+            "type": "VARCHAR(20)"
+          },
+          {
+            "name": "guardian_email",
+            "type": "VARCHAR(255)"
+          },
+          {
+            "name": "guardian_relation",
+            "type": "VARCHAR(50)"
+          },
+          {
+            "name": "date_of_birth",
+            "type": "DATE"
+          },
+          {
+            "name": "gender",
+            "type": "VARCHAR(20)"
+          },
+          {
+            "name": "blood_group",
+            "type": "VARCHAR(5)"
+          },
+          {
+            "name": "enrollment_date",
+            "type": "DATE"
+          },
+          {
+            "name": "expected_graduation_date",
+            "type": "DATE"
+          },
+          {
+            "name": "current_cgpa",
+            "type": "DECIMAL(4"
+          },
+          {
+            "name": "user_id",
+            "type": "UUID REFERENCES users(id) ON DELETE CASCADE"
+          }
+        ]
+      },
+      "skill_passports": {
+        "columns": [
+          {
+            "name": "nsqf_level",
+            "type": "INTEGER"
+          },
+          {
+            "name": "certifications",
+            "type": "JSONB DEFAULT '[]'"
+          },
+          {
+            "name": "work_experience",
+            "type": "JSONB DEFAULT '[]'"
+          },
+          {
+            "name": "projects",
+            "type": "JSONB DEFAULT '[]'"
+          },
+          {
+            "name": "achievements",
+            "type": "JSONB DEFAULT '[]'"
+          },
+          {
+            "name": "verified_by",
+            "type": "UUID REFERENCES users(id)"
+          },
+          {
+            "name": "verified_at",
+            "type": "TIMESTAMP WITH TIME ZONE"
+          },
+          {
+            "name": "ai_verified",
+            "type": "BOOLEAN DEFAULT false"
+          },
+          {
+            "name": "ai_verification_score",
+            "type": "DECIMAL(5"
+          }
+        ]
+      },
+      "recruiters": {
+        "columns": [
+          {
+            "name": "verification_status",
+            "type": "approval_status DEFAULT 'pending'"
+          },
+          {
+            "name": "is_active",
+            "type": "BOOLEAN DEFAULT true"
+          },
+          {
+            "name": "user_count",
+            "type": "INTEGER DEFAULT 0"
+          },
+          {
+            "name": "user_id",
+            "type": "UUID REFERENCES users(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "company_id",
+            "type": "UUID REFERENCES companies(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "branch_id",
+            "type": "UUID REFERENCES company_branches(id) ON DELETE SET NULL"
+          },
+          {
+            "name": "employee_id",
+            "type": "VARCHAR(50)"
+          },
+          {
+            "name": "designation",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "department",
+            "type": "VARCHAR(100)"
+          },
+          {
+            "name": "date_of_joining",
+            "type": "DATE"
+          },
+          {
+            "name": "is_hq_recruiter",
+            "type": "BOOLEAN DEFAULT false"
+          },
+          {
+            "name": "account_status",
+            "type": "account_status DEFAULT 'active'"
+          }
+        ]
+      },
+      "verifications": {
+        "columns": [
+          {
+            "name": "verification_type",
+            "type": "VARCHAR(50)"
+          },
+          {
+            "name": "verification_notes",
+            "type": "TEXT"
+          },
+          {
+            "name": "verification_data",
+            "type": "JSONB DEFAULT '{}'"
+          },
+          {
+            "name": "verified_by",
+            "type": "UUID REFERENCES users(id)"
+          },
+          {
+            "name": "verified_at",
+            "type": "TIMESTAMP WITH TIME ZONE"
+          }
+        ]
+      },
+      "metrics_snapshots": {
+        "columns": [
+          {
+            "name": "total_schools",
+            "type": "INTEGER DEFAULT 0"
+          },
+          {
+            "name": "total_colleges",
+            "type": "INTEGER DEFAULT 0"
+          },
+          {
+            "name": "total_companies",
+            "type": "INTEGER DEFAULT 0"
+          }
+        ]
+      },
+      "audit_logs": {
+        "columns": [
+          {
+            "name": "ip_address",
+            "type": "INET"
+          },
+          {
+            "name": "user_agent",
+            "type": "TEXT"
+          },
+          {
+            "name": "old_values",
+            "type": "JSONB"
+          },
+          {
+            "name": "new_values",
+            "type": "JSONB"
+          },
+          {
+            "name": "resource_type",
+            "type": "VARCHAR(50)"
+          },
+          {
+            "name": "resource_id",
+            "type": "UUID"
+          }
+        ]
+      }
+    },
+    "enums": [
+      "user_role",
+      "entity_type",
+      "account_status",
+      "approval_status",
+      "student_type",
+      "verification_status",
+      "enrollment_status",
+      "college_type"
+    ],
+    "functions": [
+      "update_updated_at_column",
+      "get_active_enrollment",
+      "transfer_student",
+      "update_entity_student_counts",
+      "validate_one_active_enrollment"
+    ],
+    "triggers": [
+      "update_users_updated_at",
+      "update_schools_updated_at",
+      "update_school_classes_updated_at",
+      "update_school_educators_updated_at",
+      "update_colleges_updated_at",
+      "update_college_courses_updated_at",
+      "update_college_lecturers_updated_at",
+      "update_universities_updated_at",
+      "update_university_colleges_updated_at",
+      "update_university_courses_updated_at",
+      "update_university_lecturers_updated_at",
+      "update_students_updated_at",
+      "update_skill_passports_updated_at",
+      "update_companies_updated_at",
+      "update_company_branches_updated_at",
+      "update_recruiters_updated_at",
+      "update_verifications_updated_at",
+      "update_metrics_snapshots_updated_at",
+      "update_colleges_updated_at",
+      "update_student_enrollments_updated_at",
+      "for",
+      "update_entity_counts_on_enrollment",
+      "to",
+      "check_one_active_enrollment"
+    ],
+    "indexes": [
+      "idx_users_email",
+      "idx_users_role",
+      "idx_users_entity",
+      "idx_users_supabase_auth_id",
+      "idx_users_account_status",
+      "idx_schools_code",
+      "idx_schools_status",
+      "idx_schools_state",
+      "idx_school_classes_school",
+      "idx_school_classes_academic_year",
+      "idx_school_educators_school",
+      "idx_school_educators_user",
+      "idx_educator_assignments_educator",
+      "idx_educator_assignments_class",
+      "idx_colleges_code",
+      "idx_colleges_status",
+      "idx_colleges_state",
+      "idx_college_courses_college",
+      "idx_college_courses_academic_year",
+      "idx_college_lecturers_college",
+      "idx_college_lecturers_user",
+      "idx_lecturer_assignments_lecturer",
+      "idx_lecturer_assignments_course",
+      "idx_universities_code",
+      "idx_universities_status",
+      "idx_universities_state",
+      "idx_university_colleges_university",
+      "idx_university_courses_college",
+      "idx_university_courses_academic_year",
+      "idx_university_lecturers_college",
+      "idx_university_lecturers_user",
+      "idx_university_lecturer_assignments_lecturer",
+      "idx_university_lecturer_assignments_course",
+      "idx_students_user",
+      "idx_students_type",
+      "idx_students_school",
+      "idx_students_college",
+      "idx_students_university",
+      "idx_students_school_class",
+      "idx_students_college_course",
+      "idx_students_university_course",
+      "idx_students_email",
+      "idx_students_enrollment",
+      "idx_skill_passports_student",
+      "idx_skill_passports_status",
+      "idx_skill_passports_nsqf",
+      "idx_skill_passports_ai_verified",
+      "idx_companies_code",
+      "idx_companies_status",
+      "idx_companies_industry",
+      "idx_companies_state",
+      "idx_company_branches_company",
+      "idx_recruiters_company",
+      "idx_recruiters_branch",
+      "idx_recruiters_user",
+      "idx_recruiters_email",
+      "idx_recruiters_status",
+      "idx_recruiters_state",
+      "idx_verifications_passport",
+      "idx_verifications_user",
+      "idx_verifications_status",
+      "idx_metrics_snapshots_date",
+      "idx_permissions_name",
+      "idx_permissions_resource",
+      "idx_role_permissions_role",
+      "idx_role_permissions_permission",
+      "idx_audit_logs_user",
+      "idx_audit_logs_action",
+      "idx_audit_logs_resource",
+      "idx_audit_logs_created",
+      "idx_users_email_trgm",
+      "idx_users_name_trgm",
+      "idx_students_name_trgm",
+      "idx_students_email_trgm",
+      "idx_recruiters_name_trgm",
+      "idx_recruiters_email_trgm",
+      "idx_students_university_status",
+      "idx_skill_passports_student_status",
+      "idx_audit_logs_created_desc",
+      "idx_students_created_desc",
+      "idx_skill_passports_created_desc",
+      "idx_colleges_code",
+      "idx_colleges_university",
+      "idx_colleges_type",
+      "idx_colleges_status",
+      "idx_colleges_state",
+      "idx_student_enrollments_student",
+      "idx_student_enrollments_status",
+      "idx_student_enrollments_school_class",
+      "idx_student_enrollments_college_course",
+      "idx_student_enrollments_university_course",
+      "idx_student_enrollments_dates",
+      "idx_colleges_university_type",
+      "idx_colleges_standalone",
+      "idx_enrollments_student_status_date",
+      "idx_enrollments_active"
+    ]
+  },
+  "comparison": {
+    "tables": {
+      "users": {
+        "exists": true,
+        "expectedColumns": 10,
+        "actualColumns": 9,
+        "missingColumns": [
+          "supabase_auth_id",
+          "first_name",
+          "last_name",
+          "entity_type",
+          "entity_id",
+          "account_status",
+          "last_password_change",
+          "profile_image_url",
+          "last_login"
+        ],
+        "extraColumns": [
+          "email",
+          "role",
+          "organizationId",
+          "isActive",
+          "metadata",
+          "createdAt",
+          "updatedAt",
+          "id"
+        ]
+      },
+      "universities": {
+        "exists": true,
+        "expectedColumns": 9,
+        "actualColumns": 12,
+        "missingColumns": [
+          "university_type",
+          "approval_status",
+          "approved_by",
+          "approved_at",
+          "account_status",
+          "total_colleges",
+          "total_courses",
+          "total_lecturers",
+          "total_students"
+        ],
+        "extraColumns": [
+          "id",
+          "name",
+          "email",
+          "phone",
+          "state",
+          "district",
+          "website",
+          "verificationstatus",
+          "isactive",
+          "createdat",
+          "updatedat",
+          "code"
+        ]
+      },
+      "students": {
+        "exists": true,
+        "expectedColumns": 19,
+        "actualColumns": 34,
+        "missingColumns": [
+          "student_type",
+          "school_id",
+          "college_id",
+          "university_college_id",
+          "school_class_id",
+          "college_course_id",
+          "university_course_id",
+          "enrollment_number",
+          "guardian_name",
+          "guardian_phone",
+          "guardian_email",
+          "guardian_relation",
+          "gender",
+          "blood_group",
+          "enrollment_date",
+          "expected_graduation_date",
+          "current_cgpa"
+        ],
+        "extraColumns": [
+          "studentId",
+          "universityId",
+          "profile",
+          "createdAt",
+          "updatedAt",
+          "email",
+          "name",
+          "age",
+          "contact_number",
+          "alternate_number",
+          "district_name",
+          "university",
+          "branch_field",
+          "college_school_name",
+          "registration_number",
+          "github_link",
+          "linkedin_link",
+          "twitter_link",
+          "facebook_link",
+          "instagram_link",
+          "portfolio_link",
+          "other_social_links",
+          "approval_status",
+          "created_at",
+          "updated_at",
+          "embedding",
+          "phone",
+          "department",
+          "cgpa",
+          "employability_score",
+          "verified",
+          "id"
+        ]
+      },
+      "skill_passports": {
+        "exists": true,
+        "expectedColumns": 9,
+        "actualColumns": 11,
+        "missingColumns": [
+          "nsqf_level",
+          "certifications",
+          "work_experience",
+          "achievements",
+          "verified_by",
+          "verified_at",
+          "ai_verified",
+          "ai_verification_score"
+        ],
+        "extraColumns": [
+          "studentId",
+          "status",
+          "aiVerification",
+          "nsqfLevel",
+          "skills",
+          "createdAt",
+          "updatedAt",
+          "id",
+          "certificates",
+          "assessments"
+        ]
+      },
+      "recruiters": {
+        "exists": true,
+        "expectedColumns": 12,
+        "actualColumns": 11,
+        "missingColumns": [
+          "verification_status",
+          "is_active",
+          "user_count",
+          "company_id",
+          "branch_id",
+          "employee_id",
+          "designation",
+          "department",
+          "date_of_joining",
+          "is_hq_recruiter",
+          "account_status"
+        ],
+        "extraColumns": [
+          "id",
+          "name",
+          "email",
+          "phone",
+          "state",
+          "website",
+          "verificationstatus",
+          "isactive",
+          "createdat",
+          "updatedat"
+        ]
+      },
+      "verifications": {
+        "exists": true,
+        "expectedColumns": 5,
+        "actualColumns": 7,
+        "missingColumns": [
+          "verification_type",
+          "verification_notes",
+          "verification_data",
+          "verified_by",
+          "verified_at"
+        ],
+        "extraColumns": [
+          "id",
+          "targetTable",
+          "targetId",
+          "action",
+          "performedBy",
+          "note",
+          "createdAt"
+        ]
+      },
+      "metrics_snapshots": {
+        "exists": true,
+        "expectedColumns": 3,
+        "actualColumns": 9,
+        "missingColumns": [
+          "total_schools",
+          "total_colleges",
+          "total_companies"
+        ],
+        "extraColumns": [
+          "id",
+          "snapshotDate",
+          "activeUniversities",
+          "registeredStudents",
+          "verifiedPassports",
+          "aiVerifiedPercent",
+          "employabilityIndex",
+          "activeRecruiters",
+          "createdAt"
+        ]
+      },
+      "audit_logs": {
+        "exists": true,
+        "expectedColumns": 6,
+        "actualColumns": 7,
+        "missingColumns": [
+          "ip_address",
+          "user_agent",
+          "old_values",
+          "new_values",
+          "resource_type",
+          "resource_id"
+        ],
+        "extraColumns": [
+          "user_id",
+          "action",
+          "target",
+          "payload",
+          "ip",
+          "createdAt",
+          "id"
+        ]
+      }
+    },
+    "missingTables": [
+      "schools",
+      "school_classes",
+      "school_educators",
+      "school_educator_class_assignments",
+      "colleges_standalone",
+      "college_courses",
+      "college_lecturers",
+      "college_lecturer_course_assignments",
+      "university_colleges",
+      "university_courses",
+      "university_lecturers",
+      "university_lecturer_course_assignments",
+      "companies",
+      "company_branches",
+      "permissions",
+      "role_permissions",
+      "colleges",
+      "student_enrollments"
+    ],
+    "extraTables": [],
+    "columnMismatches": {
+      "users": {
+        "missing": [
+          "supabase_auth_id",
+          "first_name",
+          "last_name",
+          "entity_type",
+          "entity_id",
+          "account_status",
+          "last_password_change",
+          "profile_image_url",
+          "last_login"
+        ],
+        "extra": [
+          "email",
+          "role",
+          "organizationId",
+          "isActive",
+          "metadata",
+          "createdAt",
+          "updatedAt",
+          "id"
+        ]
+      },
+      "universities": {
+        "missing": [
+          "university_type",
+          "approval_status",
+          "approved_by",
+          "approved_at",
+          "account_status",
+          "total_colleges",
+          "total_courses",
+          "total_lecturers",
+          "total_students"
+        ],
+        "extra": [
+          "id",
+          "name",
+          "email",
+          "phone",
+          "state",
+          "district",
+          "website",
+          "verificationstatus",
+          "isactive",
+          "createdat",
+          "updatedat",
+          "code"
+        ]
+      },
+      "students": {
+        "missing": [
+          "student_type",
+          "school_id",
+          "college_id",
+          "university_college_id",
+          "school_class_id",
+          "college_course_id",
+          "university_course_id",
+          "enrollment_number",
+          "guardian_name",
+          "guardian_phone",
+          "guardian_email",
+          "guardian_relation",
+          "gender",
+          "blood_group",
+          "enrollment_date",
+          "expected_graduation_date",
+          "current_cgpa"
+        ],
+        "extra": [
+          "studentId",
+          "universityId",
+          "profile",
+          "createdAt",
+          "updatedAt",
+          "email",
+          "name",
+          "age",
+          "contact_number",
+          "alternate_number",
+          "district_name",
+          "university",
+          "branch_field",
+          "college_school_name",
+          "registration_number",
+          "github_link",
+          "linkedin_link",
+          "twitter_link",
+          "facebook_link",
+          "instagram_link",
+          "portfolio_link",
+          "other_social_links",
+          "approval_status",
+          "created_at",
+          "updated_at",
+          "embedding",
+          "phone",
+          "department",
+          "cgpa",
+          "employability_score",
+          "verified",
+          "id"
+        ]
+      },
+      "skill_passports": {
+        "missing": [
+          "nsqf_level",
+          "certifications",
+          "work_experience",
+          "achievements",
+          "verified_by",
+          "verified_at",
+          "ai_verified",
+          "ai_verification_score"
+        ],
+        "extra": [
+          "studentId",
+          "status",
+          "aiVerification",
+          "nsqfLevel",
+          "skills",
+          "createdAt",
+          "updatedAt",
+          "id",
+          "certificates",
+          "assessments"
+        ]
+      },
+      "recruiters": {
+        "missing": [
+          "verification_status",
+          "is_active",
+          "user_count",
+          "company_id",
+          "branch_id",
+          "employee_id",
+          "designation",
+          "department",
+          "date_of_joining",
+          "is_hq_recruiter",
+          "account_status"
+        ],
+        "extra": [
+          "id",
+          "name",
+          "email",
+          "phone",
+          "state",
+          "website",
+          "verificationstatus",
+          "isactive",
+          "createdat",
+          "updatedat"
+        ]
+      },
+      "verifications": {
+        "missing": [
+          "verification_type",
+          "verification_notes",
+          "verification_data",
+          "verified_by",
+          "verified_at"
+        ],
+        "extra": [
+          "id",
+          "targetTable",
+          "targetId",
+          "action",
+          "performedBy",
+          "note",
+          "createdAt"
+        ]
+      },
+      "metrics_snapshots": {
+        "missing": [
+          "total_schools",
+          "total_colleges",
+          "total_companies"
+        ],
+        "extra": [
+          "id",
+          "snapshotDate",
+          "activeUniversities",
+          "registeredStudents",
+          "verifiedPassports",
+          "aiVerifiedPercent",
+          "employabilityIndex",
+          "activeRecruiters",
+          "createdAt"
+        ]
+      },
+      "audit_logs": {
+        "missing": [
+          "ip_address",
+          "user_agent",
+          "old_values",
+          "new_values",
+          "resource_type",
+          "resource_id"
+        ],
+        "extra": [
+          "user_id",
+          "action",
+          "target",
+          "payload",
+          "ip",
+          "createdAt",
+          "id"
+        ]
+      }
+    },
+    "summary": {
+      "tablesInSync": 0,
+      "tablesNeedUpdate": 8,
+      "missingColumns": 68,
+      "extraColumns": 95
+    }
+  },
+  "timestamp": "2025-11-03T09:21:13.711Z"
+}
