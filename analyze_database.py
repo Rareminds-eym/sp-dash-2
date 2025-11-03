@@ -5,14 +5,31 @@ Analyzes tables, columns, indexes, triggers, functions, constraints, and more
 """
 
 import os
-import json
-from supabase import create_client, Client
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
-# Initialize Supabase client
+# Database connection string
+# Format: postgresql://postgres:[PASSWORD]@db.[PROJECT_REF].supabase.co:5432/postgres
 SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+SUPABASE_PASSWORD = os.getenv("SUPABASE_DB_PASSWORD")
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+# Extract project ref from URL
+project_ref = SUPABASE_URL.split("//")[1].split(".")[0]
+DB_CONNECTION = f"postgresql://postgres:{SUPABASE_PASSWORD}@db.{project_ref}.supabase.co:5432/postgres"
+
+def execute_query(query):
+    """Execute a SQL query and return results"""
+    try:
+        conn = psycopg2.connect(DB_CONNECTION)
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute(query)
+        results = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return results
+    except Exception as e:
+        print(f"Error executing query: {e}")
+        return []
 
 def analyze_database():
     """Comprehensive database structure analysis"""
