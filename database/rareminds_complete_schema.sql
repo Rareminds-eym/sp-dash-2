@@ -214,6 +214,19 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='schools' AND column_name='approved_at') THEN
         ALTER TABLE schools ADD COLUMN approved_at TIMESTAMP WITH TIME ZONE;
     END IF;
+    
+    -- Aggregated count fields for Admin Dashboard
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='schools' AND column_name='total_classes') THEN
+        ALTER TABLE schools ADD COLUMN total_classes INTEGER DEFAULT 0;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='schools' AND column_name='total_educators') THEN
+        ALTER TABLE schools ADD COLUMN total_educators INTEGER DEFAULT 0;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='schools' AND column_name='total_students') THEN
+        ALTER TABLE schools ADD COLUMN total_students INTEGER DEFAULT 0;
+    END IF;
 END $$;
 
 CREATE INDEX IF NOT EXISTS idx_schools_code ON schools(code);
