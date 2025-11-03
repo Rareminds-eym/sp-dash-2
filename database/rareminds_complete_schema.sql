@@ -466,6 +466,23 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='universities' AND column_name='account_status') THEN
         ALTER TABLE universities ADD COLUMN account_status account_status DEFAULT 'pending';
     END IF;
+    
+    -- Aggregated count fields for Admin Dashboard
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='universities' AND column_name='total_colleges') THEN
+        ALTER TABLE universities ADD COLUMN total_colleges INTEGER DEFAULT 0;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='universities' AND column_name='total_courses') THEN
+        ALTER TABLE universities ADD COLUMN total_courses INTEGER DEFAULT 0;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='universities' AND column_name='total_lecturers') THEN
+        ALTER TABLE universities ADD COLUMN total_lecturers INTEGER DEFAULT 0;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='universities' AND column_name='total_students') THEN
+        ALTER TABLE universities ADD COLUMN total_students INTEGER DEFAULT 0;
+    END IF;
 END $$;
 
 CREATE INDEX IF NOT EXISTS idx_universities_code ON universities(code);
