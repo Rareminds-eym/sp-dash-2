@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/app/analyze_database.py", line 17, in <module>
+    project_ref = SUPABASE_URL.split("//")[1].split(".")[0]
+                  ^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'split'
