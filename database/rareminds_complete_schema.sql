@@ -185,6 +185,12 @@ CREATE TABLE IF NOT EXISTS schools (
     approval_status approval_status DEFAULT 'pending',
     approved_by UUID REFERENCES users(id),
     approved_at TIMESTAMP WITH TIME ZONE,
+    
+    -- Aggregated counts for Admin Dashboard (as per PDF requirements)
+    total_classes INTEGER DEFAULT 0,
+    total_educators INTEGER DEFAULT 0,
+    total_students INTEGER DEFAULT 0,
+    
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     metadata JSONB DEFAULT '{}'
