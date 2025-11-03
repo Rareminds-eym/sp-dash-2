@@ -7,15 +7,25 @@ Analyzes tables, columns, indexes, triggers, functions, constraints, and more
 import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Database connection string
 # Format: postgresql://postgres:[PASSWORD]@db.[PROJECT_REF].supabase.co:5432/postgres
 SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
 SUPABASE_PASSWORD = os.getenv("SUPABASE_DB_PASSWORD")
 
+if not SUPABASE_URL or not SUPABASE_PASSWORD:
+    print("❌ Error: SUPABASE_URL or SUPABASE_PASSWORD not found in environment")
+    exit(1)
+
 # Extract project ref from URL
 project_ref = SUPABASE_URL.split("//")[1].split(".")[0]
 DB_CONNECTION = f"postgresql://postgres:{SUPABASE_PASSWORD}@db.{project_ref}.supabase.co:5432/postgres"
+
+print(f"Connecting to: postgresql://postgres:****@db.{project_ref}.supabase.co:5432/postgres")
 
 def execute_query(query):
     """Execute a SQL query and return results"""
