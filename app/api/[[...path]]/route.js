@@ -2701,6 +2701,68 @@ export async function POST(request) {
       })
     }
 
+    // POST /api/universities/:id/colleges - Create a college within a university
+    if (path.match(/^\/universities\/[^/]+\/colleges$/)) {
+      const pathParts = path.split('/')
+      const universityId = pathParts[2]
+
+      const { name, code, deanName, deanEmail, deanPhone, establishedYear, description } = body
+
+      if (!name || !code) {
+        return NextResponse.json(
+          { error: 'Name and code are required' },
+          { status: 400 }
+        )
+      }
+
+      // Check if university exists
+      const { data: university } = await supabase
+        .from('universities')
+        .select('id')
+        .eq('id', universityId)
+        .single()
+
+      if (!university) {
+        return NextResponse.json(
+          { error: 'University not found' },
+          { status: 404 }
+        )
+      }
+
+      // Create college
+      const { data, error: insertError } = await supabase
+        .from('university_colleges')
+        .insert({
+          id: uuidv4(),
+          university_id: universityId,
+          name,
+          code,
+          dean_name: deanName,
+          dean_email: deanEmail,
+          dean_phone: deanPhone,
+          established_year: establishedYear,
+          description,
+          account_status: 'active'
+        })
+        .select()
+        .single()
+
+      if (insertError) {
+        console.error('Error creating college:', insertError)
+        return NextResponse.json(
+          { error: insertError.message },
+          { status: 500 }
+        )
+      }
+
+      // Log audit
+      if (body.userId) {
+        await logAudit(body.userId, 'create_college', data.id, { name, universityId })
+      }
+
+      return NextResponse.json({ success: true, data })
+    }
+
     // POST /api/approve-university - Approve a university
     if (path === '/approve-university') {
       const { universityId, notes, userId } = body
