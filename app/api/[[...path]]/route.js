@@ -2119,6 +2119,69 @@ export async function GET(request) {
       })
     }
 
+    // GET /api/universities/:id/colleges - Get colleges for a specific university
+    if (path.match(/^\/universities\/[^/]+\/colleges$/)) {
+      const pathParts = path.split('/')
+      const universityId = pathParts[2]
+
+      const { data: colleges, error } = await supabase
+        .from('university_colleges')
+        .select('*')
+        .eq('university_id', universityId)
+        .order('name')
+
+      if (error) {
+        console.error('Error fetching university colleges:', error)
+        return NextResponse.json(
+          { error: error.message },
+          { status: 500 }
+        )
+      }
+
+      const response = NextResponse.json(colleges || [])
+      return addCacheHeaders(response, 'static')
+    }
+
+    // GET /api/universities/:id - Get university details with colleges
+    if (path.match(/^\/universities\/[^/]+$/) && path !== '/universities') {
+      const pathParts = path.split('/')
+      const universityId = pathParts[2]
+
+      // Fetch university details
+      const { data: university, error: univError } = await supabase
+        .from('universities')
+        .select('*')
+        .eq('id', universityId)
+        .single()
+
+      if (univError || !university) {
+        return NextResponse.json(
+          { error: 'University not found' },
+          { status: 404 }
+        )
+      }
+
+      // Fetch colleges
+      const { data: colleges } = await supabase
+        .from('university_colleges')
+        .select('*')
+        .eq('university_id', universityId)
+        .order('name')
+
+      // Count students
+      const { data: students } = await supabase
+        .from('students')
+        .select('id')
+        .eq('universityid', universityId)
+
+      const response = NextResponse.json({
+        ...university,
+        colleges: colleges || [],
+        studentCount: students?.length || 0
+      })
+      return addCacheHeaders(response, 'static')
+    }
+
     // Default route
     return NextResponse.json({ 
       message: 'Rareminds Super Admin Dashboard API',
@@ -2131,6 +2194,8 @@ export async function GET(request) {
         '/api/passports',
         '/api/verifications',
         '/api/audit-logs',
+        '/api/universities/:id',
+        '/api/universities/:id/colleges',
         '/api/analytics/state-wise',
         '/api/analytics/trends',
         '/api/analytics/university-reports',
