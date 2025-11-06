@@ -576,7 +576,7 @@ export async function GET(request) {
       }
       
       // Apply sorting (newest first by default)
-      query = query.order('created_at', { ascending: false })
+      query = query.order('createdat', { ascending: false })
       
       // Apply pagination
       query = query.range(offset, offset + limit - 1)
