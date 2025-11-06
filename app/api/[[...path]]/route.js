@@ -2636,6 +2636,156 @@ export async function POST(request) {
       })
     }
 
+    // POST /api/approve-university - Approve a university
+    if (path === '/approve-university') {
+      const { universityId, notes, userId } = body
+
+      if (!universityId || !userId) {
+        return NextResponse.json(
+          { error: 'Missing required fields' },
+          { status: 400 }
+        )
+      }
+
+      // Update university status
+      const { data, error: updateError } = await supabase
+        .from('universities')
+        .update({
+          approval_status: 'approved',
+          account_status: 'active',
+          approved_by: userId,
+          approved_at: new Date().toISOString()
+        })
+        .eq('id', universityId)
+        .select()
+        .single()
+
+      if (updateError) {
+        console.error('Error approving university:', updateError)
+        return NextResponse.json(
+          { error: updateError.message },
+          { status: 500 }
+        )
+      }
+
+      // Log audit
+      await logAudit(userId, 'approve_university', universityId, { notes })
+
+      return NextResponse.json({ success: true, data })
+    }
+
+    // POST /api/reject-university - Reject a university
+    if (path === '/reject-university') {
+      const { universityId, reason, userId } = body
+
+      if (!universityId || !userId) {
+        return NextResponse.json(
+          { error: 'Missing required fields' },
+          { status: 400 }
+        )
+      }
+
+      // Update university status
+      const { data, error: updateError } = await supabase
+        .from('universities')
+        .update({
+          approval_status: 'rejected',
+          account_status: 'inactive',
+          rejection_reason: reason
+        })
+        .eq('id', universityId)
+        .select()
+        .single()
+
+      if (updateError) {
+        console.error('Error rejecting university:', updateError)
+        return NextResponse.json(
+          { error: updateError.message },
+          { status: 500 }
+        )
+      }
+
+      // Log audit
+      await logAudit(userId, 'reject_university', universityId, { reason })
+
+      return NextResponse.json({ success: true, data })
+    }
+
+    // POST /api/approve-recruiter - Approve a recruiter
+    if (path === '/approve-recruiter') {
+      const { recruiterId, notes, userId } = body
+
+      if (!recruiterId || !userId) {
+        return NextResponse.json(
+          { error: 'Missing required fields' },
+          { status: 400 }
+        )
+      }
+
+      // Update recruiter status
+      const { data, error: updateError } = await supabase
+        .from('recruiters')
+        .update({
+          approval_status: 'approved',
+          account_status: 'active',
+          approved_by: userId,
+          approved_at: new Date().toISOString()
+        })
+        .eq('id', recruiterId)
+        .select()
+        .single()
+
+      if (updateError) {
+        console.error('Error approving recruiter:', updateError)
+        return NextResponse.json(
+          { error: updateError.message },
+          { status: 500 }
+        )
+      }
+
+      // Log audit
+      await logAudit(userId, 'approve_recruiter', recruiterId, { notes })
+
+      return NextResponse.json({ success: true, data })
+    }
+
+    // POST /api/reject-recruiter - Reject a recruiter
+    if (path === '/reject-recruiter') {
+      const { recruiterId, reason, userId } = body
+
+      if (!recruiterId || !userId) {
+        return NextResponse.json(
+          { error: 'Missing required fields' },
+          { status: 400 }
+        )
+      }
+
+      // Update recruiter status
+      const { data, error: updateError } = await supabase
+        .from('recruiters')
+        .update({
+          approval_status: 'rejected',
+          account_status: 'inactive',
+          rejection_reason: reason
+        })
+        .eq('id', recruiterId)
+        .select()
+        .single()
+
+      if (updateError) {
+        console.error('Error rejecting recruiter:', updateError)
+        return NextResponse.json(
+          { error: updateError.message },
+          { status: 500 }
+        )
+      }
+
+      // Log audit
+      await logAudit(userId, 'reject_recruiter', recruiterId, { reason })
+
+      return NextResponse.json({ success: true, data })
+    }
+
     return NextResponse.json(
       { error: 'Endpoint not found' },
       { status: 404 }
