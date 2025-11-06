@@ -17,6 +17,13 @@ COMMENT ON SCHEMA "public" IS 'standard public schema';
 
 
 
+CREATE EXTENSION IF NOT EXISTS "pg_net" WITH SCHEMA "public";
+
+
+
+
+
+
 CREATE EXTENSION IF NOT EXISTS "pg_graphql" WITH SCHEMA "graphql";
 
 
@@ -66,6 +73,98 @@ CREATE EXTENSION IF NOT EXISTS "vector" WITH SCHEMA "public";
 
 
 
+CREATE TYPE "public"."account_status" AS ENUM (
+    'pending',
+    'active',
+    'suspended',
+    'deactivated'
+);
+
+
+ALTER TYPE "public"."account_status" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."approval_status" AS ENUM (
+    'pending',
+    'approved',
+    'rejected',
+    'under_review'
+);
+
+
+ALTER TYPE "public"."approval_status" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."collegeType" AS ENUM (
+    'standalone',
+    'university_department'
+);
+
+
+ALTER TYPE "public"."collegeType" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."enrollmentStatus" AS ENUM (
+    'active',
+    'completed',
+    'withdrawn',
+    'transferred',
+    'suspended'
+);
+
+
+ALTER TYPE "public"."enrollmentStatus" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."entity_type" AS ENUM (
+    'school',
+    'college',
+    'university',
+    'company'
+);
+
+
+ALTER TYPE "public"."entity_type" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."student_type" AS ENUM (
+    'school',
+    'college',
+    'university'
+);
+
+
+ALTER TYPE "public"."student_type" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."user_role" AS ENUM (
+    'super_admin',
+    'platform_admin',
+    'school_admin',
+    'college_admin',
+    'university_admin',
+    'company_admin',
+    'educator',
+    'lecturer',
+    'recruiter',
+    'student'
+);
+
+
+ALTER TYPE "public"."user_role" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."verification_status" AS ENUM (
+    'pending',
+    'verified',
+    'rejected',
+    'in_review'
+);
+
+
+ALTER TYPE "public"."verification_status" OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."add_achievement_update"("p_student_id" "uuid", "p_achievement" "text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -86,6 +185,58 @@ COMMENT ON FUNCTION "public"."add_achievement_update"("p_student_id" "uuid", "p_
 
 
 
+CREATE OR REPLACE FUNCTION "public"."add_column_if_not_exists"("p_table_name" "text", "p_column_name" "text", "p_column_definition" "text") RETURNS "void"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_schema = 'public' 
+        AND table_name = p_table_name 
+        AND column_name = p_column_name
+    ) THEN
+        EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', 
+            p_table_name, p_column_name, p_column_definition);
+        RAISE NOTICE 'Added column %.%', p_table_name, p_column_name;
+    ELSE
+        RAISE NOTICE 'Column %.% already exists, skipping', p_table_name, p_column_name;
+    END IF;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."add_column_if_not_exists"("p_table_name" "text", "p_column_name" "text", "p_column_definition" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."add_constraint_if_not_exists"("p_table_name" "text", "p_constraint_name" "text", "p_constraint_definition" "text") RETURNS "void"
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+    constraint_exists boolean;
+BEGIN
+    SELECT EXISTS (
+        SELECT 1 
+        FROM information_schema.table_constraints 
+        WHERE constraint_schema = 'public' 
+        AND table_name = p_table_name 
+        AND constraint_name = p_constraint_name
+    ) INTO constraint_exists;
+    
+    IF NOT constraint_exists THEN
+        EXECUTE format('ALTER TABLE %I ADD CONSTRAINT %I %s', 
+            p_table_name, p_constraint_name, p_constraint_definition);
+        RAISE NOTICE 'Added constraint % to %', p_constraint_name, p_table_name;
+    ELSE
+        RAISE NOTICE 'Constraint % already exists on %, skipping', p_constraint_name, p_table_name;
+    END IF;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."add_constraint_if_not_exists"("p_table_name" "text", "p_constraint_name" "text", "p_constraint_definition" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."add_jsonb_recent_update"("student_email" "text", "update_title" "text", "update_type" "text" DEFAULT 'system'::"text") RETURNS "void"
     LANGUAGE "plpgsql"
     AS $$
@@ -93,7 +244,7 @@ DECLARE
   student_uuid UUID;
   update_json JSONB;
 BEGIN
-  -- 1️⃣ Get the student_id dynamically
+  -- Get the student_id dynamically
   SELECT id INTO student_uuid
   FROM public.students
   WHERE profile->>'email' = student_email;
@@ -102,14 +253,14 @@ BEGIN
     RAISE EXCEPTION 'No student found with email: %', student_email;
   END IF;
 
-  -- 2️⃣ Create new update object
+  -- Create new update object
   update_json := jsonb_build_object(
     'title', update_title,
     'type', update_type,
     'created_at', NOW()
   );
 
-  -- 3️⃣ Insert or update JSONB array
+  -- Insert or update JSONB array
   INSERT INTO public.recent_updates (student_id, updates)
   VALUES (student_uuid, jsonb_build_object('updates', jsonb_build_array(update_json)))
   ON CONFLICT (student_id)
@@ -242,17 +393,17 @@ CREATE OR REPLACE FUNCTION "public"."add_recent_update"("student_email" "text", 
 DECLARE
     student_uuid UUID;
 BEGIN
-    -- 1️⃣ Get student_id dynamically using email inside JSONB "profile"
+    -- Get student_id dynamically using email inside JSONB "profile"
     SELECT id INTO student_uuid
     FROM public.students
     WHERE profile->>'email' = student_email;
 
-    -- 2️⃣ Handle missing student
+    -- Handle missing student
     IF student_uuid IS NULL THEN
         RAISE EXCEPTION '❌ No student found with email: %', student_email;
     END IF;
 
-    -- 3️⃣ Insert recent update
+    -- Insert recent update
     INSERT INTO public.recent_updates (student_id, title, description, type)
     VALUES (student_uuid, update_title, update_description, update_type);
 END;
@@ -358,9 +509,8 @@ COMMENT ON FUNCTION "public"."add_to_profile_array"("p_student_id" "uuid", "p_ar
 
 CREATE OR REPLACE FUNCTION "public"."analyze_skills_demand"() RETURNS TABLE("skill" "text", "total_mentions" bigint)
     LANGUAGE "sql" STABLE
-    AS $_$
+    AS $$
 
-/* 1. exhaustive keyword list */
 WITH wanted(skill) AS (
   VALUES
     ('html'),('css'),('sass'),('scss'),('tailwind'),('bootstrap'),
@@ -393,7 +543,7 @@ WITH wanted(skill) AS (
     ('agile'),('scrum'),('kanban')
 ),
 
-/* 2. explode responsibilities -> one text row per array element */
+/* explode responsibilities -> one text row per array element */
 raw_lines AS (
   SELECT  
     o.id,
@@ -402,41 +552,34 @@ raw_lines AS (
   WHERE o.requirements IS NOT NULL
 ),
 
-/* 3. count occurrences per line */
+/* count occurrences per line */
 per_line AS (
   SELECT 
     w.skill,
     r.id,
-    /* use simple regex for short keywords that may terminate a line */
-    CASE
-      WHEN w.skill IN ('python','swift','c','go','c#') THEN
-        CASE 
-          WHEN r.line ~* ('(^|[^a-z0-9+#])'||regexp_replace(w.skill,'([\\.+*?^$()|[\]{}])','\\\1','g')||'($|[^a-z0-9+#])')
-          THEN 1 
-          ELSE 0 
-        END
-      ELSE  -- keep word-boundary for the rest
-        CASE 
-          WHEN r.line ~* ('\m'||regexp_replace(w.skill,'([\\.+*?^$()|[\]{}])','\\\1','g')||'\M')
-          THEN 1 
-          ELSE 0 
-        END
-    END AS hit
+    CASE 
+      /* use regex boundaries for longer words to avoid partial matches */
+      WHEN length(w.skill) > 3 THEN 
+        CASE WHEN r.line ~ ('\m' || w.skill || '\M') THEN 1 ELSE 0 END
+      /* use simple regex for short keywords that may terminate a line */
+      ELSE 
+        CASE WHEN r.line ~ ('\m' || w.skill) THEN 1 ELSE 0 END
+    END as found
   FROM wanted w
   CROSS JOIN raw_lines r
 )
 
-/* 4. final tally */
+/* aggregate totals across all listings */
 SELECT 
-  per_line.skill::TEXT,
-  sum(per_line.hit) AS total_mentions
-FROM per_line
-WHERE per_line.hit = 1
-GROUP BY per_line.skill
+  w.skill,
+  sum(p.found)::bigint as total_mentions
+FROM wanted w
+LEFT JOIN per_line p ON w.skill = p.skill  
+GROUP BY w.skill
+HAVING sum(p.found) > 0
 ORDER BY total_mentions DESC
-LIMIT 5;
 
-$_$;
+$$;
 
 
 ALTER FUNCTION "public"."analyze_skills_demand"() OWNER TO "postgres";
@@ -464,30 +607,41 @@ BEGIN
     RETURN QUERY SELECT FALSE, 'This opportunity is no longer active', NULL::INTEGER;
     RETURN;
   END IF;
-  
+
   -- Check if already applied
   SELECT EXISTS (
     SELECT 1 
-    FROM public.applied_jobs 
+    FROM public.applications 
     WHERE student_id = p_student_id 
-      AND opportunity_id = p_opportunity_id
+    AND opportunity_id = p_opportunity_id
   ) INTO v_already_applied;
   
   IF v_already_applied THEN
-    RETURN QUERY SELECT FALSE, 'You have already applied to this job', NULL::INTEGER;
+    RETURN QUERY SELECT FALSE, 'You have already applied to this opportunity', NULL::INTEGER;
     RETURN;
   END IF;
   
-  -- Insert application
-  INSERT INTO public.applied_jobs (
+  -- Create application
+  INSERT INTO public.applications (
     student_id,
-    opportunity_id
-  )
+    opportunity_id,
+    application_date,
+    status
+  ) 
   VALUES (
     p_student_id,
-    p_opportunity_id
+    p_opportunity_id,
+    NOW(),
+    'pending'::public.approval_status
   )
   RETURNING id INTO v_application_id;
+  
+  -- Add recent update
+  PERFORM public.add_recent_update(
+    p_student_id, 
+    'Applied to job opportunity',
+    'application'
+  );
   
   RETURN QUERY SELECT TRUE, 'Application submitted successfully', v_application_id;
 END;
@@ -495,6 +649,122 @@ $$;
 
 
 ALTER FUNCTION "public"."apply_to_job"("p_student_id" "uuid", "p_opportunity_id" integer) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."auto_add_applicant_to_pipeline"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+  v_opportunity RECORD;
+  v_student RECORD;
+  v_existing_candidate INTEGER;
+BEGIN
+  -- Get opportunity details including requisition_id
+  SELECT 
+    o.requisition_id, 
+    COALESCE(o.job_title, o.title) as job_title
+  INTO v_opportunity
+  FROM opportunities o
+  WHERE o.id = NEW.opportunity_id;
+  
+  -- Only proceed if opportunity has a linked requisition
+  IF v_opportunity.requisition_id IS NULL THEN
+    RAISE NOTICE 'Opportunity % has no linked requisition, skipping pipeline addition', NEW.opportunity_id;
+    RETURN NEW;
+  END IF;
+  
+  -- Get student details from the students table (CORRECTED: use direct columns)
+  SELECT 
+    s.id,
+    COALESCE(s.name, 'Unknown Student') as name,
+    COALESCE(s.email, '') as email,
+    COALESCE(s.contact_number::TEXT, '') as phone
+  INTO v_student
+  FROM students s
+  WHERE s.id = NEW.student_id;
+  
+  -- If student not found, try to get basic info
+  IF v_student.id IS NULL THEN
+    RAISE NOTICE 'Student % not found in students table, skipping pipeline addition', NEW.student_id;
+    RETURN NEW;
+  END IF;
+  
+  -- Check if candidate already exists in this pipeline
+  SELECT id INTO v_existing_candidate
+  FROM pipeline_candidates
+  WHERE requisition_id = v_opportunity.requisition_id
+    AND student_id = NEW.student_id
+  LIMIT 1;
+  
+  -- If candidate doesn't exist, add them to the pipeline
+  IF v_existing_candidate IS NULL THEN
+    BEGIN
+      INSERT INTO pipeline_candidates (
+        requisition_id,
+        student_id,
+        candidate_name,
+        candidate_email,
+        candidate_phone,
+        stage,
+        source,
+        status,
+        added_at,
+        stage_changed_at,
+        created_at,
+        updated_at
+      ) VALUES (
+        v_opportunity.requisition_id,
+        v_student.id,
+        v_student.name,
+        v_student.email,
+        v_student.phone,
+        'sourced', -- Start at sourced stage
+        'direct_application', -- Mark as direct application
+        'active',
+        NOW(),
+        NOW(),
+        NOW(),
+        NOW()
+      );
+      
+      RAISE NOTICE 'Successfully added student % (%) to pipeline for requisition %', 
+        v_student.name, NEW.student_id, v_opportunity.requisition_id;
+    EXCEPTION WHEN OTHERS THEN
+      RAISE WARNING 'Failed to add student to pipeline: %', SQLERRM;
+    END;
+  ELSE
+    RAISE NOTICE 'Student % already exists in pipeline for requisition % (pipeline_candidate_id: %)', 
+      NEW.student_id, v_opportunity.requisition_id, v_existing_candidate;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."auto_add_applicant_to_pipeline"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."create_index_if_not_exists"("p_index_name" "text", "p_table_name" "text", "p_definition" "text") RETURNS "void"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes 
+        WHERE schemaname = 'public' 
+        AND indexname = p_index_name
+    ) THEN
+        EXECUTE format('CREATE INDEX %I ON %I %s', 
+            p_index_name, p_table_name, p_definition);
+        RAISE NOTICE 'Created index %', p_index_name;
+    ELSE
+        RAISE NOTICE 'Index % already exists, skipping', p_index_name;
+    END IF;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."create_index_if_not_exists"("p_index_name" "text", "p_table_name" "text", "p_definition" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."decrement_applications_count"() RETURNS "trigger"
@@ -553,6 +823,59 @@ ALTER FUNCTION "public"."delete_from_profile_array"("p_student_id" "uuid", "p_ar
 
 COMMENT ON FUNCTION "public"."delete_from_profile_array"("p_student_id" "uuid", "p_array_name" "text", "p_item_id" integer) IS 'Delete an item from a JSONB array';
 
+
+
+CREATE OR REPLACE FUNCTION "public"."getActiveEnrollment"("p_studentId" "uuid") RETURNS TABLE("enrollmentId" "uuid", "entityType" "text", "entityName" "text", "className" "text", "enrollmentDate" "date", "expectedGraduationDate" "date")
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        se."id" as "enrollmentId",
+        CASE 
+            WHEN se."schoolId" IS NOT NULL THEN 'school'
+            WHEN se."collegeId" IS NOT NULL THEN 'college'
+            WHEN se."universityId" IS NOT NULL THEN 'university'
+        END as "entityType",
+        COALESCE(s."name", c."name", u."name") as "entityName",
+        COALESCE(sc."name", cc."name", uc."name") as "className",
+        se."enrollmentDate",
+        se."expectedGraduationDate"
+    FROM "studentEnrollments" se
+    LEFT JOIN "schools" s ON se."schoolId" = s."id"
+    LEFT JOIN "colleges" c ON se."collegeId" = c."id"
+    LEFT JOIN "universities" u ON se."universityId" = u."id"
+    LEFT JOIN "school_classes" sc ON se."schoolClassId" = sc."id"
+    LEFT JOIN "college_courses" cc ON se."collegeCourseId" = cc."id"
+    LEFT JOIN "university_courses" uc ON se."universityCourseId" = uc."id"
+    WHERE se."studentId" = "p_studentId"
+    AND se."enrollmentStatus" = 'active'
+    ORDER BY se."enrollmentDate" DESC
+    LIMIT 1;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."getActiveEnrollment"("p_studentId" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_active_subscription"("uid" "uuid") RETURNS TABLE("id" "uuid", "plan_type" character varying, "subscription_end_date" timestamp with time zone)
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+  RETURN QUERY
+  SELECT s.id, s.plan_type, s.subscription_end_date
+  FROM subscriptions s
+  WHERE s.user_id = uid
+    AND s.status = 'active'
+    AND s.subscription_end_date > NOW()
+  ORDER BY s.subscription_end_date DESC
+  LIMIT 1;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_active_subscription"("uid" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_popular_opportunities"("student_id_param" "uuid", "limit_count" integer) RETURNS TABLE("id" "uuid", "title" "text", "job_title" "text", "company_name" "text", "company_logo" "text", "description" "text", "location" "text", "employment_type" "text", "department" "text", "salary_min" numeric, "salary_max" numeric, "experience_level" "text", "skills_required" "jsonb", "requirements" "jsonb", "responsibilities" "jsonb", "created_at" timestamp with time zone, "view_count" integer, "application_count" integer)
@@ -680,6 +1003,26 @@ $$;
 ALTER FUNCTION "public"."increment_search_usage"("search_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."is_subscription_active"("sub_id" "uuid") RETURNS boolean
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+  sub_status VARCHAR(50);
+  end_date TIMESTAMPTZ;
+BEGIN
+  SELECT status, subscription_end_date 
+  INTO sub_status, end_date
+  FROM subscriptions
+  WHERE id = sub_id;
+  
+  RETURN sub_status = 'active' AND end_date > NOW();
+END;
+$$;
+
+
+ALTER FUNCTION "public"."is_subscription_active"("sub_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."mark_conversation_as_read"("p_conversation_id" "text", "p_user_id" "text") RETURNS integer
     LANGUAGE "plpgsql"
     AS $$
@@ -744,6 +1087,101 @@ $$;
 ALTER FUNCTION "public"."match_opportunities"("query_embedding" "public"."vector", "student_id_param" "uuid", "dismissed_ids" "uuid"[], "match_threshold" double precision, "match_count" integer) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."match_opportunities_enhanced"("query_embedding" "public"."vector", "student_id_param" "uuid", "dismissed_ids" integer[] DEFAULT '{}'::integer[], "match_threshold" double precision DEFAULT 0.20, "match_count" integer DEFAULT 50) RETURNS TABLE("id" integer, "title" "text", "job_title" "text", "company_name" "text", "company_logo" "text", "employment_type" "text", "location" "text", "mode" "text", "stipend_or_salary" "text", "experience_required" "text", "experience_level" "text", "skills_required" "jsonb", "requirements" "jsonb", "responsibilities" "jsonb", "description" "text", "application_link" "text", "deadline" timestamp with time zone, "department" "text", "salary_range_min" integer, "salary_range_max" integer, "posted_date" timestamp with time zone, "is_active" boolean, "status" "text", "created_at" timestamp with time zone, "updated_at" timestamp with time zone, "views_count" integer, "applications_count" integer, "embedding" "public"."vector", "similarity" double precision, "skill_match_score" double precision, "final_score" double precision)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  RETURN QUERY
+  WITH student_skills AS (
+    SELECT 
+      s.profile->>'skill' as skills,
+      s.profile->>'course' as course
+    FROM students s
+    WHERE s.id = student_id_param
+  ),
+  scored_opportunities AS (
+    SELECT 
+      o.*,
+      (1 - (query_embedding <=> o.embedding))::FLOAT as base_similarity,
+      -- Calculate skill match score (0-1)
+      CASE 
+        WHEN o.skills_required IS NULL THEN 0.0
+        ELSE (
+          SELECT COUNT(*)::FLOAT / GREATEST(jsonb_array_length(o.skills_required), 1)
+          FROM jsonb_array_elements_text(o.skills_required) required_skill
+          WHERE EXISTS (
+            SELECT 1 FROM student_skills ss
+            WHERE LOWER(ss.skills) LIKE '%' || LOWER(required_skill) || '%'
+               OR LOWER(ss.course) LIKE '%' || LOWER(required_skill) || '%'
+          )
+        )
+      END as skill_match,
+      -- Final weighted score: 70% similarity + 30% skill match
+      (
+        (1 - (query_embedding <=> o.embedding)) * 0.7 + 
+        COALESCE(
+          (
+            SELECT COUNT(*)::FLOAT / GREATEST(jsonb_array_length(o.skills_required), 1) * 0.3
+            FROM jsonb_array_elements_text(o.skills_required) required_skill
+            WHERE EXISTS (
+              SELECT 1 FROM student_skills ss
+              WHERE LOWER(ss.skills) LIKE '%' || LOWER(required_skill) || '%'
+                 OR LOWER(ss.course) LIKE '%' || LOWER(required_skill) || '%'
+            )
+          ),
+          0.0
+        )
+      )::FLOAT as final_score
+    FROM opportunities o
+    WHERE o.embedding IS NOT NULL
+      AND o.is_active = true
+      AND o.status = 'open'
+      AND (o.deadline IS NULL OR o.deadline > NOW())
+      AND NOT (o.id = ANY(dismissed_ids))
+  )
+  SELECT 
+    so.id,
+    so.title,
+    so.job_title,
+    so.company_name,
+    so.company_logo,
+    so.employment_type,
+    so.location,
+    so.mode,
+    so.stipend_or_salary,
+    so.experience_required,
+    so.experience_level,
+    so.skills_required,
+    so.requirements,
+    so.responsibilities,
+    so.description,
+    so.application_link,
+    so.deadline,
+    so.department,
+    so.salary_range_min,
+    so.salary_range_max,
+    so.posted_date,
+    so.is_active,
+    so.status,
+    so.created_at,
+    so.updated_at,
+    so.views_count,
+    so.applications_count,
+    so.embedding,
+    so.base_similarity as similarity,
+    so.skill_match as skill_match_score,
+    so.final_score
+  FROM scored_opportunities so
+  WHERE so.final_score >= match_threshold
+  ORDER BY so.final_score DESC
+  LIMIT match_count;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."match_opportunities_enhanced"("query_embedding" "public"."vector", "student_id_param" "uuid", "dismissed_ids" integer[], "match_threshold" double precision, "match_count" integer) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."notify_students_new_opportunity"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -799,29 +1237,41 @@ DECLARE
   v_company_name text;
   v_message text;
 BEGIN
-  -- Only notify if opportunity status changed from inactive to active
-  IF (OLD.is_active IS FALSE OR OLD.is_active IS NULL) AND NEW.is_active IS TRUE THEN
-    v_opportunity_title := COALESCE(NEW.title, 'Opportunity');
-    v_company_name := COALESCE(NEW.company_name, 'Company');
-    v_message := 'Opportunity reopened: ' || v_opportunity_title || ' at ' || v_company_name;
-
-    -- Loop through all students
-    FOR v_student_record IN 
-      SELECT id FROM public.students WHERE id IS NOT NULL
-    LOOP
-      PERFORM add_recent_update(
-        v_student_record.id,
-        v_message,
-        'opportunity_update'
-      );
-    END LOOP;
-
-    RAISE NOTICE 'Notified all students about reopened opportunity: %', v_opportunity_title;
+  -- Only proceed if there are meaningful changes
+  IF NEW.title = OLD.title AND 
+     NEW.description = OLD.description AND 
+     NEW.salary_range_min = OLD.salary_range_min AND 
+     NEW.salary_range_max = OLD.salary_range_max THEN
+    RETURN NEW;
   END IF;
+
+  -- Get opportunity details
+  v_opportunity_title := COALESCE(NEW.title, 'Untitled Opportunity');
+  v_company_name := COALESCE(NEW.company_name, 'Company');
+
+  -- Build notification message
+  v_message := 'Updated opportunity: ' || v_opportunity_title || ' at ' || v_company_name;
+
+  -- Notify relevant students (those who have interacted with this opportunity)
+  FOR v_student_record IN 
+    SELECT DISTINCT student_id as id
+    FROM opportunity_interactions
+    WHERE opportunity_id = NEW.id
+      AND action = 'view'
+      AND student_id IS NOT NULL
+  LOOP
+    -- Add recent update for this student
+    PERFORM add_recent_update(
+      v_student_record.id,
+      v_message,
+      'opportunity_update'
+    );
+  END LOOP;
 
   RETURN NEW;
 EXCEPTION
   WHEN OTHERS THEN
+    -- Log error but don't fail the update
     RAISE WARNING 'Error notifying students about opportunity update: %', SQLERRM;
     RETURN NEW;
 END;
@@ -850,7 +1300,7 @@ BEGIN
         ELSE recruiter_unread_count 
       END,
       updated_at = NOW()
-    WHERE id = NEW.conversation_id;
+    WHERE conversation_id = NEW.conversation_id;
   END IF;
   
   RETURN NEW;
@@ -897,11 +1347,13 @@ BEGIN
     -- Not saved, so save it
     INSERT INTO public.saved_jobs (
       student_id,
-      opportunity_id
-    )
+      opportunity_id,
+      saved_at
+    ) 
     VALUES (
       p_student_id,
-      p_opportunity_id
+      p_opportunity_id,
+      NOW()
     )
     RETURNING id INTO v_saved_job_id;
     
@@ -947,6 +1399,56 @@ ALTER FUNCTION "public"."track_profile_view"("p_student_id" "uuid", "p_viewer_ty
 
 
 COMMENT ON FUNCTION "public"."track_profile_view"("p_student_id" "uuid", "p_viewer_type" "text", "p_viewer_id" "uuid") IS 'Tracks profile view and creates update notification every 5 views';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."transferStudent"("p_studentId" "uuid", "p_newEntityType" "text", "p_newEntityId" "uuid", "p_newClassId" "uuid", "p_transferReason" "text" DEFAULT NULL::"text") RETURNS "uuid"
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+    v_oldEnrollmentId UUID;
+    v_newEnrollmentId UUID;
+BEGIN
+    -- Mark current enrollment as transferred
+    UPDATE "studentEnrollments"
+    SET "enrollmentStatus" = 'transferred',
+        "transferDate" = CURRENT_DATE,
+        "transferReason" = "p_transferReason",
+        "transferToEntityId" = "p_newEntityId",
+        "transferToClassId" = "p_newClassId",
+        "updatedAt" = NOW()
+    WHERE "studentId" = "p_studentId"
+    AND "enrollmentStatus" = 'active'
+    RETURNING "id" INTO v_oldEnrollmentId;
+    
+    -- Create new enrollment
+    INSERT INTO "studentEnrollments" (
+        "studentId", "schoolId", "collegeId",
+        "universityId", "schoolClassId", "collegeCourseId", 
+        "universityCourseId", "enrollmentDate", "enrollmentStatus"
+    )
+    VALUES (
+        "p_studentId",
+        CASE WHEN "p_newEntityType" = 'school' THEN "p_newEntityId" ELSE NULL END,
+        CASE WHEN "p_newEntityType" = 'college' THEN "p_newEntityId" ELSE NULL END,
+        CASE WHEN "p_newEntityType" = 'university' THEN "p_newEntityId" ELSE NULL END,
+        CASE WHEN "p_newEntityType" = 'school' THEN "p_newClassId" ELSE NULL END,
+        CASE WHEN "p_newEntityType" = 'college' THEN "p_newClassId" ELSE NULL END,
+        CASE WHEN "p_newEntityType" = 'university' THEN "p_newClassId" ELSE NULL END,
+        CURRENT_DATE,
+        'active'
+    )
+    RETURNING "id" INTO v_newEnrollmentId;
+    
+    RETURN v_newEnrollmentId;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."transferStudent"("p_studentId" "uuid", "p_newEntityType" "text", "p_newEntityId" "uuid", "p_newClassId" "uuid", "p_transferReason" "text") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."transferStudent"("p_studentId" "uuid", "p_newEntityType" "text", "p_newEntityId" "uuid", "p_newClassId" "uuid", "p_transferReason" "text") IS 'Transfers student from current enrollment to new class/course';
 
 
 
@@ -1048,13 +1550,17 @@ BEGIN
     -- Only check if submission_date is being set
     IF NEW.submission_date IS NOT NULL THEN
         -- Get due date from assignment
-        SELECT a.due_date INTO v_due_date
-        FROM assignments a
-        WHERE a.assignment_id = NEW.assignment_id;
+        SELECT due_date INTO v_due_date
+        FROM assignments
+        WHERE assignment_id = NEW.assignment_id;
         
         -- Mark as late if submitted after due date
-        IF NEW.submission_date > v_due_date THEN
+        IF v_due_date IS NOT NULL AND NEW.submission_date > v_due_date THEN
             NEW.is_late := true;
+            NEW.late_days := EXTRACT(DAY FROM (NEW.submission_date - v_due_date));
+        ELSE
+            NEW.is_late := false;
+            NEW.late_days := 0;
         END IF;
     END IF;
     
@@ -1105,6 +1611,54 @@ $$;
 ALTER FUNCTION "public"."trg_student_assignments_updated_fn"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."trigger_opportunity_embedding"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  text_content TEXT;
+BEGIN
+  -- Only trigger when embedding is NULL
+  IF NEW.embedding IS NULL THEN
+
+    text_content := CONCAT_WS(' ',
+      NEW.title,
+      NEW.job_title,
+      NEW.company_name,
+      NEW.department,
+      NEW.description,
+      NEW.experience_level,
+      NEW.employment_type,
+      NEW.skills_required::text,
+      NEW.requirements::text,
+      NEW.responsibilities::text
+    );
+
+    -- Call edge function asynchronously
+    PERFORM net.http_post(
+      url => (SELECT value FROM app_config WHERE key = 'edge_function_url') || '/generate-embedding',
+      headers => jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer ' || (SELECT value FROM app_config WHERE key = 'supabase_anon_key')
+      ),
+      body => jsonb_build_object(
+        'text', text_content,
+        'table', 'opportunities',
+        'id', NEW.id,
+        'type', 'opportunity'
+      )
+    );
+
+    RAISE NOTICE 'Queued embedding generation for opportunity %', NEW.id;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."trigger_opportunity_embedding"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."trigger_profile_update"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     AS $$
@@ -1150,18 +1704,70 @@ DECLARE
   v_skill_count_old int;
   v_skill_count_new int;
 BEGIN
+  -- Extract technical skills arrays
   v_old_tech_skills := OLD.profile->'technicalSkills';
   v_new_tech_skills := NEW.profile->'technicalSkills';
-
-  v_skill_count_old := COALESCE(jsonb_array_length(v_old_tech_skills), 0);
-  v_skill_count_new := COALESCE(jsonb_array_length(v_new_tech_skills), 0);
-
+  
+  -- Count skills
+  SELECT jsonb_array_length(v_old_tech_skills) INTO v_skill_count_old;
+  SELECT jsonb_array_length(v_new_tech_skills) INTO v_skill_count_new;
+  
+  -- Check if skills increased
   IF v_skill_count_new > v_skill_count_old THEN
     PERFORM add_recent_update(
       NEW.id,
-      'You added ' || (v_skill_count_new - v_skill_count_old)::text || ' new skill(s)',
-      'skill_improvement'
+      'Added new technical skills to your profile',
+      'skills_update'
     );
+  END IF;
+  
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."trigger_skills_improvement"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."trigger_student_embedding"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  text_content TEXT;
+BEGIN
+  -- Trigger when profile exists and embedding is NULL
+  IF NEW.profile IS NOT NULL AND NEW.embedding IS NULL THEN
+
+    text_content := CONCAT_WS(' ',
+      NEW.name,
+      NEW.email,
+      NEW.profile->>'course',
+      NEW.profile->>'branch_field',
+      NEW.profile->>'university',
+      NEW.profile->>'skill',
+      NEW.profile->>'bio'
+    );
+
+    IF LENGTH(TRIM(text_content)) < 10 THEN
+      RAISE NOTICE 'Skipping embedding for student % - insufficient data', NEW.id;
+      RETURN NEW;
+    END IF;
+
+    PERFORM net.http_post(
+      url => (SELECT value FROM app_config WHERE key = 'edge_function_url') || '/generate-embedding',
+      headers => jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer ' || (SELECT value FROM app_config WHERE key = 'supabase_anon_key')
+      ),
+      body => jsonb_build_object(
+        'text', text_content,
+        'table', 'students',
+        'id', NEW.id,
+        'type', 'student'
+      )
+    );
+
+    RAISE NOTICE 'Queued embedding generation for student %', NEW.id;
   END IF;
 
   RETURN NEW;
@@ -1169,7 +1775,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."trigger_skills_improvement"() OWNER TO "postgres";
+ALTER FUNCTION "public"."trigger_student_embedding"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trigger_training_completion"() RETURNS "trigger"
@@ -1198,7 +1804,7 @@ BEGIN
           PERFORM add_recent_update(
             NEW.id,
             'You completed ' || v_course_name || ' course',
-            'course_completion'
+            'training_completion'
           );
         END IF;
       END IF;
@@ -1211,6 +1817,45 @@ $$;
 
 
 ALTER FUNCTION "public"."trigger_training_completion"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."updateEntityStudentCounts"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    -- Update school counts
+    IF NEW."schoolId" IS NOT NULL THEN
+        UPDATE "schools" SET "totalStudents" = (
+            SELECT COUNT(DISTINCT "studentId") FROM "studentEnrollments" 
+            WHERE "schoolId" = NEW."schoolId" AND "enrollmentStatus" = 'active'
+        )
+        WHERE "id" = NEW."schoolId";
+    END IF;
+    
+    -- Update college counts
+    IF NEW."collegeId" IS NOT NULL THEN
+        UPDATE "colleges" SET "totalStudents" = (
+            SELECT COUNT(DISTINCT "studentId") FROM "studentEnrollments" 
+            WHERE "collegeId" = NEW."collegeId" AND "enrollmentStatus" = 'active'
+        )
+        WHERE "id" = NEW."collegeId";
+    END IF;
+    
+    -- Update university counts
+    IF NEW."universityId" IS NOT NULL THEN
+        UPDATE "universities" SET "totalStudents" = (
+            SELECT COUNT(DISTINCT "studentId") FROM "studentEnrollments" 
+            WHERE "universityId" = NEW."universityId" AND "enrollmentStatus" = 'active'
+        )
+        WHERE "id" = NEW."universityId";
+    END IF;
+    
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."updateEntityStudentCounts"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."update_applied_jobs_updated_at"() RETURNS "trigger"
@@ -1278,6 +1923,7 @@ BEGIN
   FOR v_item IN SELECT * FROM jsonb_array_elements(v_array)
   LOOP
     IF (v_item->>'id')::int = p_item_id THEN
+      -- Merge updates with existing item
       v_item := v_item || p_updates;
     END IF;
     v_new_array := v_new_array || v_item;
@@ -1344,17 +1990,52 @@ CREATE OR REPLACE FUNCTION "public"."update_updated_at_column"() RETURNS "trigge
     LANGUAGE "plpgsql"
     AS $$
 BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
+    NEW.updated_at = TIMEZONE('utc'::text, NOW());
+    RETURN NEW;
 END;
 $$;
 
 
 ALTER FUNCTION "public"."update_updated_at_column"() OWNER TO "postgres";
 
+
+CREATE OR REPLACE FUNCTION "public"."validateOneActiveEnrollment"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+    v_activeCount INTEGER;
+BEGIN
+    -- Count active enrollments for this student
+    SELECT COUNT(*) INTO v_activeCount
+    FROM "studentEnrollments"
+    WHERE "studentId" = NEW."studentId"
+    AND "enrollmentStatus" = 'active'
+    AND id != NEW.id;  -- Exclude current enrollment being updated/inserted
+
+    -- If trying to add/update to active and there's already an active enrollment
+    IF NEW."enrollmentStatus" = 'active' AND v_activeCount > 0 THEN
+        RAISE EXCEPTION 'Student already has an active enrollment. Only one active enrollment allowed per student.';
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."validateOneActiveEnrollment"() OWNER TO "postgres";
+
 SET default_tablespace = '';
 
 SET default_table_access_method = "heap";
+
+
+CREATE TABLE IF NOT EXISTS "public"."app_config" (
+    "key" "text" NOT NULL,
+    "value" "text" NOT NULL
+);
+
+
+ALTER TABLE "public"."app_config" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."applied_jobs" (
@@ -1495,6 +2176,165 @@ CREATE TABLE IF NOT EXISTS "public"."certificates" (
 ALTER TABLE "public"."certificates" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."college_courses" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "collegeId" "uuid" NOT NULL,
+    "name" character varying(255) NOT NULL,
+    "program" character varying(100) NOT NULL,
+    "specialization" character varying(100),
+    "year" integer,
+    "semester" integer,
+    "section" character varying(10),
+    "academicYear" character varying(20) NOT NULL,
+    "maxStudents" integer DEFAULT 60,
+    "currentStudents" integer DEFAULT 0,
+    "accountStatus" "public"."account_status" DEFAULT 'active'::"public"."account_status",
+    "createdAt" timestamp with time zone DEFAULT "now"(),
+    "updatedAt" timestamp with time zone DEFAULT "now"(),
+    "metadata" "jsonb" DEFAULT '{}'::"jsonb"
+);
+
+
+ALTER TABLE "public"."college_courses" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."college_lecturer_course_assignments" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "lecturerId" "uuid" NOT NULL,
+    "courseId" "uuid" NOT NULL,
+    "subject" character varying(100) NOT NULL,
+    "academicYear" character varying(20) NOT NULL,
+    "assignedAt" timestamp with time zone DEFAULT "now"(),
+    "assignedBy" "uuid",
+    "createdAt" timestamp with time zone DEFAULT "now"(),
+    "updatedAt" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."college_lecturer_course_assignments" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."college_lecturers" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "userId" "uuid" NOT NULL,
+    "collegeId" "uuid" NOT NULL,
+    "employeeId" character varying(50),
+    "department" character varying(100),
+    "specialization" character varying(100),
+    "qualification" character varying(255),
+    "experienceYears" integer,
+    "dateOfJoining" "date",
+    "accountStatus" "public"."account_status" DEFAULT 'active'::"public"."account_status",
+    "createdAt" timestamp with time zone DEFAULT "now"(),
+    "updatedAt" timestamp with time zone DEFAULT "now"(),
+    "metadata" "jsonb" DEFAULT '{}'::"jsonb"
+);
+
+
+ALTER TABLE "public"."college_lecturers" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."colleges" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "universityId" "uuid",
+    "name" character varying(255) NOT NULL,
+    "code" character varying(50) NOT NULL,
+    "collegeType" "text" DEFAULT 'standalone'::"text",
+    "deanName" character varying(200),
+    "deanEmail" character varying(255),
+    "deanPhone" character varying(20),
+    "affiliation" character varying(255),
+    "accreditation" character varying(100),
+    "address" "text",
+    "city" character varying(100),
+    "state" character varying(100),
+    "country" character varying(100) DEFAULT 'India'::character varying,
+    "pincode" character varying(10),
+    "phone" character varying(20),
+    "email" character varying(255),
+    "website" character varying(255),
+    "establishedYear" integer,
+    "accountStatus" "public"."account_status" DEFAULT 'pending'::"public"."account_status",
+    "approvalStatus" "public"."approval_status" DEFAULT 'pending'::"public"."approval_status",
+    "approvedBy" "uuid",
+    "approvedAt" timestamp with time zone,
+    "totalStudents" integer DEFAULT 0,
+    "totalLecturers" integer DEFAULT 0,
+    "createdAt" timestamp with time zone DEFAULT "now"(),
+    "updatedAt" timestamp with time zone DEFAULT "now"(),
+    "metadata" "jsonb" DEFAULT '{}'::"jsonb"
+);
+
+
+ALTER TABLE "public"."colleges" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."colleges" IS 'Unified college table - handles both standalone colleges and university departments';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."companies" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "name" character varying(255) NOT NULL,
+    "code" character varying(50) NOT NULL,
+    "industry" character varying(100),
+    "companySize" character varying(50),
+    "hqAddress" "text",
+    "hqCity" character varying(100),
+    "hqState" character varying(100),
+    "hqCountry" character varying(100) DEFAULT 'India'::character varying,
+    "hqPincode" character varying(10),
+    "phone" character varying(20),
+    "email" character varying(255),
+    "website" character varying(255),
+    "establishedYear" integer,
+    "contactPersonName" character varying(200),
+    "contactPersonDesignation" character varying(100),
+    "contactPersonEmail" character varying(255),
+    "contactPersonPhone" character varying(20),
+    "accountStatus" "public"."account_status" DEFAULT 'pending'::"public"."account_status",
+    "createdAt" timestamp with time zone DEFAULT "now"(),
+    "updatedAt" timestamp with time zone DEFAULT "now"(),
+    "metadata" "jsonb" DEFAULT '{}'::"jsonb",
+    "approvalStatus" "public"."approval_status" DEFAULT 'pending'::"public"."approval_status",
+    "approvedBy" "uuid",
+    "approvedAt" timestamp with time zone,
+    "totalBranches" integer DEFAULT 0,
+    "totalRecruiters" integer DEFAULT 0,
+    "hqRecruiters" integer DEFAULT 0,
+    "branchRecruiters" integer DEFAULT 0
+);
+
+
+ALTER TABLE "public"."companies" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."company_branches" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "companyId" "uuid" NOT NULL,
+    "name" character varying(255) NOT NULL,
+    "code" character varying(50) NOT NULL,
+    "branchType" character varying(50),
+    "address" "text",
+    "city" character varying(100),
+    "state" character varying(100),
+    "country" character varying(100) DEFAULT 'India'::character varying,
+    "pincode" character varying(10),
+    "phone" character varying(20),
+    "email" character varying(255),
+    "branchHeadName" character varying(200),
+    "branchHeadEmail" character varying(255),
+    "branchHeadPhone" character varying(20),
+    "accountStatus" "public"."account_status" DEFAULT 'active'::"public"."account_status",
+    "createdAt" timestamp with time zone DEFAULT "now"(),
+    "updatedAt" timestamp with time zone DEFAULT "now"(),
+    "metadata" "jsonb" DEFAULT '{}'::"jsonb"
+);
+
+
+ALTER TABLE "public"."company_branches" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."conversations" (
     "id" "text" NOT NULL,
     "student_id" "uuid" NOT NULL,
@@ -1549,7 +2389,9 @@ CREATE TABLE IF NOT EXISTS "public"."opportunities" (
     "created_by" "text",
     "job_title" "text" NOT NULL,
     "recruiter_id" "uuid",
-    "embedding" "public"."vector"(1536)
+    "embedding" "public"."vector"(1536),
+    "requisition_id" "text",
+    "requisition_id_uuid" "uuid"
 );
 
 
@@ -1575,7 +2417,7 @@ ALTER TABLE "public"."recruiters" OWNER TO "postgres";
 
 CREATE TABLE IF NOT EXISTS "public"."students" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "universityId" "uuid" NOT NULL,
+    "universityId" "uuid",
     "profile" "jsonb" DEFAULT '{}'::"jsonb",
     "createdAt" timestamp with time zone DEFAULT "now"(),
     "updatedAt" timestamp with time zone DEFAULT "now"(),
@@ -1600,7 +2442,32 @@ CREATE TABLE IF NOT EXISTS "public"."students" (
     "approval_status" character varying(20) DEFAULT 'pending'::character varying,
     "created_at" timestamp without time zone DEFAULT "now"(),
     "updated_at" timestamp without time zone DEFAULT "now"(),
-    "embedding" "public"."vector"(1536)
+    "embedding" "public"."vector"(1536),
+    "universityCollegeId" "uuid",
+    "schoolClassId" "uuid",
+    "collegeCourseId" "uuid",
+    "universityCourseId" "uuid",
+    "enrollmentNumber" character varying(100),
+    "guardianName" character varying(200),
+    "guardianPhone" character varying(20),
+    "guardianEmail" character varying(255),
+    "guardianRelation" character varying(50),
+    "dateOfBirth" "date",
+    "gender" character varying(20),
+    "bloodGroup" character varying(5),
+    "enrollmentDate" "date",
+    "expectedGraduationDate" "date",
+    "currentCgpa" numeric(4,2),
+    "userId" "uuid",
+    "contactNumber" character varying(20),
+    "address" "text",
+    "city" character varying(100),
+    "state" character varying(100),
+    "country" character varying(100) DEFAULT 'India'::character varying,
+    "pincode" character varying(10),
+    "resumeUrl" "text",
+    "profilePicture" "text",
+    "metadata" "jsonb" DEFAULT '{}'::"jsonb"
 );
 
 
@@ -1880,7 +2747,11 @@ CREATE TABLE IF NOT EXISTS "public"."metrics_snapshots" (
     "aiVerifiedPercent" numeric(5,2) DEFAULT 0,
     "employabilityIndex" numeric(5,2) DEFAULT 0,
     "activeRecruiters" integer DEFAULT 0,
-    "createdAt" timestamp with time zone DEFAULT "now"()
+    "createdAt" timestamp with time zone DEFAULT "now"(),
+    "totalSchools" integer DEFAULT 0,
+    "totalColleges" integer DEFAULT 0,
+    "totalCompanies" integer DEFAULT 0,
+    "metadata" "jsonb" DEFAULT '{}'::"jsonb"
 );
 
 
@@ -1944,6 +2815,38 @@ ALTER SEQUENCE "public"."opportunities_id_seq" OWNED BY "public"."opportunities"
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."opportunity_interactions" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "student_id" "uuid" NOT NULL,
+    "opportunity_id" integer NOT NULL,
+    "action" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    CONSTRAINT "opportunity_interactions_action_check" CHECK (("action" = ANY (ARRAY['view'::"text", 'apply'::"text", 'dismiss'::"text", 'save'::"text"])))
+);
+
+
+ALTER TABLE "public"."opportunity_interactions" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."payment_transactions" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "subscription_id" "uuid",
+    "user_id" "uuid" NOT NULL,
+    "razorpay_payment_id" character varying(255),
+    "razorpay_order_id" character varying(255),
+    "amount" numeric(10,2) NOT NULL,
+    "currency" character varying(10) DEFAULT 'INR'::character varying,
+    "status" character varying(50) NOT NULL,
+    "payment_method" character varying(50),
+    "failure_reason" "text",
+    "refund_id" character varying(255),
+    "created_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."payment_transactions" OWNER TO "postgres";
+
+
 CREATE OR REPLACE VIEW "public"."pending_scorecards" AS
  SELECT "i"."id",
     "i"."student_id",
@@ -1979,6 +2882,19 @@ ALTER VIEW "public"."pending_scorecards" OWNER TO "postgres";
 
 COMMENT ON VIEW "public"."pending_scorecards" IS 'Completed interviews missing scorecards (student details from profile JSONB).';
 
+
+
+CREATE TABLE IF NOT EXISTS "public"."permissions" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "name" character varying(100) NOT NULL,
+    "resource" character varying(50) NOT NULL,
+    "action" character varying(50) NOT NULL,
+    "description" "text",
+    "createdAt" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."permissions" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."pipeline_activities" (
@@ -2018,7 +2934,6 @@ ALTER SEQUENCE "public"."pipeline_activities_id_seq" OWNED BY "public"."pipeline
 
 CREATE TABLE IF NOT EXISTS "public"."pipeline_candidates" (
     "id" integer NOT NULL,
-    "requisition_id" "text" NOT NULL,
     "student_id" "uuid" NOT NULL,
     "candidate_name" "text" NOT NULL,
     "candidate_email" "text",
@@ -2040,7 +2955,9 @@ CREATE TABLE IF NOT EXISTS "public"."pipeline_candidates" (
     "added_by" "text",
     "added_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
     "created_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL
+    "updated_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
+    "opportunity_id" integer NOT NULL,
+    "requisition_id_uuid" "uuid"
 );
 
 
@@ -2060,86 +2977,6 @@ COMMENT ON COLUMN "public"."pipeline_candidates"."next_action" IS 'Next planned 
 
 
 COMMENT ON COLUMN "public"."pipeline_candidates"."source" IS 'How the candidate entered the pipeline';
-
-
-
-CREATE TABLE IF NOT EXISTS "public"."requisitions" (
-    "id" "text" NOT NULL,
-    "title" "text" NOT NULL,
-    "department" "text" NOT NULL,
-    "location" "text" NOT NULL,
-    "job_type" "text" DEFAULT 'Full-time'::"text",
-    "openings" integer DEFAULT 1,
-    "status" "text" DEFAULT 'active'::"text",
-    "priority" "text" DEFAULT 'medium'::"text",
-    "description" "text",
-    "requirements" "text",
-    "salary_range" "text",
-    "owner" "text",
-    "hiring_manager" "text",
-    "created_by" "text",
-    "created_date" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
-    "target_date" timestamp with time zone,
-    "filled_date" timestamp with time zone,
-    "tags" "text"[],
-    "created_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL
-);
-
-
-ALTER TABLE "public"."requisitions" OWNER TO "postgres";
-
-
-COMMENT ON TABLE "public"."requisitions" IS 'Job requisitions/openings for recruitment';
-
-
-
-CREATE OR REPLACE VIEW "public"."pipeline_candidates_detailed" AS
- SELECT "pc"."id",
-    "pc"."requisition_id",
-    "pc"."student_id",
-    "pc"."candidate_name",
-    "pc"."candidate_email",
-    "pc"."candidate_phone",
-    "pc"."stage",
-    "pc"."previous_stage",
-    "pc"."stage_changed_at",
-    "pc"."stage_changed_by",
-    "pc"."status",
-    "pc"."rejection_reason",
-    "pc"."rejection_date",
-    "pc"."next_action",
-    "pc"."next_action_date",
-    "pc"."next_action_notes",
-    "pc"."recruiter_rating",
-    "pc"."recruiter_notes",
-    "pc"."assigned_to",
-    "pc"."source",
-    "pc"."added_by",
-    "pc"."added_at",
-    "pc"."created_at",
-    "pc"."updated_at",
-    ("s"."profile" ->> 'name'::"text") AS "student_name",
-    ("s"."profile" ->> 'email'::"text") AS "student_email",
-    ("s"."profile" ->> 'phone'::"text") AS "student_phone",
-    ("s"."profile" ->> 'department'::"text") AS "student_department",
-    ("s"."profile" ->> 'university'::"text") AS "student_university",
-    ("s"."profile" ->> 'cgpa'::"text") AS "student_cgpa",
-    ("s"."profile" ->> 'employability_score'::"text") AS "student_employability_score",
-    ("s"."profile" ->> 'verified'::"text") AS "student_verified",
-    "r"."title" AS "job_title",
-    "r"."location" AS "job_location",
-    "r"."status" AS "requisition_status"
-   FROM (("public"."pipeline_candidates" "pc"
-     LEFT JOIN "public"."students" "s" ON (("pc"."student_id" = "s"."id")))
-     LEFT JOIN "public"."requisitions" "r" ON (("pc"."requisition_id" = "r"."id")))
-  WHERE ("pc"."status" = 'active'::"text");
-
-
-ALTER VIEW "public"."pipeline_candidates_detailed" OWNER TO "postgres";
-
-
-COMMENT ON VIEW "public"."pipeline_candidates_detailed" IS 'Active pipeline candidates joined with student (profile JSONB) and requisition data';
 
 
 
@@ -2258,9 +3095,40 @@ CREATE TABLE IF NOT EXISTS "public"."recruiter_saved_searches" (
 ALTER TABLE "public"."recruiter_saved_searches" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."requisitions" (
+    "id" "text" NOT NULL,
+    "title" "text" NOT NULL,
+    "department" "text" NOT NULL,
+    "location" "text" NOT NULL,
+    "job_type" "text" DEFAULT 'Full-time'::"text",
+    "openings" integer DEFAULT 1,
+    "status" "text" DEFAULT 'active'::"text",
+    "priority" "text" DEFAULT 'medium'::"text",
+    "description" "text",
+    "requirements" "text",
+    "salary_range" "text",
+    "owner" "text",
+    "hiring_manager" "text",
+    "created_by" "text",
+    "created_date" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
+    "target_date" timestamp with time zone,
+    "filled_date" timestamp with time zone,
+    "tags" "text"[],
+    "created_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
+    "id_uuid" "uuid"
+);
+
+
+ALTER TABLE "public"."requisitions" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."requisitions" IS 'Job requisitions/openings for recruitment';
+
+
+
 CREATE OR REPLACE VIEW "public"."requisitions_with_pipeline_stats" AS
-SELECT
-    NULL::"text" AS "id",
+ SELECT NULL::"text" AS "id",
     NULL::"text" AS "title",
     NULL::"text" AS "department",
     NULL::"text" AS "location",
@@ -2296,6 +3164,17 @@ COMMENT ON VIEW "public"."requisitions_with_pipeline_stats" IS 'Each requisition
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."role_permissions" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "role" "public"."user_role" NOT NULL,
+    "permissionId" "uuid" NOT NULL,
+    "createdAt" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."role_permissions" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."saved_jobs" (
     "id" integer NOT NULL,
     "student_id" "uuid" NOT NULL,
@@ -2322,6 +3201,133 @@ ALTER SEQUENCE "public"."saved_jobs_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."saved_jobs_id_seq" OWNED BY "public"."saved_jobs"."id";
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."school_classes" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "schoolId" "uuid" NOT NULL,
+    "name" character varying(100) NOT NULL,
+    "grade" character varying(20) NOT NULL,
+    "section" character varying(10),
+    "academicYear" character varying(20) NOT NULL,
+    "maxStudents" integer DEFAULT 40,
+    "currentStudents" integer DEFAULT 0,
+    "accountStatus" "public"."account_status" DEFAULT 'active'::"public"."account_status",
+    "createdAt" timestamp with time zone DEFAULT "now"(),
+    "updatedAt" timestamp with time zone DEFAULT "now"(),
+    "metadata" "jsonb" DEFAULT '{}'::"jsonb"
+);
+
+
+ALTER TABLE "public"."school_classes" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."school_educator_class_assignments" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "educatorId" "uuid" NOT NULL,
+    "classId" "uuid" NOT NULL,
+    "subject" character varying(100) NOT NULL,
+    "academicYear" character varying(20) NOT NULL,
+    "isPrimary" boolean DEFAULT false,
+    "assignedAt" timestamp with time zone DEFAULT "now"(),
+    "assignedBy" "uuid"
+);
+
+
+ALTER TABLE "public"."school_educator_class_assignments" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."school_educators" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "userId" "uuid" NOT NULL,
+    "schoolId" "uuid" NOT NULL,
+    "employeeId" character varying(50),
+    "specialization" character varying(100),
+    "qualification" character varying(255),
+    "experienceYears" integer,
+    "dateOfJoining" "date",
+    "accountStatus" "public"."account_status" DEFAULT 'active'::"public"."account_status",
+    "createdAt" timestamp with time zone DEFAULT "now"(),
+    "updatedAt" timestamp with time zone DEFAULT "now"(),
+    "metadata" "jsonb" DEFAULT '{}'::"jsonb"
+);
+
+
+ALTER TABLE "public"."school_educators" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."schools" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "name" character varying(255) NOT NULL,
+    "code" character varying(50) NOT NULL,
+    "address" "text",
+    "city" character varying(100),
+    "state" character varying(100),
+    "country" character varying(100) DEFAULT 'India'::character varying,
+    "pincode" character varying(10),
+    "phone" character varying(20),
+    "email" character varying(255),
+    "website" character varying(255),
+    "establishedYear" integer,
+    "accountStatus" "public"."account_status" DEFAULT 'pending'::"public"."account_status",
+    "createdAt" timestamp with time zone DEFAULT "now"(),
+    "updatedAt" timestamp with time zone DEFAULT "now"(),
+    "metadata" "jsonb" DEFAULT '{}'::"jsonb",
+    "board" character varying(100),
+    "approvalStatus" "public"."approval_status" DEFAULT 'pending'::"public"."approval_status",
+    "approvedBy" "uuid",
+    "approvedAt" timestamp with time zone,
+    "totalClasses" integer DEFAULT 0,
+    "totalEducators" integer DEFAULT 0,
+    "totalStudents" integer DEFAULT 0
+);
+
+
+ALTER TABLE "public"."schools" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."search_history" (
+    "id" bigint NOT NULL,
+    "student_id" "uuid" NOT NULL,
+    "search_term" "text" NOT NULL,
+    "search_count" integer DEFAULT 1,
+    "last_searched_at" timestamp with time zone DEFAULT "now"(),
+    "created_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."search_history" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."search_history" IS 'Stores student job search history with search count tracking';
+
+
+
+COMMENT ON COLUMN "public"."search_history"."search_term" IS 'The search term entered by the student';
+
+
+
+COMMENT ON COLUMN "public"."search_history"."search_count" IS 'Number of times this term has been searched';
+
+
+
+COMMENT ON COLUMN "public"."search_history"."last_searched_at" IS 'Timestamp of the most recent search with this term';
+
+
+
+CREATE SEQUENCE IF NOT EXISTS "public"."search_history_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE "public"."search_history_id_seq" OWNER TO "postgres";
+
+
+ALTER SEQUENCE "public"."search_history_id_seq" OWNED BY "public"."search_history"."id";
 
 
 
@@ -2384,8 +3390,7 @@ COMMENT ON TABLE "public"."shortlists" IS 'Shortlists created by recruiters to o
 
 
 CREATE OR REPLACE VIEW "public"."shortlists_with_counts" AS
-SELECT
-    NULL::"text" AS "id",
+ SELECT NULL::"text" AS "id",
     NULL::"text" AS "name",
     NULL::"text" AS "description",
     NULL::"text" AS "created_by",
@@ -2465,6 +3470,28 @@ CREATE TABLE IF NOT EXISTS "public"."skills" (
 ALTER TABLE "public"."skills" OWNER TO "postgres";
 
 
+CREATE OR REPLACE VIEW "public"."student_applications_with_pipeline" AS
+ SELECT "s"."id" AS "student_id",
+    "s"."name" AS "student_name",
+    "s"."email" AS "student_email",
+    "o"."id" AS "opportunity_id",
+    "o"."title" AS "opportunity_title",
+    "o"."company_name",
+    "o"."requisition_id",
+    "pc"."stage",
+    "pc"."status",
+    "pc"."added_at",
+    "pc"."stage_changed_at",
+    "pc"."next_action",
+    "pc"."next_action_date"
+   FROM (("public"."students" "s"
+     LEFT JOIN "public"."pipeline_candidates" "pc" ON (("s"."id" = "pc"."student_id")))
+     LEFT JOIN "public"."opportunities" "o" ON (("pc"."opportunity_id" = "o"."id")));
+
+
+ALTER VIEW "public"."student_applications_with_pipeline" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."student_assignments" (
     "student_assignment_id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "assignment_id" "uuid" NOT NULL,
@@ -2515,6 +3542,33 @@ COMMENT ON COLUMN "public"."student_assignments"."is_late" IS 'Auto-calculated b
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."subscriptions" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "full_name" character varying(255) NOT NULL,
+    "email" character varying(255) NOT NULL,
+    "phone" character varying(20),
+    "plan_type" character varying(50) NOT NULL,
+    "plan_amount" numeric(10,2) NOT NULL,
+    "billing_cycle" character varying(20) NOT NULL,
+    "razorpay_subscription_id" character varying(255),
+    "razorpay_customer_id" character varying(255),
+    "razorpay_payment_id" character varying(255),
+    "razorpay_order_id" character varying(255),
+    "status" character varying(50) DEFAULT 'pending'::character varying NOT NULL,
+    "auto_renew" boolean DEFAULT true,
+    "subscription_start_date" timestamp with time zone,
+    "subscription_end_date" timestamp with time zone,
+    "cancelled_at" timestamp with time zone,
+    "last_webhook_at" timestamp with time zone,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."subscriptions" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."trainings" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "student_id" "uuid" NOT NULL,
@@ -2544,11 +3598,44 @@ CREATE TABLE IF NOT EXISTS "public"."universities" (
     "verificationstatus" "text" DEFAULT 'approved'::"text",
     "isactive" boolean DEFAULT true,
     "createdat" timestamp with time zone DEFAULT "now"(),
-    "updatedat" timestamp with time zone DEFAULT "now"()
+    "updatedat" timestamp with time zone DEFAULT "now"(),
+    "code" character varying(50) NOT NULL,
+    "university_type" character varying(50),
+    "verification_status" "text" DEFAULT 'approved'::"text",
+    "approval_status" "public"."approval_status" DEFAULT 'pending'::"public"."approval_status",
+    "approved_by" "uuid",
+    "approved_at" timestamp with time zone,
+    "account_status" "public"."account_status" DEFAULT 'pending'::"public"."account_status",
+    "total_colleges" integer DEFAULT 0,
+    "total_courses" integer DEFAULT 0,
+    "total_lecturers" integer DEFAULT 0,
+    "total_students" integer DEFAULT 0
 );
 
 
 ALTER TABLE "public"."universities" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."university_courses" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "university_id" "uuid" NOT NULL,
+    "name" character varying(255) NOT NULL,
+    "code" character varying(50) NOT NULL,
+    "duration" integer,
+    "course_type" character varying(50),
+    "description" "text",
+    "approval_status" "public"."approval_status" DEFAULT 'pending'::"public"."approval_status",
+    "approved_by" "uuid",
+    "approved_at" timestamp with time zone,
+    "is_active" boolean DEFAULT true,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    "total_students" integer DEFAULT 0,
+    "total_batches" integer DEFAULT 0
+);
+
+
+ALTER TABLE "public"."university_courses" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."university_performance" (
@@ -2664,10 +3751,6 @@ ALTER TABLE ONLY "public"."interview_reminders" ALTER COLUMN "id" SET DEFAULT "n
 
 
 
-ALTER TABLE ONLY "public"."message_reactions" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."message_reactions_id_seq"'::"regclass");
-
-
-
 ALTER TABLE ONLY "public"."messages" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."messages_id_seq"'::"regclass");
 
 
@@ -2688,7 +3771,16 @@ ALTER TABLE ONLY "public"."saved_jobs" ALTER COLUMN "id" SET DEFAULT "nextval"('
 
 
 
+ALTER TABLE ONLY "public"."search_history" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."search_history_id_seq"'::"regclass");
+
+
+
 ALTER TABLE ONLY "public"."shortlist_candidates" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."shortlist_candidates_id_seq"'::"regclass");
+
+
+
+ALTER TABLE ONLY "public"."app_config"
+    ADD CONSTRAINT "app_config_pkey" PRIMARY KEY ("key");
 
 
 
@@ -2752,11 +3844,6 @@ ALTER TABLE ONLY "public"."interviews"
 
 
 
-ALTER TABLE ONLY "public"."message_reactions"
-    ADD CONSTRAINT "message_reactions_pkey" PRIMARY KEY ("id");
-
-
-
 ALTER TABLE ONLY "public"."messages"
     ADD CONSTRAINT "messages_pkey" PRIMARY KEY ("id");
 
@@ -2782,18 +3869,38 @@ ALTER TABLE ONLY "public"."opportunities"
 
 
 
+ALTER TABLE ONLY "public"."opportunity_interactions"
+    ADD CONSTRAINT "opportunity_interactions_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."opportunity_interactions"
+    ADD CONSTRAINT "opportunity_interactions_student_id_opportunity_id_action_key" UNIQUE ("student_id", "opportunity_id", "action");
+
+
+
+ALTER TABLE ONLY "public"."payment_transactions"
+    ADD CONSTRAINT "payment_transactions_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."payment_transactions"
+    ADD CONSTRAINT "payment_transactions_razorpay_payment_id_key" UNIQUE ("razorpay_payment_id");
+
+
+
 ALTER TABLE ONLY "public"."pipeline_activities"
     ADD CONSTRAINT "pipeline_activities_pkey" PRIMARY KEY ("id");
 
 
 
 ALTER TABLE ONLY "public"."pipeline_candidates"
-    ADD CONSTRAINT "pipeline_candidates_pkey" PRIMARY KEY ("id");
+    ADD CONSTRAINT "pipeline_candidates_opportunity_id_student_id_key" UNIQUE ("opportunity_id", "student_id");
 
 
 
 ALTER TABLE ONLY "public"."pipeline_candidates"
-    ADD CONSTRAINT "pipeline_candidates_requisition_id_student_id_key" UNIQUE ("requisition_id", "student_id");
+    ADD CONSTRAINT "pipeline_candidates_pkey" PRIMARY KEY ("id");
 
 
 
@@ -2844,6 +3951,16 @@ ALTER TABLE ONLY "public"."requisitions"
 
 ALTER TABLE ONLY "public"."saved_jobs"
     ADD CONSTRAINT "saved_jobs_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."search_history"
+    ADD CONSTRAINT "search_history_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."search_history"
+    ADD CONSTRAINT "search_history_student_id_search_term_key" UNIQUE ("student_id", "search_term");
 
 
 
@@ -2902,6 +4019,16 @@ ALTER TABLE ONLY "public"."students"
 
 
 
+ALTER TABLE ONLY "public"."subscriptions"
+    ADD CONSTRAINT "subscriptions_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."subscriptions"
+    ADD CONSTRAINT "subscriptions_razorpay_subscription_id_key" UNIQUE ("razorpay_subscription_id");
+
+
+
 ALTER TABLE ONLY "public"."trainings"
     ADD CONSTRAINT "trainings_pkey" PRIMARY KEY ("id");
 
@@ -2922,13 +4049,18 @@ ALTER TABLE ONLY "public"."recent_updates"
 
 
 
-ALTER TABLE ONLY "public"."message_reactions"
-    ADD CONSTRAINT "unique_user_reaction" UNIQUE ("message_id", "user_id", "emoji");
+ALTER TABLE ONLY "public"."universities"
+    ADD CONSTRAINT "universities_code_key" UNIQUE ("code");
 
 
 
 ALTER TABLE ONLY "public"."universities"
     ADD CONSTRAINT "universities_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."university_courses"
+    ADD CONSTRAINT "university_courses_pkey" PRIMARY KEY ("id");
 
 
 
@@ -3097,14 +4229,6 @@ CREATE INDEX "idx_interviews_student_id" ON "public"."interviews" USING "btree" 
 
 
 
-CREATE INDEX "idx_message_reactions_message_id" ON "public"."message_reactions" USING "btree" ("message_id");
-
-
-
-CREATE INDEX "idx_message_reactions_user_id" ON "public"."message_reactions" USING "btree" ("user_id");
-
-
-
 CREATE INDEX "idx_messages_application_id" ON "public"."messages" USING "btree" ("application_id");
 
 
@@ -3233,6 +4357,10 @@ CREATE INDEX "idx_opportunities_posted_date" ON "public"."opportunities" USING "
 
 
 
+CREATE INDEX "idx_opportunities_requisition_id" ON "public"."opportunities" USING "btree" ("requisition_id");
+
+
+
 CREATE INDEX "idx_opportunities_salary" ON "public"."opportunities" USING "btree" ("salary_range_max" DESC, "salary_range_min" DESC);
 
 
@@ -3242,6 +4370,18 @@ CREATE INDEX "idx_opportunities_search" ON "public"."opportunities" USING "gin" 
 
 
 CREATE INDEX "idx_opportunities_skills_gin" ON "public"."opportunities" USING "gin" ("skills_required");
+
+
+
+CREATE INDEX "idx_opportunity_interactions_action" ON "public"."opportunity_interactions" USING "btree" ("action");
+
+
+
+CREATE INDEX "idx_opportunity_interactions_opportunity" ON "public"."opportunity_interactions" USING "btree" ("opportunity_id");
+
+
+
+CREATE INDEX "idx_opportunity_interactions_student" ON "public"."opportunity_interactions" USING "btree" ("student_id");
 
 
 
@@ -3289,6 +4429,18 @@ CREATE INDEX "idx_passports_updatedat" ON "public"."skill_passports" USING "btre
 
 
 
+CREATE INDEX "idx_payment_transactions_razorpay_payment_id" ON "public"."payment_transactions" USING "btree" ("razorpay_payment_id");
+
+
+
+CREATE INDEX "idx_payment_transactions_subscription_id" ON "public"."payment_transactions" USING "btree" ("subscription_id");
+
+
+
+CREATE INDEX "idx_payment_transactions_user_id" ON "public"."payment_transactions" USING "btree" ("user_id");
+
+
+
 CREATE INDEX "idx_pipeline_activities_created_at" ON "public"."pipeline_activities" USING "btree" ("created_at");
 
 
@@ -3301,10 +4453,6 @@ CREATE INDEX "idx_pipeline_candidates_next_action_date" ON "public"."pipeline_ca
 
 
 
-CREATE INDEX "idx_pipeline_candidates_requisition_id" ON "public"."pipeline_candidates" USING "btree" ("requisition_id");
-
-
-
 CREATE INDEX "idx_pipeline_candidates_stage" ON "public"."pipeline_candidates" USING "btree" ("stage");
 
 
@@ -3314,6 +4462,10 @@ CREATE INDEX "idx_pipeline_candidates_status" ON "public"."pipeline_candidates" 
 
 
 CREATE INDEX "idx_pipeline_candidates_student_id" ON "public"."pipeline_candidates" USING "btree" ("student_id");
+
+
+
+CREATE INDEX "idx_pipeline_opportunity_id" ON "public"."pipeline_candidates" USING "btree" ("opportunity_id");
 
 
 
@@ -3441,6 +4593,18 @@ CREATE INDEX "idx_saved_searches_recruiter" ON "public"."recruiter_saved_searche
 
 
 
+CREATE INDEX "idx_search_history_last_searched" ON "public"."search_history" USING "btree" ("last_searched_at" DESC);
+
+
+
+CREATE INDEX "idx_search_history_search_count" ON "public"."search_history" USING "btree" ("search_count" DESC);
+
+
+
+CREATE INDEX "idx_search_history_student_id" ON "public"."search_history" USING "btree" ("student_id");
+
+
+
 CREATE INDEX "idx_shortlist_candidates_shortlist_id" ON "public"."shortlist_candidates" USING "btree" ("shortlist_id");
 
 
@@ -3501,6 +4665,10 @@ CREATE INDEX "idx_students_email" ON "public"."students" USING "btree" ("email")
 
 
 
+CREATE INDEX "idx_students_email_lower" ON "public"."students" USING "btree" ("lower"("email"));
+
+
+
 CREATE INDEX "idx_students_email_trgm" ON "public"."students" USING "gin" ("email" "public"."gin_trgm_ops");
 
 
@@ -3534,6 +4702,18 @@ CREATE INDEX "idx_students_universityid" ON "public"."students" USING "btree" ("
 
 
 CREATE INDEX "idx_students_user" ON "public"."students" USING "btree" ("id");
+
+
+
+CREATE INDEX "idx_subscriptions_razorpay_sub_id" ON "public"."subscriptions" USING "btree" ("razorpay_subscription_id");
+
+
+
+CREATE INDEX "idx_subscriptions_status" ON "public"."subscriptions" USING "btree" ("status");
+
+
+
+CREATE INDEX "idx_subscriptions_user_id" ON "public"."subscriptions" USING "btree" ("user_id");
 
 
 
@@ -3633,83 +4813,15 @@ CREATE INDEX "students_embedding_idx" ON "public"."students" USING "ivfflat" ("e
 
 
 
-CREATE OR REPLACE VIEW "public"."requisitions_with_pipeline_stats" AS
- SELECT "r"."id",
-    "r"."title",
-    "r"."department",
-    "r"."location",
-    "r"."job_type",
-    "r"."openings",
-    "r"."status",
-    "r"."priority",
-    "r"."description",
-    "r"."requirements",
-    "r"."salary_range",
-    "r"."owner",
-    "r"."hiring_manager",
-    "r"."created_by",
-    "r"."created_date",
-    "r"."target_date",
-    "r"."filled_date",
-    "r"."tags",
-    "r"."created_at",
-    "r"."updated_at",
-    "count"(DISTINCT "pc"."id") AS "total_candidates",
-    "count"(DISTINCT
-        CASE
-            WHEN ("pc"."stage" = 'sourced'::"text") THEN "pc"."id"
-            ELSE NULL::integer
-        END) AS "sourced_count",
-    "count"(DISTINCT
-        CASE
-            WHEN ("pc"."stage" = 'screened'::"text") THEN "pc"."id"
-            ELSE NULL::integer
-        END) AS "screened_count",
-    "count"(DISTINCT
-        CASE
-            WHEN ("pc"."stage" = 'interview_1'::"text") THEN "pc"."id"
-            ELSE NULL::integer
-        END) AS "interview_1_count",
-    "count"(DISTINCT
-        CASE
-            WHEN ("pc"."stage" = 'interview_2'::"text") THEN "pc"."id"
-            ELSE NULL::integer
-        END) AS "interview_2_count",
-    "count"(DISTINCT
-        CASE
-            WHEN ("pc"."stage" = 'offer'::"text") THEN "pc"."id"
-            ELSE NULL::integer
-        END) AS "offer_count",
-    "count"(DISTINCT
-        CASE
-            WHEN ("pc"."stage" = 'hired'::"text") THEN "pc"."id"
-            ELSE NULL::integer
-        END) AS "hired_count"
-   FROM ("public"."requisitions" "r"
-     LEFT JOIN "public"."pipeline_candidates" "pc" ON ((("r"."id" = "pc"."requisition_id") AND ("pc"."status" = 'active'::"text"))))
-  GROUP BY "r"."id";
+CREATE INDEX "universities_code_idx" ON "public"."universities" USING "btree" ("code");
 
 
 
-CREATE OR REPLACE VIEW "public"."shortlists_with_counts" AS
- SELECT "s"."id",
-    "s"."name",
-    "s"."description",
-    "s"."created_by",
-    "s"."created_date",
-    "s"."status",
-    "s"."shared",
-    "s"."share_link",
-    "s"."share_expiry",
-    "s"."watermark",
-    "s"."include_pii",
-    "s"."notify_on_access",
-    "s"."tags",
-    "s"."updated_at",
-    COALESCE("count"("sc"."id"), (0)::bigint) AS "candidate_count"
-   FROM ("public"."shortlists" "s"
-     LEFT JOIN "public"."shortlist_candidates" "sc" ON (("s"."id" = "sc"."shortlist_id")))
-  GROUP BY "s"."id";
+CREATE INDEX "university_courses_university_id_idx" ON "public"."university_courses" USING "btree" ("university_id");
+
+
+
+CREATE OR REPLACE TRIGGER "auto_opportunity_embedding" AFTER INSERT OR UPDATE ON "public"."opportunities" FOR EACH ROW EXECUTE FUNCTION "public"."trigger_opportunity_embedding"();
 
 
 
@@ -3722,6 +4834,10 @@ CREATE OR REPLACE TRIGGER "auto_recent_update_on_skills_change" AFTER UPDATE OF 
 
 
 CREATE OR REPLACE TRIGGER "auto_recent_update_on_training_complete" AFTER UPDATE OF "profile" ON "public"."students" FOR EACH ROW WHEN ((("old"."profile" -> 'training'::"text") IS DISTINCT FROM ("new"."profile" -> 'training'::"text"))) EXECUTE FUNCTION "public"."trigger_training_completion"();
+
+
+
+CREATE OR REPLACE TRIGGER "auto_student_embedding" AFTER INSERT OR UPDATE ON "public"."students" FOR EACH ROW EXECUTE FUNCTION "public"."trigger_student_embedding"();
 
 
 
@@ -3746,6 +4862,10 @@ CREATE OR REPLACE TRIGGER "trg_student_assignments_status" BEFORE INSERT OR UPDA
 
 
 CREATE OR REPLACE TRIGGER "trg_student_assignments_updated" BEFORE UPDATE ON "public"."student_assignments" FOR EACH ROW EXECUTE FUNCTION "public"."trg_student_assignments_updated_fn"();
+
+
+
+CREATE OR REPLACE TRIGGER "trigger_auto_add_to_pipeline" AFTER INSERT ON "public"."applied_jobs" FOR EACH ROW EXECUTE FUNCTION "public"."auto_add_applicant_to_pipeline"();
 
 
 
@@ -3781,11 +4901,7 @@ CREATE OR REPLACE TRIGGER "trigger_update_saved_jobs_timestamp" BEFORE UPDATE ON
 
 
 
-CREATE OR REPLACE TRIGGER "update_conversations_updated_at" BEFORE UPDATE ON "public"."conversations" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
-
-
-
-CREATE OR REPLACE TRIGGER "update_interviews_updated_at" BEFORE UPDATE ON "public"."interviews" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+CREATE OR REPLACE TRIGGER "update_opportunities_updated_at" BEFORE UPDATE ON "public"."opportunities" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
 
 
@@ -3801,19 +4917,11 @@ CREATE OR REPLACE TRIGGER "update_placements_timestamp" BEFORE UPDATE ON "public
 
 
 
-CREATE OR REPLACE TRIGGER "update_recruiters_updated_at" BEFORE UPDATE ON "public"."recruiters" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
-
-
-
 CREATE OR REPLACE TRIGGER "update_requisitions_updated_at" BEFORE UPDATE ON "public"."requisitions" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
 
 
-CREATE OR REPLACE TRIGGER "update_saved_searches_updated_at" BEFORE UPDATE ON "public"."recruiter_saved_searches" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
-
-
-
-CREATE OR REPLACE TRIGGER "update_shortlists_updated_at" BEFORE UPDATE ON "public"."shortlists" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+CREATE OR REPLACE TRIGGER "update_students_updated_at" BEFORE UPDATE ON "public"."students" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
 
 
@@ -3873,6 +4981,11 @@ ALTER TABLE ONLY "public"."assignment_attachments"
 
 ALTER TABLE ONLY "public"."applied_jobs"
     ADD CONSTRAINT "fk_opportunity" FOREIGN KEY ("opportunity_id") REFERENCES "public"."opportunities"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."pipeline_candidates"
+    ADD CONSTRAINT "fk_pipeline_opportunity" FOREIGN KEY ("opportunity_id") REFERENCES "public"."opportunities"("id") ON DELETE CASCADE;
 
 
 
@@ -3936,13 +5049,33 @@ ALTER TABLE ONLY "public"."opportunities"
 
 
 
+ALTER TABLE ONLY "public"."opportunities"
+    ADD CONSTRAINT "opportunities_requisition_id_fkey" FOREIGN KEY ("requisition_id") REFERENCES "public"."requisitions"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."opportunity_interactions"
+    ADD CONSTRAINT "opportunity_interactions_opportunity_id_fkey" FOREIGN KEY ("opportunity_id") REFERENCES "public"."opportunities"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."opportunity_interactions"
+    ADD CONSTRAINT "opportunity_interactions_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "public"."students"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."payment_transactions"
+    ADD CONSTRAINT "payment_transactions_subscription_id_fkey" FOREIGN KEY ("subscription_id") REFERENCES "public"."subscriptions"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."payment_transactions"
+    ADD CONSTRAINT "payment_transactions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."pipeline_activities"
     ADD CONSTRAINT "pipeline_activities_pipeline_candidate_id_fkey" FOREIGN KEY ("pipeline_candidate_id") REFERENCES "public"."pipeline_candidates"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."pipeline_candidates"
-    ADD CONSTRAINT "pipeline_candidates_requisition_id_fkey" FOREIGN KEY ("requisition_id") REFERENCES "public"."requisitions"("id") ON DELETE CASCADE;
 
 
 
@@ -3976,6 +5109,11 @@ ALTER TABLE ONLY "public"."recruiter_activities"
 
 
 
+ALTER TABLE ONLY "public"."search_history"
+    ADD CONSTRAINT "search_history_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "public"."students"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."shortlist_candidates"
     ADD CONSTRAINT "shortlist_candidates_shortlist_id_fkey" FOREIGN KEY ("shortlist_id") REFERENCES "public"."shortlists"("id") ON DELETE CASCADE;
 
@@ -4006,8 +5144,28 @@ ALTER TABLE ONLY "public"."students"
 
 
 
+ALTER TABLE ONLY "public"."subscriptions"
+    ADD CONSTRAINT "subscriptions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."trainings"
     ADD CONSTRAINT "trainings_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "public"."students"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."universities"
+    ADD CONSTRAINT "universities_approved_by_fkey" FOREIGN KEY ("approved_by") REFERENCES "public"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."university_courses"
+    ADD CONSTRAINT "university_courses_approved_by_fkey" FOREIGN KEY ("approved_by") REFERENCES "public"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."university_courses"
+    ADD CONSTRAINT "university_courses_university_id_fkey" FOREIGN KEY ("university_id") REFERENCES "public"."universities"("id") ON DELETE CASCADE;
 
 
 
@@ -4273,6 +5431,14 @@ CREATE POLICY "Students can view own profile views" ON "public"."profile_views" 
 
 
 
+CREATE POLICY "Users can create own payment transactions" ON "public"."payment_transactions" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
+
+
+
+CREATE POLICY "Users can create own subscriptions" ON "public"."subscriptions" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
+
+
+
 CREATE POLICY "Users can delete own saved searches" ON "public"."recruiter_saved_searches" FOR DELETE USING (true);
 
 
@@ -4285,7 +5451,19 @@ CREATE POLICY "Users can update own saved searches" ON "public"."recruiter_saved
 
 
 
+CREATE POLICY "Users can update own subscriptions" ON "public"."subscriptions" FOR UPDATE USING (("auth"."uid"() = "user_id"));
+
+
+
+CREATE POLICY "Users can view own payment transactions" ON "public"."payment_transactions" FOR SELECT USING (("auth"."uid"() = "user_id"));
+
+
+
 CREATE POLICY "Users can view own saved searches" ON "public"."recruiter_saved_searches" FOR SELECT USING (true);
+
+
+
+CREATE POLICY "Users can view own subscriptions" ON "public"."subscriptions" FOR SELECT USING (("auth"."uid"() = "user_id"));
 
 
 
@@ -4365,6 +5543,9 @@ GRANT USAGE ON SCHEMA "public" TO "postgres";
 GRANT USAGE ON SCHEMA "public" TO "anon";
 GRANT USAGE ON SCHEMA "public" TO "authenticated";
 GRANT USAGE ON SCHEMA "public" TO "service_role";
+
+
+
 
 
 
@@ -4804,6 +5985,18 @@ GRANT ALL ON FUNCTION "public"."add_achievement_update"("p_student_id" "uuid", "
 
 
 
+GRANT ALL ON FUNCTION "public"."add_column_if_not_exists"("p_table_name" "text", "p_column_name" "text", "p_column_definition" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."add_column_if_not_exists"("p_table_name" "text", "p_column_name" "text", "p_column_definition" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."add_column_if_not_exists"("p_table_name" "text", "p_column_name" "text", "p_column_definition" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."add_constraint_if_not_exists"("p_table_name" "text", "p_constraint_name" "text", "p_constraint_definition" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."add_constraint_if_not_exists"("p_table_name" "text", "p_constraint_name" "text", "p_constraint_definition" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."add_constraint_if_not_exists"("p_table_name" "text", "p_constraint_name" "text", "p_constraint_definition" "text") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."add_jsonb_recent_update"("student_email" "text", "update_title" "text", "update_type" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."add_jsonb_recent_update"("student_email" "text", "update_title" "text", "update_type" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."add_jsonb_recent_update"("student_email" "text", "update_title" "text", "update_type" "text") TO "service_role";
@@ -4858,6 +6051,12 @@ GRANT ALL ON FUNCTION "public"."apply_to_job"("p_student_id" "uuid", "p_opportun
 
 
 
+GRANT ALL ON FUNCTION "public"."auto_add_applicant_to_pipeline"() TO "anon";
+GRANT ALL ON FUNCTION "public"."auto_add_applicant_to_pipeline"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."auto_add_applicant_to_pipeline"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."binary_quantize"("public"."halfvec") TO "postgres";
 GRANT ALL ON FUNCTION "public"."binary_quantize"("public"."halfvec") TO "anon";
 GRANT ALL ON FUNCTION "public"."binary_quantize"("public"."halfvec") TO "authenticated";
@@ -4893,6 +6092,12 @@ GRANT ALL ON FUNCTION "public"."cosine_distance"("public"."vector", "public"."ve
 
 
 
+GRANT ALL ON FUNCTION "public"."create_index_if_not_exists"("p_index_name" "text", "p_table_name" "text", "p_definition" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."create_index_if_not_exists"("p_index_name" "text", "p_table_name" "text", "p_definition" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_index_if_not_exists"("p_index_name" "text", "p_table_name" "text", "p_definition" "text") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."decrement_applications_count"() TO "anon";
 GRANT ALL ON FUNCTION "public"."decrement_applications_count"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."decrement_applications_count"() TO "service_role";
@@ -4902,6 +6107,18 @@ GRANT ALL ON FUNCTION "public"."decrement_applications_count"() TO "service_role
 GRANT ALL ON FUNCTION "public"."delete_from_profile_array"("p_student_id" "uuid", "p_array_name" "text", "p_item_id" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."delete_from_profile_array"("p_student_id" "uuid", "p_array_name" "text", "p_item_id" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."delete_from_profile_array"("p_student_id" "uuid", "p_array_name" "text", "p_item_id" integer) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."getActiveEnrollment"("p_studentId" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."getActiveEnrollment"("p_studentId" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."getActiveEnrollment"("p_studentId" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_active_subscription"("uid" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_active_subscription"("uid" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_active_subscription"("uid" "uuid") TO "service_role";
 
 
 
@@ -5201,6 +6418,12 @@ GRANT ALL ON FUNCTION "public"."inner_product"("public"."vector", "public"."vect
 
 
 
+GRANT ALL ON FUNCTION "public"."is_subscription_active"("sub_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."is_subscription_active"("sub_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_subscription_active"("sub_id" "uuid") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."ivfflat_bit_support"("internal") TO "postgres";
 GRANT ALL ON FUNCTION "public"."ivfflat_bit_support"("internal") TO "anon";
 GRANT ALL ON FUNCTION "public"."ivfflat_bit_support"("internal") TO "authenticated";
@@ -5315,6 +6538,12 @@ GRANT ALL ON FUNCTION "public"."mark_conversation_as_read"("p_conversation_id" "
 GRANT ALL ON FUNCTION "public"."match_opportunities"("query_embedding" "public"."vector", "student_id_param" "uuid", "dismissed_ids" "uuid"[], "match_threshold" double precision, "match_count" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."match_opportunities"("query_embedding" "public"."vector", "student_id_param" "uuid", "dismissed_ids" "uuid"[], "match_threshold" double precision, "match_count" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."match_opportunities"("query_embedding" "public"."vector", "student_id_param" "uuid", "dismissed_ids" "uuid"[], "match_threshold" double precision, "match_count" integer) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."match_opportunities_enhanced"("query_embedding" "public"."vector", "student_id_param" "uuid", "dismissed_ids" integer[], "match_threshold" double precision, "match_count" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."match_opportunities_enhanced"("query_embedding" "public"."vector", "student_id_param" "uuid", "dismissed_ids" integer[], "match_threshold" double precision, "match_count" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."match_opportunities_enhanced"("query_embedding" "public"."vector", "student_id_param" "uuid", "dismissed_ids" integer[], "match_threshold" double precision, "match_count" integer) TO "service_role";
 
 
 
@@ -5508,6 +6737,12 @@ GRANT ALL ON FUNCTION "public"."track_profile_view"("p_student_id" "uuid", "p_vi
 
 
 
+GRANT ALL ON FUNCTION "public"."transferStudent"("p_studentId" "uuid", "p_newEntityType" "text", "p_newEntityId" "uuid", "p_newClassId" "uuid", "p_transferReason" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."transferStudent"("p_studentId" "uuid", "p_newEntityType" "text", "p_newEntityId" "uuid", "p_newClassId" "uuid", "p_transferReason" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."transferStudent"("p_studentId" "uuid", "p_newEntityType" "text", "p_newEntityId" "uuid", "p_newClassId" "uuid", "p_transferReason" "text") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."trg_assignments_completion_fn"() TO "anon";
 GRANT ALL ON FUNCTION "public"."trg_assignments_completion_fn"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."trg_assignments_completion_fn"() TO "service_role";
@@ -5556,6 +6791,12 @@ GRANT ALL ON FUNCTION "public"."trg_student_assignments_updated_fn"() TO "servic
 
 
 
+GRANT ALL ON FUNCTION "public"."trigger_opportunity_embedding"() TO "anon";
+GRANT ALL ON FUNCTION "public"."trigger_opportunity_embedding"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."trigger_opportunity_embedding"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."trigger_profile_update"() TO "anon";
 GRANT ALL ON FUNCTION "public"."trigger_profile_update"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."trigger_profile_update"() TO "service_role";
@@ -5568,9 +6809,21 @@ GRANT ALL ON FUNCTION "public"."trigger_skills_improvement"() TO "service_role";
 
 
 
+GRANT ALL ON FUNCTION "public"."trigger_student_embedding"() TO "anon";
+GRANT ALL ON FUNCTION "public"."trigger_student_embedding"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."trigger_student_embedding"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."trigger_training_completion"() TO "anon";
 GRANT ALL ON FUNCTION "public"."trigger_training_completion"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."trigger_training_completion"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."updateEntityStudentCounts"() TO "anon";
+GRANT ALL ON FUNCTION "public"."updateEntityStudentCounts"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."updateEntityStudentCounts"() TO "service_role";
 
 
 
@@ -5613,6 +6866,12 @@ GRANT ALL ON FUNCTION "public"."update_timestamp"() TO "service_role";
 GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "anon";
 GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."validateOneActiveEnrollment"() TO "anon";
+GRANT ALL ON FUNCTION "public"."validateOneActiveEnrollment"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."validateOneActiveEnrollment"() TO "service_role";
 
 
 
@@ -5834,6 +7093,12 @@ GRANT ALL ON FUNCTION "public"."sum"("public"."vector") TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."app_config" TO "anon";
+GRANT ALL ON TABLE "public"."app_config" TO "authenticated";
+GRANT ALL ON TABLE "public"."app_config" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."applied_jobs" TO "anon";
 GRANT ALL ON TABLE "public"."applied_jobs" TO "authenticated";
 GRANT ALL ON TABLE "public"."applied_jobs" TO "service_role";
@@ -5867,6 +7132,42 @@ GRANT ALL ON TABLE "public"."audit_logs" TO "service_role";
 GRANT ALL ON TABLE "public"."certificates" TO "anon";
 GRANT ALL ON TABLE "public"."certificates" TO "authenticated";
 GRANT ALL ON TABLE "public"."certificates" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."college_courses" TO "anon";
+GRANT ALL ON TABLE "public"."college_courses" TO "authenticated";
+GRANT ALL ON TABLE "public"."college_courses" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."college_lecturer_course_assignments" TO "anon";
+GRANT ALL ON TABLE "public"."college_lecturer_course_assignments" TO "authenticated";
+GRANT ALL ON TABLE "public"."college_lecturer_course_assignments" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."college_lecturers" TO "anon";
+GRANT ALL ON TABLE "public"."college_lecturers" TO "authenticated";
+GRANT ALL ON TABLE "public"."college_lecturers" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."colleges" TO "anon";
+GRANT ALL ON TABLE "public"."colleges" TO "authenticated";
+GRANT ALL ON TABLE "public"."colleges" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."companies" TO "anon";
+GRANT ALL ON TABLE "public"."companies" TO "authenticated";
+GRANT ALL ON TABLE "public"."companies" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."company_branches" TO "anon";
+GRANT ALL ON TABLE "public"."company_branches" TO "authenticated";
+GRANT ALL ON TABLE "public"."company_branches" TO "service_role";
 
 
 
@@ -5990,9 +7291,27 @@ GRANT ALL ON SEQUENCE "public"."opportunities_id_seq" TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."opportunity_interactions" TO "anon";
+GRANT ALL ON TABLE "public"."opportunity_interactions" TO "authenticated";
+GRANT ALL ON TABLE "public"."opportunity_interactions" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."payment_transactions" TO "anon";
+GRANT ALL ON TABLE "public"."payment_transactions" TO "authenticated";
+GRANT ALL ON TABLE "public"."payment_transactions" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."pending_scorecards" TO "anon";
 GRANT ALL ON TABLE "public"."pending_scorecards" TO "authenticated";
 GRANT ALL ON TABLE "public"."pending_scorecards" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."permissions" TO "anon";
+GRANT ALL ON TABLE "public"."permissions" TO "authenticated";
+GRANT ALL ON TABLE "public"."permissions" TO "service_role";
 
 
 
@@ -6011,18 +7330,6 @@ GRANT ALL ON SEQUENCE "public"."pipeline_activities_id_seq" TO "service_role";
 GRANT ALL ON TABLE "public"."pipeline_candidates" TO "anon";
 GRANT ALL ON TABLE "public"."pipeline_candidates" TO "authenticated";
 GRANT ALL ON TABLE "public"."pipeline_candidates" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."requisitions" TO "anon";
-GRANT ALL ON TABLE "public"."requisitions" TO "authenticated";
-GRANT ALL ON TABLE "public"."requisitions" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."pipeline_candidates_detailed" TO "anon";
-GRANT ALL ON TABLE "public"."pipeline_candidates_detailed" TO "authenticated";
-GRANT ALL ON TABLE "public"."pipeline_candidates_detailed" TO "service_role";
 
 
 
@@ -6068,9 +7375,21 @@ GRANT ALL ON TABLE "public"."recruiter_saved_searches" TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."requisitions" TO "anon";
+GRANT ALL ON TABLE "public"."requisitions" TO "authenticated";
+GRANT ALL ON TABLE "public"."requisitions" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."requisitions_with_pipeline_stats" TO "anon";
 GRANT ALL ON TABLE "public"."requisitions_with_pipeline_stats" TO "authenticated";
 GRANT ALL ON TABLE "public"."requisitions_with_pipeline_stats" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."role_permissions" TO "anon";
+GRANT ALL ON TABLE "public"."role_permissions" TO "authenticated";
+GRANT ALL ON TABLE "public"."role_permissions" TO "service_role";
 
 
 
@@ -6083,6 +7402,42 @@ GRANT ALL ON TABLE "public"."saved_jobs" TO "service_role";
 GRANT ALL ON SEQUENCE "public"."saved_jobs_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."saved_jobs_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."saved_jobs_id_seq" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."school_classes" TO "anon";
+GRANT ALL ON TABLE "public"."school_classes" TO "authenticated";
+GRANT ALL ON TABLE "public"."school_classes" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."school_educator_class_assignments" TO "anon";
+GRANT ALL ON TABLE "public"."school_educator_class_assignments" TO "authenticated";
+GRANT ALL ON TABLE "public"."school_educator_class_assignments" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."school_educators" TO "anon";
+GRANT ALL ON TABLE "public"."school_educators" TO "authenticated";
+GRANT ALL ON TABLE "public"."school_educators" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."schools" TO "anon";
+GRANT ALL ON TABLE "public"."schools" TO "authenticated";
+GRANT ALL ON TABLE "public"."schools" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."search_history" TO "anon";
+GRANT ALL ON TABLE "public"."search_history" TO "authenticated";
+GRANT ALL ON TABLE "public"."search_history" TO "service_role";
+
+
+
+GRANT ALL ON SEQUENCE "public"."search_history_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."search_history_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "public"."search_history_id_seq" TO "service_role";
 
 
 
@@ -6128,9 +7483,21 @@ GRANT ALL ON TABLE "public"."skills" TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."student_applications_with_pipeline" TO "anon";
+GRANT ALL ON TABLE "public"."student_applications_with_pipeline" TO "authenticated";
+GRANT ALL ON TABLE "public"."student_applications_with_pipeline" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."student_assignments" TO "anon";
 GRANT ALL ON TABLE "public"."student_assignments" TO "authenticated";
 GRANT ALL ON TABLE "public"."student_assignments" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."subscriptions" TO "anon";
+GRANT ALL ON TABLE "public"."subscriptions" TO "authenticated";
+GRANT ALL ON TABLE "public"."subscriptions" TO "service_role";
 
 
 
@@ -6143,6 +7510,12 @@ GRANT ALL ON TABLE "public"."trainings" TO "service_role";
 GRANT ALL ON TABLE "public"."universities" TO "anon";
 GRANT ALL ON TABLE "public"."universities" TO "authenticated";
 GRANT ALL ON TABLE "public"."universities" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."university_courses" TO "anon";
+GRANT ALL ON TABLE "public"."university_courses" TO "authenticated";
+GRANT ALL ON TABLE "public"."university_courses" TO "service_role";
 
 
 
@@ -6235,88 +7608,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
-
-
-drop extension if exists "pg_net";
-
-
-  create table "public"."opportunity_interactions" (
-    "id" uuid not null default gen_random_uuid(),
-    "student_id" uuid not null,
-    "opportunity_id" integer not null,
-    "action" text not null,
-    "created_at" timestamp with time zone default now()
-      );
-
-
-CREATE INDEX idx_opportunity_interactions_action ON public.opportunity_interactions USING btree (action);
-
-CREATE INDEX idx_opportunity_interactions_opportunity ON public.opportunity_interactions USING btree (opportunity_id);
-
-CREATE INDEX idx_opportunity_interactions_student ON public.opportunity_interactions USING btree (student_id);
-
-CREATE UNIQUE INDEX opportunity_interactions_pkey ON public.opportunity_interactions USING btree (id);
-
-CREATE UNIQUE INDEX opportunity_interactions_student_id_opportunity_id_action_key ON public.opportunity_interactions USING btree (student_id, opportunity_id, action);
-
-alter table "public"."opportunity_interactions" add constraint "opportunity_interactions_pkey" PRIMARY KEY using index "opportunity_interactions_pkey";
-
-alter table "public"."opportunity_interactions" add constraint "opportunity_interactions_action_check" CHECK ((action = ANY (ARRAY['view'::text, 'apply'::text, 'dismiss'::text, 'save'::text]))) not valid;
-
-alter table "public"."opportunity_interactions" validate constraint "opportunity_interactions_action_check";
-
-alter table "public"."opportunity_interactions" add constraint "opportunity_interactions_opportunity_id_fkey" FOREIGN KEY (opportunity_id) REFERENCES public.opportunities(id) ON DELETE CASCADE not valid;
-
-alter table "public"."opportunity_interactions" validate constraint "opportunity_interactions_opportunity_id_fkey";
-
-alter table "public"."opportunity_interactions" add constraint "opportunity_interactions_student_id_fkey" FOREIGN KEY (student_id) REFERENCES public.students(id) ON DELETE CASCADE not valid;
-
-alter table "public"."opportunity_interactions" validate constraint "opportunity_interactions_student_id_fkey";
-
-alter table "public"."opportunity_interactions" add constraint "opportunity_interactions_student_id_opportunity_id_action_key" UNIQUE using index "opportunity_interactions_student_id_opportunity_id_action_key";
-
-grant delete on table "public"."opportunity_interactions" to "anon";
-
-grant insert on table "public"."opportunity_interactions" to "anon";
-
-grant references on table "public"."opportunity_interactions" to "anon";
-
-grant select on table "public"."opportunity_interactions" to "anon";
-
-grant trigger on table "public"."opportunity_interactions" to "anon";
-
-grant truncate on table "public"."opportunity_interactions" to "anon";
-
-grant update on table "public"."opportunity_interactions" to "anon";
-
-grant delete on table "public"."opportunity_interactions" to "authenticated";
-
-grant insert on table "public"."opportunity_interactions" to "authenticated";
-
-grant references on table "public"."opportunity_interactions" to "authenticated";
-
-grant select on table "public"."opportunity_interactions" to "authenticated";
-
-grant trigger on table "public"."opportunity_interactions" to "authenticated";
-
-grant truncate on table "public"."opportunity_interactions" to "authenticated";
-
-grant update on table "public"."opportunity_interactions" to "authenticated";
-
-grant delete on table "public"."opportunity_interactions" to "service_role";
-
-grant insert on table "public"."opportunity_interactions" to "service_role";
-
-grant references on table "public"."opportunity_interactions" to "service_role";
-
-grant select on table "public"."opportunity_interactions" to "service_role";
-
-grant trigger on table "public"."opportunity_interactions" to "service_role";
-
-grant truncate on table "public"."opportunity_interactions" to "service_role";
-
-grant update on table "public"."opportunity_interactions" to "service_role";
-
-CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 
