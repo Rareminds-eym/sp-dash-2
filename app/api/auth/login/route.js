@@ -100,6 +100,15 @@ export async function POST(request) {
 
     const userName = userData?.metadata?.name || authData.user.user_metadata?.name || authData.user.email.split('@')[0]
 
+    // Fetch user permissions based on role
+    let permissions = []
+    try {
+      permissions = await getUserPermissions(userData.id)
+    } catch (permError) {
+      console.error('Error fetching permissions:', permError)
+      // Continue without permissions if fetch fails
+    }
+
     return NextResponse.json({
       success: true,
       user: {
@@ -109,6 +118,9 @@ export async function POST(request) {
         role: userData.role,
         organizationId: userData.organizationId,
         organization: organizationData,
+        entity_type: userData.entity_type,
+        entity_id: userData.entity_id,
+        permissions: permissions,
       },
       session: authData.session,
     })
