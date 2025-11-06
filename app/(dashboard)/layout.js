@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils'
 import {
     BarChart3,
     Briefcase,
+    CheckCircle,
     ChevronRight,
     Download,
     FileText,
