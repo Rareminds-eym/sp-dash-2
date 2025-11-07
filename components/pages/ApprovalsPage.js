@@ -35,6 +35,7 @@ import {
   Eye,
   Filter,
   Globe,
+  Loader2,
   Mail,
   MapPin,
   Phone,
@@ -44,7 +45,7 @@ import {
   User,
   XCircle
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export default function ApprovalsPage({ currentUser }) {
   const [universities, setUniversities] = useState([])
