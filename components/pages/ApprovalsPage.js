@@ -51,7 +51,7 @@ export default function ApprovalsPage({ currentUser }) {
   const [recruiters, setRecruiters] = useState([])
   const [colleges, setColleges] = useState([])
   const [students, setStudents] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('universities')
   const [search, setSearch] = useState('')
   const [filters, setFilters] = useState({
@@ -61,6 +61,23 @@ export default function ApprovalsPage({ currentUser }) {
     college: 'all',
     branch: 'all'
   })
+  
+  // Lazy loading state
+  const [loadedTabs, setLoadedTabs] = useState({
+    universities: false,
+    recruiters: false,
+    colleges: false,
+    students: false
+  })
+  
+  // Infinite scroll state per tab
+  const [pagination, setPagination] = useState({
+    universities: { page: 1, hasMore: true, loadingMore: false, total: 0 },
+    recruiters: { page: 1, hasMore: true, loadingMore: false, total: 0 },
+    colleges: { page: 1, hasMore: true, loadingMore: false, total: 0 },
+    students: { page: 1, hasMore: true, loadingMore: false, total: 0 }
+  })
+  
   const [actionDialog, setActionDialog] = useState({ 
     open: false, 
     entity: null, 
@@ -75,6 +92,9 @@ export default function ApprovalsPage({ currentUser }) {
     loading: false 
   })
   const { toast } = useToast()
+  
+  // Ref for infinite scroll observer
+  const loadMoreRef = useRef(null)
 
   useEffect(() => {
     fetchPendingEntities()
