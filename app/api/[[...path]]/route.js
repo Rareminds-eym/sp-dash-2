@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
+import { filterAndRankResults, fuzzyMatch } from '../../../lib/search-utils';
 import { supabase } from '../../../lib/supabase';
-import { filterAndRankResults, generateSearchPatterns, fuzzyMatch } from '../../../lib/search-utils';
 
 export const runtime = 'edge';
 
@@ -280,7 +280,7 @@ export async function GET(request) {
       return addCacheHeaders(response, 'static');
     }
 
-    // GET /api/recruiters - List all recruiter organizations with filtering, sorting, and pagination
+    // GET /api/recruiters - List all recruiters with pagination, search, and filters
     if (path === '/recruiters') {
       const url = new URL(request.url)
       
@@ -347,7 +347,7 @@ export async function GET(request) {
         })
       }
       
-      // Map recruiters to expected format
+      // Map recruiters to expected format and normalize field names
       let mappedRecruiters = (recruiters || []).map(recruiter => ({
         id: recruiter.id,
         name: recruiter.name,
@@ -361,6 +361,7 @@ export async function GET(request) {
         verificationStatus: recruiter.verificationstatus || 'approved',
         isActive: recruiter.isactive !== undefined ? recruiter.isactive : true,
         createdAt: recruiter.createdat,
+        created_at: recruiter.createdat, // Add created_at for frontend compatibility
         updatedAt: recruiter.updatedat,
         userCount: userCountMap[recruiter.id] || 0
       }))
@@ -545,6 +546,132 @@ export async function GET(request) {
       const uniqueStates = [...new Set(recruiters?.map(r => r.state).filter(Boolean))].sort()
       
       return NextResponse.json(uniqueStates)
+    }
+
+    // GET /api/universities - List all universities with pagination, search, and filters (ENHANCED)
+    if (path === '/universities') {
+      const url = new URL(request.url)
+      
+      // Pagination parameters
+      const page = parseInt(url.searchParams.get('page') || '1')
+      const limit = parseInt(url.searchParams.get('limit') || '20')
+      const offset = (page - 1) * limit
+      
+      // Filter parameters
+      const approvalStatus = url.searchParams.get('approval_status') // pending, approved, rejected
+      const accountStatus = url.searchParams.get('account_status') // active, inactive
+      const searchTerm = url.searchParams.get('search')
+      
+      // Build query
+      let query = supabase.from('universities').select('*', { count: 'exact' })
+      
+      // Apply filters
+      if (approvalStatus) {
+        query = query.eq('approval_status', approvalStatus)
+      }
+      if (accountStatus) {
+        query = query.eq('account_status', accountStatus)
+      }
+      if (searchTerm) {
+        query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,state.ilike.%${searchTerm}%`)
+      }
+      
+      // Apply sorting (newest first by default)
+      query = query.order('createdat', { ascending: false })
+      
+      // Apply pagination
+      query = query.range(offset, offset + limit - 1)
+      
+      const { data: universities, error, count } = await query
+
+      if (error) {
+        console.error('Error fetching universities:', error)
+        return NextResponse.json({ error: 'Failed to fetch universities' }, { status: 500 })
+      }
+
+      // Normalize field names to match frontend expectations
+      const normalizedUniversities = (universities || []).map(university => ({
+        ...university,
+        created_at: university.createdat, // Map createdat to created_at for frontend compatibility
+        // Add any other field mappings if needed
+      }))
+
+      const response = NextResponse.json({
+        data: normalizedUniversities || [],
+        pagination: {
+          page,
+          limit,
+          total: count || 0,
+          totalPages: Math.ceil((count || 0) / limit)
+        }
+      })
+      
+      return addCacheHeaders(response, 'static')
+    }
+
+    // GET /api/colleges - List all colleges with pagination, search, and filters (NEW)
+    if (path === '/colleges') {
+      const url = new URL(request.url)
+      
+      // Pagination parameters
+      const page = parseInt(url.searchParams.get('page') || '1')
+      const limit = parseInt(url.searchParams.get('limit') || '20')
+      const offset = (page - 1) * limit
+      
+      // Filter parameters
+      const approvalStatus = url.searchParams.get('approval_status') // pending, approved, rejected
+      const accountStatus = url.searchParams.get('account_status') // active, inactive
+      const collegeType = url.searchParams.get('college_type') // standalone, affiliated
+      const searchTerm = url.searchParams.get('search')
+      
+      // Build query
+      let query = supabase.from('colleges').select('*', { count: 'exact' })
+      
+      // Apply filters
+      if (approvalStatus) {
+        query = query.eq('approvalStatus', approvalStatus)
+      }
+      if (accountStatus) {
+        query = query.eq('accountStatus', accountStatus)
+      }
+      if (collegeType) {
+        query = query.eq('collegeType', collegeType)
+      }
+      if (searchTerm) {
+        query = query.or(`name.ilike.%${searchTerm}%,code.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%,state.ilike.%${searchTerm}%`)
+      }
+      
+      // Apply sorting (newest first by default)
+      query = query.order('createdAt', { ascending: false })
+      
+      // Apply pagination
+      query = query.range(offset, offset + limit - 1)
+      
+      const { data: colleges, error, count } = await query
+
+      if (error) {
+        console.error('Error fetching colleges:', error)
+        return NextResponse.json({ error: 'Failed to fetch colleges' }, { status: 500 })
+      }
+
+      // Normalize field names to match frontend expectations
+      const normalizedColleges = (colleges || []).map(college => ({
+        ...college,
+        created_at: college.createdAt, // Map createdAt to created_at for frontend compatibility
+        // Add any other field mappings if needed
+      }))
+
+      const response = NextResponse.json({
+        data: normalizedColleges,
+        pagination: {
+          page,
+          limit,
+          total: count || 0,
+          totalPages: Math.ceil((count || 0) / limit)
+        }
+      })
+      
+      return addCacheHeaders(response, 'static')
     }
 
     // GET /api/passports/universities - Get unique universities for filter dropdown
@@ -806,12 +933,34 @@ export async function GET(request) {
       return NextResponse.json(organizations)
     }
 
-    // GET /api/students - List all students (OPTIMIZED)
+    // GET /api/students - List all students (OPTIMIZED WITH PAGINATION)
     if (path === '/students') {
-      const { data: students, error } = await supabase
-        .from('students')
-        .select('*')
+      const url = new URL(request.url)
+      
+      // Pagination parameters
+      const page = parseInt(url.searchParams.get('page') || '1')
+      const limit = parseInt(url.searchParams.get('limit') || '20')
+      const offset = (page - 1) * limit
+      
+      // Filter parameters
+      const approvalStatus = url.searchParams.get('approval_status') // pending, approved, rejected
+      const searchTerm = url.searchParams.get('search')
+      
+      // Build query with count
+      let query = supabase.from('students').select('*', { count: 'exact' })
+      
+      // Apply filters
+      if (approvalStatus) {
+        query = query.eq('approval_status', approvalStatus)
+      }
+      if (searchTerm) {
+        query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
+      }
+      
+      // Apply sorting and pagination
+      const { data: students, error, count } = await query
         .order('createdAt', { ascending: false })
+        .range(offset, offset + limit - 1)
 
       if (error) {
         console.error('Error fetching students:', error)
@@ -874,7 +1023,25 @@ export async function GET(request) {
         })
       }
       
-      return NextResponse.json(students || [])
+      // Normalize field names to match frontend expectations
+      const normalizedStudents = (students || []).map(student => ({
+        ...student,
+        created_at: student.createdAt || student.created_at, // Ensure created_at exists
+        // Add any other field mappings if needed
+      }))
+      
+      // Return consistent format with other endpoints
+      const response = NextResponse.json({
+        data: normalizedStudents || [],
+        pagination: {
+          page,
+          limit,
+          total: count || 0,
+          totalPages: Math.ceil((count || 0) / limit)
+        }
+      })
+      
+      return addCacheHeaders(response, 'static')
     }
 
     // GET /api/passports - List all skill passports with pagination, search, and filters (ENHANCED)
@@ -2119,6 +2286,69 @@ export async function GET(request) {
       })
     }
 
+    // GET /api/universities/:id/colleges - Get colleges for a specific university
+    if (path.match(/^\/universities\/[^/]+\/colleges$/)) {
+      const pathParts = path.split('/')
+      const universityId = pathParts[2]
+
+      const { data: colleges, error } = await supabase
+        .from('university_colleges')
+        .select('*')
+        .eq('university_id', universityId)
+        .order('name')
+
+      if (error) {
+        console.error('Error fetching university colleges:', error)
+        return NextResponse.json(
+          { error: error.message },
+          { status: 500 }
+        )
+      }
+
+      const response = NextResponse.json(colleges || [])
+      return addCacheHeaders(response, 'static')
+    }
+
+    // GET /api/universities/:id - Get university details with colleges
+    if (path.match(/^\/universities\/[^/]+$/) && path !== '/universities') {
+      const pathParts = path.split('/')
+      const universityId = pathParts[2]
+
+      // Fetch university details
+      const { data: university, error: univError } = await supabase
+        .from('universities')
+        .select('*')
+        .eq('id', universityId)
+        .single()
+
+      if (univError || !university) {
+        return NextResponse.json(
+          { error: 'University not found' },
+          { status: 404 }
+        )
+      }
+
+      // Fetch colleges
+      const { data: colleges } = await supabase
+        .from('university_colleges')
+        .select('*')
+        .eq('university_id', universityId)
+        .order('name')
+
+      // Count students
+      const { data: students } = await supabase
+        .from('students')
+        .select('id')
+        .eq('universityid', universityId)
+
+      const response = NextResponse.json({
+        ...university,
+        colleges: colleges || [],
+        studentCount: students?.length || 0
+      })
+      return addCacheHeaders(response, 'static')
+    }
+
     // Default route
     return NextResponse.json({ 
       message: 'Rareminds Super Admin Dashboard API',
@@ -2131,6 +2361,8 @@ export async function GET(request) {
         '/api/passports',
         '/api/verifications',
         '/api/audit-logs',
+        '/api/universities/:id',
+        '/api/universities/:id/colleges',
         '/api/analytics/state-wise',
         '/api/analytics/trends',
         '/api/analytics/university-reports',
@@ -2634,6 +2866,364 @@ export async function POST(request) {
           isActive: user.isActive
         }
       })
+    }
+
+    // POST /api/universities/:id/colleges - Create a college within a university
+    if (path.match(/^\/universities\/[^/]+\/colleges$/)) {
+      const pathParts = path.split('/')
+      const universityId = pathParts[2]
+
+      const { name, code, deanName, deanEmail, deanPhone, establishedYear, description } = body
+
+      if (!name || !code) {
+        return NextResponse.json(
+          { error: 'Name and code are required' },
+          { status: 400 }
+        )
+      }
+
+      // Check if university exists
+      const { data: university } = await supabase
+        .from('universities')
+        .select('id')
+        .eq('id', universityId)
+        .single()
+
+      if (!university) {
+        return NextResponse.json(
+          { error: 'University not found' },
+          { status: 404 }
+        )
+      }
+
+      // Create college
+      const { data, error: insertError } = await supabase
+        .from('university_colleges')
+        .insert({
+          id: uuidv4(),
+          university_id: universityId,
+          name,
+          code,
+          dean_name: deanName,
+          dean_email: deanEmail,
+          dean_phone: deanPhone,
+          established_year: establishedYear,
+          description,
+          account_status: 'active'
+        })
+        .select()
+        .single()
+
+      if (insertError) {
+        console.error('Error creating college:', insertError)
+        return NextResponse.json(
+          { error: insertError.message },
+          { status: 500 }
+        )
+      }
+
+      // Log audit
+      if (body.userId) {
+        await logAudit(body.userId, 'create_college', data.id, { name, universityId })
+      }
+
+      return NextResponse.json({ success: true, data })
+    }
+
+    // POST /api/approve-university - Approve a university
+    if (path === '/approve-university') {
+      const { universityId, notes, userId } = body
+
+      if (!universityId || !userId) {
+        return NextResponse.json(
+          { error: 'Missing required fields' },
+          { status: 400 }
+        )
+      }
+
+      // Update university status
+      const { data, error: updateError } = await supabase
+        .from('universities')
+        .update({
+          approval_status: 'approved',
+          account_status: 'active',
+          approved_by: userId,
+          approved_at: new Date().toISOString()
+        })
+        .eq('id', universityId)
+        .select()
+        .single()
+
+      if (updateError) {
+        console.error('Error approving university:', updateError)
+        return NextResponse.json(
+          { error: updateError.message },
+          { status: 500 }
+        )
+      }
+
+      // Log audit
+      await logAudit(userId, 'approve_university', universityId, { notes })
+
+      return NextResponse.json({ success: true, data })
+    }
+
+    // POST /api/reject-university - Reject a university
+    if (path === '/reject-university') {
+      const { universityId, reason, userId } = body
+
+      if (!universityId || !userId) {
+        return NextResponse.json(
+          { error: 'Missing required fields' },
+          { status: 400 }
+        )
+      }
+
+      // Update university status
+      const { data, error: updateError } = await supabase
+        .from('universities')
+        .update({
+          approval_status: 'rejected',
+          account_status: 'inactive',
+          rejection_reason: reason
+        })
+        .eq('id', universityId)
+        .select()
+        .single()
+
+      if (updateError) {
+        console.error('Error rejecting university:', updateError)
+        return NextResponse.json(
+          { error: updateError.message },
+          { status: 500 }
+        )
+      }
+
+      // Log audit
+      await logAudit(userId, 'reject_university', universityId, { reason })
+
+      return NextResponse.json({ success: true, data })
+    }
+
+    // POST /api/approve-recruiter - Approve a recruiter
+    if (path === '/approve-recruiter') {
+      const { recruiterId, notes, userId } = body
+
+      if (!recruiterId || !userId) {
+        return NextResponse.json(
+          { error: 'Missing required fields' },
+          { status: 400 }
+        )
+      }
+
+      // Update recruiter status
+      const { data, error: updateError } = await supabase
+        .from('recruiters')
+        .update({
+          approval_status: 'approved',
+          account_status: 'active',
+          approved_by: userId,
+          approved_at: new Date().toISOString()
+        })
+        .eq('id', recruiterId)
+        .select()
+        .single()
+
+      if (updateError) {
+        console.error('Error approving recruiter:', updateError)
+        return NextResponse.json(
+          { error: updateError.message },
+          { status: 500 }
+        )
+      }
+
+      // Log audit
+      await logAudit(userId, 'approve_recruiter', recruiterId, { notes })
+
+      return NextResponse.json({ success: true, data })
+    }
+
+    // POST /api/reject-recruiter - Reject a recruiter
+    if (path === '/reject-recruiter') {
+      const { recruiterId, reason, userId } = body
+
+      if (!recruiterId || !userId) {
+        return NextResponse.json(
+          { error: 'Missing required fields' },
+          { status: 400 }
+        )
+      }
+
+      // Update recruiter status
+      const { data, error: updateError } = await supabase
+        .from('recruiters')
+        .update({
+          approval_status: 'rejected',
+          account_status: 'inactive',
+          rejection_reason: reason
+        })
+        .eq('id', recruiterId)
+        .select()
+        .single()
+
+      if (updateError) {
+        console.error('Error rejecting recruiter:', updateError)
+        return NextResponse.json(
+          { error: updateError.message },
+          { status: 500 }
+        )
+      }
+
+      // Log audit
+      await logAudit(userId, 'reject_recruiter', recruiterId, { reason })
+
+      return NextResponse.json({ success: true, data })
+    }
+
+    // POST /api/approve-college - Approve a college
+    if (path === '/approve-college') {
+      const { collegeId, notes, userId } = body
+
+      if (!collegeId || !userId) {
+        return NextResponse.json(
+          { error: 'Missing required fields' },
+          { status: 400 }
+        )
+      }
+
+      // Update college status
+      const { data, error: updateError } = await supabase
+        .from('colleges')
+        .update({
+          approvalStatus: 'approved',
+          accountStatus: 'active',
+          approvedBy: userId,
+          approvedAt: new Date().toISOString()
+        })
+        .eq('id', collegeId)
+        .select()
+        .single()
+
+      if (updateError) {
+        console.error('Error approving college:', updateError)
+        return NextResponse.json(
+          { error: updateError.message },
+          { status: 500 }
+        )
+      }
+
+      // Log audit
+      await logAudit(userId, 'approve_college', collegeId, { notes })
+
+      return NextResponse.json({ success: true, data })
+    }
+
+    // POST /api/reject-college - Reject a college
+    if (path === '/reject-college') {
+      const { collegeId, reason, userId } = body
+
+      if (!collegeId || !userId) {
+        return NextResponse.json(
+          { error: 'Missing required fields' },
+          { status: 400 }
+        )
+      }
+
+      // Update college status
+      const { data, error: updateError } = await supabase
+        .from('colleges')
+        .update({
+          approvalStatus: 'rejected',
+          accountStatus: 'inactive',
+          rejectionReason: reason
+        })
+        .eq('id', collegeId)
+        .select()
+        .single()
+
+      if (updateError) {
+        console.error('Error rejecting college:', updateError)
+        return NextResponse.json(
+          { error: updateError.message },
+          { status: 500 }
+        )
+      }
+
+      // Log audit
+      await logAudit(userId, 'reject_college', collegeId, { reason })
+
+      return NextResponse.json({ success: true, data })
+    }
+
+    // POST /api/approve-student - Approve a student
+    if (path === '/approve-student') {
+      const { studentId, notes, userId } = body
+
+      if (!studentId || !userId) {
+        return NextResponse.json(
+          { error: 'Missing required fields' },
+          { status: 400 }
+        )
+      }
+
+      // Update student status
+      const { data, error: updateError } = await supabase
+        .from('students')
+        .update({
+          approval_status: 'approved'
+        })
+        .eq('id', studentId)
+        .select()
+        .single()
+
+      if (updateError) {
+        console.error('Error approving student:', updateError)
+        return NextResponse.json(
+          { error: updateError.message },
+          { status: 500 }
+        )
+      }
+
+      // Log audit
+      await logAudit(userId, 'approve_student', studentId, { notes })
+
+      return NextResponse.json({ success: true, data })
+    }
+
+    // POST /api/reject-student - Reject a student
+    if (path === '/reject-student') {
+      const { studentId, reason, userId } = body
+
+      if (!studentId || !userId) {
+        return NextResponse.json(
+          { error: 'Missing required fields' },
+          { status: 400 }
+        )
+      }
+
+      // Update student status
+      const { data, error: updateError } = await supabase
+        .from('students')
+        .update({
+          approval_status: 'rejected',
+          rejection_reason: reason
+        })
+        .eq('id', studentId)
+        .select()
+        .single()
+
+      if (updateError) {
+        console.error('Error rejecting student:', updateError)
+        return NextResponse.json(
+          { error: updateError.message },
+          { status: 500 }
+        )
+      }
+
+      // Log audit
+      await logAudit(userId, 'reject_student', studentId, { reason })
+
+      return NextResponse.json({ success: true, data })
     }
 
     return NextResponse.json(

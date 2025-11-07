@@ -1,5 +1,5 @@
-import './globals.css'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
+import './globals.css'
 
 export const metadata = {
   title: 'Rareminds Control - Super Admin Dashboard',

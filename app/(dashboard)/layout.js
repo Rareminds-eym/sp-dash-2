@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils'
 import {
     BarChart3,
     Briefcase,
+    CheckCircle,
     ChevronRight,
     Download,
     FileText,
@@ -45,6 +46,7 @@ const navigation = [
   { name: 'User Management', icon: Users, href: '/users' },
   { name: 'Recruiter Management', icon: Briefcase, href: '/recruiters' },
   { name: 'Skill Passports', icon: FileText, href: '/passports' },
+  { name: 'Approval Center', icon: CheckCircle, href: '/approvals' },
   { name: 'Reports & Analytics', icon: BarChart3, href: '/reports' },
   { name: 'Audit Logs', icon: History, href: '/audit-logs' },
   { name: 'Integrations', icon: Plug, href: '/integrations' },

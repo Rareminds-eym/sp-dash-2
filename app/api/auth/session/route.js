@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
+import { getUserPermissions } from '@/lib/rbac'
 
 export const runtime = 'edge'
 
@@ -74,6 +75,15 @@ export async function GET(request) {
 
     const userName = userData?.metadata?.name || user.user_metadata?.name || user.email.split('@')[0]
 
+    // Fetch user permissions based on role
+    let permissions = []
+    try {
+      permissions = await getUserPermissions(userData.id)
+    } catch (permError) {
+      console.error('Error fetching permissions:', permError)
+      // Continue without permissions if fetch fails
+    }
+
     return NextResponse.json({
       success: true,
       user: {
@@ -83,6 +93,9 @@ export async function GET(request) {
         role: userData.role,
         organizationId: userData.organizationId,
         organization: organizationData,
+        entity_type: userData.entity_type,
+        entity_id: userData.entity_id,
+        permissions: permissions,
       },
     })
   } catch (error) {
