@@ -97,6 +97,11 @@ export default function ApprovalsPage({ currentUser }) {
   // Ref for infinite scroll observer
   const loadMoreRef = useRef(null)
 
+  // Fetch counts for all tabs on initial load
+  useEffect(() => {
+    fetchAllCounts()
+  }, [])
+
   // Lazy loading: Fetch data only when tab is first opened
   useEffect(() => {
     if (!loadedTabs[activeTab]) {
@@ -106,6 +111,7 @@ export default function ApprovalsPage({ currentUser }) {
     // Listen for refresh events
     const handleRefresh = () => {
       fetchTabData(activeTab, true, true) // Force refresh
+      fetchAllCounts() // Also refresh counts
     }
     window.addEventListener('refreshPage', handleRefresh)
     
