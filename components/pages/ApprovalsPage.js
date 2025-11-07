@@ -550,7 +550,7 @@ export default function ApprovalsPage({ currentUser }) {
   const filteredColleges = filterEntities(colleges, 'college')
   const filteredStudents = filterEntities(students, 'student')
 
-  const totalPending = universities.length + recruiters.length + colleges.length + students.length
+  const totalPending = pagination.universities.total + pagination.recruiters.total + pagination.colleges.total + pagination.students.total
 
   const renderEntityCard = (entity, entityType) => {
     const isUniversity = entityType === 'university'
