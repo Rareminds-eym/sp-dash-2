@@ -142,6 +142,40 @@ export default function ApprovalsPage({ currentUser }) {
     }
   }, [activeTab, pagination, loading])
 
+  // Fetch counts for all entity types on initial load
+  const fetchAllCounts = async () => {
+    try {
+      const endpoints = [
+        { type: 'universities', url: '/api/universities?approval_status=pending&page=1&limit=1' },
+        { type: 'recruiters', url: '/api/recruiters?approval_status=pending&page=1&limit=1' },
+        { type: 'colleges', url: '/api/colleges?approval_status=pending&page=1&limit=1' },
+        { type: 'students', url: '/api/students?approval_status=pending&page=1&limit=1' }
+      ]
+
+      const responses = await Promise.all(
+        endpoints.map(endpoint => 
+          fetch(endpoint.url).then(res => res.json()).catch(() => ({ pagination: { total: 0 } }))
+        )
+      )
+
+      // Update pagination totals for all tabs
+      const newPagination = { ...pagination }
+      endpoints.forEach((endpoint, index) => {
+        const data = responses[index]
+        if (data.pagination) {
+          newPagination[endpoint.type] = {
+            ...newPagination[endpoint.type],
+            total: data.pagination.total || 0
+          }
+        }
+      })
+      
+      setPagination(newPagination)
+    } catch (error) {
+      console.error('Failed to fetch counts:', error)
+    }
+  }
+
   const fetchTabData = async (tabName, isInitialLoad = false, forceRefresh = false) => {
     if (isInitialLoad) {
       setLoading(true)
