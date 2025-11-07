@@ -933,16 +933,21 @@ export async function GET(request) {
       return NextResponse.json(organizations)
     }
 
-    // GET /api/students - List all students (OPTIMIZED)
+    // GET /api/students - List all students (OPTIMIZED WITH PAGINATION)
     if (path === '/students') {
       const url = new URL(request.url)
+      
+      // Pagination parameters
+      const page = parseInt(url.searchParams.get('page') || '1')
+      const limit = parseInt(url.searchParams.get('limit') || '20')
+      const offset = (page - 1) * limit
       
       // Filter parameters
       const approvalStatus = url.searchParams.get('approval_status') // pending, approved, rejected
       const searchTerm = url.searchParams.get('search')
       
-      // Build query
-      let query = supabase.from('students').select('*')
+      // Build query with count
+      let query = supabase.from('students').select('*', { count: 'exact' })
       
       // Apply filters
       if (approvalStatus) {
@@ -952,8 +957,10 @@ export async function GET(request) {
         query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
       }
       
-      const { data: students, error } = await query
+      // Apply sorting and pagination
+      const { data: students, error, count } = await query
         .order('createdAt', { ascending: false })
+        .range(offset, offset + limit - 1)
 
       if (error) {
         console.error('Error fetching students:', error)
