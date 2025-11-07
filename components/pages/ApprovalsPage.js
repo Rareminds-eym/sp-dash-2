@@ -1010,9 +1010,54 @@ export default function ApprovalsPage({ currentUser }) {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredColleges.map(college => renderEntityCard(college, 'college'))}
-            </div>
+            <>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {filteredColleges.map(college => renderEntityCard(college, 'college'))}
+              </div>
+              
+              {/* Infinite scroll trigger and Load More button */}
+              {pagination.colleges.hasMore && (
+                <div className="mt-6 flex flex-col items-center gap-4">
+                  {pagination.colleges.loadingMore && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span>Loading more colleges...</span>
+                    </div>
+                  )}
+                  
+                  {/* Intersection observer target */}
+                  <div ref={loadMoreRef} className="h-4" />
+                  
+                  {/* Manual Load More button */}
+                  <Button
+                    variant="outline"
+                    onClick={loadMoreEntities}
+                    disabled={pagination.colleges.loadingMore}
+                    className="w-full max-w-md"
+                  >
+                    {pagination.colleges.loadingMore ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        Load More Colleges
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          ({colleges.length} of {pagination.colleges.total})
+                        </span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+              
+              {!pagination.colleges.hasMore && colleges.length > 0 && (
+                <div className="mt-6 text-center text-sm text-muted-foreground">
+                  All {pagination.colleges.total} colleges loaded
+                </div>
+              )}
+            </>
           )}
         </TabsContent>
 
