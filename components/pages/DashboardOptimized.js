@@ -1,10 +1,9 @@
 "use client";
 
-import { Card, CardContent } from "@/components/ui/card";
-import { Sparkles } from "lucide-react";
-import { useEffect, useState, lazy, Suspense } from "react";
-import { ChartSkeleton, KPICardSkeleton, VerificationListSkeleton } from "@/components/ui/chart-skeleton";
 import { DashboardKPIs } from "@/components/sections/DashboardKPIs";
+import { ChartSkeleton, KPICardSkeleton, VerificationListSkeleton } from "@/components/ui/chart-skeleton";
+import { Sparkles } from "lucide-react";
+import { lazy, Suspense, useEffect, useState } from "react";
 
 // Lazy load heavy chart components (Phase 2)
 const EmployabilityChart = lazy(() =>
