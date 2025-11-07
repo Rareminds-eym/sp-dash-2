@@ -54,8 +54,32 @@ export default function ApprovalsPage({ currentUser }) {
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('universities')
-  const [search, setSearch] = useState('')
-  const [filters, setFilters] = useState({
+  
+  // Separate search and filter states for each tab
+  const [universitySearch, setUniversitySearch] = useState('')
+  const [recruiterSearch, setRecruiterSearch] = useState('')
+  const [collegeSearch, setCollegeSearch] = useState('')
+  const [studentSearch, setStudentSearch] = useState('')
+  
+  const [universityFilters, setUniversityFilters] = useState({
+    state: 'all',
+    dateFrom: '',
+    dateTo: ''
+  })
+  
+  const [recruiterFilters, setRecruiterFilters] = useState({
+    state: 'all',
+    dateFrom: '',
+    dateTo: ''
+  })
+  
+  const [collegeFilters, setCollegeFilters] = useState({
+    state: 'all',
+    dateFrom: '',
+    dateTo: ''
+  })
+  
+  const [studentFilters, setStudentFilters] = useState({
     state: 'all',
     dateFrom: '',
     dateTo: '',
@@ -208,7 +232,7 @@ export default function ApprovalsPage({ currentUser }) {
       
       if (response.ok) {
         const newData = data.data || []
-        const paginationInfo = data.pagination || {}
+        const paginationInfo = data.pagination || []
         
         // Update entity data based on tab
         if (forceRefresh) {
@@ -313,7 +337,7 @@ export default function ApprovalsPage({ currentUser }) {
       
       if (response.ok) {
         const newData = data.data || []
-        const paginationInfo = data.pagination || {}
+        const paginationInfo = data.pagination || []
         
         // Append new data to existing data
         switch(currentTab) {
@@ -507,7 +531,7 @@ export default function ApprovalsPage({ currentUser }) {
   }
 
   // Filter functions for each entity type
-  const filterEntities = (entities, entityType) => {
+  const filterEntities = (entities, entityType, search, filters) => {
     return entities.filter(entity => {
       // Search filter
       if (search) {
@@ -585,10 +609,10 @@ export default function ApprovalsPage({ currentUser }) {
     })
   }
 
-  const filteredUniversities = filterEntities(universities, 'university')
-  const filteredRecruiters = filterEntities(recruiters, 'recruiter')
-  const filteredColleges = filterEntities(colleges, 'college')
-  const filteredStudents = filterEntities(students, 'student')
+  const filteredUniversities = filterEntities(universities, 'university', universitySearch, universityFilters)
+  const filteredRecruiters = filterEntities(recruiters, 'recruiter', recruiterSearch, recruiterFilters)
+  const filteredColleges = filterEntities(colleges, 'college', collegeSearch, collegeFilters)
+  const filteredStudents = filterEntities(students, 'student', studentSearch, studentFilters)
 
   const totalPending = pagination.universities.total + pagination.recruiters.total + pagination.colleges.total + pagination.students.total
 
@@ -716,9 +740,8 @@ export default function ApprovalsPage({ currentUser }) {
   }
 
   // Get unique states for filter dropdown
-  const getUniqueStates = () => {
-    const allEntities = [...universities, ...recruiters, ...colleges, ...students]
-    const states = [...new Set(allEntities.map(entity => entity.state).filter(Boolean))]
+  const getUniqueStates = (entities) => {
+    const states = [...new Set(entities.map(entity => entity.state).filter(Boolean))]
     return states.sort()
   }
 
@@ -736,115 +759,6 @@ export default function ApprovalsPage({ currentUser }) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
-            Approval Center
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Review and approve pending registrations
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={fetchPendingEntities}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-          <Badge 
-            variant="secondary" 
-            className="px-4 py-2 text-base bg-gradient-to-r from-orange-500/10 to-red-500/10 border-orange-500/20 dark:border-orange-500/30"
-          >
-            {totalPending} Pending
-          </Badge>
-        </div>
-      </div>
-
-      {/* Search and Filters */}
-      <Card className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50">
-        <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder={`Search ${activeTab} by name, email, or location...`}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 bg-white dark:bg-slate-900"
-              />
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              <Select value={filters.state} onValueChange={(value) => setFilters({...filters, state: value})}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="All States" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All States</SelectItem>
-                  {getUniqueStates().map(state => (
-                    <SelectItem key={state} value={state}>{state}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {activeTab === 'students' && (
-                <>
-                  <Select value={filters.college || 'all'} onValueChange={(value) => setFilters({...filters, college: value})}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="All Colleges" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Colleges</SelectItem>
-                      {getUniqueColleges().map(college => (
-                        <SelectItem key={college} value={college}>{college}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select value={filters.branch || 'all'} onValueChange={(value) => setFilters({...filters, branch: value})}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="All Branches" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Branches</SelectItem>
-                      {getUniqueBranches().map(branch => (
-                        <SelectItem key={branch} value={branch}>{branch}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </>
-              )}
-              <div className="flex gap-2">
-                <Input
-                  type="date"
-                  value={filters.dateFrom}
-                  onChange={(e) => setFilters({...filters, dateFrom: e.target.value})}
-                  placeholder="From"
-                  className="w-[140px] bg-white dark:bg-slate-900"
-                />
-                <Input
-                  type="date"
-                  value={filters.dateTo}
-                  onChange={(e) => setFilters({...filters, dateTo: e.target.value})}
-                  placeholder="To"
-                  className="w-[140px] bg-white dark:bg-slate-900"
-                />
-              </div>
-              <Button 
-                variant="outline" 
-                onClick={() => setFilters({state: 'all', dateFrom: '', dateTo: '', college: 'all', branch: 'all'})}
-                className="flex items-center gap-2"
-              >
-                <Filter className="h-4 w-4" />
-                Clear Filters
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -869,6 +783,61 @@ export default function ApprovalsPage({ currentUser }) {
 
         {/* Universities Tab */}
         <TabsContent value="universities" className="mt-6">
+          {/* Search and Filters for Universities */}
+          <Card className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50 mb-6">
+            <CardContent className="pt-6">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Search universities by name, email, or location..."
+                    value={universitySearch}
+                    onChange={(e) => setUniversitySearch(e.target.value)}
+                    className="pl-10 bg-white dark:bg-slate-900"
+                  />
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <Select value={universityFilters.state} onValueChange={(value) => setUniversityFilters({...universityFilters, state: value})}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="All States" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All States</SelectItem>
+                      {getUniqueStates(universities).map(state => (
+                        <SelectItem key={state} value={state}>{state}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex gap-2">
+                    <Input
+                      type="date"
+                      value={universityFilters.dateFrom}
+                      onChange={(e) => setUniversityFilters({...universityFilters, dateFrom: e.target.value})}
+                      placeholder="From"
+                      className="w-[140px] bg-white dark:bg-slate-900"
+                    />
+                    <Input
+                      type="date"
+                      value={universityFilters.dateTo}
+                      onChange={(e) => setUniversityFilters({...universityFilters, dateTo: e.target.value})}
+                      placeholder="To"
+                      className="w-[140px] bg-white dark:bg-slate-900"
+                    />
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setUniversityFilters({state: 'all', dateFrom: '', dateTo: ''})}
+                    className="flex items-center gap-2"
+                  >
+                    <Filter className="h-4 w-4" />
+                    Clear Filters
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <RefreshCw className="h-8 w-8 animate-spin text-blue-500" />
@@ -879,9 +848,9 @@ export default function ApprovalsPage({ currentUser }) {
                 <CheckCircle2 className="h-16 w-16 mx-auto text-green-500 mb-4" />
                 <h3 className="text-xl font-semibold mb-2">All Clear!</h3>
                 <p className="text-muted-foreground">
-                  {search || filters.state !== 'all' ? 'No universities match your search criteria' : 'No pending university approvals at the moment'}
+                  {universitySearch || universityFilters.state !== 'all' ? 'No universities match your search criteria' : 'No pending university approvals at the moment'}
                 </p>
-                {!search && filters.state === 'all' && (
+                {!universitySearch && universityFilters.state === 'all' && (
                   <Button 
                     variant="outline" 
                     className="mt-4" 
@@ -947,6 +916,61 @@ export default function ApprovalsPage({ currentUser }) {
 
         {/* Recruiters Tab */}
         <TabsContent value="recruiters" className="mt-6">
+          {/* Search and Filters for Recruiters */}
+          <Card className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50 mb-6">
+            <CardContent className="pt-6">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Search recruiters by name, email, or location..."
+                    value={recruiterSearch}
+                    onChange={(e) => setRecruiterSearch(e.target.value)}
+                    className="pl-10 bg-white dark:bg-slate-900"
+                  />
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <Select value={recruiterFilters.state} onValueChange={(value) => setRecruiterFilters({...recruiterFilters, state: value})}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="All States" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All States</SelectItem>
+                      {getUniqueStates(recruiters).map(state => (
+                        <SelectItem key={state} value={state}>{state}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex gap-2">
+                    <Input
+                      type="date"
+                      value={recruiterFilters.dateFrom}
+                      onChange={(e) => setRecruiterFilters({...recruiterFilters, dateFrom: e.target.value})}
+                      placeholder="From"
+                      className="w-[140px] bg-white dark:bg-slate-900"
+                    />
+                    <Input
+                      type="date"
+                      value={recruiterFilters.dateTo}
+                      onChange={(e) => setRecruiterFilters({...recruiterFilters, dateTo: e.target.value})}
+                      placeholder="To"
+                      className="w-[140px] bg-white dark:bg-slate-900"
+                    />
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setRecruiterFilters({state: 'all', dateFrom: '', dateTo: ''})}
+                    className="flex items-center gap-2"
+                  >
+                    <Filter className="h-4 w-4" />
+                    Clear Filters
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <RefreshCw className="h-8 w-8 animate-spin text-purple-500" />
@@ -957,9 +981,9 @@ export default function ApprovalsPage({ currentUser }) {
                 <CheckCircle2 className="h-16 w-16 mx-auto text-green-500 mb-4" />
                 <h3 className="text-xl font-semibold mb-2">All Clear!</h3>
                 <p className="text-muted-foreground">
-                  {search || filters.state !== 'all' ? 'No recruiters match your search criteria' : 'No pending recruiter approvals at the moment'}
+                  {recruiterSearch || recruiterFilters.state !== 'all' ? 'No recruiters match your search criteria' : 'No pending recruiter approvals at the moment'}
                 </p>
-                {!search && filters.state === 'all' && (
+                {!recruiterSearch && recruiterFilters.state === 'all' && (
                   <Button 
                     variant="outline" 
                     className="mt-4" 
@@ -1025,6 +1049,61 @@ export default function ApprovalsPage({ currentUser }) {
 
         {/* Colleges Tab */}
         <TabsContent value="colleges" className="mt-6">
+          {/* Search and Filters for Colleges */}
+          <Card className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50 mb-6">
+            <CardContent className="pt-6">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Search colleges by name, email, or location..."
+                    value={collegeSearch}
+                    onChange={(e) => setCollegeSearch(e.target.value)}
+                    className="pl-10 bg-white dark:bg-slate-900"
+                  />
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <Select value={collegeFilters.state} onValueChange={(value) => setCollegeFilters({...collegeFilters, state: value})}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="All States" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All States</SelectItem>
+                      {getUniqueStates(colleges).map(state => (
+                        <SelectItem key={state} value={state}>{state}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex gap-2">
+                    <Input
+                      type="date"
+                      value={collegeFilters.dateFrom}
+                      onChange={(e) => setCollegeFilters({...collegeFilters, dateFrom: e.target.value})}
+                      placeholder="From"
+                      className="w-[140px] bg-white dark:bg-slate-900"
+                    />
+                    <Input
+                      type="date"
+                      value={collegeFilters.dateTo}
+                      onChange={(e) => setCollegeFilters({...collegeFilters, dateTo: e.target.value})}
+                      placeholder="To"
+                      className="w-[140px] bg-white dark:bg-slate-900"
+                    />
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setCollegeFilters({state: 'all', dateFrom: '', dateTo: ''})}
+                    className="flex items-center gap-2"
+                  >
+                    <Filter className="h-4 w-4" />
+                    Clear Filters
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <RefreshCw className="h-8 w-8 animate-spin text-green-500" />
@@ -1035,9 +1114,9 @@ export default function ApprovalsPage({ currentUser }) {
                 <CheckCircle2 className="h-16 w-16 mx-auto text-green-500 mb-4" />
                 <h3 className="text-xl font-semibold mb-2">All Clear!</h3>
                 <p className="text-muted-foreground">
-                  {search || filters.state !== 'all' ? 'No colleges match your search criteria' : 'No pending college approvals at the moment'}
+                  {collegeSearch || collegeFilters.state !== 'all' ? 'No colleges match your search criteria' : 'No pending college approvals at the moment'}
                 </p>
-                {!search && filters.state === 'all' && (
+                {!collegeSearch && collegeFilters.state === 'all' && (
                   <Button 
                     variant="outline" 
                     className="mt-4" 
@@ -1103,6 +1182,83 @@ export default function ApprovalsPage({ currentUser }) {
 
         {/* Students Tab */}
         <TabsContent value="students" className="mt-6">
+          {/* Search and Filters for Students */}
+          <Card className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50 mb-6">
+            <CardContent className="pt-6">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Search students by name, email, university, or college..."
+                    value={studentSearch}
+                    onChange={(e) => setStudentSearch(e.target.value)}
+                    className="pl-10 bg-white dark:bg-slate-900"
+                  />
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <Select value={studentFilters.state} onValueChange={(value) => setStudentFilters({...studentFilters, state: value})}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="All States" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All States</SelectItem>
+                      {getUniqueStates(students).map(state => (
+                        <SelectItem key={state} value={state}>{state}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={studentFilters.college || 'all'} onValueChange={(value) => setStudentFilters({...studentFilters, college: value})}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="All Colleges" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Colleges</SelectItem>
+                      {getUniqueColleges().map(college => (
+                        <SelectItem key={college} value={college}>{college}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={studentFilters.branch || 'all'} onValueChange={(value) => setStudentFilters({...studentFilters, branch: value})}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="All Branches" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Branches</SelectItem>
+                      {getUniqueBranches().map(branch => (
+                        <SelectItem key={branch} value={branch}>{branch}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex gap-2">
+                    <Input
+                      type="date"
+                      value={studentFilters.dateFrom}
+                      onChange={(e) => setStudentFilters({...studentFilters, dateFrom: e.target.value})}
+                      placeholder="From"
+                      className="w-[140px] bg-white dark:bg-slate-900"
+                    />
+                    <Input
+                      type="date"
+                      value={studentFilters.dateTo}
+                      onChange={(e) => setStudentFilters({...studentFilters, dateTo: e.target.value})}
+                      placeholder="To"
+                      className="w-[140px] bg-white dark:bg-slate-900"
+                    />
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setStudentFilters({state: 'all', dateFrom: '', dateTo: '', college: 'all', branch: 'all'})}
+                    className="flex items-center gap-2"
+                  >
+                    <Filter className="h-4 w-4" />
+                    Clear Filters
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <RefreshCw className="h-8 w-8 animate-spin text-orange-500" />
@@ -1113,9 +1269,9 @@ export default function ApprovalsPage({ currentUser }) {
                 <CheckCircle2 className="h-16 w-16 mx-auto text-green-500 mb-4" />
                 <h3 className="text-xl font-semibold mb-2">All Clear!</h3>
                 <p className="text-muted-foreground">
-                  {search || filters.state !== 'all' || filters.college !== 'all' || filters.branch !== 'all' ? 'No students match your search criteria' : 'No pending student approvals at the moment'}
+                  {studentSearch || studentFilters.state !== 'all' || studentFilters.college !== 'all' || studentFilters.branch !== 'all' ? 'No students match your search criteria' : 'No pending student approvals at the moment'}
                 </p>
-                {!search && filters.state === 'all' && filters.college === 'all' && filters.branch === 'all' && (
+                {!studentSearch && studentFilters.state === 'all' && studentFilters.college === 'all' && studentFilters.branch === 'all' && (
                   <Button 
                     variant="outline" 
                     className="mt-4" 
