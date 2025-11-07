@@ -1034,10 +1034,10 @@ export async function GET(request) {
       const response = NextResponse.json({
         data: normalizedStudents || [],
         pagination: {
-          page: 1,
-          limit: normalizedStudents?.length || 0,
-          total: normalizedStudents?.length || 0,
-          totalPages: 1
+          page,
+          limit,
+          total: count || 0,
+          totalPages: Math.ceil((count || 0) / limit)
         }
       })
       
