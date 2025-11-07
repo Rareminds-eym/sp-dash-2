@@ -811,19 +811,19 @@ export default function ApprovalsPage({ currentUser }) {
         <TabsList className="grid w-full grid-cols-4 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border border-white/20 dark:border-slate-700/50">
           <TabsTrigger value="universities" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
             <Building2 className="h-4 w-4 mr-2" />
-            Universities ({universities.length})
+            Universities ({pagination.universities.total})
           </TabsTrigger>
           <TabsTrigger value="recruiters" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
             <Briefcase className="h-4 w-4 mr-2" />
-            Recruiters ({recruiters.length})
+            Recruiters ({pagination.recruiters.total})
           </TabsTrigger>
           <TabsTrigger value="colleges" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
             <School className="h-4 w-4 mr-2" />
-            Colleges ({colleges.length})
+            Colleges ({pagination.colleges.total})
           </TabsTrigger>
           <TabsTrigger value="students" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
             <User className="h-4 w-4 mr-2" />
-            Students ({students.length})
+            Students ({pagination.students.total})
           </TabsTrigger>
         </TabsList>
 
