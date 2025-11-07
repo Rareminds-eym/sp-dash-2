@@ -1,5 +1,5 @@
-import ReportsPage from '@/components/pages/ReportsPage'
+import ReportsPageOptimized from '@/components/pages/ReportsPageOptimized'
 
 export default function Reports() {
-  return <ReportsPage />
+  return <ReportsPageOptimized />
 }
