@@ -97,52 +97,230 @@ export default function ApprovalsPage({ currentUser }) {
   // Ref for infinite scroll observer
   const loadMoreRef = useRef(null)
 
+  // Lazy loading: Fetch data only when tab is first opened
   useEffect(() => {
-    fetchPendingEntities()
+    if (!loadedTabs[activeTab]) {
+      fetchTabData(activeTab, true)
+    }
     
     // Listen for refresh events
     const handleRefresh = () => {
-      fetchPendingEntities()
+      fetchTabData(activeTab, true, true) // Force refresh
     }
     window.addEventListener('refreshPage', handleRefresh)
     
     return () => {
       window.removeEventListener('refreshPage', handleRefresh)
     }
-  }, [])
+  }, [activeTab])
 
-  const fetchPendingEntities = async () => {
-    setLoading(true)
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && pagination[activeTab].hasMore && !pagination[activeTab].loadingMore && !loading) {
+          loadMoreEntities()
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current)
+    }
+
+    return () => {
+      if (loadMoreRef.current) {
+        observer.unobserve(loadMoreRef.current)
+      }
+    }
+  }, [activeTab, pagination, loading])
+
+  const fetchTabData = async (tabName, isInitialLoad = false, forceRefresh = false) => {
+    if (isInitialLoad) {
+      setLoading(true)
+    }
+    
+    const limit = 20 // Items per page
+    const page = forceRefresh ? 1 : pagination[tabName].page
+    
     try {
-      // Fetch pending universities
-      const univResponse = await fetch('/api/universities?approval_status=pending')
-      const univData = await univResponse.json()
-      setUniversities(univData.data || [])
+      let endpoint = ''
+      let response, data
       
-      // Fetch pending recruiters
-      const recResponse = await fetch('/api/recruiters?approval_status=pending&page=1&limit=1000')
-      const recData = await recResponse.json()
-      setRecruiters(recData.data || [])
+      switch(tabName) {
+        case 'universities':
+          endpoint = `/api/universities?approval_status=pending&page=${page}&limit=${limit}`
+          break
+        case 'recruiters':
+          endpoint = `/api/recruiters?approval_status=pending&page=${page}&limit=${limit}`
+          break
+        case 'colleges':
+          endpoint = `/api/colleges?approval_status=pending&page=${page}&limit=${limit}`
+          break
+        case 'students':
+          endpoint = `/api/students?approval_status=pending&page=${page}&limit=${limit}`
+          break
+      }
       
-      // Fetch pending colleges (standalone)
-      const collegeResponse = await fetch('/api/colleges?approval_status=pending')
-      const collegeData = await collegeResponse.json()
-      setColleges(collegeData.data || [])
+      response = await fetch(endpoint)
+      data = await response.json()
       
-      // Fetch pending students
-      const studentResponse = await fetch('/api/students?approval_status=pending')
-      const studentData = await studentResponse.json()
-      setStudents(studentData.data || [])
+      if (response.ok) {
+        const newData = data.data || []
+        const paginationInfo = data.pagination || {}
+        
+        // Update entity data based on tab
+        if (forceRefresh) {
+          // Replace data on refresh
+          switch(tabName) {
+            case 'universities':
+              setUniversities(newData)
+              break
+            case 'recruiters':
+              setRecruiters(newData)
+              break
+            case 'colleges':
+              setColleges(newData)
+              break
+            case 'students':
+              setStudents(newData)
+              break
+          }
+        } else {
+          // Set initial data
+          switch(tabName) {
+            case 'universities':
+              setUniversities(newData)
+              break
+            case 'recruiters':
+              setRecruiters(newData)
+              break
+            case 'colleges':
+              setColleges(newData)
+              break
+            case 'students':
+              setStudents(newData)
+              break
+          }
+        }
+        
+        // Mark tab as loaded
+        setLoadedTabs(prev => ({ ...prev, [tabName]: true }))
+        
+        // Update pagination info
+        setPagination(prev => ({
+          ...prev,
+          [tabName]: {
+            page: paginationInfo.page || 1,
+            hasMore: (paginationInfo.page || 1) < (paginationInfo.totalPages || 1),
+            loadingMore: false,
+            total: paginationInfo.total || 0
+          }
+        }))
+      }
     } catch (error) {
-      console.error('Failed to fetch pending entities:', error)
+      console.error(`Failed to fetch ${tabName}:`, error)
       toast({
         title: 'Error',
-        description: 'Failed to load pending approvals. Please try again later.',
+        description: `Failed to load ${tabName}. Please try again later.`,
         variant: 'destructive'
       })
     } finally {
-      setLoading(false)
+      if (isInitialLoad) {
+        setLoading(false)
+      }
     }
+  }
+
+  const loadMoreEntities = async () => {
+    const currentTab = activeTab
+    const currentPagination = pagination[currentTab]
+    
+    if (!currentPagination.hasMore || currentPagination.loadingMore) {
+      return
+    }
+    
+    // Set loading more state
+    setPagination(prev => ({
+      ...prev,
+      [currentTab]: { ...prev[currentTab], loadingMore: true }
+    }))
+    
+    const nextPage = currentPagination.page + 1
+    const limit = 20
+    
+    try {
+      let endpoint = ''
+      
+      switch(currentTab) {
+        case 'universities':
+          endpoint = `/api/universities?approval_status=pending&page=${nextPage}&limit=${limit}`
+          break
+        case 'recruiters':
+          endpoint = `/api/recruiters?approval_status=pending&page=${nextPage}&limit=${limit}`
+          break
+        case 'colleges':
+          endpoint = `/api/colleges?approval_status=pending&page=${nextPage}&limit=${limit}`
+          break
+        case 'students':
+          endpoint = `/api/students?approval_status=pending&page=${nextPage}&limit=${limit}`
+          break
+      }
+      
+      const response = await fetch(endpoint)
+      const data = await response.json()
+      
+      if (response.ok) {
+        const newData = data.data || []
+        const paginationInfo = data.pagination || {}
+        
+        // Append new data to existing data
+        switch(currentTab) {
+          case 'universities':
+            setUniversities(prev => [...prev, ...newData])
+            break
+          case 'recruiters':
+            setRecruiters(prev => [...prev, ...newData])
+            break
+          case 'colleges':
+            setColleges(prev => [...prev, ...newData])
+            break
+          case 'students':
+            setStudents(prev => [...prev, ...newData])
+            break
+        }
+        
+        // Update pagination info
+        setPagination(prev => ({
+          ...prev,
+          [currentTab]: {
+            page: nextPage,
+            hasMore: nextPage < (paginationInfo.totalPages || 1),
+            loadingMore: false,
+            total: paginationInfo.total || 0
+          }
+        }))
+      }
+    } catch (error) {
+      console.error(`Failed to load more ${currentTab}:`, error)
+      toast({
+        title: 'Error',
+        description: `Failed to load more ${currentTab}. Please try again.`,
+        variant: 'destructive'
+      })
+      
+      // Reset loading more state on error
+      setPagination(prev => ({
+        ...prev,
+        [currentTab]: { ...prev[currentTab], loadingMore: false }
+      }))
+    }
+  }
+
+  const fetchPendingEntities = () => {
+    // Reset and refresh current tab
+    fetchTabData(activeTab, true, true)
   }
 
   const handleApprove = async (entityType, entityId) => {
