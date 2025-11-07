@@ -643,7 +643,7 @@ export default function ApprovalsPage({ currentUser }) {
             {entity.phone && (
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Phone className="h-4 w-4" />
-                <span>{entity.phone}</span>
+                <span className="truncate">{entity.phone}</span>
               </div>
             )}
             {entity.state && (
