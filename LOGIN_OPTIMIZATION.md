@@ -245,7 +245,7 @@ Using `useTransition` for non-blocking updates:
    - Select "Empty Cache and Hard Reload"
 
 2. **Visit login page**
-   - Go to: https://suspense-dashboard.preview.emergentagent.com/login
+   - Go to: https://slim-cleanup.preview.emergentagent.com/login
    - Observe: **Instant skeleton appears** ✨
    - Watch: Smooth transition to login form
 
@@ -408,7 +408,7 @@ router.replace('/dashboard')  // Replaces current entry
 
 **Test it now and see the difference!** 🚀
 
-https://suspense-dashboard.preview.emergentagent.com/login
+https://slim-cleanup.preview.emergentagent.com/login
 
 ---
 

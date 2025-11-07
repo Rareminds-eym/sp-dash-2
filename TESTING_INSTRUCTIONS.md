@@ -3,7 +3,7 @@
 ## 🎯 Quick Test Guide
 
 ### Step 1: Access Your Application
-**URL:** https://suspense-dashboard.preview.emergentagent.com
+**URL:** https://slim-cleanup.preview.emergentagent.com
 
 ### Step 2: Login
 Use your credentials to access the dashboard

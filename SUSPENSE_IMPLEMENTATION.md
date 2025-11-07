@@ -102,7 +102,7 @@ User clicks navigation → [Instant loading skeleton] → Page appears smoothly
 
 ### Manual Testing
 
-1. **Navigate to your dashboard**: https://suspense-dashboard.preview.emergentagent.com
+1. **Navigate to your dashboard**: https://slim-cleanup.preview.emergentagent.com
 
 2. **Login** to access the dashboard
 
@@ -353,6 +353,6 @@ Just ask! The foundation is now in place for future enhancements.
 
 **Status:** ✅ **COMPLETE - READY FOR TESTING**
 
-**Deployed to:** https://suspense-dashboard.preview.emergentagent.com
+**Deployed to:** https://slim-cleanup.preview.emergentagent.com
 
 **Test it now and enjoy the smooth loading experience! 🚀**
