@@ -13,27 +13,6 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { useToast } from '@/hooks/use-toast'
-import {
-  CheckCircle2,
-  XCircle,
-  RefreshCw,
-  Search,
-  Building2,
-  Briefcase,
-  Mail,
-  Phone,
-  Globe,
-  MapPin,
-  Calendar,
-  Eye,
-  AlertTriangle,
-  Filter
-} from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Dialog,
   DialogContent,
@@ -41,13 +20,47 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Textarea } from '@/components/ui/textarea'
+import { useToast } from '@/hooks/use-toast'
+import {
+  AlertTriangle,
+  Book,
+  Briefcase,
+  Building2,
+  Calendar,
+  CheckCircle2,
+  Eye,
+  Filter,
+  Globe,
+  Mail,
+  MapPin,
+  Phone,
+  RefreshCw,
+  School,
+  Search,
+  User,
+  XCircle
+} from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 export default function ApprovalsPage({ currentUser }) {
   const [universities, setUniversities] = useState([])
   const [recruiters, setRecruiters] = useState([])
+  const [colleges, setColleges] = useState([])
+  const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('universities')
   const [search, setSearch] = useState('')
+  const [filters, setFilters] = useState({
+    state: 'all',
+    dateFrom: '',
+    dateTo: '',
+    college: 'all',
+    branch: 'all'
+  })
   const [actionDialog, setActionDialog] = useState({ 
     open: false, 
     entity: null, 
@@ -84,16 +97,26 @@ export default function ApprovalsPage({ currentUser }) {
       const univResponse = await fetch('/api/universities?approval_status=pending')
       const univData = await univResponse.json()
       setUniversities(univData.data || [])
-
+      
       // Fetch pending recruiters
       const recResponse = await fetch('/api/recruiters?approval_status=pending&page=1&limit=1000')
       const recData = await recResponse.json()
       setRecruiters(recData.data || [])
+      
+      // Fetch pending colleges (standalone)
+      const collegeResponse = await fetch('/api/colleges?approval_status=pending')
+      const collegeData = await collegeResponse.json()
+      setColleges(collegeData.data || [])
+      
+      // Fetch pending students
+      const studentResponse = await fetch('/api/students?approval_status=pending')
+      const studentData = await studentResponse.json()
+      setStudents(studentData.data || [])
     } catch (error) {
       console.error('Failed to fetch pending entities:', error)
       toast({
         title: 'Error',
-        description: 'Failed to load pending approvals',
+        description: 'Failed to load pending approvals. Please try again later.',
         variant: 'destructive'
       })
     } finally {
@@ -103,16 +126,36 @@ export default function ApprovalsPage({ currentUser }) {
 
   const handleApprove = async (entityType, entityId) => {
     try {
-      const endpoint = `/api/approve-${entityType}`
-      const bodyKey = `${entityType}Id`
+      let endpoint, bodyKey;
+      
+      switch(entityType) {
+        case 'university':
+          endpoint = '/api/approve-university'
+          bodyKey = 'universityId'
+          break
+        case 'recruiter':
+          endpoint = '/api/approve-recruiter'
+          bodyKey = 'recruiterId'
+          break
+        case 'college':
+          endpoint = '/api/approve-college'
+          bodyKey = 'collegeId'
+          break
+        case 'student':
+          endpoint = '/api/approve-student'
+          bodyKey = 'studentId'
+          break
+        default:
+          throw new Error('Unsupported entity type')
+      }
       
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           [bodyKey]: entityId,
-          userId: currentUser?.id,
-          notes: `Approved by ${currentUser?.email}`
+          userId: currentUser?.user?.id,
+          notes: `Approved by ${currentUser?.user?.name || currentUser?.user?.email}`
         })
       })
 
@@ -121,17 +164,17 @@ export default function ApprovalsPage({ currentUser }) {
       if (response.ok && data.success) {
         toast({
           title: 'Approved',
-          description: `${entityType === 'university' ? 'University' : 'Recruiter'} has been approved successfully`,
+          description: `${entityType === 'university' ? 'University' : entityType === 'recruiter' ? 'Recruiter' : entityType === 'college' ? 'College' : 'Student'} has been approved successfully`,
         })
         fetchPendingEntities()
       } else {
-        throw new Error(data.error || 'Approval failed')
+        throw new Error(data.error || data.message || 'Approval failed')
       }
     } catch (error) {
       console.error('Approval error:', error)
       toast({
         title: 'Error',
-        description: error.message || 'Failed to approve',
+        description: error.message || `Failed to approve ${entityType}. Please try again later.`,
         variant: 'destructive'
       })
     }
@@ -149,16 +192,37 @@ export default function ApprovalsPage({ currentUser }) {
     }
 
     try {
-      const endpoint = `/api/reject-${entityType}`
-      const bodyKey = `${entityType}Id`
+      let endpoint, bodyKey;
+      
+      switch(entityType) {
+        case 'university':
+          endpoint = '/api/reject-university'
+          bodyKey = 'universityId'
+          break
+        case 'recruiter':
+          endpoint = '/api/reject-recruiter'
+          bodyKey = 'recruiterId'
+          break
+        case 'college':
+          endpoint = '/api/reject-college'
+          bodyKey = 'collegeId'
+          break
+        case 'student':
+          endpoint = '/api/reject-student'
+          bodyKey = 'studentId'
+          break
+        default:
+          throw new Error('Unsupported entity type')
+      }
       
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           [bodyKey]: entityId,
-          userId: currentUser?.id,
-          reason: reason
+          userId: currentUser?.user?.id,
+          reason: reason,
+          notes: `Rejected by ${currentUser?.user?.name || currentUser?.user?.email}`
         })
       })
 
@@ -167,17 +231,17 @@ export default function ApprovalsPage({ currentUser }) {
       if (response.ok && data.success) {
         toast({
           title: 'Rejected',
-          description: `${entityType === 'university' ? 'University' : 'Recruiter'} has been rejected`,
+          description: `${entityType === 'university' ? 'University' : entityType === 'recruiter' ? 'Recruiter' : entityType === 'college' ? 'College' : 'Student'} has been rejected`,
         })
         fetchPendingEntities()
       } else {
-        throw new Error(data.error || 'Rejection failed')
+        throw new Error(data.error || data.message || 'Rejection failed')
       }
     } catch (error) {
       console.error('Rejection error:', error)
       toast({
         title: 'Error',
-        description: error.message || 'Failed to reject',
+        description: error.message || `Failed to reject ${entityType}. Please try again later.`,
         variant: 'destructive'
       })
     }
@@ -203,30 +267,98 @@ export default function ApprovalsPage({ currentUser }) {
     })
   }
 
-  const filteredUniversities = universities.filter(univ => {
-    if (!search) return true
-    const searchLower = search.toLowerCase()
-    return (
-      univ.name?.toLowerCase().includes(searchLower) ||
-      univ.email?.toLowerCase().includes(searchLower) ||
-      univ.state?.toLowerCase().includes(searchLower)
-    )
-  })
+  // Filter functions for each entity type
+  const filterEntities = (entities, entityType) => {
+    return entities.filter(entity => {
+      // Search filter
+      if (search) {
+        const searchLower = search.toLowerCase()
+        let matchesSearch = false
+        
+        switch(entityType) {
+          case 'university':
+            matchesSearch = (
+              entity.name?.toLowerCase().includes(searchLower) ||
+              entity.email?.toLowerCase().includes(searchLower) ||
+              entity.state?.toLowerCase().includes(searchLower) ||
+              entity.district?.toLowerCase().includes(searchLower)
+            )
+            break
+          case 'recruiter':
+            matchesSearch = (
+              entity.name?.toLowerCase().includes(searchLower) ||
+              entity.email?.toLowerCase().includes(searchLower) ||
+              entity.state?.toLowerCase().includes(searchLower) ||
+              entity.phone?.toLowerCase().includes(searchLower)
+            )
+            break
+          case 'college':
+            matchesSearch = (
+              entity.name?.toLowerCase().includes(searchLower) ||
+              entity.email?.toLowerCase().includes(searchLower) ||
+              entity.state?.toLowerCase().includes(searchLower) ||
+              entity.city?.toLowerCase().includes(searchLower) ||
+              entity.code?.toLowerCase().includes(searchLower)
+            )
+            break
+          case 'student':
+            const studentName = entity.profile?.name || entity.name || entity.users?.metadata?.name || ''
+            matchesSearch = (
+              studentName.toLowerCase().includes(searchLower) ||
+              entity.email?.toLowerCase().includes(searchLower) ||
+              entity.university?.name?.toLowerCase().includes(searchLower) ||
+              entity.college_school_name?.toLowerCase().includes(searchLower) ||
+              entity.branch_field?.toLowerCase().includes(searchLower)
+            )
+            break
+        }
+        
+        if (!matchesSearch) return false
+      }
+      
+      // State filter
+      if (filters.state !== 'all' && entity.state !== filters.state) {
+        return false
+      }
+      
+      // College filter for students
+      if (entityType === 'student' && filters.college && filters.college !== 'all' && 
+          entity.college_school_name !== filters.college) {
+        return false
+      }
+      
+      // Branch filter for students
+      if (entityType === 'student' && filters.branch && filters.branch !== 'all' && 
+          entity.branch_field !== filters.branch) {
+        return false
+      }
+      
+      // Date range filter
+      if (filters.dateFrom && new Date(entity.created_at) < new Date(filters.dateFrom)) {
+        return false
+      }
+      
+      if (filters.dateTo && new Date(entity.created_at) > new Date(filters.dateTo)) {
+        return false
+      }
+      
+      return true
+    })
+  }
 
-  const filteredRecruiters = recruiters.filter(rec => {
-    if (!search) return true
-    const searchLower = search.toLowerCase()
-    return (
-      rec.name?.toLowerCase().includes(searchLower) ||
-      rec.email?.toLowerCase().includes(searchLower) ||
-      rec.state?.toLowerCase().includes(searchLower)
-    )
-  })
+  const filteredUniversities = filterEntities(universities, 'university')
+  const filteredRecruiters = filterEntities(recruiters, 'recruiter')
+  const filteredColleges = filterEntities(colleges, 'college')
+  const filteredStudents = filterEntities(students, 'student')
 
-  const totalPending = universities.length + recruiters.length
+  const totalPending = universities.length + recruiters.length + colleges.length + students.length
 
   const renderEntityCard = (entity, entityType) => {
     const isUniversity = entityType === 'university'
+    const isRecruiter = entityType === 'recruiter'
+    const isCollege = entityType === 'college'
+    const isStudent = entityType === 'student'
+    
     return (
       <Card key={entity.id} className="hover:shadow-lg transition-all duration-300 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50">
         <CardHeader className="pb-3">
@@ -235,10 +367,16 @@ export default function ApprovalsPage({ currentUser }) {
               <div className="flex items-center gap-2 mb-2">
                 {isUniversity ? (
                   <Building2 className="h-5 w-5 text-blue-500" />
-                ) : (
+                ) : isRecruiter ? (
                   <Briefcase className="h-5 w-5 text-purple-500" />
+                ) : isCollege ? (
+                  <School className="h-5 w-5 text-green-500" />
+                ) : (
+                  <User className="h-5 w-5 text-orange-500" />
                 )}
-                <h3 className="text-lg font-bold truncate">{entity.name}</h3>
+                <h3 className="text-lg font-bold truncate">
+                  {isStudent ? (entity.profile?.name || entity.users?.metadata?.name || 'Unknown Student') : entity.name}
+                </h3>
               </div>
               <Badge variant="secondary" className="mb-2">
                 <AlertTriangle className="h-3 w-3 mr-1" />
@@ -257,10 +395,10 @@ export default function ApprovalsPage({ currentUser }) {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-            {entity.email && (
+            {(entity.email || (isStudent && entity.users?.email)) && (
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Mail className="h-4 w-4" />
-                <span className="truncate">{entity.email}</span>
+                <span className="truncate">{isStudent ? entity.users?.email : entity.email}</span>
               </div>
             )}
             {entity.phone && (
@@ -281,6 +419,30 @@ export default function ApprovalsPage({ currentUser }) {
                 <a href={entity.website} target="_blank" rel="noopener noreferrer" className="truncate hover:underline">
                   {entity.website}
                 </a>
+              </div>
+            )}
+            {isStudent && entity.university?.name && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Building2 className="h-4 w-4" />
+                <span className="truncate">{entity.university.name}</span>
+              </div>
+            )}
+            {isStudent && entity.college_school_name && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <School className="h-4 w-4" />
+                <span className="truncate">{entity.college_school_name}</span>
+              </div>
+            )}
+            {isStudent && entity.branch_field && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Book className="h-4 w-4" />
+                <span className="truncate">{entity.branch_field}</span>
+              </div>
+            )}
+            {isStudent && entity.roll_number && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <span className="font-medium">Roll #:</span>
+                <span className="truncate">{entity.roll_number}</span>
               </div>
             )}
           </div>
@@ -314,6 +476,25 @@ export default function ApprovalsPage({ currentUser }) {
     )
   }
 
+  // Get unique states for filter dropdown
+  const getUniqueStates = () => {
+    const allEntities = [...universities, ...recruiters, ...colleges, ...students]
+    const states = [...new Set(allEntities.map(entity => entity.state).filter(Boolean))]
+    return states.sort()
+  }
+
+  // Get unique colleges/schools for filter dropdown
+  const getUniqueColleges = () => {
+    const collegeNames = [...new Set(students.map(student => student.college_school_name).filter(Boolean))]
+    return collegeNames.sort()
+  }
+
+  // Get unique branches for filter dropdown
+  const getUniqueBranches = () => {
+    const branches = [...new Set(students.map(student => student.branch_field).filter(Boolean))]
+    return branches.sort()
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -327,6 +508,15 @@ export default function ApprovalsPage({ currentUser }) {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={fetchPendingEntities}
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
           <Badge 
             variant="secondary" 
             className="px-4 py-2 text-base bg-gradient-to-r from-orange-500/10 to-red-500/10 border-orange-500/20 dark:border-orange-500/30"
@@ -336,25 +526,90 @@ export default function ApprovalsPage({ currentUser }) {
         </div>
       </div>
 
-      {/* Search Bar */}
+      {/* Search and Filters */}
       <Card className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50">
         <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search by name, email, or location..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 bg-white dark:bg-slate-900"
-            />
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder={`Search ${activeTab} by name, email, or location...`}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10 bg-white dark:bg-slate-900"
+              />
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <Select value={filters.state} onValueChange={(value) => setFilters({...filters, state: value})}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="All States" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All States</SelectItem>
+                  {getUniqueStates().map(state => (
+                    <SelectItem key={state} value={state}>{state}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {activeTab === 'students' && (
+                <>
+                  <Select value={filters.college || 'all'} onValueChange={(value) => setFilters({...filters, college: value})}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="All Colleges" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Colleges</SelectItem>
+                      {getUniqueColleges().map(college => (
+                        <SelectItem key={college} value={college}>{college}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={filters.branch || 'all'} onValueChange={(value) => setFilters({...filters, branch: value})}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="All Branches" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Branches</SelectItem>
+                      {getUniqueBranches().map(branch => (
+                        <SelectItem key={branch} value={branch}>{branch}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
+              )}
+              <div className="flex gap-2">
+                <Input
+                  type="date"
+                  value={filters.dateFrom}
+                  onChange={(e) => setFilters({...filters, dateFrom: e.target.value})}
+                  placeholder="From"
+                  className="w-[140px] bg-white dark:bg-slate-900"
+                />
+                <Input
+                  type="date"
+                  value={filters.dateTo}
+                  onChange={(e) => setFilters({...filters, dateTo: e.target.value})}
+                  placeholder="To"
+                  className="w-[140px] bg-white dark:bg-slate-900"
+                />
+              </div>
+              <Button 
+                variant="outline" 
+                onClick={() => setFilters({state: 'all', dateFrom: '', dateTo: '', college: 'all', branch: 'all'})}
+                className="flex items-center gap-2"
+              >
+                <Filter className="h-4 w-4" />
+                Clear Filters
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border border-white/20 dark:border-slate-700/50">
+        <TabsList className="grid w-full grid-cols-4 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border border-white/20 dark:border-slate-700/50">
           <TabsTrigger value="universities" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
             <Building2 className="h-4 w-4 mr-2" />
             Universities ({universities.length})
@@ -362,6 +617,14 @@ export default function ApprovalsPage({ currentUser }) {
           <TabsTrigger value="recruiters" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
             <Briefcase className="h-4 w-4 mr-2" />
             Recruiters ({recruiters.length})
+          </TabsTrigger>
+          <TabsTrigger value="colleges" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
+            <School className="h-4 w-4 mr-2" />
+            Colleges ({colleges.length})
+          </TabsTrigger>
+          <TabsTrigger value="students" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
+            <User className="h-4 w-4 mr-2" />
+            Students ({students.length})
           </TabsTrigger>
         </TabsList>
 
@@ -377,8 +640,18 @@ export default function ApprovalsPage({ currentUser }) {
                 <CheckCircle2 className="h-16 w-16 mx-auto text-green-500 mb-4" />
                 <h3 className="text-xl font-semibold mb-2">All Clear!</h3>
                 <p className="text-muted-foreground">
-                  {search ? 'No universities match your search' : 'No pending university approvals at the moment'}
+                  {search || filters.state !== 'all' ? 'No universities match your search criteria' : 'No pending university approvals at the moment'}
                 </p>
+                {!search && filters.state === 'all' && (
+                  <Button 
+                    variant="outline" 
+                    className="mt-4" 
+                    onClick={fetchPendingEntities}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh Data
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ) : (
@@ -400,13 +673,89 @@ export default function ApprovalsPage({ currentUser }) {
                 <CheckCircle2 className="h-16 w-16 mx-auto text-green-500 mb-4" />
                 <h3 className="text-xl font-semibold mb-2">All Clear!</h3>
                 <p className="text-muted-foreground">
-                  {search ? 'No recruiters match your search' : 'No pending recruiter approvals at the moment'}
+                  {search || filters.state !== 'all' ? 'No recruiters match your search criteria' : 'No pending recruiter approvals at the moment'}
                 </p>
+                {!search && filters.state === 'all' && (
+                  <Button 
+                    variant="outline" 
+                    className="mt-4" 
+                    onClick={fetchPendingEntities}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh Data
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {filteredRecruiters.map(rec => renderEntityCard(rec, 'recruiter'))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Colleges Tab */}
+        <TabsContent value="colleges" className="mt-6">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="h-8 w-8 animate-spin text-green-500" />
+            </div>
+          ) : filteredColleges.length === 0 ? (
+            <Card className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50">
+              <CardContent className="text-center py-12">
+                <CheckCircle2 className="h-16 w-16 mx-auto text-green-500 mb-4" />
+                <h3 className="text-xl font-semibold mb-2">All Clear!</h3>
+                <p className="text-muted-foreground">
+                  {search || filters.state !== 'all' ? 'No colleges match your search criteria' : 'No pending college approvals at the moment'}
+                </p>
+                {!search && filters.state === 'all' && (
+                  <Button 
+                    variant="outline" 
+                    className="mt-4" 
+                    onClick={fetchPendingEntities}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh Data
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {filteredColleges.map(college => renderEntityCard(college, 'college'))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Students Tab */}
+        <TabsContent value="students" className="mt-6">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="h-8 w-8 animate-spin text-orange-500" />
+            </div>
+          ) : filteredStudents.length === 0 ? (
+            <Card className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50">
+              <CardContent className="text-center py-12">
+                <CheckCircle2 className="h-16 w-16 mx-auto text-green-500 mb-4" />
+                <h3 className="text-xl font-semibold mb-2">All Clear!</h3>
+                <p className="text-muted-foreground">
+                  {search || filters.state !== 'all' || filters.college !== 'all' || filters.branch !== 'all' ? 'No students match your search criteria' : 'No pending student approvals at the moment'}
+                </p>
+                {!search && filters.state === 'all' && filters.college === 'all' && filters.branch === 'all' && (
+                  <Button 
+                    variant="outline" 
+                    className="mt-4" 
+                    onClick={fetchPendingEntities}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh Data
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {filteredStudents.map(student => renderEntityCard(student, 'student'))}
             </div>
           )}
         </TabsContent>
@@ -417,30 +766,30 @@ export default function ApprovalsPage({ currentUser }) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {actionDialog.action === 'approve' ? 'Approve' : 'Reject'} {actionDialog.entityType === 'university' ? 'University' : 'Recruiter'}
+              {actionDialog.action === 'approve' ? 'Approve' : 'Reject'} {actionDialog.entityType === 'university' ? 'University' : actionDialog.entityType === 'recruiter' ? 'Recruiter' : actionDialog.entityType === 'college' ? 'College' : 'Student'}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {actionDialog.action === 'approve' ? (
                 <>
-                  Are you sure you want to approve <strong>{actionDialog.entity?.name}</strong>?
+                  Are you sure you want to approve <strong>{actionDialog.entityType === 'student' ? (actionDialog.entity?.profile?.name || actionDialog.entity?.users?.metadata?.name || 'Unknown Student') : actionDialog.entity?.name}</strong>?
                   <br />
                   This will activate their account and grant them access to the platform.
                 </>
               ) : (
-                <div className="space-y-3">
-                  <p>
-                    Are you sure you want to reject <strong>{actionDialog.entity?.name}</strong>?
-                  </p>
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">Rejection Reason *</label>
-                    <Textarea
-                      placeholder="Please provide a reason for rejection..."
-                      value={actionDialog.reason}
-                      onChange={(e) => setActionDialog({ ...actionDialog, reason: e.target.value })}
-                      className="min-h-[100px]"
-                    />
-                  </div>
-                </div>
+                <>
+                  <span>
+                    Are you sure you want to reject <strong>{actionDialog.entityType === 'student' ? (actionDialog.entity?.profile?.name || actionDialog.entity?.users?.metadata?.name || 'Unknown Student') : actionDialog.entity?.name}</strong>?
+                  </span>
+                  <br /><br />
+                  <label className="text-sm font-medium">Rejection Reason *</label>
+                  <br />
+                  <Textarea
+                    placeholder="Please provide a reason for rejection..."
+                    value={actionDialog.reason}
+                    onChange={(e) => setActionDialog({ ...actionDialog, reason: e.target.value })}
+                    className="min-h-[100px] w-full mt-1"
+                  />
+                </>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -469,10 +818,14 @@ export default function ApprovalsPage({ currentUser }) {
             <DialogTitle className="flex items-center gap-2">
               {detailsDialog.entityType === 'university' ? (
                 <Building2 className="h-5 w-5 text-blue-500" />
-              ) : (
+              ) : detailsDialog.entityType === 'recruiter' ? (
                 <Briefcase className="h-5 w-5 text-purple-500" />
+              ) : detailsDialog.entityType === 'college' ? (
+                <School className="h-5 w-5 text-green-500" />
+              ) : (
+                <User className="h-5 w-5 text-orange-500" />
               )}
-              {detailsDialog.entity?.name}
+              {detailsDialog.entityType === 'student' ? (detailsDialog.entity?.profile?.name || detailsDialog.entity?.users?.metadata?.name || 'Unknown Student') : detailsDialog.entity?.name}
             </DialogTitle>
             <DialogDescription>
               Detailed information about this {detailsDialog.entityType}
@@ -484,7 +837,7 @@ export default function ApprovalsPage({ currentUser }) {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Email</label>
-                  <p className="text-sm">{detailsDialog.entity.email || 'N/A'}</p>
+                  <p className="text-sm">{detailsDialog.entityType === 'student' ? detailsDialog.entity.users?.email : detailsDialog.entity.email || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Phone</label>
@@ -512,6 +865,30 @@ export default function ApprovalsPage({ currentUser }) {
                   <div className="col-span-2">
                     <label className="text-sm font-medium text-muted-foreground">Address</label>
                     <p className="text-sm">{detailsDialog.entity.address}</p>
+                  </div>
+                )}
+                {detailsDialog.entityType === 'student' && detailsDialog.entity.university?.name && (
+                  <div className="col-span-2">
+                    <label className="text-sm font-medium text-muted-foreground">University</label>
+                    <p className="text-sm">{detailsDialog.entity.university.name}</p>
+                  </div>
+                )}
+                {detailsDialog.entityType === 'student' && detailsDialog.entity.college_school_name && (
+                  <div className="col-span-2">
+                    <label className="text-sm font-medium text-muted-foreground">College/School</label>
+                    <p className="text-sm">{detailsDialog.entity.college_school_name}</p>
+                  </div>
+                )}
+                {detailsDialog.entityType === 'student' && detailsDialog.entity.branch_field && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Branch</label>
+                    <p className="text-sm">{detailsDialog.entity.branch_field}</p>
+                  </div>
+                )}
+                {detailsDialog.entityType === 'student' && detailsDialog.entity.roll_number && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Roll Number</label>
+                    <p className="text-sm">{detailsDialog.entity.roll_number}</p>
                   </div>
                 )}
                 <div>
