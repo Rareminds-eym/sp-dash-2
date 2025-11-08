@@ -9,9 +9,13 @@ import {
   GraduationCap,
   TrendingUp,
   Users,
+  Briefcase
 } from 'lucide-react'
 
-export function DashboardKPIs({ metrics }) {
+export function DashboardKPIs({ metrics, placementData }) {
+  // Extract job secured count from placement data
+  const jobSecuredCount = placementData?.conversionFunnel?.find(item => item.stage === 'Hired')?.count || 0;
+  
   const kpiCards = [
     {
       title: 'Active Recruiters',
@@ -51,6 +55,14 @@ export function DashboardKPIs({ metrics }) {
       icon: TrendingUp,
       color: 'bg-campaign-blue1',
       change: '+3%',
+      trend: 'up',
+    },
+    {
+      title: 'Job Secured',
+      value: jobSecuredCount,
+      icon: Briefcase,
+      color: 'bg-campaign-blue1',
+      change: '+5%',
       trend: 'up',
     },
   ]

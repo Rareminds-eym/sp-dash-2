@@ -2,8 +2,10 @@ import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { filterAndRankResults, fuzzyMatch } from '../../../lib/search-utils';
 import { supabase } from '../../../lib/supabase';
+import { supabaseAdmin } from '../../../lib/supabase-admin';
 
 export const runtime = 'edge';
+
 
 // Helper to add cache headers to response
 function addCacheHeaders(response, cacheType = 'private') {
@@ -81,22 +83,22 @@ export async function GET(request) {
         const activeUniversities = universities?.length || 0
 
         // Count active recruiters from recruiters table (only where isactive=true)
-        const { data: recruiters } = await supabase
+        const { data: recruiters } = await supabaseAdmin
           .from('recruiters')
           .select('id')
           .eq('isactive', true)
         
         const activeRecruiters = recruiters?.length || 0
 
-        // Count total students
-        const { data: students } = await supabase
+        // Count students
+        const { data: students } = await supabaseAdmin
           .from('students')
           .select('id')
         
         const registeredStudents = students?.length || 0
 
-        // Get all passports to calculate verification metrics
-        const { data: passports } = await supabase
+        // Get passports for verification metrics
+        const { data: passports } = await supabaseAdmin
           .from('skill_passports')
           .select('status')
         
@@ -2729,14 +2731,14 @@ export async function POST(request) {
     if (path === '/update-metrics') {
       try {
         // Count universities from universities table
-        const { data: universities } = await supabase
+        const { data: universities } = await supabaseAdmin
           .from('universities')
           .select('id')
         
         const activeUniversities = universities?.length || 0
 
         // Count active recruiters from recruiters table (only where isactive=true)
-        const { data: recruiters } = await supabase
+        const { data: recruiters } = await supabaseAdmin
           .from('recruiters')
           .select('id')
           .eq('isactive', true)
@@ -2744,14 +2746,14 @@ export async function POST(request) {
         const activeRecruiters = recruiters?.length || 0
 
         // Count students
-        const { data: students } = await supabase
+        const { data: students } = await supabaseAdmin
           .from('students')
           .select('id')
         
         const registeredStudents = students?.length || 0
 
         // Get passports for verification metrics
-        const { data: passports } = await supabase
+        const { data: passports } = await supabaseAdmin
           .from('skill_passports')
           .select('status')
         
@@ -2767,7 +2769,7 @@ export async function POST(request) {
         const today = new Date().toISOString().split('T')[0]
 
         // Check if a snapshot for today already exists
-        const { data: existingSnapshot } = await supabase
+        const { data: existingSnapshot } = await supabaseAdmin
           .from('metrics_snapshots')
           .select('id')
           .eq('snapshotDate', today)
@@ -2776,7 +2778,7 @@ export async function POST(request) {
         let result
         if (existingSnapshot) {
           // Update existing snapshot
-          const { error: updateError } = await supabase
+          const { error: updateError } = await supabaseAdmin
             .from('metrics_snapshots')
             .update({
               activeUniversities,
@@ -2791,7 +2793,7 @@ export async function POST(request) {
           result = { action: 'updated', snapshotDate: today }
         } else {
           // Insert new snapshot
-          const { error: insertError } = await supabase
+          const { error: insertError } = await supabaseAdmin
             .from('metrics_snapshots')
             .insert({
               id: uuidv4(),

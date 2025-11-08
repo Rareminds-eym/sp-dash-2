@@ -29,6 +29,7 @@ export default function DashboardOptimized({ user }) {
   const [trends, setTrends] = useState([]);
   const [stateData, setStateData] = useState([]);
   const [recentVerifications, setRecentVerifications] = useState([]);
+  const [placementData, setPlacementData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -38,19 +39,22 @@ export default function DashboardOptimized({ user }) {
   const fetchDashboardData = async () => {
     try {
       // Fetch critical data in parallel
-      const [metricsRes, trendsRes, stateRes] = await Promise.all([
+      const [metricsRes, trendsRes, stateRes, placementRes] = await Promise.all([
         fetch("/api/metrics"),
         fetch("/api/analytics/trends"),
         fetch("/api/analytics/state-wise"),
+        fetch("/api/analytics/placement-conversion")
       ]);
 
       const metricsData = await metricsRes.json();
       const trendsData = await trendsRes.json();
       const stateDataRes = await stateRes.json();
+      const placementDataRes = await placementRes.json();
 
       setMetrics(metricsData);
       setTrends(trendsData);
       setStateData(stateDataRes);
+      setPlacementData(placementDataRes);
       setLoading(false);
 
       // Check if we need to update the snapshot in background
@@ -104,10 +108,10 @@ export default function DashboardOptimized({ user }) {
       {/* KPI Cards - Load immediately (no lazy loading for above-the-fold content) */}
       <Suspense fallback={
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3, 4, 5].map((i) => <KPICardSkeleton key={i} />)}
+          {[1, 2, 3, 4, 5, 6].map((i) => <KPICardSkeleton key={i} />)}
         </div>
       }>
-        <DashboardKPIs metrics={metrics} />
+        <DashboardKPIs metrics={metrics} placementData={placementData} />
       </Suspense>
 
       {/* Charts - Lazy loaded (Phase 2) */}
