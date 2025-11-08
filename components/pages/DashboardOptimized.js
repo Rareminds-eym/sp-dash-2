@@ -5,6 +5,15 @@ import { ChartSkeleton, KPICardSkeleton, VerificationListSkeleton } from "@/comp
 import { Sparkles } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
 
+// Shimmer effect component
+function ShimmerEffect({ className = "" }) {
+  return (
+    <div className={`relative overflow-hidden ${className}`}>
+      <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 dark:via-white/10 to-transparent"></div>
+    </div>
+  )
+}
+
 // Lazy load heavy chart components (Phase 2)
 const EmployabilityChart = lazy(() =>
   import("@/components/charts/DashboardCharts").then((mod) => ({
