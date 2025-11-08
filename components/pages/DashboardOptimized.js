@@ -113,9 +113,10 @@ export default function DashboardOptimized({ user }) {
   if (loading) {
     return (
       <div className="space-y-8">
-        {/* Welcome Section Skeleton */}
+        {/* Welcome Section Skeleton with Shimmer */}
         <div className="relative overflow-hidden bg-gradient-to-br from-campaign-blue1 via-campaign-blue2 to-campaign-red rounded-3xl p-8 text-white shadow-2xl shadow-campaign-blue1/25">
           <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent"></div>
+          <ShimmerEffect className="absolute inset-0" />
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-16 translate-x-16 animate-pulse"></div>
           <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-12 -translate-x-12 animate-pulse"></div>
           <div className="relative z-10">
@@ -124,8 +125,12 @@ export default function DashboardOptimized({ user }) {
                 <Sparkles className="h-6 w-6 text-white animate-pulse" />
               </div>
               <div className="space-y-3">
-                <div className="h-8 w-72 bg-white/20 rounded-lg animate-pulse"></div>
-                <div className="h-5 w-96 bg-white/10 rounded-lg animate-pulse"></div>
+                <div className="relative h-8 w-72 bg-white/20 rounded-lg overflow-hidden">
+                  <ShimmerEffect />
+                </div>
+                <div className="relative h-5 w-96 bg-white/10 rounded-lg overflow-hidden">
+                  <ShimmerEffect />
+                </div>
               </div>
             </div>
           </div>
