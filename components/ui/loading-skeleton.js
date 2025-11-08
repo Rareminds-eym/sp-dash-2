@@ -141,20 +141,31 @@ export function TableSkeleton({ rows = 10 }) {
       {/* Header Skeleton */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="h-10 w-64 bg-white/50 dark:bg-slate-800/50 rounded-xl animate-pulse"></div>
-          <div className="h-10 w-32 bg-white/50 dark:bg-slate-800/50 rounded-xl animate-pulse"></div>
+          <div className="relative h-10 w-64 bg-white/50 dark:bg-slate-800/50 rounded-xl overflow-hidden">
+            <ShimmerEffect />
+          </div>
+          <div className="relative h-10 w-32 bg-white/50 dark:bg-slate-800/50 rounded-xl overflow-hidden">
+            <ShimmerEffect />
+          </div>
         </div>
-        <div className="h-10 w-40 bg-gradient-to-r from-blue-200 to-purple-200 dark:from-blue-800 dark:to-purple-800 rounded-xl animate-pulse"></div>
+        <div className="relative h-10 w-40 bg-gradient-to-r from-blue-200 to-purple-200 dark:from-blue-800 dark:to-purple-800 rounded-xl overflow-hidden">
+          <ShimmerEffect />
+        </div>
       </div>
 
       {/* Stats Cards Skeleton */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {[1, 2, 3, 4].map((i) => (
-          <Card key={i} className="neu-card animate-pulse">
-            <CardContent className="p-6">
+          <Card key={i} className="neu-card relative overflow-hidden">
+            <ShimmerEffect className="absolute inset-0 opacity-50" />
+            <CardContent className="p-6 relative z-10">
               <div className="space-y-3">
-                <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                <div className="h-8 w-16 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                <div className="relative h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
+                  <ShimmerEffect />
+                </div>
+                <div className="relative h-8 w-16 bg-gray-300 dark:bg-gray-600 rounded overflow-hidden">
+                  <ShimmerEffect />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -162,13 +173,16 @@ export function TableSkeleton({ rows = 10 }) {
       </div>
 
       {/* Table Skeleton */}
-      <Card className="neu-card">
-        <CardContent className="p-6">
+      <Card className="neu-card relative overflow-hidden">
+        <ShimmerEffect className="absolute inset-0 opacity-30" />
+        <CardContent className="p-6 relative z-10">
           <div className="space-y-4">
             {/* Table Header */}
             <div className="grid grid-cols-4 gap-4 pb-4 border-b border-gray-200 dark:border-gray-700">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                <div key={i} className="relative h-4 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
+                  <ShimmerEffect />
+                </div>
               ))}
             </div>
             {/* Table Rows */}
@@ -177,9 +191,11 @@ export function TableSkeleton({ rows = 10 }) {
                 {[1, 2, 3, 4].map((j) => (
                   <div
                     key={j}
-                    className="h-4 bg-gray-100 dark:bg-gray-800 rounded animate-pulse"
+                    className="relative h-4 bg-gray-100 dark:bg-gray-800 rounded overflow-hidden"
                     style={{ animationDelay: `${(i * 4 + j) * 50}ms` }}
-                  ></div>
+                  >
+                    <ShimmerEffect />
+                  </div>
                 ))}
               </div>
             ))}
@@ -189,10 +205,14 @@ export function TableSkeleton({ rows = 10 }) {
 
       {/* Pagination Skeleton */}
       <div className="flex items-center justify-between">
-        <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+        <div className="relative h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
+          <ShimmerEffect />
+        </div>
         <div className="flex gap-2">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
+            <div key={i} className="relative h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
+              <ShimmerEffect />
+            </div>
           ))}
         </div>
       </div>
@@ -205,27 +225,41 @@ export function SimpleSkeleton() {
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="p-3 bg-gradient-to-br from-blue-200 to-purple-200 dark:from-blue-800 dark:to-purple-800 rounded-2xl animate-pulse">
+        <div className="relative p-3 bg-gradient-to-br from-blue-200 to-purple-200 dark:from-blue-800 dark:to-purple-800 rounded-2xl overflow-hidden">
           <LayoutDashboard className="h-6 w-6 text-white" />
+          <ShimmerEffect />
         </div>
         <div className="space-y-2">
-          <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
-          <div className="h-4 w-64 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse"></div>
+          <div className="relative h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
+            <ShimmerEffect />
+          </div>
+          <div className="relative h-4 w-64 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
+            <ShimmerEffect />
+          </div>
         </div>
       </div>
 
       {/* Content Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[1, 2, 3, 4, 5, 6].map((i) => (
-          <Card key={i} className="neu-card animate-pulse">
-            <CardHeader>
-              <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded"></div>
+          <Card key={i} className="neu-card relative overflow-hidden">
+            <ShimmerEffect className="absolute inset-0 opacity-40" />
+            <CardHeader className="relative z-10">
+              <div className="relative h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
+                <ShimmerEffect />
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="relative z-10">
               <div className="space-y-3">
-                <div className="h-4 w-full bg-gray-100 dark:bg-gray-800 rounded"></div>
-                <div className="h-4 w-3/4 bg-gray-100 dark:bg-gray-800 rounded"></div>
-                <div className="h-4 w-1/2 bg-gray-100 dark:bg-gray-800 rounded"></div>
+                <div className="relative h-4 w-full bg-gray-100 dark:bg-gray-800 rounded overflow-hidden">
+                  <ShimmerEffect />
+                </div>
+                <div className="relative h-4 w-3/4 bg-gray-100 dark:bg-gray-800 rounded overflow-hidden">
+                  <ShimmerEffect />
+                </div>
+                <div className="relative h-4 w-1/2 bg-gray-100 dark:bg-gray-800 rounded overflow-hidden">
+                  <ShimmerEffect />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -233,18 +267,27 @@ export function SimpleSkeleton() {
       </div>
 
       {/* Large Content Block */}
-      <Card className="neu-card animate-pulse">
-        <CardHeader>
-          <div className="h-6 w-40 bg-gray-200 dark:bg-gray-700 rounded"></div>
+      <Card className="neu-card relative overflow-hidden">
+        <ShimmerEffect className="absolute inset-0 opacity-30" />
+        <CardHeader className="relative z-10">
+          <div className="relative h-6 w-40 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
+            <ShimmerEffect />
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="relative z-10">
           <div className="space-y-4">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-200 to-purple-200 dark:from-blue-800 dark:to-purple-800 rounded-xl"></div>
+              <div key={i} className="flex items-center gap-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-900/30">
+                <div className="relative w-12 h-12 bg-gradient-to-br from-blue-200 to-purple-200 dark:from-blue-800 dark:to-purple-800 rounded-xl overflow-hidden flex-shrink-0">
+                  <ShimmerEffect />
+                </div>
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 w-full bg-gray-100 dark:bg-gray-800 rounded"></div>
-                  <div className="h-3 w-2/3 bg-gray-50 dark:bg-gray-900 rounded"></div>
+                  <div className="relative h-4 w-full bg-gray-100 dark:bg-gray-800 rounded overflow-hidden">
+                    <ShimmerEffect />
+                  </div>
+                  <div className="relative h-3 w-2/3 bg-gray-50 dark:bg-gray-900 rounded overflow-hidden">
+                    <ShimmerEffect />
+                  </div>
                 </div>
               </div>
             ))}
