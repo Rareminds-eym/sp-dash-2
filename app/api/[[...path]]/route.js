@@ -66,6 +66,7 @@ export async function GET(request) {
             verifiedPassports: latestSnapshot.verifiedPassports || 0,
             employabilityIndex: parseFloat(latestSnapshot.employabilityIndex || 0),
             activeRecruiters: latestSnapshot.activeRecruiters || 0,
+            jobSecured: latestSnapshot.jobsecured || 0,
             snapshotDate: latestSnapshot.snapshotDate,
             source: 'snapshot'
           });
@@ -110,12 +111,21 @@ export async function GET(request) {
           ? ((verifiedPassports / registeredStudents) * 100).toFixed(1) 
           : 0
 
+        // Count job secured (hired placements)
+        const { data: hiredPlacements, error: placementError } = await supabaseAdmin
+          .from('placements')
+          .select('id')
+          .eq('placementStatus', 'hired')
+        
+        const jobSecured = hiredPlacements?.length || 0
+
         return NextResponse.json({
           activeUniversities,
           registeredStudents,
           verifiedPassports,
           employabilityIndex: parseFloat(employabilityIndex),
           activeRecruiters,
+          jobSecured,
           source: 'dynamic'
         })
       } catch (error) {
@@ -126,6 +136,7 @@ export async function GET(request) {
           verifiedPassports: 0,
           employabilityIndex: 0,
           activeRecruiters: 0,
+          jobSecured: 0,
           source: 'error'
         })
       }
@@ -2843,6 +2854,16 @@ export async function POST(request) {
           ? parseFloat(((verifiedPassports / registeredStudents) * 100).toFixed(1))
           : 0
 
+        // Count job secured (hired placements)
+        const { data: hiredPlacements, error: placementError } = await supabaseAdmin
+          .from('placements')
+          .select('id')
+          .eq('placementStatus', 'hired')
+        
+        if (placementError) throw placementError
+        
+        const jobSecured = hiredPlacements?.length || 0
+
         // Get today's date in YYYY-MM-DD format
         const today = new Date().toISOString().split('T')[0]
 
@@ -2863,7 +2884,8 @@ export async function POST(request) {
               registeredStudents,
               verifiedPassports,
               employabilityIndex,
-              activeRecruiters
+              activeRecruiters,
+              jobsecured: jobSecured
             })
             .eq('id', existingSnapshot.id)
 
@@ -2880,7 +2902,8 @@ export async function POST(request) {
               registeredStudents,
               verifiedPassports,
               employabilityIndex,
-              activeRecruiters
+              activeRecruiters,
+              jobsecured: jobSecured
             })
 
           if (insertError) throw insertError
@@ -2896,7 +2919,8 @@ export async function POST(request) {
             registeredStudents,
             verifiedPassports,
             employabilityIndex,
-            activeRecruiters
+            activeRecruiters,
+            jobSecured
           }
         })
       } catch (error) {
