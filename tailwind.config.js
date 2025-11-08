@@ -103,6 +103,8 @@ module.exports = {
                         shimmer: {
                                 '0%': {
                                         transform: 'translateX(-100%)'
+                        ,
+                        shimmer: 'shimmer 2s infinite'
                                 },
                                 '100%': {
                                         transform: 'translateX(100%)'
