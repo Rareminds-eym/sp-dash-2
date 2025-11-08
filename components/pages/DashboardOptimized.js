@@ -46,10 +46,31 @@ export default function DashboardOptimized({ user }) {
         fetch("/api/analytics/placement-conversion")
       ]);
 
+      // Check for errors in responses
+      if (!metricsRes.ok) {
+        console.error('Metrics API error:', metricsRes.status);
+      }
+      if (!trendsRes.ok) {
+        console.error('Trends API error:', trendsRes.status);
+      }
+      if (!stateRes.ok) {
+        console.error('State API error:', stateRes.status);
+      }
+      if (!placementRes.ok) {
+        console.error('Placement API error:', placementRes.status);
+      }
+
       const metricsData = await metricsRes.json();
       const trendsData = await trendsRes.json();
       const stateDataRes = await stateRes.json();
       const placementDataRes = await placementRes.json();
+
+      console.log('Dashboard data loaded:', {
+        metrics: metricsData,
+        trends: trendsData?.length,
+        states: stateDataRes?.length,
+        placement: placementDataRes
+      });
 
       setMetrics(metricsData);
       setTrends(trendsData);
