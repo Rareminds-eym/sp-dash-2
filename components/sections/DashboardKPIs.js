@@ -1,16 +1,16 @@
 'use client'
 
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card';
 import {
   ArrowDown,
   ArrowUp,
   Award,
+  Briefcase,
   Building2,
   GraduationCap,
   TrendingUp,
-  Users,
-  Briefcase
-} from 'lucide-react'
+  Users
+} from 'lucide-react';
 
 export function DashboardKPIs({ metrics, placementData }) {
   // Extract job secured count from metrics data
