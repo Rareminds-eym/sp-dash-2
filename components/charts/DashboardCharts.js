@@ -3,15 +3,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { BarChart3 } from 'lucide-react'
 import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
+    Area,
+    AreaChart,
+    Bar,
+    BarChart,
+    CartesianGrid,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
 } from 'recharts'
 
 // Custom Tooltip Component
@@ -46,22 +46,8 @@ const CustomTooltip = ({
 }
 
 export function EmployabilityChart({ data }) {
-  const chartData = data.length > 0
-    ? data
-    : [
-        { date: 'Jan', employability: 73 },
-        { date: 'Feb', employability: 72 },
-        { date: 'Mar', employability: 74 },
-        { date: 'Apr', employability: 78 },
-        { date: 'May', employability: 80 },
-        { date: 'Jun', employability: 85 },
-        { date: 'Jul', employability: 90 },
-        { date: 'Aug', employability: 82 },
-        { date: 'Sep', employability: 75 },
-        { date: 'Oct', employability: 78 },
-        { date: 'Nov', employability: 82 },
-        { date: 'Dec', employability: 80 },
-      ]
+  // Use empty array as fallback instead of mock data
+  const chartData = data.length > 0 ? data : []
 
   return (
     <Card className="neu-card">
@@ -122,14 +108,8 @@ export function EmployabilityChart({ data }) {
 }
 
 export function StateDistributionChart({ data }) {
-  const chartData = data.length > 0
-    ? data
-    : [
-        { state: 'Delhi', count: 8 },
-        { state: 'Maharashtra', count: 12 },
-        { state: 'Karnataka', count: 10 },
-        { state: 'Tamil Nadu', count: 7 },
-      ]
+  // Use empty array as fallback instead of mock data
+  const chartData = data.length > 0 ? data : []
 
   return (
     <Card className="neu-card">

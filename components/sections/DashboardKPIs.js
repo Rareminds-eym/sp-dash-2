@@ -13,8 +13,8 @@ import {
 } from 'lucide-react'
 
 export function DashboardKPIs({ metrics, placementData }) {
-  // Extract job secured count from placement data
-  const jobSecuredCount = placementData?.conversionFunnel?.find(item => item.stage === 'Hired')?.count || 0;
+  // Extract job secured count from metrics data
+  const jobSecuredCount = metrics?.jobSecured || 0;
   
   const kpiCards = [
     {
