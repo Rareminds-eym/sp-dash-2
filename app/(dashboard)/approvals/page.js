@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/supabase-server'
 import ApprovalsPage from '@/components/pages/ApprovalsPage'
 
+export const runtime = 'edge'
+
 export const metadata = {
   title: 'Approval Center - Rareminds Admin',
   description: 'Review and approve pending registrations',
