@@ -79,6 +79,45 @@ export default function DashboardOptimized({ user }) {
     }
   };
 
+  // Show loading skeleton while data is being fetched
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        {/* Welcome Section Skeleton */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-campaign-blue1 via-campaign-blue2 to-campaign-red rounded-3xl p-8 text-white shadow-2xl shadow-campaign-blue1/25">
+          <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent"></div>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-16 translate-x-16 animate-pulse"></div>
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-12 -translate-x-12 animate-pulse"></div>
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
+                <Sparkles className="h-6 w-6 text-white animate-pulse" />
+              </div>
+              <div className="space-y-3">
+                <div className="h-8 w-72 bg-white/20 rounded-lg animate-pulse"></div>
+                <div className="h-5 w-96 bg-white/10 rounded-lg animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* KPI Cards Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => <KPICardSkeleton key={i} />)}
+        </div>
+
+        {/* Charts Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <ChartSkeleton title subtitle />
+          <ChartSkeleton title />
+        </div>
+
+        {/* Recent Verifications Skeleton */}
+        <VerificationListSkeleton />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       {/* Welcome Section */}
