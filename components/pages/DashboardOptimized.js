@@ -5,6 +5,15 @@ import { ChartSkeleton, KPICardSkeleton, VerificationListSkeleton } from "@/comp
 import { Sparkles } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
 
+// Shimmer effect component
+function ShimmerEffect({ className = "" }) {
+  return (
+    <div className={`relative overflow-hidden ${className}`}>
+      <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 dark:via-white/10 to-transparent"></div>
+    </div>
+  )
+}
+
 // Lazy load heavy chart components (Phase 2)
 const EmployabilityChart = lazy(() =>
   import("@/components/charts/DashboardCharts").then((mod) => ({
@@ -46,10 +55,31 @@ export default function DashboardOptimized({ user }) {
         fetch("/api/analytics/placement-conversion")
       ]);
 
+      // Check for errors in responses
+      if (!metricsRes.ok) {
+        console.error('Metrics API error:', metricsRes.status);
+      }
+      if (!trendsRes.ok) {
+        console.error('Trends API error:', trendsRes.status);
+      }
+      if (!stateRes.ok) {
+        console.error('State API error:', stateRes.status);
+      }
+      if (!placementRes.ok) {
+        console.error('Placement API error:', placementRes.status);
+      }
+
       const metricsData = await metricsRes.json();
       const trendsData = await trendsRes.json();
       const stateDataRes = await stateRes.json();
       const placementDataRes = await placementRes.json();
+
+      console.log('Dashboard data loaded:', {
+        metrics: metricsData,
+        trends: trendsData?.length,
+        states: stateDataRes?.length,
+        placement: placementDataRes
+      });
 
       setMetrics(metricsData);
       setTrends(trendsData);
@@ -78,6 +108,50 @@ export default function DashboardOptimized({ user }) {
       setLoading(false);
     }
   };
+
+  // Show loading skeleton while data is being fetched
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        {/* Welcome Section Skeleton with Shimmer */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-campaign-blue1 via-campaign-blue2 to-campaign-red rounded-3xl p-8 text-white shadow-2xl shadow-campaign-blue1/25">
+          <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent"></div>
+          <ShimmerEffect className="absolute inset-0" />
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-16 translate-x-16 animate-pulse"></div>
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-12 -translate-x-12 animate-pulse"></div>
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
+                <Sparkles className="h-6 w-6 text-white animate-pulse" />
+              </div>
+              <div className="space-y-3">
+                <div className="relative h-8 w-72 bg-white/20 rounded-lg overflow-hidden">
+                  <ShimmerEffect />
+                </div>
+                <div className="relative h-5 w-96 bg-white/10 rounded-lg overflow-hidden">
+                  <ShimmerEffect />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* KPI Cards Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => <KPICardSkeleton key={i} />)}
+        </div>
+
+        {/* Charts Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <ChartSkeleton title subtitle />
+          <ChartSkeleton title />
+        </div>
+
+        {/* Recent Verifications Skeleton */}
+        <VerificationListSkeleton />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
