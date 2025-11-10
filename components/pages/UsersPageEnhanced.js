@@ -124,7 +124,6 @@ export default function UsersPageEnhanced({ currentUser }) {
       if (filters.search) params.append('search', filters.search)
       if (filters.role && filters.role !== 'all') params.append('role', filters.role)
       if (filters.active && filters.active !== 'all') params.append('active', filters.active)
-      if (filters.organization && filters.organization !== 'all') params.append('organization', filters.organization)
       
       const response = await fetch(`/api/users?${params}`)
       const data = await response.json()
@@ -139,7 +138,7 @@ export default function UsersPageEnhanced({ currentUser }) {
       console.error('Error fetching users:', error)
       toast({
         title: 'Error',
-        description: 'Failed to fetch users',
+        description: 'Failed to fetch admin users',
         variant: 'destructive'
       })
     } finally {
