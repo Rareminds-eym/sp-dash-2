@@ -2642,30 +2642,30 @@ export async function POST(request) {
     if (path === '/verify') {
       const { passportId, userId, note } = body
 
-      // Update passport status
-      const { error: updateError } = await supabase
+      // Update passport status using RLS client
+      const { error: updateError } = await rlsClient
         .from('skill_passports')
         .update({ status: 'verified' })
         .eq('id', passportId)
 
       if (updateError) throw updateError
 
-      // Log verification
-      const { error: verifyError } = await supabase
+      // Log verification using RLS client
+      const { error: verifyError } = await rlsClient
         .from('verifications')
         .insert({
           id: uuidv4(),
           targetTable: 'skill_passports',
           targetId: passportId,
           action: 'verify',
-          performedBy: userId,
+          performedBy: userId || userContext.id,
           note: note || 'Passport verified'
         })
 
       if (verifyError) throw verifyError
 
       // Log audit
-      await logAudit(userId, 'verify_passport', passportId, { note })
+      await logAudit(userContext.id, 'verify_passport', passportId, { note })
 
       return NextResponse.json({ success: true, message: 'Passport verified successfully' })
     }
