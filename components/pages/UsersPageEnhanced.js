@@ -475,10 +475,16 @@ export default function UsersPageEnhanced({ currentUser }) {
                   </div>
                 ))
               ) : (
-                <div className="text-center py-12">
-                  <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
-                  <p className="text-lg font-medium text-muted-foreground">No admin users found</p>
-                  <p className="text-sm text-muted-foreground mt-1">Try adjusting your filters</p>
+                <div className="text-center py-16">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
+                    <Shield className="h-8 w-8 text-muted-foreground opacity-50" />
+                  </div>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">No admin users found</p>
+                  <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
+                    {filters.search || filters.role !== 'all' || filters.active !== 'all' 
+                      ? 'Try adjusting your filters to see more results'
+                      : 'The admin_users table is currently empty. Admin users will appear here once they are granted admin roles.'}
+                  </p>
                 </div>
               )}
             </div>
