@@ -48,6 +48,23 @@ export async function GET(request) {
   const path = pathname.replace('/api', '') || '/'
 
   try {
+    // Create RLS-aware Supabase client with user context
+    const { supabase: rlsClient, user, error: authError } = await createRLSClient(request)
+    
+    // For protected endpoints, ensure user is authenticated
+    const protectedEndpoints = ['/users', '/recruiters', '/students', '/passports', '/audit-logs', '/verifications']
+    const isProtectedEndpoint = protectedEndpoints.some(endpoint => path.startsWith(endpoint))
+    
+    if (isProtectedEndpoint && (!user || authError)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    
+    // Get user context for authorization checks
+    let userContext = null
+    if (user) {
+      userContext = await getUserContext(rlsClient, user)
+    }
+
     // GET /api/metrics - Dashboard metrics
     if (path === '/metrics') {
       try {
