@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { filterAndRankResults, fuzzyMatch } from '../../../lib/search-utils';
 import { supabase } from '../../../lib/supabase';
 import { supabaseAdmin } from '../../../lib/supabase-admin';
+import { createRLSClient, getUserContext } from '../../../lib/supabase-rls';
 
 export const runtime = 'edge';
 
