@@ -1006,8 +1006,8 @@ export async function GET(request) {
       const approvalStatus = url.searchParams.get('approval_status') // pending, approved, rejected
       const searchTerm = url.searchParams.get('search')
       
-      // Build query with count
-      let query = supabase.from('students').select('*', { count: 'exact' })
+      // Build query with count using RLS client
+      let query = rlsClient.from('students').select('*', { count: 'exact' })
       
       // Apply filters
       if (approvalStatus) {
