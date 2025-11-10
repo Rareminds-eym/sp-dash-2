@@ -394,55 +394,93 @@ export default function UsersPageEnhanced({ currentUser }) {
             <div className="space-y-4">
               {users.length > 0 ? (
                 users.map((user) => (
-                  <div key={user.id} className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors dark:bg-gray-800/50 dark:hover:bg-gray-800">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Shield className="h-6 w-6 text-white" />
-                      </div>
-                      <div>
-                        <p className="font-medium dark:text-white">{user.email}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge className={getRoleBadge(user.role)}>
-                            {getRoleLabel(user.role)}
-                          </Badge>
-                          <Badge variant={user.isActive ? 'default' : 'secondary'}>
-                            {user.isActive ? 'Active' : 'Suspended'}
-                          </Badge>
-                          {user.organizations?.name && (
-                            <span className="text-xs text-muted-foreground">
-                              {user.organizations.name}
-                            </span>
+                  <div key={user.id} className="group p-5 bg-gradient-to-r from-gray-50 to-white hover:from-gray-100 hover:to-gray-50 dark:from-gray-800/50 dark:to-gray-900/50 dark:hover:from-gray-800 dark:hover:to-gray-800/80 rounded-xl transition-all duration-200 border border-gray-200 dark:border-gray-700 hover:shadow-md">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-4 flex-1">
+                        <div className={`w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                          user.role === 'super_admin' 
+                            ? 'bg-gradient-to-br from-purple-500 to-pink-500' 
+                            : 'bg-gradient-to-br from-blue-500 to-indigo-500'
+                        }`}>
+                          {user.role === 'super_admin' ? (
+                            <Crown className="h-7 w-7 text-white" />
+                          ) : (
+                            <ShieldCheck className="h-7 w-7 text-white" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <p className="font-semibold text-lg dark:text-white">{user.email}</p>
+                            <Badge variant={user.isActive ? 'default' : 'secondary'} className="font-medium">
+                              {user.isActive ? '● Active' : '○ Suspended'}
+                            </Badge>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3 text-sm">
+                            <Badge className={getRoleBadge(user.role)}>
+                              {getRoleLabel(user.role)}
+                            </Badge>
+                            {user.metadata?.name && (
+                              <span className="text-muted-foreground flex items-center gap-1">
+                                <span className="font-medium">Name:</span> {user.metadata.name}
+                              </span>
+                            )}
+                          </div>
+                          {user.grantedByEmail && (
+                            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex items-center gap-4 text-sm text-muted-foreground">
+                              <span className="flex items-center gap-1.5">
+                                <Shield className="h-3.5 w-3.5" />
+                                <span className="font-medium">Granted by:</span> {user.grantedByEmail}
+                              </span>
+                              {user.grantedAt && (
+                                <span className="flex items-center gap-1.5">
+                                  <Clock className="h-3.5 w-3.5" />
+                                  <span className="font-medium">On:</span> {new Date(user.grantedAt).toLocaleDateString('en-US', { 
+                                    year: 'numeric', 
+                                    month: 'short', 
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {currentUser?.role === 'super_admin' && user.id !== currentUser?.id && (
-                        user.isActive ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleAction(user, 'suspend')}
-                          >
-                            <UserX className="h-4 w-4 mr-2" />
-                            Suspend
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleAction(user, 'activate')}
-                          >
-                            <UserCheck className="h-4 w-4 mr-2" />
-                            Activate
-                          </Button>
-                        )
-                      )}
+                      <div className="flex items-center gap-2 ml-4">
+                        {currentUser?.role === 'super_admin' && user.id !== currentUser?.id && (
+                          user.isActive ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAction(user, 'suspend')}
+                              className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
+                            >
+                              <UserX className="h-4 w-4 mr-2" />
+                              Suspend
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAction(user, 'activate')}
+                              className="border-green-200 text-green-600 hover:bg-green-50 hover:text-green-700 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-900/20"
+                            >
+                              <UserCheck className="h-4 w-4 mr-2" />
+                              Activate
+                            </Button>
+                          )
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-center text-muted-foreground py-8">No users found</p>
+                <div className="text-center py-12">
+                  <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                  <p className="text-lg font-medium text-muted-foreground">No admin users found</p>
+                  <p className="text-sm text-muted-foreground mt-1">Try adjusting your filters</p>
+                </div>
               )}
             </div>
           )}
