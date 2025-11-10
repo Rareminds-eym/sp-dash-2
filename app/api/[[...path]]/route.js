@@ -1339,8 +1339,8 @@ export async function GET(request) {
       const sortBy = searchParams.get('sortBy') || 'createdAt'
       const sortOrder = searchParams.get('sortOrder') || 'desc'
       
-      // Build query
-      let query = supabase
+      // Build query using RLS client
+      let query = rlsClient
         .from('audit_logs')
         .select('*', { count: 'exact' })
       
@@ -1379,13 +1379,13 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Failed to fetch audit logs' }, { status: 500 })
       }
       
-      // Fetch all user emails in bulk
+      // Fetch all user emails in bulk using RLS client
       let enrichedLogs = logs || [];
       if (enrichedLogs.length > 0) {
         const userIds = enrichedLogs.map(l => l.actorId).filter(Boolean)
         
         if (userIds.length > 0) {
-          const { data: users } = await supabase
+          const { data: users } = await rlsClient
             .from('users')
             .select('id, email, metadata')
             .in('id', userIds)
