@@ -224,48 +224,69 @@ export default function UsersPageEnhanced({ currentUser }) {
     <div className="space-y-6">
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="neu-card">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <Card className="neu-card bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/20 border-blue-200 dark:border-blue-800">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total Users</p>
-                <p className="text-2xl font-bold">{overallStats.total}</p>
+                <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Total Admin Users</p>
+                <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">{overallStats.total}</p>
               </div>
-              <Users className="h-8 w-8 text-blue-500" />
+              <div className="p-3 bg-blue-200 dark:bg-blue-900/40 rounded-xl">
+                <Users className="h-7 w-7 text-blue-600 dark:text-blue-300" />
+              </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="neu-card">
+        <Card className="neu-card bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/30 dark:to-green-900/20 border-green-200 dark:border-green-800">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Active</p>
-                <p className="text-2xl font-bold text-green-600">{overallStats.active}</p>
+                <p className="text-sm font-medium text-green-600 dark:text-green-400">Active</p>
+                <p className="text-3xl font-bold text-green-900 dark:text-green-100">{overallStats.active}</p>
               </div>
-              <UserCheck className="h-8 w-8 text-green-500" />
+              <div className="p-3 bg-green-200 dark:bg-green-900/40 rounded-xl">
+                <UserCheck className="h-7 w-7 text-green-600 dark:text-green-300" />
+              </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="neu-card">
+        <Card className="neu-card bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950/30 dark:to-red-900/20 border-red-200 dark:border-red-800">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Suspended</p>
-                <p className="text-2xl font-bold text-red-600">{overallStats.suspended}</p>
+                <p className="text-sm font-medium text-red-600 dark:text-red-400">Suspended</p>
+                <p className="text-3xl font-bold text-red-900 dark:text-red-100">{overallStats.suspended}</p>
               </div>
-              <UserX className="h-8 w-8 text-red-500" />
+              <div className="p-3 bg-red-200 dark:bg-red-900/40 rounded-xl">
+                <UserX className="h-7 w-7 text-red-600 dark:text-red-300" />
+              </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="neu-card">
+        <Card className="neu-card bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/30 dark:to-purple-900/20 border-purple-200 dark:border-purple-800">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Admins</p>
-                <p className="text-2xl font-bold text-purple-600">{overallStats.admins}</p>
+                <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Super Admins</p>
+                <p className="text-3xl font-bold text-purple-900 dark:text-purple-100">{overallStats.superAdmins}</p>
               </div>
-              <Shield className="h-8 w-8 text-purple-500" />
+              <div className="p-3 bg-purple-200 dark:bg-purple-900/40 rounded-xl">
+                <Crown className="h-7 w-7 text-purple-600 dark:text-purple-300" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="neu-card bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-950/30 dark:to-indigo-900/20 border-indigo-200 dark:border-indigo-800">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Platform Admins</p>
+                <p className="text-3xl font-bold text-indigo-900 dark:text-indigo-100">{overallStats.platformAdmins}</p>
+              </div>
+              <div className="p-3 bg-indigo-200 dark:bg-indigo-900/40 rounded-xl">
+                <ShieldCheck className="h-7 w-7 text-indigo-600 dark:text-indigo-300" />
+              </div>
             </div>
           </CardContent>
         </Card>
