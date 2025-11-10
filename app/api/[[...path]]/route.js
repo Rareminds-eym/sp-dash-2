@@ -2031,15 +2031,15 @@ export async function GET(request) {
       const url = new URL(request.url)
       const stateFilter = url.searchParams.get('state')
 
-      let universityQuery = supabaseAdmin.from('universities').select('id, name, state')
+      let universityQuery = rlsClient.from('universities').select('id, name, state')
       if (stateFilter && stateFilter !== 'all') {
         universityQuery = universityQuery.eq('state', stateFilter)
       }
       
       const [universitiesResult, studentsResult, passportsResult] = await Promise.all([
         universityQuery,
-        supabaseAdmin.from('students').select('id, universityId'),
-        supabaseAdmin.from('skill_passports').select('studentId, status')
+        rlsClient.from('students').select('id, universityId'),
+        rlsClient.from('skill_passports').select('studentId, status')
       ])
 
       if (universitiesResult.error) {
