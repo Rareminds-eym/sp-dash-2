@@ -142,7 +142,7 @@ export async function GET(request) {
       }
     }
 
-    // GET /api/users - List all users with pagination, search, and filters (ENHANCED) - Excludes recruiters
+    // GET /api/users - List admin users from admin_users table with pagination, search, and filters
     if (path === '/users') {
       // Get parameters from query string
       const url = new URL(request.url)
@@ -152,89 +152,106 @@ export async function GET(request) {
       const search = url.searchParams.get('search') || ''
       const roleFilter = url.searchParams.get('role') || ''
       const activeFilter = url.searchParams.get('active') || ''
-      const organizationFilter = url.searchParams.get('organization') || ''
-      const sortBy = url.searchParams.get('sortBy') || 'createdAt'
+      const sortBy = url.searchParams.get('sortBy') || 'granted_at'
       const sortOrder = url.searchParams.get('sortOrder') || 'desc'
       
-      // Build the query for users
-      let usersQuery = supabase.from('users').select('*', { count: 'exact' }).neq('role', 'recruiter')
+      // Build the query for admin users with user details
+      let adminUsersQuery = supabase
+        .from('admin_users')
+        .select(`
+          user_id,
+          admin_role,
+          granted_by,
+          granted_at,
+          users!admin_users_user_id_fkey (
+            id,
+            email,
+            isActive,
+            createdAt,
+            metadata
+          ),
+          granted_by_user:users!admin_users_granted_by_fkey (
+            email,
+            metadata
+          )
+        `, { count: 'exact' })
       
       // Apply role filter
       if (roleFilter && roleFilter !== 'all') {
-        usersQuery = usersQuery.eq('role', roleFilter)
-      }
-      
-      // Apply active filter
-      if (activeFilter && activeFilter !== 'all') {
-        usersQuery = usersQuery.eq('isActive', activeFilter === 'true')
-      }
-      
-      // Apply organization filter
-      if (organizationFilter && organizationFilter !== 'all') {
-        usersQuery = usersQuery.eq('organizationId', organizationFilter)
+        adminUsersQuery = adminUsersQuery.eq('admin_role', roleFilter)
       }
       
       // Apply sorting
       const ascending = sortOrder === 'asc'
-      if (sortBy === 'email') {
-        usersQuery = usersQuery.order('email', { ascending })
-      } else if (sortBy === 'role') {
-        usersQuery = usersQuery.order('role', { ascending })
-      } else if (sortBy === 'createdAt') {
-        usersQuery = usersQuery.order('createdAt', { ascending })
+      if (sortBy === 'granted_at') {
+        adminUsersQuery = adminUsersQuery.order('granted_at', { ascending })
+      } else if (sortBy === 'admin_role') {
+        adminUsersQuery = adminUsersQuery.order('admin_role', { ascending })
       }
       
       // Execute query with pagination
-      const { data: users, error, count } = await usersQuery.range(offset, offset + limit - 1)
+      const { data: adminUsers, error, count } = await adminUsersQuery.range(offset, offset + limit - 1)
 
       if (error) {
-        console.error('Error fetching users:', error)
-        return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
+        console.error('Error fetching admin users:', error)
+        return NextResponse.json({ error: 'Failed to fetch admin users' }, { status: 500 })
       }
       
-      let filteredUsers = users || []
-      
-      // Fetch all organizations from universities and recruiters tables
-      if (filteredUsers.length > 0) {
-        const orgIds = filteredUsers.map(u => u.organizationId).filter(Boolean)
-        
-        if (orgIds.length > 0) {
-          // Try to fetch from both universities and recruiters tables using id field
-          const [universitiesResult, recruitersResult] = await Promise.all([
-            supabase.from('universities').select('id, name').in('id', orgIds),
-            supabase.from('recruiters').select('id, name').in('id', orgIds)
-          ])
-          
-          const orgMap = {}
-          // Map universities (using id)
-          universitiesResult.data?.forEach(univ => { 
-            orgMap[univ.id] = { id: univ.id, name: univ.name } 
-          })
-          // Map recruiters (using id)
-          recruitersResult.data?.forEach(rec => { 
-            orgMap[rec.id] = { id: rec.id, name: rec.name } 
-          })
-          
-          filteredUsers.forEach(user => {
-            if (user.organizationId && orgMap[user.organizationId]) {
-              user.organizations = orgMap[user.organizationId]
-            }
-          })
+      // Transform the data to match the frontend expectations
+      let transformedUsers = (adminUsers || []).map(admin => {
+        const user = admin.users || {}
+        return {
+          id: admin.user_id,
+          email: user.email,
+          isActive: user.isActive,
+          role: admin.admin_role,
+          createdAt: user.createdAt,
+          metadata: user.metadata || {},
+          grantedBy: admin.granted_by,
+          grantedByEmail: admin.granted_by_user?.email || null,
+          grantedByName: admin.granted_by_user?.metadata?.name || null,
+          grantedAt: admin.granted_at
         }
+      })
+      
+      // Apply active filter
+      if (activeFilter && activeFilter !== 'all') {
+        transformedUsers = transformedUsers.filter(u => 
+          u.isActive === (activeFilter === 'true')
+        )
       }
       
-      // Apply industrial-grade search with fuzzy matching and relevance ranking
+      // Apply search filter
       if (search) {
-        // Define search fields with proper paths
-        const searchFields = ['email', 'role', 'metadata.name', 'organizations.name'];
-        
-        // Use advanced search with 0.7 threshold (flexible matching - up to 30% difference)
-        filteredUsers = filterAndRankResults(filteredUsers, searchFields, search, 0.7);
+        const searchLower = search.toLowerCase()
+        transformedUsers = transformedUsers.filter(user => {
+          const email = user.email?.toLowerCase() || ''
+          const role = user.role?.toLowerCase() || ''
+          const name = user.metadata?.name?.toLowerCase() || ''
+          const grantedByEmail = user.grantedByEmail?.toLowerCase() || ''
+          
+          return email.includes(searchLower) || 
+                 role.includes(searchLower) || 
+                 name.includes(searchLower) ||
+                 grantedByEmail.includes(searchLower)
+        })
+      }
+      
+      // Calculate filtered count
+      const filteredCount = transformedUsers.length
+      
+      // Apply email sorting if needed (after filtering)
+      if (sortBy === 'email') {
+        transformedUsers.sort((a, b) => {
+          const emailA = a.email?.toLowerCase() || ''
+          const emailB = b.email?.toLowerCase() || ''
+          return ascending ? emailA.localeCompare(emailB) : emailB.localeCompare(emailA)
+        })
       }
       
       // Return paginated response
       return NextResponse.json({
-        data: filteredUsers,
+        data: transformedUsers,
         pagination: {
           page,
           limit,
