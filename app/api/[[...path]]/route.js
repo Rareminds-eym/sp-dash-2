@@ -2003,34 +2003,35 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 })
       }
 
-      const orgs = (universitiesResult.data || []).map(u => ({
-        id: u.id,
-        name: u.name,
-        state: u.state
-      }))
+      const universities = universitiesResult.data || []
       const students = studentsResult.data || []
       const passports = passportsResult.data || []
 
+      // Create lookup maps
       const studentsByUniversity = {}
       const passportsByStudent = {}
 
       students.forEach(student => {
-        const newUnivId = univIdMapping[student.universityId] || student.universityId
-        if (!studentsByUniversity[newUnivId]) {
-          studentsByUniversity[newUnivId] = []
+        const univId = student.universityId
+        if (univId) {
+          if (!studentsByUniversity[univId]) {
+            studentsByUniversity[univId] = []
+          }
+          studentsByUniversity[univId].push(student.id)
         }
-        studentsByUniversity[newUnivId].push(student.id)
       })
 
       passports.forEach(passport => {
-        if (!passportsByStudent[passport.studentId]) {
-          passportsByStudent[passport.studentId] = []
+        if (passport.studentId) {
+          if (!passportsByStudent[passport.studentId]) {
+            passportsByStudent[passport.studentId] = []
+          }
+          passportsByStudent[passport.studentId].push(passport.status)
         }
-        passportsByStudent[passport.studentId].push(passport.status)
       })
 
-      const universityReports = orgs.map(org => {
-        const studentIds = studentsByUniversity[org.id] || []
+      const universityReports = universities.map(university => {
+        const studentIds = studentsByUniversity[university.id] || []
         const enrollmentCount = studentIds.length
 
         let totalPassports = 0
@@ -2042,17 +2043,17 @@ export async function GET(request) {
           verifiedCount += studentPassports.filter(status => status === 'verified').length
         })
 
-        const completionRate = totalPassports > 0 ? ((verifiedCount / totalPassports) * 100).toFixed(1) : 0
-        const verificationRate = enrollmentCount > 0 ? ((totalPassports / enrollmentCount) * 100).toFixed(1) : 0
+        const completionRate = totalPassports > 0 ? parseFloat(((verifiedCount / totalPassports) * 100).toFixed(1)) : 0
+        const verificationRate = enrollmentCount > 0 ? parseFloat(((totalPassports / enrollmentCount) * 100).toFixed(1)) : 0
 
         return {
-          universityName: org.name,
-          state: org.state,
+          universityName: university.name,
+          state: university.state || 'Unknown',
           enrollmentCount,
           totalPassports,
           verifiedPassports: verifiedCount,
-          completionRate: parseFloat(completionRate),
-          verificationRate: parseFloat(verificationRate)
+          completionRate,
+          verificationRate
         }
       })
 
