@@ -23,7 +23,10 @@ import {
     UserX,
     ChevronLeft,
     ChevronRight,
-    Users
+    Users,
+    ShieldCheck,
+    Crown,
+    Clock
 } from 'lucide-react'
 import { useEffect, useState, useRef } from 'react'
 import {
