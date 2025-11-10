@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { filterAndRankResults, fuzzyMatch } from '../../../lib/search-utils';
 import { supabase } from '../../../lib/supabase';
-import { supabaseAdmin } from '../../../lib/supabase-admin';
+import { createRLSClient, getUserContext } from '../../../lib/supabase-rls';
 
 export const runtime = 'edge';
 
@@ -47,6 +47,23 @@ export async function GET(request) {
   const path = pathname.replace('/api', '') || '/'
 
   try {
+    // Create RLS-aware Supabase client with user context
+    const { supabase: rlsClient, user, error: authError } = await createRLSClient(request)
+    
+    // For protected endpoints, ensure user is authenticated
+    const protectedEndpoints = ['/users', '/recruiters', '/students', '/passports', '/audit-logs', '/verifications']
+    const isProtectedEndpoint = protectedEndpoints.some(endpoint => path.startsWith(endpoint))
+    
+    if (isProtectedEndpoint && (!user || authError)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    
+    // Get user context for authorization checks
+    let userContext = null
+    if (user) {
+      userContext = await getUserContext(rlsClient, user)
+    }
+
     // GET /api/metrics - Dashboard metrics
     if (path === '/metrics') {
       try {
@@ -84,7 +101,7 @@ export async function GET(request) {
         const activeUniversities = universities?.length || 0
 
         // Count active recruiters from recruiters table (only where isactive=true)
-        const { data: recruiters } = await supabaseAdmin
+        const { data: recruiters } = await rlsClient
           .from('recruiters')
           .select('id')
           .eq('isactive', true)
@@ -92,14 +109,14 @@ export async function GET(request) {
         const activeRecruiters = recruiters?.length || 0
 
         // Count students
-        const { data: students } = await supabaseAdmin
+        const { data: students } = await rlsClient
           .from('students')
           .select('id')
         
         const registeredStudents = students?.length || 0
 
         // Get passports for verification metrics
-        const { data: passports } = await supabaseAdmin
+        const { data: passports } = await rlsClient
           .from('skill_passports')
           .select('status')
         
@@ -112,7 +129,7 @@ export async function GET(request) {
           : 0
 
         // Count job secured (hired placements)
-        const { data: hiredPlacements, error: placementError } = await supabaseAdmin
+        const { data: hiredPlacements, error: placementError } = await rlsClient
           .from('placements')
           .select('id')
           .eq('placementStatus', 'hired')
@@ -155,8 +172,8 @@ export async function GET(request) {
       const sortBy = url.searchParams.get('sortBy') || 'granted_at'
       const sortOrder = url.searchParams.get('sortOrder') || 'desc'
       
-      // Build the query for admin users using supabaseAdmin to bypass RLS
-      let adminUsersQuery = supabaseAdmin
+      // Build the query for admin users using RLS client
+      let adminUsersQuery = rlsClient
         .from('admin_users')
         .select('*', { count: 'exact' })
       
@@ -181,7 +198,7 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Failed to fetch admin users', details: error }, { status: 500 })
       }
       
-      // Fetch user details for all admin users using supabaseAdmin
+      // Fetch user details for all admin users using RLS client
       const userIds = (adminUsers || []).map(a => a.user_id)
       const grantedByIds = (adminUsers || []).map(a => a.granted_by).filter(Boolean)
       
@@ -189,7 +206,7 @@ export async function GET(request) {
       let grantedByMap = {}
       
       if (userIds.length > 0) {
-        const { data: usersData } = await supabaseAdmin
+        const { data: usersData } = await rlsClient
           .from('users')
           .select('id, email, isActive, createdAt, metadata')
           .in('id', userIds)
@@ -200,7 +217,7 @@ export async function GET(request) {
       }
       
       if (grantedByIds.length > 0) {
-        const { data: grantedByData } = await supabaseAdmin
+        const { data: grantedByData } = await rlsClient
           .from('users')
           .select('id, email, metadata')
           .in('id', grantedByIds)
@@ -988,8 +1005,8 @@ export async function GET(request) {
       const approvalStatus = url.searchParams.get('approval_status') // pending, approved, rejected
       const searchTerm = url.searchParams.get('search')
       
-      // Build query with count
-      let query = supabase.from('students').select('*', { count: 'exact' })
+      // Build query with count using RLS client
+      let query = rlsClient.from('students').select('*', { count: 'exact' })
       
       // Apply filters
       if (approvalStatus) {
@@ -1032,8 +1049,8 @@ export async function GET(request) {
         const mappedUniversityIds = universityIds.map(id => univIdMapping[id] || id).filter(Boolean)
         
         const [usersResult, universitiesResult] = await Promise.all([
-          userIds.length > 0 ? supabase.from('users').select('id, email').in('id', userIds) : { data: [] },
-          mappedUniversityIds.length > 0 ? supabase.from('universities').select('id, name').in('id', mappedUniversityIds) : { data: [] }
+          userIds.length > 0 ? rlsClient.from('users').select('id, email').in('id', userIds) : { data: [] },
+          mappedUniversityIds.length > 0 ? rlsClient.from('universities').select('id, name').in('id', mappedUniversityIds) : { data: [] }
         ])
         
         // Create lookup maps
@@ -1100,8 +1117,8 @@ export async function GET(request) {
       const sortBy = url.searchParams.get('sortBy') || 'createdAt'
       const sortOrder = url.searchParams.get('sortOrder') || 'desc'
       
-      // Build the query for passports
-      let passportsQuery = supabase.from('skill_passports').select('*', { count: 'exact' })
+      // Build the query for passports using RLS client
+      let passportsQuery = rlsClient.from('skill_passports').select('*', { count: 'exact' })
       
       // Apply status filter
       if (statusFilter && statusFilter !== 'all') {
@@ -1136,14 +1153,14 @@ export async function GET(request) {
         const studentIds = filteredPassports.map(p => p.studentId).filter(Boolean)
         
         if (studentIds.length > 0) {
-          // Fetch all students and their users in parallel
+          // Fetch all students and their users in parallel using RLS client
           const [studentsResult, usersResult] = await Promise.all([
-            supabase.from('students').select('*').in('id', studentIds),
-            supabase.from('students').select('userId, organizationId').in('id', studentIds).then(async (result) => {
+            rlsClient.from('students').select('*').in('id', studentIds),
+            rlsClient.from('students').select('userId, organizationId').in('id', studentIds).then(async (result) => {
               if (result.data && result.data.length > 0) {
                 const userIds = result.data.map(s => s.userId).filter(Boolean)
                 if (userIds.length > 0) {
-                  return await supabase.from('users').select('id, email, metadata').in('id', userIds)
+                  return await rlsClient.from('users').select('id, email, metadata').in('id', userIds)
                 }
               }
               return { data: [] }
@@ -1153,11 +1170,11 @@ export async function GET(request) {
           const students = studentsResult.data || []
           const users = usersResult.data || []
           
-          // Fetch universities if needed for filtering
+          // Fetch universities if needed for filtering using RLS client
           const orgIds = students.map(s => s.universityId || s.organizationId).filter(Boolean)
           let universities = []
           if (orgIds.length > 0) {
-            const { data: univData } = await supabase.from('universities').select('id, name').in('id', orgIds)
+            const { data: univData } = await rlsClient.from('universities').select('id, name').in('id', orgIds)
             universities = univData || []
           }
           
@@ -1266,7 +1283,7 @@ export async function GET(request) {
 
     // GET /api/verifications - List recent verifications (OPTIMIZED)
     if (path === '/verifications') {
-      const { data: verifications, error } = await supabase
+      const { data: verifications, error } = await rlsClient
         .from('verifications')
         .select('*')
         .order('createdAt', { ascending: false })
@@ -1277,12 +1294,12 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Failed to fetch verifications' }, { status: 500 })
       }
       
-      // Fetch all user emails in bulk
+      // Fetch all user emails in bulk using RLS client
       if (verifications && verifications.length > 0) {
         const userIds = verifications.map(v => v.performedBy).filter(Boolean)
         
         if (userIds.length > 0) {
-          const { data: users } = await supabase
+          const { data: users } = await rlsClient
             .from('users')
             .select('id, email')
             .in('id', userIds)
@@ -1321,8 +1338,8 @@ export async function GET(request) {
       const sortBy = searchParams.get('sortBy') || 'createdAt'
       const sortOrder = searchParams.get('sortOrder') || 'desc'
       
-      // Build query
-      let query = supabase
+      // Build query using RLS client
+      let query = rlsClient
         .from('audit_logs')
         .select('*', { count: 'exact' })
       
@@ -1361,13 +1378,13 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Failed to fetch audit logs' }, { status: 500 })
       }
       
-      // Fetch all user emails in bulk
+      // Fetch all user emails in bulk using RLS client
       let enrichedLogs = logs || [];
       if (enrichedLogs.length > 0) {
         const userIds = enrichedLogs.map(l => l.actorId).filter(Boolean)
         
         if (userIds.length > 0) {
-          const { data: users } = await supabase
+          const { data: users } = await rlsClient
             .from('users')
             .select('id, email, metadata')
             .in('id', userIds)
@@ -1609,8 +1626,8 @@ export async function GET(request) {
     // GET /api/analytics/university-reports - University-wise analytics (OPTIMIZED)
     if (path === '/analytics/university-reports') {
       try {
-        // Use supabaseAdmin to bypass RLS policies
-        const { data: universities, error: univError } = await supabaseAdmin
+        // Use RLS client - platform admins will see all data via RLS policies
+        const { data: universities, error: univError } = await rlsClient
           .from('universities')
           .select('id, name, state')
         
@@ -1624,7 +1641,7 @@ export async function GET(request) {
         }
 
         // Fetch all students with their university IDs
-        const { data: students, error: studentError } = await supabaseAdmin
+        const { data: students, error: studentError } = await rlsClient
           .from('students')
           .select('id, universityId')
         
@@ -1633,7 +1650,7 @@ export async function GET(request) {
         }
 
         // Fetch all skill passports
-        const { data: passports, error: passportError } = await supabaseAdmin
+        const { data: passports, error: passportError } = await rlsClient
           .from('skill_passports')
           .select('studentId, status')
         
@@ -2014,15 +2031,15 @@ export async function GET(request) {
       const url = new URL(request.url)
       const stateFilter = url.searchParams.get('state')
 
-      let universityQuery = supabaseAdmin.from('universities').select('id, name, state')
+      let universityQuery = rlsClient.from('universities').select('id, name, state')
       if (stateFilter && stateFilter !== 'all') {
         universityQuery = universityQuery.eq('state', stateFilter)
       }
       
       const [universitiesResult, studentsResult, passportsResult] = await Promise.all([
         universityQuery,
-        supabaseAdmin.from('students').select('id, universityId'),
-        supabaseAdmin.from('skill_passports').select('studentId, status')
+        rlsClient.from('students').select('id, universityId'),
+        rlsClient.from('skill_passports').select('studentId, status')
       ])
 
       if (universitiesResult.error) {
@@ -2599,6 +2616,21 @@ export async function POST(request) {
   const path = pathname.replace('/api', '')
 
   try {
+    // Create RLS-aware Supabase client with user context
+    const { supabase: rlsClient, user, error: authError } = await createRLSClient(request)
+    
+    // For protected endpoints, ensure user is authenticated
+    if (!user || authError) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    
+    // Get user context for authorization checks
+    const userContext = await getUserContext(rlsClient, user)
+    
+    if (!userContext) {
+      return NextResponse.json({ error: 'User context not found' }, { status: 403 })
+    }
+    
     // Only parse JSON body for endpoints that need it (not update-metrics)
     let body = {}
     if (path !== '/update-metrics') {
@@ -2609,30 +2641,30 @@ export async function POST(request) {
     if (path === '/verify') {
       const { passportId, userId, note } = body
 
-      // Update passport status
-      const { error: updateError } = await supabase
+      // Update passport status using RLS client
+      const { error: updateError } = await rlsClient
         .from('skill_passports')
         .update({ status: 'verified' })
         .eq('id', passportId)
 
       if (updateError) throw updateError
 
-      // Log verification
-      const { error: verifyError } = await supabase
+      // Log verification using RLS client
+      const { error: verifyError } = await rlsClient
         .from('verifications')
         .insert({
           id: uuidv4(),
           targetTable: 'skill_passports',
           targetId: passportId,
           action: 'verify',
-          performedBy: userId,
+          performedBy: userId || userContext.id,
           note: note || 'Passport verified'
         })
 
       if (verifyError) throw verifyError
 
       // Log audit
-      await logAudit(userId, 'verify_passport', passportId, { note })
+      await logAudit(userContext.id, 'verify_passport', passportId, { note })
 
       return NextResponse.json({ success: true, message: 'Passport verified successfully' })
     }
@@ -2641,30 +2673,30 @@ export async function POST(request) {
     if (path === '/suspend-user') {
       const { targetUserId, actorId, reason } = body
 
-      // Update user status
-      const { error: updateError } = await supabase
+      // Update user status using RLS client
+      const { error: updateError } = await rlsClient
         .from('users')
         .update({ isActive: false })
         .eq('id', targetUserId)
 
       if (updateError) throw updateError
 
-      // Log verification
-      const { error: verifyError } = await supabase
+      // Log verification using RLS client
+      const { error: verifyError } = await rlsClient
         .from('verifications')
         .insert({
           id: uuidv4(),
           targetTable: 'users',
           targetId: targetUserId,
           action: 'suspend',
-          performedBy: actorId,
+          performedBy: actorId || userContext.id,
           note: reason || 'User suspended'
         })
 
       if (verifyError) throw verifyError
 
       // Log audit
-      await logAudit(actorId, 'suspend_user', targetUserId, { reason })
+      await logAudit(userContext.id, 'suspend_user', targetUserId, { reason })
 
       return NextResponse.json({ success: true, message: 'User suspended successfully' })
     }
@@ -2673,30 +2705,30 @@ export async function POST(request) {
     if (path === '/activate-user') {
       const { targetUserId, actorId, note } = body
 
-      // Update user status
-      const { error: updateError } = await supabase
+      // Update user status using RLS client
+      const { error: updateError } = await rlsClient
         .from('users')
         .update({ isActive: true })
         .eq('id', targetUserId)
 
       if (updateError) throw updateError
 
-      // Log verification
-      const { error: verifyError } = await supabase
+      // Log verification using RLS client
+      const { error: verifyError } = await rlsClient
         .from('verifications')
         .insert({
           id: uuidv4(),
           targetTable: 'users',
           targetId: targetUserId,
           action: 'activate',
-          performedBy: actorId,
+          performedBy: actorId || userContext.id,
           note: note || 'User activated'
         })
 
       if (verifyError) throw verifyError
 
       // Log audit
-      await logAudit(actorId, 'activate_user', targetUserId, { note })
+      await logAudit(userContext.id, 'activate_user', targetUserId, { note })
 
       return NextResponse.json({ success: true, message: 'User activated successfully' })
     }
@@ -2941,14 +2973,14 @@ export async function POST(request) {
     if (path === '/update-metrics') {
       try {
         // Count universities from universities table
-        const { data: universities } = await supabaseAdmin
+        const { data: universities } = await rlsClient
           .from('universities')
           .select('id')
         
         const activeUniversities = universities?.length || 0
 
         // Count active recruiters from recruiters table (only where isactive=true)
-        const { data: recruiters } = await supabaseAdmin
+        const { data: recruiters } = await rlsClient
           .from('recruiters')
           .select('id')
           .eq('isactive', true)
@@ -2956,14 +2988,14 @@ export async function POST(request) {
         const activeRecruiters = recruiters?.length || 0
 
         // Count students
-        const { data: students } = await supabaseAdmin
+        const { data: students } = await rlsClient
           .from('students')
           .select('id')
         
         const registeredStudents = students?.length || 0
 
         // Get passports for verification metrics
-        const { data: passports } = await supabaseAdmin
+        const { data: passports } = await rlsClient
           .from('skill_passports')
           .select('status')
         
@@ -2976,7 +3008,7 @@ export async function POST(request) {
           : 0
 
         // Count job secured (hired placements)
-        const { data: hiredPlacements, error: placementError } = await supabaseAdmin
+        const { data: hiredPlacements, error: placementError } = await rlsClient
           .from('placements')
           .select('id')
           .eq('placementStatus', 'hired')
@@ -2989,7 +3021,7 @@ export async function POST(request) {
         const today = new Date().toISOString().split('T')[0]
 
         // Check if a snapshot for today already exists
-        const { data: existingSnapshot } = await supabaseAdmin
+        const { data: existingSnapshot } = await rlsClient
           .from('metrics_snapshots')
           .select('id')
           .eq('snapshotDate', today)
@@ -2998,7 +3030,7 @@ export async function POST(request) {
         let result
         if (existingSnapshot) {
           // Update existing snapshot
-          const { error: updateError } = await supabaseAdmin
+          const { error: updateError } = await rlsClient
             .from('metrics_snapshots')
             .update({
               activeUniversities,
@@ -3014,7 +3046,7 @@ export async function POST(request) {
           result = { action: 'updated', snapshotDate: today }
         } else {
           // Insert new snapshot
-          const { error: insertError } = await supabaseAdmin
+          const { error: insertError } = await rlsClient
             .from('metrics_snapshots')
             .insert({
               id: uuidv4(),
@@ -3470,36 +3502,51 @@ export async function DELETE(request) {
   const path = pathname.replace('/api', '')
 
   try {
+    // Create RLS-aware Supabase client with user context
+    const { supabase: rlsClient, user, error: authError } = await createRLSClient(request)
+    
+    // Ensure user is authenticated
+    if (!user || authError) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    
+    // Get user context for authorization checks
+    const userContext = await getUserContext(rlsClient, user)
+    
+    if (!userContext) {
+      return NextResponse.json({ error: 'User context not found' }, { status: 403 })
+    }
+    
     const body = await request.json()
 
     // DELETE /api/user - Delete a user (soft delete by deactivating)
     if (path === '/user') {
       const { userId, actorId, reason } = body
 
-      // Soft delete by deactivating
-      const { error: updateError } = await supabase
+      // Soft delete by deactivating using RLS client
+      const { error: updateError } = await rlsClient
         .from('users')
         .update({ isActive: false })
         .eq('id', userId)
 
       if (updateError) throw updateError
 
-      // Log verification
-      const { error: verifyError } = await supabase
+      // Log verification using RLS client
+      const { error: verifyError } = await rlsClient
         .from('verifications')
         .insert({
           id: uuidv4(),
           targetTable: 'users',
           targetId: userId,
           action: 'delete',
-          performedBy: actorId,
+          performedBy: actorId || userContext.id,
           note: reason || 'User deleted'
         })
 
       if (verifyError) throw verifyError
 
       // Log audit
-      await logAudit(actorId, 'delete_user', userId, { reason })
+      await logAudit(userContext.id, 'delete_user', userId, { reason })
 
       return NextResponse.json({ success: true, message: 'User deleted successfully' })
     }
@@ -3524,6 +3571,21 @@ export async function PUT(request) {
   const path = pathname.replace('/api', '')
 
   try {
+    // Create RLS-aware Supabase client with user context
+    const { supabase: rlsClient, user, error: authError } = await createRLSClient(request)
+    
+    // Ensure user is authenticated
+    if (!user || authError) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    
+    // Get user context for authorization checks
+    const userContext = await getUserContext(rlsClient, user)
+    
+    if (!userContext) {
+      return NextResponse.json({ error: 'User context not found' }, { status: 403 })
+    }
+    
     const body = await request.json()
 
     // PUT /api/profile - Update user profile
@@ -3537,14 +3599,14 @@ export async function PUT(request) {
         )
       }
 
-      // First, find the user by email
-      const { data: user, error: userError } = await supabase
+      // First, find the user by email using RLS client
+      const { data: userData, error: userError } = await rlsClient
         .from('users')
         .select('id, organizationId, metadata')
         .eq('email', email)
         .single()
 
-      if (userError || !user) {
+      if (userError || !userData) {
         console.error('User lookup error:', userError)
         return NextResponse.json(
           { error: 'User not found' },
@@ -3552,20 +3614,20 @@ export async function PUT(request) {
         )
       }
 
-      console.log('User found:', { id: user.id, organizationId: user.organizationId, metadata: user.metadata })
+      console.log('User found:', { id: userData.id, organizationId: userData.organizationId, metadata: userData.metadata })
 
       // Update user metadata with name
       const updatedMetadata = {
-        ...(user.metadata || {}),
-        name: name || user.metadata?.name
+        ...(userData.metadata || {}),
+        name: name || userData.metadata?.name
       }
 
-      const { error: updateUserError } = await supabase
+      const { error: updateUserError } = await rlsClient
         .from('users')
         .update({ 
           metadata: updatedMetadata
         })
-        .eq('id', user.id)
+        .eq('id', userData.id)
 
       if (updateUserError) {
         console.error('Error updating user:', updateUserError)
