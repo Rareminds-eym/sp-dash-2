@@ -1284,7 +1284,7 @@ export async function GET(request) {
 
     // GET /api/verifications - List recent verifications (OPTIMIZED)
     if (path === '/verifications') {
-      const { data: verifications, error } = await supabase
+      const { data: verifications, error } = await rlsClient
         .from('verifications')
         .select('*')
         .order('createdAt', { ascending: false })
@@ -1295,12 +1295,12 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Failed to fetch verifications' }, { status: 500 })
       }
       
-      // Fetch all user emails in bulk
+      // Fetch all user emails in bulk using RLS client
       if (verifications && verifications.length > 0) {
         const userIds = verifications.map(v => v.performedBy).filter(Boolean)
         
         if (userIds.length > 0) {
-          const { data: users } = await supabase
+          const { data: users } = await rlsClient
             .from('users')
             .select('id, email')
             .in('id', userIds)
