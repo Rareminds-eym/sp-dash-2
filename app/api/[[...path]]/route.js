@@ -2617,6 +2617,21 @@ export async function POST(request) {
   const path = pathname.replace('/api', '')
 
   try {
+    // Create RLS-aware Supabase client with user context
+    const { supabase: rlsClient, user, error: authError } = await createRLSClient(request)
+    
+    // For protected endpoints, ensure user is authenticated
+    if (!user || authError) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    
+    // Get user context for authorization checks
+    const userContext = await getUserContext(rlsClient, user)
+    
+    if (!userContext) {
+      return NextResponse.json({ error: 'User context not found' }, { status: 403 })
+    }
+    
     // Only parse JSON body for endpoints that need it (not update-metrics)
     let body = {}
     if (path !== '/update-metrics') {
