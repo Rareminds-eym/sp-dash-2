@@ -300,7 +300,7 @@ export default function UsersPageEnhanced({ currentUser }) {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by email, name, role, or organization..."
+                  placeholder="Search by email, name, or role..."
                   value={filters.search}
                   onChange={handleSearchChange}
                   className="pl-10"
@@ -314,14 +314,13 @@ export default function UsersPageEnhanced({ currentUser }) {
                   setPagination(prev => ({ ...prev, page: 1 }))
                 }}
               >
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Role" />
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Admin Role" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Roles</SelectItem>
                   <SelectItem value="super_admin">Super Admin</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="manager">Manager</SelectItem>
+                  <SelectItem value="platform_admin">Platform Admin</SelectItem>
                 </SelectContent>
               </Select>
               
@@ -343,40 +342,22 @@ export default function UsersPageEnhanced({ currentUser }) {
               </Select>
               
               <Select
-                value={filters.organization}
-                onValueChange={(value) => {
-                  setFilters(prev => ({ ...prev, organization: value }))
-                  setPagination(prev => ({ ...prev, page: 1 }))
-                }}
-              >
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Organization" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Organizations</SelectItem>
-                  {organizations.map(org => (
-                    <SelectItem key={org.id} value={org.id}>{org.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              <Select
                 value={`${filters.sortBy}-${filters.sortOrder}`}
                 onValueChange={(value) => {
                   const [sortBy, sortOrder] = value.split('-')
                   setFilters(prev => ({ ...prev, sortBy, sortOrder }))
                 }}
               >
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="createdAt-desc">Newest First</SelectItem>
-                  <SelectItem value="createdAt-asc">Oldest First</SelectItem>
+                  <SelectItem value="granted_at-desc">Recently Granted</SelectItem>
+                  <SelectItem value="granted_at-asc">Oldest Granted</SelectItem>
                   <SelectItem value="email-asc">Email A-Z</SelectItem>
                   <SelectItem value="email-desc">Email Z-A</SelectItem>
-                  <SelectItem value="role-asc">Role A-Z</SelectItem>
-                  <SelectItem value="role-desc">Role Z-A</SelectItem>
+                  <SelectItem value="admin_role-asc">Role A-Z</SelectItem>
+                  <SelectItem value="admin_role-desc">Role Z-A</SelectItem>
                 </SelectContent>
               </Select>
             </div>
