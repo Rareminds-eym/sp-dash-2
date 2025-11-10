@@ -1171,11 +1171,11 @@ export async function GET(request) {
           const students = studentsResult.data || []
           const users = usersResult.data || []
           
-          // Fetch universities if needed for filtering
+          // Fetch universities if needed for filtering using RLS client
           const orgIds = students.map(s => s.universityId || s.organizationId).filter(Boolean)
           let universities = []
           if (orgIds.length > 0) {
-            const { data: univData } = await supabase.from('universities').select('id, name').in('id', orgIds)
+            const { data: univData } = await rlsClient.from('universities').select('id, name').in('id', orgIds)
             universities = univData || []
           }
           
