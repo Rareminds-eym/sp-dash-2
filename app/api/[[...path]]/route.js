@@ -101,7 +101,7 @@ export async function GET(request) {
         const activeUniversities = universities?.length || 0
 
         // Count active recruiters from recruiters table (only where isactive=true)
-        const { data: recruiters } = await supabaseAdmin
+        const { data: recruiters } = await rlsClient
           .from('recruiters')
           .select('id')
           .eq('isactive', true)
@@ -109,14 +109,14 @@ export async function GET(request) {
         const activeRecruiters = recruiters?.length || 0
 
         // Count students
-        const { data: students } = await supabaseAdmin
+        const { data: students } = await rlsClient
           .from('students')
           .select('id')
         
         const registeredStudents = students?.length || 0
 
         // Get passports for verification metrics
-        const { data: passports } = await supabaseAdmin
+        const { data: passports } = await rlsClient
           .from('skill_passports')
           .select('status')
         
@@ -129,7 +129,7 @@ export async function GET(request) {
           : 0
 
         // Count job secured (hired placements)
-        const { data: hiredPlacements, error: placementError } = await supabaseAdmin
+        const { data: hiredPlacements, error: placementError } = await rlsClient
           .from('placements')
           .select('id')
           .eq('placementStatus', 'hired')
