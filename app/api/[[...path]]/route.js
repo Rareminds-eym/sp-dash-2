@@ -1626,8 +1626,8 @@ export async function GET(request) {
     // GET /api/analytics/university-reports - University-wise analytics (OPTIMIZED)
     if (path === '/analytics/university-reports') {
       try {
-        // Use supabaseAdmin to bypass RLS policies
-        const { data: universities, error: univError } = await supabaseAdmin
+        // Use RLS client - platform admins will see all data via RLS policies
+        const { data: universities, error: univError } = await rlsClient
           .from('universities')
           .select('id, name, state')
         
@@ -1641,7 +1641,7 @@ export async function GET(request) {
         }
 
         // Fetch all students with their university IDs
-        const { data: students, error: studentError } = await supabaseAdmin
+        const { data: students, error: studentError } = await rlsClient
           .from('students')
           .select('id, universityId')
         
@@ -1650,7 +1650,7 @@ export async function GET(request) {
         }
 
         // Fetch all skill passports
-        const { data: passports, error: passportError } = await supabaseAdmin
+        const { data: passports, error: passportError } = await rlsClient
           .from('skill_passports')
           .select('studentId, status')
         
