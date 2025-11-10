@@ -1579,90 +1579,107 @@ export async function GET(request) {
 
     // GET /api/analytics/university-reports - University-wise analytics (OPTIMIZED)
     if (path === '/analytics/university-reports') {
-      // Mapping from old organization IDs (in students.universityId) to new university IDs
-      const univIdMapping = {
-        'f1ed42b6-ffe7-4108-90bb-6776b6504f7b': '5ca5589e-b49d-4027-baf7-7e2a88ae612a', // Periyar University
-        '609f59c9-6894-499b-8479-e826c219e0df': '632a5084-eeae-4f2e-b4bc-32593f2dcc00', // Alagappa University
-        '1b0ab392-4fba-4037-ae99-6cdf1e0a232d': '85ed5785-dcb2-4d26-8100-a5fb492f0988', // Annamalai University
-        'bf405453-cd17-4b45-9bc6-c89407272d7f': '2e9cb79d-0fb7-4b52-9588-d2a7262c9f68', // University of Madras
-        'aeaf831c-7e48-400a-90e3-8d879ef84257': '707b0f68-6855-428c-a630-65926f8c8116', // Manonmaniam Sundaranar University
-        'cec6f9e4-ab41-41a1-b889-699bec40ee69': '66baa6ed-50ce-433d-84f9-c296c6d5806d', // Bharathiar University
-        'b5b42149-b444-47c3-939b-9ac7b1686414': '0dd1623e-a820-4da1-8c8b-a436db386a59', // Mother Teresa University
-        'e0decdad-0553-4b1a-ad15-a16709bf7671': 'fdba4612-5249-4257-87e1-dc4858151ee8', // Bharathidasan University
-        '54e9f738-fdeb-4116-8032-a27cac4a0112': 'b559f0da-c071-47ec-a866-b646751845bb', // Madurai Kamaraj University
-        '2877f238-ec9f-49af-8bb5-6efd30bc3654': '299ac0e3-f50f-41bc-965c-7274cfa9af25'  // Thiruvalluvar University
-      }
-
-      // Fetch all data in parallel from universities table
-      const [universitiesResult, studentsResult, passportsResult] = await Promise.all([
-        supabase.from('universities').select('id, name, state'),
-        supabase.from('students').select('id, universityId'),
-        supabase.from('skill_passports').select('studentId, status')
-      ])
-
-      if (universitiesResult.error) throw universitiesResult.error
-
-      // Map universities to match expected format using id directly
-      const orgs = (universitiesResult.data || []).map(u => ({
-        id: u.id,
-        name: u.name,
-        state: u.state
-      }))
-      const students = studentsResult.data || []
-      const passports = passportsResult.data || []
-
-      // Create lookup maps for O(1) access
-      // Use mapping to convert old universityIds to new university IDs
-      const studentsByUniversity = {}
-      const passportsByStudent = {}
-
-      students.forEach(student => {
-        // Map old university ID to new ID
-        const newUnivId = univIdMapping[student.universityId] || student.universityId
-        if (!studentsByUniversity[newUnivId]) {
-          studentsByUniversity[newUnivId] = []
+      try {
+        // Fetch all universities
+        const { data: universities, error: univError } = await supabase
+          .from('universities')
+          .select('id, name, state')
+        
+        if (univError) {
+          console.error('Error fetching universities:', univError)
+          throw univError
         }
-        studentsByUniversity[newUnivId].push(student.id)
-      })
 
-      passports.forEach(passport => {
-        if (!passportsByStudent[passport.studentId]) {
-          passportsByStudent[passport.studentId] = []
+        if (!universities || universities.length === 0) {
+          return NextResponse.json([])
         }
-        passportsByStudent[passport.studentId].push(passport.status)
-      })
 
-      // Calculate metrics for each university
-      const universityReports = orgs.map(org => {
-        const studentIds = studentsByUniversity[org.id] || []
-        const enrollmentCount = studentIds.length
+        // Fetch all students with their university IDs
+        const { data: students, error: studentError } = await supabase
+          .from('students')
+          .select('id, universityId')
+        
+        if (studentError) {
+          console.error('Error fetching students:', studentError)
+        }
 
-        let totalPassports = 0
-        let verifiedCount = 0
+        // Fetch all skill passports
+        const { data: passports, error: passportError } = await supabase
+          .from('skill_passports')
+          .select('studentId, status')
+        
+        if (passportError) {
+          console.error('Error fetching passports:', passportError)
+        }
 
-        studentIds.forEach(studentId => {
-          const studentPassports = passportsByStudent[studentId] || []
-          totalPassports += studentPassports.length
-          verifiedCount += studentPassports.filter(status => status === 'verified').length
+        // Create lookup maps for efficient data processing
+        const studentsByUniversity = {}
+        const passportsByStudent = {}
+
+        // Group students by university
+        if (students && students.length > 0) {
+          students.forEach(student => {
+            const univId = student.universityId
+            if (univId) {
+              if (!studentsByUniversity[univId]) {
+                studentsByUniversity[univId] = []
+              }
+              studentsByUniversity[univId].push(student.id)
+            }
+          })
+        }
+
+        // Group passports by student
+        if (passports && passports.length > 0) {
+          passports.forEach(passport => {
+            if (passport.studentId) {
+              if (!passportsByStudent[passport.studentId]) {
+                passportsByStudent[passport.studentId] = []
+              }
+              passportsByStudent[passport.studentId].push(passport.status)
+            }
+          })
+        }
+
+        // Calculate metrics for each university
+        const universityReports = universities.map(university => {
+          const studentIds = studentsByUniversity[university.id] || []
+          const enrollmentCount = studentIds.length
+
+          let totalPassports = 0
+          let verifiedCount = 0
+
+          studentIds.forEach(studentId => {
+            const studentPassports = passportsByStudent[studentId] || []
+            totalPassports += studentPassports.length
+            verifiedCount += studentPassports.filter(status => status === 'verified').length
+          })
+
+          const completionRate = totalPassports > 0 ? parseFloat(((verifiedCount / totalPassports) * 100).toFixed(1)) : 0
+          const verificationRate = enrollmentCount > 0 ? parseFloat(((totalPassports / enrollmentCount) * 100).toFixed(1)) : 0
+
+          return {
+            universityId: university.id,
+            universityName: university.name,
+            state: university.state || 'Unknown',
+            enrollmentCount,
+            totalPassports,
+            verifiedPassports: verifiedCount,
+            completionRate,
+            verificationRate
+          }
         })
 
-        const completionRate = totalPassports > 0 ? ((verifiedCount / totalPassports) * 100).toFixed(1) : 0
-        const verificationRate = enrollmentCount > 0 ? ((totalPassports / enrollmentCount) * 100).toFixed(1) : 0
-
-        return {
-          universityId: org.id,
-          universityName: org.name,
-          state: org.state,
-          enrollmentCount,
-          totalPassports,
-          verifiedPassports: verifiedCount,
-          completionRate: parseFloat(completionRate),
-          verificationRate: parseFloat(verificationRate)
-        }
-      })
-
-      const response = NextResponse.json(universityReports);
-      return addCacheHeaders(response, 'dynamic');
+        // Filter out universities with no data if needed, or keep all for visibility
+        const response = NextResponse.json(universityReports)
+        return addCacheHeaders(response, 'dynamic')
+      } catch (error) {
+        console.error('Error in university-reports endpoint:', error)
+        return NextResponse.json(
+          { error: 'Failed to fetch university reports', details: error.message },
+          { status: 500 }
+        )
+      }
     }
 
     // GET /api/analytics/recruiter-metrics - Recruiter engagement analytics
