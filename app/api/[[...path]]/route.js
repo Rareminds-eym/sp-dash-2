@@ -1741,82 +1741,133 @@ export async function GET(request) {
 
     // GET /api/analytics/placement-conversion - Placement pipeline analytics
     if (path === '/analytics/placement-conversion') {
-      // Fetch real placement data from the placements table
-      const { data: placements, error } = await supabase
-        .from('placements')
-        .select('*')
-        .order('hiredDate', { ascending: true })
-      
-      if (error) throw error
-      
-      // Calculate conversion funnel based on real data
-      const totalVerifiedProfiles = await supabase
-        .from('skill_passports')
-        .select('id', { count: 'exact' })
-        .eq('status', 'verified')
-        .then(result => result.count || 0)
-      
-      // Get recruiter views (this would need to be tracked in a separate table)
-      const recruiterViews = 0 // Placeholder - would need view tracking
-      
-      // Calculate job applications
-      const jobApplications = placements.length
-      
-      // Calculate hired count
-      const hiredCount = placements.filter(p => p.placementStatus === 'hired').length
-      
-      // Calculate retention data
-      const sixMonthRetention = placements.filter(p => 
-        p.placementStatus === 'hired' && p.retentionDate && 
-        new Date(p.retentionDate) >= new Date(new Date(p.hiredDate).setMonth(new Date(p.hiredDate).getMonth() + 6))
-      ).length
-      
-      const oneYearRetention = placements.filter(p => 
-        p.placementStatus === 'hired' && p.retentionDate && 
-        new Date(p.retentionDate) >= new Date(new Date(p.hiredDate).setFullYear(new Date(p.hiredDate).getFullYear() + 1))
-      ).length
-      
-      // Group by month for monthly conversions
-      const monthlyData = {}
-      placements.forEach(placement => {
-        if (placement.hiredDate) {
-          const month = new Date(placement.hiredDate).toLocaleString('default', { month: 'short' })
-          if (!monthlyData[month]) {
-            monthlyData[month] = { applied: 0, hired: 0, retained: 0 }
-          }
-          monthlyData[month].applied += 1
-          if (placement.placementStatus === 'hired') {
-            monthlyData[month].hired += 1
-          }
-          // Retention tracking would need more detailed data
+      try {
+        // Fetch all placement data from the placements table
+        const { data: placements, error } = await supabase
+          .from('placements')
+          .select('*')
+        
+        if (error) {
+          console.error('Error fetching placements:', error)
+          throw error
         }
-      })
-      
-      const conversionFunnel = [
-        { stage: 'Verified Profiles', count: totalVerifiedProfiles, percentage: 100 },
-        { stage: 'Viewed by Recruiters', count: recruiterViews, percentage: totalVerifiedProfiles > 0 ? parseFloat(((recruiterViews / totalVerifiedProfiles) * 100).toFixed(1)) : 0 },
-        { stage: 'Applied to Jobs', count: jobApplications, percentage: totalVerifiedProfiles > 0 ? parseFloat(((jobApplications / totalVerifiedProfiles) * 100).toFixed(1)) : 0 },
-        { stage: 'Shortlisted', count: 0, percentage: 0 }, // Would need shortlist tracking
-        { stage: 'Interviewed', count: 0, percentage: 0 }, // Would need interview tracking
-        { stage: 'Job Offers', count: 0, percentage: 0 }, // Would need offer tracking
-        { stage: 'Hired', count: hiredCount, percentage: jobApplications > 0 ? parseFloat(((hiredCount / jobApplications) * 100).toFixed(1)) : 0 },
-        { stage: '6M Retention', count: sixMonthRetention, percentage: hiredCount > 0 ? parseFloat(((sixMonthRetention / hiredCount) * 100).toFixed(1)) : 0 },
-        { stage: '1Y Retention', count: oneYearRetention, percentage: hiredCount > 0 ? parseFloat(((oneYearRetention / hiredCount) * 100).toFixed(1)) : 0 }
-      ]
-      
-      const monthlyConversions = Object.entries(monthlyData).map(([month, data]) => ({
-        month,
-        applied: data.applied,
-        hired: data.hired,
-        retained: data.retained
-      }))
-      
-      const realConversionData = {
-        conversionFunnel,
-        monthlyConversions
+
+        // Count placements by status
+        // Process: applied -> shortlisted -> offered -> hired
+        // Rejected/withdrawn only applies between applied to offered
+        const appliedCount = placements.filter(p => 
+          ['applied', 'shortlisted', 'offered', 'hired'].includes(p.placementStatus)
+        ).length
+        
+        const shortlistedCount = placements.filter(p => 
+          ['shortlisted', 'offered', 'hired'].includes(p.placementStatus)
+        ).length
+        
+        const offeredCount = placements.filter(p => 
+          ['offered', 'hired'].includes(p.placementStatus)
+        ).length
+        
+        const hiredCount = placements.filter(p => 
+          p.placementStatus === 'hired'
+        ).length
+
+        const rejectedCount = placements.filter(p => 
+          p.placementStatus === 'rejected'
+        ).length
+
+        const withdrawnCount = placements.filter(p => 
+          p.placementStatus === 'withdrawn'
+        ).length
+
+        // Calculate total starting applications (applied + rejected + withdrawn)
+        const totalApplications = appliedCount + rejectedCount + withdrawnCount
+
+        // Build conversion funnel with percentages based on previous stage
+        const conversionFunnel = [
+          { 
+            stage: 'Applied', 
+            count: totalApplications, 
+            percentage: 100 
+          },
+          { 
+            stage: 'Shortlisted', 
+            count: shortlistedCount, 
+            percentage: totalApplications > 0 ? parseFloat(((shortlistedCount / totalApplications) * 100).toFixed(1)) : 0 
+          },
+          { 
+            stage: 'Offered', 
+            count: offeredCount, 
+            percentage: shortlistedCount > 0 ? parseFloat(((offeredCount / shortlistedCount) * 100).toFixed(1)) : 0 
+          },
+          { 
+            stage: 'Hired', 
+            count: hiredCount, 
+            percentage: offeredCount > 0 ? parseFloat(((hiredCount / offeredCount) * 100).toFixed(1)) : 0 
+          }
+        ]
+
+        // Group by month for monthly conversions
+        const monthlyData = {}
+        const monthOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        
+        placements.forEach(placement => {
+          // Use createdAt or hiredDate or any date field available
+          const dateField = placement.createdAt || placement.hiredDate || placement.appliedDate
+          if (dateField) {
+            const date = new Date(dateField)
+            const month = date.toLocaleString('default', { month: 'short' })
+            
+            if (!monthlyData[month]) {
+              monthlyData[month] = { applied: 0, hired: 0, retained: 0 }
+            }
+            
+            // Count applied (all statuses count as applied initially)
+            monthlyData[month].applied += 1
+            
+            // Count hired
+            if (placement.placementStatus === 'hired') {
+              monthlyData[month].hired += 1
+              
+              // Check retention if retentionDate exists
+              if (placement.retentionDate) {
+                monthlyData[month].retained += 1
+              }
+            }
+          }
+        })
+
+        // Convert to array and sort by month
+        const monthlyConversions = monthOrder
+          .filter(month => monthlyData[month])
+          .map(month => ({
+            month,
+            applied: monthlyData[month].applied,
+            hired: monthlyData[month].hired,
+            retained: monthlyData[month].retained
+          }))
+
+        const placementConversionData = {
+          conversionFunnel,
+          monthlyConversions,
+          summary: {
+            totalApplications,
+            shortlistedCount,
+            offeredCount,
+            hiredCount,
+            rejectedCount,
+            withdrawnCount
+          }
+        }
+        
+        const response = NextResponse.json(placementConversionData)
+        return addCacheHeaders(response, 'dynamic')
+      } catch (error) {
+        console.error('Error in placement-conversion endpoint:', error)
+        return NextResponse.json(
+          { error: 'Failed to fetch placement conversion data', details: error.message },
+          { status: 500 }
+        )
       }
-      
-      return NextResponse.json(realConversionData)
     }
 
     // GET /api/analytics/state-heatmap - Enhanced state-wise heat map data (OPTIMIZED)
