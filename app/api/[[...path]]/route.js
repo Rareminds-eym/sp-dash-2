@@ -2187,106 +2187,143 @@ export async function GET(request) {
 
     // GET /api/analytics/placement-conversion/export - Export placement conversion data to CSV
     if (path === '/analytics/placement-conversion/export') {
-      // Fetch real placement data from the placements table
-      const { data: placements, error } = await supabase
-        .from('placements')
-        .select('*')
-        .order('hiredDate', { ascending: true })
-      
-      if (error) throw error
-      
-      // Calculate conversion funnel based on real data
-      const totalVerifiedProfiles = await supabase
-        .from('skill_passports')
-        .select('id', { count: 'exact' })
-        .eq('status', 'verified')
-        .then(result => result.count || 0)
-      
-      // Calculate job applications
-      const jobApplications = placements.length
-      
-      // Calculate hired count
-      const hiredCount = placements.filter(p => p.placementStatus === 'hired').length
-      
-      // Calculate retention data
-      const sixMonthRetention = placements.filter(p => 
-        p.placementStatus === 'hired' && p.retentionDate && 
-        new Date(p.retentionDate) >= new Date(new Date(p.hiredDate).setMonth(new Date(p.hiredDate).getMonth() + 6))
-      ).length
-      
-      const oneYearRetention = placements.filter(p => 
-        p.placementStatus === 'hired' && p.retentionDate && 
-        new Date(p.retentionDate) >= new Date(new Date(p.hiredDate).setFullYear(new Date(p.hiredDate).getFullYear() + 1))
-      ).length
-      
-      // Group by month for monthly conversions
-      const monthlyData = {}
-      placements.forEach(placement => {
-        if (placement.hiredDate) {
-          const month = new Date(placement.hiredDate).toLocaleString('default', { month: 'short' })
-          if (!monthlyData[month]) {
-            monthlyData[month] = { applied: 0, hired: 0, retained: 0 }
+      try {
+        // Fetch all placement data from the placements table
+        const { data: placements, error } = await supabase
+          .from('placements')
+          .select('*')
+        
+        if (error) throw error
+
+        // Count placements by status (matching the main endpoint logic)
+        const appliedCount = placements.filter(p => 
+          ['applied', 'shortlisted', 'offered', 'hired'].includes(p.placementStatus)
+        ).length
+        
+        const shortlistedCount = placements.filter(p => 
+          ['shortlisted', 'offered', 'hired'].includes(p.placementStatus)
+        ).length
+        
+        const offeredCount = placements.filter(p => 
+          ['offered', 'hired'].includes(p.placementStatus)
+        ).length
+        
+        const hiredCount = placements.filter(p => 
+          p.placementStatus === 'hired'
+        ).length
+
+        const rejectedCount = placements.filter(p => 
+          p.placementStatus === 'rejected'
+        ).length
+
+        const withdrawnCount = placements.filter(p => 
+          p.placementStatus === 'withdrawn'
+        ).length
+
+        const totalApplications = appliedCount + rejectedCount + withdrawnCount
+
+        // Build conversion funnel
+        const conversionFunnel = [
+          { 
+            stage: 'Applied', 
+            count: totalApplications, 
+            percentage: 100 
+          },
+          { 
+            stage: 'Shortlisted', 
+            count: shortlistedCount, 
+            percentage: totalApplications > 0 ? parseFloat(((shortlistedCount / totalApplications) * 100).toFixed(1)) : 0 
+          },
+          { 
+            stage: 'Offered', 
+            count: offeredCount, 
+            percentage: shortlistedCount > 0 ? parseFloat(((offeredCount / shortlistedCount) * 100).toFixed(1)) : 0 
+          },
+          { 
+            stage: 'Hired', 
+            count: hiredCount, 
+            percentage: offeredCount > 0 ? parseFloat(((hiredCount / offeredCount) * 100).toFixed(1)) : 0 
           }
-          monthlyData[month].applied += 1
-          if (placement.placementStatus === 'hired') {
-            monthlyData[month].hired += 1
+        ]
+
+        // Group by month for monthly conversions
+        const monthlyData = {}
+        const monthOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        
+        placements.forEach(placement => {
+          const dateField = placement.createdAt || placement.hiredDate || placement.appliedDate
+          if (dateField) {
+            const date = new Date(dateField)
+            const month = date.toLocaleString('default', { month: 'short' })
+            
+            if (!monthlyData[month]) {
+              monthlyData[month] = { applied: 0, hired: 0, retained: 0 }
+            }
+            
+            monthlyData[month].applied += 1
+            
+            if (placement.placementStatus === 'hired') {
+              monthlyData[month].hired += 1
+              if (placement.retentionDate) {
+                monthlyData[month].retained += 1
+              }
+            }
           }
-          // Retention tracking would need more detailed data
-        }
-      })
-      
-      const conversionFunnel = [
-        { stage: 'Verified Profiles', count: totalVerifiedProfiles, percentage: 100 },
-        { stage: 'Viewed by Recruiters', count: 0, percentage: 0 }, // Would need view tracking
-        { stage: 'Applied to Jobs', count: jobApplications, percentage: totalVerifiedProfiles > 0 ? parseFloat(((jobApplications / totalVerifiedProfiles) * 100).toFixed(1)) : 0 },
-        { stage: 'Shortlisted', count: 0, percentage: 0 }, // Would need shortlist tracking
-        { stage: 'Interviewed', count: 0, percentage: 0 }, // Would need interview tracking
-        { stage: 'Job Offers', count: 0, percentage: 0 }, // Would need offer tracking
-        { stage: 'Hired', count: hiredCount, percentage: jobApplications > 0 ? parseFloat(((hiredCount / jobApplications) * 100).toFixed(1)) : 0 },
-        { stage: '6M Retention', count: sixMonthRetention, percentage: hiredCount > 0 ? parseFloat(((sixMonthRetention / hiredCount) * 100).toFixed(1)) : 0 },
-        { stage: '1Y Retention', count: oneYearRetention, percentage: hiredCount > 0 ? parseFloat(((oneYearRetention / hiredCount) * 100).toFixed(1)) : 0 }
-      ]
-      
-      const monthlyConversions = Object.entries(monthlyData).map(([month, data]) => ({
-        month,
-        applied: data.applied,
-        hired: data.hired,
-        retained: data.retained
-      }))
-      
-      const realConversionData = {
-        conversionFunnel,
-        monthlyConversions
+        })
+
+        const monthlyConversions = monthOrder
+          .filter(month => monthlyData[month])
+          .map(month => ({
+            month,
+            applied: monthlyData[month].applied,
+            hired: monthlyData[month].hired,
+            retained: monthlyData[month].retained
+          }))
+
+        // Create CSV for conversion funnel
+        const headers1 = ['Stage', 'Count', 'Percentage']
+        const csvRows = [headers1.join(',')]
+        
+        conversionFunnel.forEach(stage => {
+          const row = [`"${stage.stage}"`, stage.count, stage.percentage]
+          csvRows.push(row.join(','))
+        })
+
+        csvRows.push('') // Empty line
+        csvRows.push('Summary Statistics')
+        csvRows.push(`Total Applications,${totalApplications}`)
+        csvRows.push(`Shortlisted,${shortlistedCount}`)
+        csvRows.push(`Offered,${offeredCount}`)
+        csvRows.push(`Hired,${hiredCount}`)
+        csvRows.push(`Rejected,${rejectedCount}`)
+        csvRows.push(`Withdrawn,${withdrawnCount}`)
+
+        csvRows.push('') // Empty line
+        csvRows.push('Monthly Conversions')
+        
+        const headers2 = ['Month', 'Applied', 'Hired', 'Retained']
+        csvRows.push(headers2.join(','))
+        
+        monthlyConversions.forEach(month => {
+          const row = [month.month, month.applied, month.hired, month.retained]
+          csvRows.push(row.join(','))
+        })
+
+        const csvContent = csvRows.join('\n')
+
+        return new Response(csvContent, {
+          headers: {
+            'Content-Type': 'text/csv',
+            'Content-Disposition': `attachment; filename="placement-conversion-${new Date().toISOString().split('T')[0]}.csv"`
+          }
+        })
+      } catch (error) {
+        console.error('Error in placement-conversion export:', error)
+        return NextResponse.json(
+          { error: 'Failed to export placement conversion data' },
+          { status: 500 }
+        )
       }
-
-      // Create CSV for conversion funnel
-      const headers1 = ['Stage', 'Count', 'Percentage']
-      const csvRows1 = [headers1.join(',')]
-      
-      realConversionData.conversionFunnel.forEach(stage => {
-        const row = [`"${stage.stage}"`, stage.count, stage.percentage]
-        csvRows1.push(row.join(','))
-      })
-
-      csvRows1.push('') // Empty line
-      csvRows1.push('Monthly Conversions')
-      
-      const headers2 = ['Month', 'Applied', 'Hired', 'Retained']
-      csvRows1.push(headers2.join(','))
-      
-      realConversionData.monthlyConversions.forEach(month => {
-        const row = [month.month, month.applied, month.hired, month.retained]
-        csvRows1.push(row.join(','))
-      })
-
-      const csvContent = csvRows1.join('\n')
-
-      return new Response(csvContent, {
-        headers: {
-          'Content-Type': 'text/csv',
-          'Content-Disposition': `attachment; filename="placement-conversion-${new Date().toISOString().split('T')[0]}.csv"`
-        }
-      })
     }
 
     // GET /api/analytics/state-heatmap/export - Export state heatmap data to CSV
