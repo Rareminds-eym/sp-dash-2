@@ -48,7 +48,8 @@ export default function UsersPageEnhanced({ currentUser }) {
     total: 0,
     active: 0,
     suspended: 0,
-    admins: 0
+    superAdmins: 0,
+    platformAdmins: 0
   })
   
   // Pagination state
@@ -64,19 +65,14 @@ export default function UsersPageEnhanced({ currentUser }) {
     search: '',
     role: 'all',
     active: 'all',
-    organization: 'all',
-    sortBy: 'createdAt',
+    sortBy: 'granted_at',
     sortOrder: 'desc'
   })
-  
-  // Organizations list for dropdown
-  const [organizations, setOrganizations] = useState([])
   
   // Debounce timer for search
   const searchDebounceRef = useRef(null)
 
   useEffect(() => {
-    fetchOrganizations()
     fetchOverallStats()
     
     // Listen for refresh events from the layout
@@ -95,19 +91,9 @@ export default function UsersPageEnhanced({ currentUser }) {
     fetchUsers()
   }, [pagination.page, pagination.limit, filters])
 
-  const fetchOrganizations = async () => {
-    try {
-      const response = await fetch('/api/users/organizations')
-      const data = await response.json()
-      setOrganizations(data || [])
-    } catch (error) {
-      console.error('Error fetching organizations:', error)
-    }
-  }
-
   const fetchOverallStats = async () => {
     try {
-      // Fetch all users without pagination to get accurate stats
+      // Fetch all admin users without pagination to get accurate stats
       const response = await fetch('/api/users?page=1&limit=10000')
       const data = await response.json()
       const allUsers = data.data || []
@@ -116,7 +102,8 @@ export default function UsersPageEnhanced({ currentUser }) {
         total: data.pagination?.total || 0,
         active: allUsers.filter(u => u.isActive).length,
         suspended: allUsers.filter(u => !u.isActive).length,
-        admins: allUsers.filter(u => u.role === 'super_admin' || u.role === 'admin').length
+        superAdmins: allUsers.filter(u => u.role === 'super_admin').length,
+        platformAdmins: allUsers.filter(u => u.role === 'platform_admin').length
       })
     } catch (error) {
       console.error('Error fetching overall stats:', error)
