@@ -172,8 +172,8 @@ export async function GET(request) {
       const sortBy = url.searchParams.get('sortBy') || 'granted_at'
       const sortOrder = url.searchParams.get('sortOrder') || 'desc'
       
-      // Build the query for admin users using supabaseAdmin to bypass RLS
-      let adminUsersQuery = supabaseAdmin
+      // Build the query for admin users using RLS client
+      let adminUsersQuery = rlsClient
         .from('admin_users')
         .select('*', { count: 'exact' })
       
@@ -198,7 +198,7 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Failed to fetch admin users', details: error }, { status: 500 })
       }
       
-      // Fetch user details for all admin users using supabaseAdmin
+      // Fetch user details for all admin users using RLS client
       const userIds = (adminUsers || []).map(a => a.user_id)
       const grantedByIds = (adminUsers || []).map(a => a.granted_by).filter(Boolean)
       
@@ -206,7 +206,7 @@ export async function GET(request) {
       let grantedByMap = {}
       
       if (userIds.length > 0) {
-        const { data: usersData } = await supabaseAdmin
+        const { data: usersData } = await rlsClient
           .from('users')
           .select('id, email, isActive, createdAt, metadata')
           .in('id', userIds)
@@ -217,7 +217,7 @@ export async function GET(request) {
       }
       
       if (grantedByIds.length > 0) {
-        const { data: grantedByData } = await supabaseAdmin
+        const { data: grantedByData } = await rlsClient
           .from('users')
           .select('id, email, metadata')
           .in('id', grantedByIds)
