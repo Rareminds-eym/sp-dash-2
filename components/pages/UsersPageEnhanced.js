@@ -23,7 +23,10 @@ import {
     UserX,
     ChevronLeft,
     ChevronRight,
-    Users
+    Users,
+    ShieldCheck,
+    Crown,
+    Clock
 } from 'lucide-react'
 import { useEffect, useState, useRef } from 'react'
 import {
@@ -45,7 +48,8 @@ export default function UsersPageEnhanced({ currentUser }) {
     total: 0,
     active: 0,
     suspended: 0,
-    admins: 0
+    superAdmins: 0,
+    platformAdmins: 0
   })
   
   // Pagination state
@@ -61,19 +65,14 @@ export default function UsersPageEnhanced({ currentUser }) {
     search: '',
     role: 'all',
     active: 'all',
-    organization: 'all',
-    sortBy: 'createdAt',
+    sortBy: 'granted_at',
     sortOrder: 'desc'
   })
-  
-  // Organizations list for dropdown
-  const [organizations, setOrganizations] = useState([])
   
   // Debounce timer for search
   const searchDebounceRef = useRef(null)
 
   useEffect(() => {
-    fetchOrganizations()
     fetchOverallStats()
     
     // Listen for refresh events from the layout
@@ -92,19 +91,9 @@ export default function UsersPageEnhanced({ currentUser }) {
     fetchUsers()
   }, [pagination.page, pagination.limit, filters])
 
-  const fetchOrganizations = async () => {
-    try {
-      const response = await fetch('/api/users/organizations')
-      const data = await response.json()
-      setOrganizations(data || [])
-    } catch (error) {
-      console.error('Error fetching organizations:', error)
-    }
-  }
-
   const fetchOverallStats = async () => {
     try {
-      // Fetch all users without pagination to get accurate stats
+      // Fetch all admin users without pagination to get accurate stats
       const response = await fetch('/api/users?page=1&limit=10000')
       const data = await response.json()
       const allUsers = data.data || []
@@ -113,7 +102,8 @@ export default function UsersPageEnhanced({ currentUser }) {
         total: data.pagination?.total || 0,
         active: allUsers.filter(u => u.isActive).length,
         suspended: allUsers.filter(u => !u.isActive).length,
-        admins: allUsers.filter(u => u.role === 'super_admin' || u.role === 'admin').length
+        superAdmins: allUsers.filter(u => u.role === 'super_admin').length,
+        platformAdmins: allUsers.filter(u => u.role === 'platform_admin').length
       })
     } catch (error) {
       console.error('Error fetching overall stats:', error)
@@ -134,7 +124,6 @@ export default function UsersPageEnhanced({ currentUser }) {
       if (filters.search) params.append('search', filters.search)
       if (filters.role && filters.role !== 'all') params.append('role', filters.role)
       if (filters.active && filters.active !== 'all') params.append('active', filters.active)
-      if (filters.organization && filters.organization !== 'all') params.append('organization', filters.organization)
       
       const response = await fetch(`/api/users?${params}`)
       const data = await response.json()
@@ -149,7 +138,7 @@ export default function UsersPageEnhanced({ currentUser }) {
       console.error('Error fetching users:', error)
       toast({
         title: 'Error',
-        description: 'Failed to fetch users',
+        description: 'Failed to fetch admin users',
         variant: 'destructive'
       })
     } finally {
@@ -220,11 +209,10 @@ export default function UsersPageEnhanced({ currentUser }) {
 
   const getRoleBadge = (role) => {
     const colors = {
-      super_admin: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-      admin: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-      manager: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+      super_admin: 'bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 border border-purple-200 dark:from-purple-900/40 dark:to-pink-900/40 dark:text-purple-300 dark:border-purple-700',
+      platform_admin: 'bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 border border-blue-200 dark:from-blue-900/40 dark:to-indigo-900/40 dark:text-blue-300 dark:border-blue-700'
     }
-    return colors[role] || 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+    return colors[role] || 'bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'
   }
 
   const getRoleLabel = (role) => {
@@ -235,48 +223,69 @@ export default function UsersPageEnhanced({ currentUser }) {
     <div className="space-y-6">
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="neu-card">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <Card className="neu-card bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/20 border-blue-200 dark:border-blue-800">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total Users</p>
-                <p className="text-2xl font-bold">{overallStats.total}</p>
+                <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Total Admin Users</p>
+                <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">{overallStats.total}</p>
               </div>
-              <Users className="h-8 w-8 text-blue-500" />
+              <div className="p-3 bg-blue-200 dark:bg-blue-900/40 rounded-xl">
+                <Users className="h-7 w-7 text-blue-600 dark:text-blue-300" />
+              </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="neu-card">
+        <Card className="neu-card bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/30 dark:to-green-900/20 border-green-200 dark:border-green-800">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Active</p>
-                <p className="text-2xl font-bold text-green-600">{overallStats.active}</p>
+                <p className="text-sm font-medium text-green-600 dark:text-green-400">Active</p>
+                <p className="text-3xl font-bold text-green-900 dark:text-green-100">{overallStats.active}</p>
               </div>
-              <UserCheck className="h-8 w-8 text-green-500" />
+              <div className="p-3 bg-green-200 dark:bg-green-900/40 rounded-xl">
+                <UserCheck className="h-7 w-7 text-green-600 dark:text-green-300" />
+              </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="neu-card">
+        <Card className="neu-card bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950/30 dark:to-red-900/20 border-red-200 dark:border-red-800">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Suspended</p>
-                <p className="text-2xl font-bold text-red-600">{overallStats.suspended}</p>
+                <p className="text-sm font-medium text-red-600 dark:text-red-400">Suspended</p>
+                <p className="text-3xl font-bold text-red-900 dark:text-red-100">{overallStats.suspended}</p>
               </div>
-              <UserX className="h-8 w-8 text-red-500" />
+              <div className="p-3 bg-red-200 dark:bg-red-900/40 rounded-xl">
+                <UserX className="h-7 w-7 text-red-600 dark:text-red-300" />
+              </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="neu-card">
+        <Card className="neu-card bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/30 dark:to-purple-900/20 border-purple-200 dark:border-purple-800">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Admins</p>
-                <p className="text-2xl font-bold text-purple-600">{overallStats.admins}</p>
+                <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Super Admins</p>
+                <p className="text-3xl font-bold text-purple-900 dark:text-purple-100">{overallStats.superAdmins}</p>
               </div>
-              <Shield className="h-8 w-8 text-purple-500" />
+              <div className="p-3 bg-purple-200 dark:bg-purple-900/40 rounded-xl">
+                <Crown className="h-7 w-7 text-purple-600 dark:text-purple-300" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="neu-card bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-950/30 dark:to-indigo-900/20 border-indigo-200 dark:border-indigo-800">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Platform Admins</p>
+                <p className="text-3xl font-bold text-indigo-900 dark:text-indigo-100">{overallStats.platformAdmins}</p>
+              </div>
+              <div className="p-3 bg-indigo-200 dark:bg-indigo-900/40 rounded-xl">
+                <ShieldCheck className="h-7 w-7 text-indigo-600 dark:text-indigo-300" />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -290,7 +299,7 @@ export default function UsersPageEnhanced({ currentUser }) {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by email, name, role, or organization..."
+                  placeholder="Search by email, name, or role..."
                   value={filters.search}
                   onChange={handleSearchChange}
                   className="pl-10"
@@ -304,14 +313,13 @@ export default function UsersPageEnhanced({ currentUser }) {
                   setPagination(prev => ({ ...prev, page: 1 }))
                 }}
               >
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Role" />
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Admin Role" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Roles</SelectItem>
                   <SelectItem value="super_admin">Super Admin</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="manager">Manager</SelectItem>
+                  <SelectItem value="platform_admin">Platform Admin</SelectItem>
                 </SelectContent>
               </Select>
               
@@ -333,40 +341,22 @@ export default function UsersPageEnhanced({ currentUser }) {
               </Select>
               
               <Select
-                value={filters.organization}
-                onValueChange={(value) => {
-                  setFilters(prev => ({ ...prev, organization: value }))
-                  setPagination(prev => ({ ...prev, page: 1 }))
-                }}
-              >
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Organization" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Organizations</SelectItem>
-                  {organizations.map(org => (
-                    <SelectItem key={org.id} value={org.id}>{org.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              <Select
                 value={`${filters.sortBy}-${filters.sortOrder}`}
                 onValueChange={(value) => {
                   const [sortBy, sortOrder] = value.split('-')
                   setFilters(prev => ({ ...prev, sortBy, sortOrder }))
                 }}
               >
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="createdAt-desc">Newest First</SelectItem>
-                  <SelectItem value="createdAt-asc">Oldest First</SelectItem>
+                  <SelectItem value="granted_at-desc">Recently Granted</SelectItem>
+                  <SelectItem value="granted_at-asc">Oldest Granted</SelectItem>
                   <SelectItem value="email-asc">Email A-Z</SelectItem>
                   <SelectItem value="email-desc">Email Z-A</SelectItem>
-                  <SelectItem value="role-asc">Role A-Z</SelectItem>
-                  <SelectItem value="role-desc">Role Z-A</SelectItem>
+                  <SelectItem value="admin_role-asc">Role A-Z</SelectItem>
+                  <SelectItem value="admin_role-desc">Role Z-A</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -403,55 +393,99 @@ export default function UsersPageEnhanced({ currentUser }) {
             <div className="space-y-4">
               {users.length > 0 ? (
                 users.map((user) => (
-                  <div key={user.id} className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors dark:bg-gray-800/50 dark:hover:bg-gray-800">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Shield className="h-6 w-6 text-white" />
-                      </div>
-                      <div>
-                        <p className="font-medium dark:text-white">{user.email}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge className={getRoleBadge(user.role)}>
-                            {getRoleLabel(user.role)}
-                          </Badge>
-                          <Badge variant={user.isActive ? 'default' : 'secondary'}>
-                            {user.isActive ? 'Active' : 'Suspended'}
-                          </Badge>
-                          {user.organizations?.name && (
-                            <span className="text-xs text-muted-foreground">
-                              {user.organizations.name}
-                            </span>
+                  <div key={user.id} className="group p-5 bg-gradient-to-r from-gray-50 to-white hover:from-gray-100 hover:to-gray-50 dark:from-gray-800/50 dark:to-gray-900/50 dark:hover:from-gray-800 dark:hover:to-gray-800/80 rounded-xl transition-all duration-200 border border-gray-200 dark:border-gray-700 hover:shadow-md">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-4 flex-1">
+                        <div className={`w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                          user.role === 'super_admin' 
+                            ? 'bg-gradient-to-br from-purple-500 to-pink-500' 
+                            : 'bg-gradient-to-br from-blue-500 to-indigo-500'
+                        }`}>
+                          {user.role === 'super_admin' ? (
+                            <Crown className="h-7 w-7 text-white" />
+                          ) : (
+                            <ShieldCheck className="h-7 w-7 text-white" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <p className="font-semibold text-lg dark:text-white">{user.email}</p>
+                            <Badge variant={user.isActive ? 'default' : 'secondary'} className="font-medium">
+                              {user.isActive ? '● Active' : '○ Suspended'}
+                            </Badge>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3 text-sm">
+                            <Badge className={getRoleBadge(user.role)}>
+                              {getRoleLabel(user.role)}
+                            </Badge>
+                            {user.metadata?.name && (
+                              <span className="text-muted-foreground flex items-center gap-1">
+                                <span className="font-medium">Name:</span> {user.metadata.name}
+                              </span>
+                            )}
+                          </div>
+                          {user.grantedByEmail && (
+                            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex items-center gap-4 text-sm text-muted-foreground">
+                              <span className="flex items-center gap-1.5">
+                                <Shield className="h-3.5 w-3.5" />
+                                <span className="font-medium">Granted by:</span> {user.grantedByEmail}
+                              </span>
+                              {user.grantedAt && (
+                                <span className="flex items-center gap-1.5">
+                                  <Clock className="h-3.5 w-3.5" />
+                                  <span className="font-medium">On:</span> {new Date(user.grantedAt).toLocaleDateString('en-US', { 
+                                    year: 'numeric', 
+                                    month: 'short', 
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {currentUser?.role === 'super_admin' && user.id !== currentUser?.id && (
-                        user.isActive ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleAction(user, 'suspend')}
-                          >
-                            <UserX className="h-4 w-4 mr-2" />
-                            Suspend
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleAction(user, 'activate')}
-                          >
-                            <UserCheck className="h-4 w-4 mr-2" />
-                            Activate
-                          </Button>
-                        )
-                      )}
+                      <div className="flex items-center gap-2 ml-4">
+                        {currentUser?.role === 'super_admin' && user.id !== currentUser?.id && (
+                          user.isActive ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAction(user, 'suspend')}
+                              className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
+                            >
+                              <UserX className="h-4 w-4 mr-2" />
+                              Suspend
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAction(user, 'activate')}
+                              className="border-green-200 text-green-600 hover:bg-green-50 hover:text-green-700 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-900/20"
+                            >
+                              <UserCheck className="h-4 w-4 mr-2" />
+                              Activate
+                            </Button>
+                          )
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-center text-muted-foreground py-8">No users found</p>
+                <div className="text-center py-16">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
+                    <Shield className="h-8 w-8 text-muted-foreground opacity-50" />
+                  </div>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">No admin users found</p>
+                  <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
+                    {filters.search || filters.role !== 'all' || filters.active !== 'all' 
+                      ? 'Try adjusting your filters to see more results'
+                      : 'The admin_users table is currently empty. Admin users will appear here once they are granted admin roles.'}
+                  </p>
+                </div>
               )}
             </div>
           )}
