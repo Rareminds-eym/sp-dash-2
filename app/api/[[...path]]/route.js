@@ -2674,30 +2674,30 @@ export async function POST(request) {
     if (path === '/suspend-user') {
       const { targetUserId, actorId, reason } = body
 
-      // Update user status
-      const { error: updateError } = await supabase
+      // Update user status using RLS client
+      const { error: updateError } = await rlsClient
         .from('users')
         .update({ isActive: false })
         .eq('id', targetUserId)
 
       if (updateError) throw updateError
 
-      // Log verification
-      const { error: verifyError } = await supabase
+      // Log verification using RLS client
+      const { error: verifyError } = await rlsClient
         .from('verifications')
         .insert({
           id: uuidv4(),
           targetTable: 'users',
           targetId: targetUserId,
           action: 'suspend',
-          performedBy: actorId,
+          performedBy: actorId || userContext.id,
           note: reason || 'User suspended'
         })
 
       if (verifyError) throw verifyError
 
       // Log audit
-      await logAudit(actorId, 'suspend_user', targetUserId, { reason })
+      await logAudit(userContext.id, 'suspend_user', targetUserId, { reason })
 
       return NextResponse.json({ success: true, message: 'User suspended successfully' })
     }
@@ -2706,30 +2706,30 @@ export async function POST(request) {
     if (path === '/activate-user') {
       const { targetUserId, actorId, note } = body
 
-      // Update user status
-      const { error: updateError } = await supabase
+      // Update user status using RLS client
+      const { error: updateError } = await rlsClient
         .from('users')
         .update({ isActive: true })
         .eq('id', targetUserId)
 
       if (updateError) throw updateError
 
-      // Log verification
-      const { error: verifyError } = await supabase
+      // Log verification using RLS client
+      const { error: verifyError } = await rlsClient
         .from('verifications')
         .insert({
           id: uuidv4(),
           targetTable: 'users',
           targetId: targetUserId,
           action: 'activate',
-          performedBy: actorId,
+          performedBy: actorId || userContext.id,
           note: note || 'User activated'
         })
 
       if (verifyError) throw verifyError
 
       // Log audit
-      await logAudit(actorId, 'activate_user', targetUserId, { note })
+      await logAudit(userContext.id, 'activate_user', targetUserId, { note })
 
       return NextResponse.json({ success: true, message: 'User activated successfully' })
     }
