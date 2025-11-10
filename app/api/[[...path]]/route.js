@@ -1050,8 +1050,8 @@ export async function GET(request) {
         const mappedUniversityIds = universityIds.map(id => univIdMapping[id] || id).filter(Boolean)
         
         const [usersResult, universitiesResult] = await Promise.all([
-          userIds.length > 0 ? supabase.from('users').select('id, email').in('id', userIds) : { data: [] },
-          mappedUniversityIds.length > 0 ? supabase.from('universities').select('id, name').in('id', mappedUniversityIds) : { data: [] }
+          userIds.length > 0 ? rlsClient.from('users').select('id, email').in('id', userIds) : { data: [] },
+          mappedUniversityIds.length > 0 ? rlsClient.from('universities').select('id, name').in('id', mappedUniversityIds) : { data: [] }
         ])
         
         // Create lookup maps
