@@ -3503,36 +3503,51 @@ export async function DELETE(request) {
   const path = pathname.replace('/api', '')
 
   try {
+    // Create RLS-aware Supabase client with user context
+    const { supabase: rlsClient, user, error: authError } = await createRLSClient(request)
+    
+    // Ensure user is authenticated
+    if (!user || authError) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    
+    // Get user context for authorization checks
+    const userContext = await getUserContext(rlsClient, user)
+    
+    if (!userContext) {
+      return NextResponse.json({ error: 'User context not found' }, { status: 403 })
+    }
+    
     const body = await request.json()
 
     // DELETE /api/user - Delete a user (soft delete by deactivating)
     if (path === '/user') {
       const { userId, actorId, reason } = body
 
-      // Soft delete by deactivating
-      const { error: updateError } = await supabase
+      // Soft delete by deactivating using RLS client
+      const { error: updateError } = await rlsClient
         .from('users')
         .update({ isActive: false })
         .eq('id', userId)
 
       if (updateError) throw updateError
 
-      // Log verification
-      const { error: verifyError } = await supabase
+      // Log verification using RLS client
+      const { error: verifyError } = await rlsClient
         .from('verifications')
         .insert({
           id: uuidv4(),
           targetTable: 'users',
           targetId: userId,
           action: 'delete',
-          performedBy: actorId,
+          performedBy: actorId || userContext.id,
           note: reason || 'User deleted'
         })
 
       if (verifyError) throw verifyError
 
       // Log audit
-      await logAudit(actorId, 'delete_user', userId, { reason })
+      await logAudit(userContext.id, 'delete_user', userId, { reason })
 
       return NextResponse.json({ success: true, message: 'User deleted successfully' })
     }
