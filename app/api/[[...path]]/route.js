@@ -3572,6 +3572,21 @@ export async function PUT(request) {
   const path = pathname.replace('/api', '')
 
   try {
+    // Create RLS-aware Supabase client with user context
+    const { supabase: rlsClient, user, error: authError } = await createRLSClient(request)
+    
+    // Ensure user is authenticated
+    if (!user || authError) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    
+    // Get user context for authorization checks
+    const userContext = await getUserContext(rlsClient, user)
+    
+    if (!userContext) {
+      return NextResponse.json({ error: 'User context not found' }, { status: 403 })
+    }
+    
     const body = await request.json()
 
     // PUT /api/profile - Update user profile
@@ -3585,14 +3600,14 @@ export async function PUT(request) {
         )
       }
 
-      // First, find the user by email
-      const { data: user, error: userError } = await supabase
+      // First, find the user by email using RLS client
+      const { data: userData, error: userError } = await rlsClient
         .from('users')
         .select('id, organizationId, metadata')
         .eq('email', email)
         .single()
 
-      if (userError || !user) {
+      if (userError || !userData) {
         console.error('User lookup error:', userError)
         return NextResponse.json(
           { error: 'User not found' },
@@ -3600,20 +3615,20 @@ export async function PUT(request) {
         )
       }
 
-      console.log('User found:', { id: user.id, organizationId: user.organizationId, metadata: user.metadata })
+      console.log('User found:', { id: userData.id, organizationId: userData.organizationId, metadata: userData.metadata })
 
       // Update user metadata with name
       const updatedMetadata = {
-        ...(user.metadata || {}),
-        name: name || user.metadata?.name
+        ...(userData.metadata || {}),
+        name: name || userData.metadata?.name
       }
 
-      const { error: updateUserError } = await supabase
+      const { error: updateUserError } = await rlsClient
         .from('users')
         .update({ 
           metadata: updatedMetadata
         })
-        .eq('id', user.id)
+        .eq('id', userData.id)
 
       if (updateUserError) {
         console.error('Error updating user:', updateUserError)
