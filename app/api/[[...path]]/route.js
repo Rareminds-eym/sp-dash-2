@@ -155,26 +155,10 @@ export async function GET(request) {
       const sortBy = url.searchParams.get('sortBy') || 'granted_at'
       const sortOrder = url.searchParams.get('sortOrder') || 'desc'
       
-      // Build the query for admin users with user details
+      // Build the query for admin users
       let adminUsersQuery = supabase
         .from('admin_users')
-        .select(`
-          user_id,
-          admin_role,
-          granted_by,
-          granted_at,
-          users!admin_users_user_id_fkey (
-            id,
-            email,
-            isActive,
-            createdAt,
-            metadata
-          ),
-          granted_by_user:users!admin_users_granted_by_fkey (
-            email,
-            metadata
-          )
-        `, { count: 'exact' })
+        .select('*', { count: 'exact' })
       
       // Apply role filter
       if (roleFilter && roleFilter !== 'all') {
@@ -197,9 +181,40 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Failed to fetch admin users' }, { status: 500 })
       }
       
+      // Fetch user details for all admin users
+      const userIds = (adminUsers || []).map(a => a.user_id)
+      const grantedByIds = (adminUsers || []).map(a => a.granted_by).filter(Boolean)
+      
+      let usersMap = {}
+      let grantedByMap = {}
+      
+      if (userIds.length > 0) {
+        const { data: usersData } = await supabase
+          .from('users')
+          .select('id, email, isActive, createdAt, metadata')
+          .in('id', userIds)
+        
+        usersData?.forEach(u => {
+          usersMap[u.id] = u
+        })
+      }
+      
+      if (grantedByIds.length > 0) {
+        const { data: grantedByData } = await supabase
+          .from('users')
+          .select('id, email, metadata')
+          .in('id', grantedByIds)
+        
+        grantedByData?.forEach(u => {
+          grantedByMap[u.id] = u
+        })
+      }
+      
       // Transform the data to match the frontend expectations
       let transformedUsers = (adminUsers || []).map(admin => {
-        const user = admin.users || {}
+        const user = usersMap[admin.user_id] || {}
+        const grantedByUser = admin.granted_by ? grantedByMap[admin.granted_by] : null
+        
         return {
           id: admin.user_id,
           email: user.email,
@@ -208,8 +223,8 @@ export async function GET(request) {
           createdAt: user.createdAt,
           metadata: user.metadata || {},
           grantedBy: admin.granted_by,
-          grantedByEmail: admin.granted_by_user?.email || null,
-          grantedByName: admin.granted_by_user?.metadata?.name || null,
+          grantedByEmail: grantedByUser?.email || null,
+          grantedByName: grantedByUser?.metadata?.name || null,
           grantedAt: admin.granted_at
         }
       })
@@ -236,9 +251,6 @@ export async function GET(request) {
                  grantedByEmail.includes(searchLower)
         })
       }
-      
-      // Calculate filtered count
-      const filteredCount = transformedUsers.length
       
       // Apply email sorting if needed (after filtering)
       if (sortBy === 'email') {
