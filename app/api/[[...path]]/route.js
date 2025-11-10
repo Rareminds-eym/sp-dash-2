@@ -1590,10 +1590,7 @@ export async function GET(request) {
           throw univError
         }
 
-        console.log('Fetched universities count:', universities?.length || 0)
-
         if (!universities || universities.length === 0) {
-          console.log('No universities found, returning empty array')
           return NextResponse.json([])
         }
 
