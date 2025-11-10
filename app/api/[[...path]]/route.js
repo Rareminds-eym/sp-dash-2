@@ -2973,14 +2973,14 @@ export async function POST(request) {
     if (path === '/update-metrics') {
       try {
         // Count universities from universities table
-        const { data: universities } = await supabaseAdmin
+        const { data: universities } = await rlsClient
           .from('universities')
           .select('id')
         
         const activeUniversities = universities?.length || 0
 
         // Count active recruiters from recruiters table (only where isactive=true)
-        const { data: recruiters } = await supabaseAdmin
+        const { data: recruiters } = await rlsClient
           .from('recruiters')
           .select('id')
           .eq('isactive', true)
@@ -2988,14 +2988,14 @@ export async function POST(request) {
         const activeRecruiters = recruiters?.length || 0
 
         // Count students
-        const { data: students } = await supabaseAdmin
+        const { data: students } = await rlsClient
           .from('students')
           .select('id')
         
         const registeredStudents = students?.length || 0
 
         // Get passports for verification metrics
-        const { data: passports } = await supabaseAdmin
+        const { data: passports } = await rlsClient
           .from('skill_passports')
           .select('status')
         
@@ -3008,7 +3008,7 @@ export async function POST(request) {
           : 0
 
         // Count job secured (hired placements)
-        const { data: hiredPlacements, error: placementError } = await supabaseAdmin
+        const { data: hiredPlacements, error: placementError } = await rlsClient
           .from('placements')
           .select('id')
           .eq('placementStatus', 'hired')
@@ -3021,7 +3021,7 @@ export async function POST(request) {
         const today = new Date().toISOString().split('T')[0]
 
         // Check if a snapshot for today already exists
-        const { data: existingSnapshot } = await supabaseAdmin
+        const { data: existingSnapshot } = await rlsClient
           .from('metrics_snapshots')
           .select('id')
           .eq('snapshotDate', today)
@@ -3030,7 +3030,7 @@ export async function POST(request) {
         let result
         if (existingSnapshot) {
           // Update existing snapshot
-          const { error: updateError } = await supabaseAdmin
+          const { error: updateError } = await rlsClient
             .from('metrics_snapshots')
             .update({
               activeUniversities,
@@ -3046,7 +3046,7 @@ export async function POST(request) {
           result = { action: 'updated', snapshotDate: today }
         } else {
           // Insert new snapshot
-          const { error: insertError } = await supabaseAdmin
+          const { error: insertError } = await rlsClient
             .from('metrics_snapshots')
             .insert({
               id: uuidv4(),
