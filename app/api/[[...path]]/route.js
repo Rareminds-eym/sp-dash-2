@@ -1118,8 +1118,8 @@ export async function GET(request) {
       const sortBy = url.searchParams.get('sortBy') || 'createdAt'
       const sortOrder = url.searchParams.get('sortOrder') || 'desc'
       
-      // Build the query for passports
-      let passportsQuery = supabase.from('skill_passports').select('*', { count: 'exact' })
+      // Build the query for passports using RLS client
+      let passportsQuery = rlsClient.from('skill_passports').select('*', { count: 'exact' })
       
       // Apply status filter
       if (statusFilter && statusFilter !== 'all') {
@@ -1154,14 +1154,14 @@ export async function GET(request) {
         const studentIds = filteredPassports.map(p => p.studentId).filter(Boolean)
         
         if (studentIds.length > 0) {
-          // Fetch all students and their users in parallel
+          // Fetch all students and their users in parallel using RLS client
           const [studentsResult, usersResult] = await Promise.all([
-            supabase.from('students').select('*').in('id', studentIds),
-            supabase.from('students').select('userId, organizationId').in('id', studentIds).then(async (result) => {
+            rlsClient.from('students').select('*').in('id', studentIds),
+            rlsClient.from('students').select('userId, organizationId').in('id', studentIds).then(async (result) => {
               if (result.data && result.data.length > 0) {
                 const userIds = result.data.map(s => s.userId).filter(Boolean)
                 if (userIds.length > 0) {
-                  return await supabase.from('users').select('id, email, metadata').in('id', userIds)
+                  return await rlsClient.from('users').select('id, email, metadata').in('id', userIds)
                 }
               }
               return { data: [] }
