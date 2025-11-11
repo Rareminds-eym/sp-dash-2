@@ -1,54 +1,49 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { 
-  Download, 
-  FileSpreadsheet, 
-  Building2, 
-  Users, 
-  TrendingUp, 
-  MapPin,
-  Sparkles,
-  ArrowUp,
-  ArrowDown,
-  Minus,
-  Eye,
-  Search,
-  UserCheck,
-  Award,
-  Target,
-  Briefcase,
-  BarChart3,
-  Activity,
-  PieChart as PieChartIcon,
-  Globe,
-  Brain,
-  Rocket,
-  Star,
-  Trophy,
-  Zap,
-  TrendingDown,
-  Filter
-} from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  AreaChart,
-  Area
+    Activity,
+    Award,
+    BarChart3,
+    Brain,
+    Briefcase,
+    Building2,
+    Download,
+    Eye,
+    Filter,
+    Globe,
+    MapPin,
+    Minus,
+    Rocket,
+    Search,
+    Sparkles,
+    Star,
+    Target,
+    TrendingDown,
+    TrendingUp,
+    Trophy,
+    UserCheck,
+    Users
+} from 'lucide-react'
+import { useEffect, useState } from 'react'
+import {
+    Area,
+    AreaChart,
+    Bar,
+    BarChart,
+    CartesianGrid,
+    Line,
+    LineChart,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis
 } from 'recharts'
 
 // Custom Tooltip Component

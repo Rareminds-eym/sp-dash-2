@@ -1881,6 +1881,16 @@ export async function GET(request) {
             percentage: 100 
           },
           { 
+            stage: 'Rejected', 
+            count: rejectedCount, 
+            percentage: totalApplications > 0 ? parseFloat(((rejectedCount / totalApplications) * 100).toFixed(1)) : 0 
+          },
+          { 
+            stage: 'Withdrawn', 
+            count: withdrawnCount, 
+            percentage: totalApplications > 0 ? parseFloat(((withdrawnCount / totalApplications) * 100).toFixed(1)) : 0 
+          },
+          { 
             stage: 'Shortlisted', 
             count: shortlistedCount, 
             percentage: totalApplications > 0 ? parseFloat(((shortlistedCount / totalApplications) * 100).toFixed(1)) : 0 
@@ -2439,12 +2449,22 @@ export async function GET(request) {
 
         const totalApplications = appliedCount + rejectedCount + withdrawnCount
 
-        // Build conversion funnel
+        // Build conversion funnel with percentages based on previous stage
         const conversionFunnel = [
           { 
             stage: 'Applied', 
             count: totalApplications, 
             percentage: 100 
+          },
+          { 
+            stage: 'Rejected', 
+            count: rejectedCount, 
+            percentage: totalApplications > 0 ? parseFloat(((rejectedCount / totalApplications) * 100).toFixed(1)) : 0 
+          },
+          { 
+            stage: 'Withdrawn', 
+            count: withdrawnCount, 
+            percentage: totalApplications > 0 ? parseFloat(((withdrawnCount / totalApplications) * 100).toFixed(1)) : 0 
           },
           { 
             stage: 'Shortlisted', 
