@@ -46,24 +46,17 @@ export default function DashboardOptimized({ user }) {
         fetch("/api/analytics/placement-conversion")
       ]);
 
-      // Check for errors in responses
-      if (!metricsRes.ok) {
-        console.error('Metrics API error:', metricsRes.status);
-      }
-      if (!trendsRes.ok) {
-        console.error('Trends API error:', trendsRes.status);
-      }
-      if (!stateRes.ok) {
-        console.error('State API error:', stateRes.status);
-      }
-      if (!placementRes.ok) {
-        console.error('Placement API error:', placementRes.status);
-      }
+      // Parse JSON responses, with fallbacks for errors
+      const metricsData = metricsRes.ok ? await metricsRes.json() : {};
+      const trendsData = trendsRes.ok ? await trendsRes.json() : [];
+      const stateDataRes = stateRes.ok ? await stateRes.json() : [];
+      const placementDataRes = placementRes.ok ? await placementRes.json() : null;
 
-      const metricsData = await metricsRes.json();
-      const trendsData = await trendsRes.json();
-      const stateDataRes = await stateRes.json();
-      const placementDataRes = await placementRes.json();
+      // Log any errors
+      if (!metricsRes.ok) console.error('Metrics API error:', metricsRes.status);
+      if (!trendsRes.ok) console.error('Trends API error:', trendsRes.status);
+      if (!stateRes.ok) console.error('State API error:', stateRes.status);
+      if (!placementRes.ok) console.error('Placement API error:', placementRes.status);
 
       console.log('Dashboard data loaded:', {
         metrics: metricsData,
@@ -73,8 +66,8 @@ export default function DashboardOptimized({ user }) {
       });
 
       setMetrics(metricsData);
-      setTrends(trendsData);
-      setStateData(stateDataRes);
+      setTrends(trendsData || []);
+      setStateData(stateDataRes || []);
       setPlacementData(placementDataRes);
       setLoading(false);
 
