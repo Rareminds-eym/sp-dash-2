@@ -428,11 +428,7 @@ export default function PassportsPageEnhanced({ currentUser }) {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="space-y-4">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <AnimatedCardLoader key={i} />
-              ))}
-            </div>
+            <TableLoader rows={5} />
           ) : (
             <div className="space-y-4">
               {passports.length > 0 ? (
