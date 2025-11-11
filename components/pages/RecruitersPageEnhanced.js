@@ -233,16 +233,16 @@ export default function RecruitersPageEnhanced({ currentUser }) {
       let body = {}
 
       if (action === 'approve') {
-        endpoint = '/api/approve-recruiter'
+        endpoint = '/api/recruiters/approve'
         body = { recruiterId: recruiter.id, userId: currentUser?.id, note: 'Recruiter approved' }
       } else if (action === 'reject') {
-        endpoint = '/api/reject-recruiter'
+        endpoint = '/api/recruiters/reject'
         body = { recruiterId: recruiter.id, userId: currentUser?.id, reason: 'Failed verification criteria' }
       } else if (action === 'suspend') {
-        endpoint = '/api/suspend-recruiter'
+        endpoint = '/api/recruiters/suspend'
         body = { recruiterId: recruiter.id, userId: currentUser?.id, reason: 'Suspended by admin' }
       } else if (action === 'activate') {
-        endpoint = '/api/activate-recruiter'
+        endpoint = '/api/recruiters/activate'
         body = { recruiterId: recruiter.id, userId: currentUser?.id, note: 'Recruiter activated' }
       }
 
