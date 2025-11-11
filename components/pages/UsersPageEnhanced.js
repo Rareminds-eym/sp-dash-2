@@ -36,6 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { AnimatedCardLoader } from '@/components/ui/animated-loader'
 
 export default function UsersPageEnhanced({ currentUser }) {
   const [users, setUsers] = useState([])
