@@ -8,42 +8,42 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 import {
-    Activity,
-    Award,
-    BarChart3,
-    Brain,
-    Briefcase,
-    Building2,
-    Download,
-    Eye,
-    Filter,
-    Globe,
-    MapPin,
-    Minus,
-    Rocket,
-    Search,
-    Sparkles,
-    Star,
-    Target,
-    TrendingDown,
-    TrendingUp,
-    Trophy,
-    UserCheck,
-    Users
+  Activity,
+  Award,
+  BarChart3,
+  Brain,
+  Briefcase,
+  Building2,
+  Download,
+  Eye,
+  Filter,
+  Globe,
+  MapPin,
+  Minus,
+  Rocket,
+  Search,
+  Sparkles,
+  Star,
+  Target,
+  TrendingDown,
+  TrendingUp,
+  Trophy,
+  UserCheck,
+  Users
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import {
-    Area,
-    AreaChart,
-    Bar,
-    BarChart,
-    CartesianGrid,
-    Line,
-    LineChart,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
 } from 'recharts'
 
 // Custom Tooltip Component
@@ -815,7 +815,7 @@ export default function ReportsPage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-bold text-green-600">₹{(tag.avgSalary / 100000).toFixed(1)}L</div>
+                      <div className="font-bold text-green-600">₹{((tag.avgSalary || 0) / 100000).toFixed(1)}L</div>
                       <div className="text-xs text-muted-foreground">Avg Package</div>
                     </div>
                   </div>
@@ -842,7 +842,7 @@ export default function ReportsPage() {
                       <div>
                         <div className="font-semibold">{uni.name}</div>
                         <div className="text-sm text-muted-foreground">
-                          {uni.placementRate}% placement • ₹{(uni.avgPackage / 100000).toFixed(1)}L avg package
+                          {uni.placementRate}% placement • ₹{((uni.avgPackage || 0) / 100000).toFixed(1)}L avg package
                         </div>
                       </div>
                     </div>
