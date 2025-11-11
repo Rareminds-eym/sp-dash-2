@@ -33,6 +33,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { format } from 'date-fns'
+import { AnimatedCardLoader } from '@/components/ui/animated-loader'
 
 export default function AuditLogsPage() {
   const [logs, setLogs] = useState([])
