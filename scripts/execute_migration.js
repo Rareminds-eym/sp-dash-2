@@ -54,12 +54,18 @@ async function executeSQLFile(filePath, stepName) {
     console.log('\n⚠️  MIGRATION NOTICE:');
     console.log('Supabase requires SQL migrations to be run through SQL Editor.');
     console.log('\nPlease follow these steps:');
-    console.log('1. Go to: https://dpooleduinyyzxgrcwko.supabase.co/project/dpooleduinyyzxgrcwko/sql');
+    console.log(`1. Go to: ${supabaseUrl}/project/${supabaseUrl ? new URL(supabaseUrl).hostname.split('.')[0] : 'your-project-ref'}/sql`);
+    console.log('   (If this URL is incorrect, please set NEXT_PUBLIC_SUPABASE_URL in your environment variables)');
     console.log('2. Click "New Query"');
     console.log(`3. Copy contents of: ${filePath}`);
     console.log('4. Paste into SQL Editor');
     console.log('5. Click "Run"');
     console.log('6. Wait for completion message\n');
+    
+    // Extract project reference from URL
+    const projectRef = supabaseUrl ? new URL(supabaseUrl).hostname.split('.')[0] : 'your-project-ref';
+    console.log(`If the URL above is incorrect, please set NEXT_PUBLIC_SUPABASE_URL in your environment variables.`);
+    console.log(`Your project reference appears to be: ${projectRef}\n`);
     return false;
   }
 }
