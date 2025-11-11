@@ -24,7 +24,7 @@ export async function POST(request) {
     const { recruiterId, userId, note } = body;
 
     // Update recruiter status in recruiters table
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from('recruiters')
       .update({ isactive: true })
       .eq('id', recruiterId);
@@ -32,7 +32,7 @@ export async function POST(request) {
     if (updateError) throw updateError;
 
     // Log verification
-    const { error: verifyError } = await supabase
+    const { error: verifyError } = await supabaseAdmin
       .from('verifications')
       .insert({
         id: uuidv4(),
