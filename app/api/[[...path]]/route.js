@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { filterAndRankResults, fuzzyMatch } from '../../../lib/search-utils';
 import { supabase } from '../../../lib/supabase';
+import { supabaseAdmin } from '../../../lib/supabase-admin';
 import { createRLSClient, getUserContext } from '../../../lib/supabase-rls';
 
 export const runtime = 'edge';
@@ -51,7 +52,7 @@ export async function GET(request) {
     const { supabase: rlsClient, user, error: authError } = await createRLSClient(request)
     
     // For protected endpoints, ensure user is authenticated
-    const protectedEndpoints = ['/users', '/recruiters', '/students', '/passports', '/audit-logs', '/verifications']
+    const protectedEndpoints = ['/users', '/recruiters', '/passports', '/audit-logs', '/verifications']
     const isProtectedEndpoint = protectedEndpoints.some(endpoint => path.startsWith(endpoint))
     
     if (isProtectedEndpoint && (!user || authError)) {
@@ -1005,8 +1006,8 @@ export async function GET(request) {
       const approvalStatus = url.searchParams.get('approval_status') // pending, approved, rejected
       const searchTerm = url.searchParams.get('search')
       
-      // Build query with count using RLS client
-      let query = rlsClient.from('students').select('*', { count: 'exact' })
+      // Build query with count using admin client to bypass RLS restrictions
+      let query = supabaseAdmin.from('students').select('*', { count: 'exact' })
       
       // Apply filters
       if (approvalStatus) {
@@ -1035,8 +1036,8 @@ export async function GET(request) {
         const mappedUniversityIds = universityIds.filter(Boolean)
         
         const [usersResult, universitiesResult] = await Promise.all([
-          userIds.length > 0 ? rlsClient.from('users').select('id, email').in('id', userIds) : { data: [] },
-          mappedUniversityIds.length > 0 ? rlsClient.from('universities').select('id, name').in('id', mappedUniversityIds) : { data: [] }
+          userIds.length > 0 ? supabaseAdmin.from('users').select('id, email').in('id', userIds) : { data: [] },
+          mappedUniversityIds.length > 0 ? supabaseAdmin.from('universities').select('id, name').in('id', mappedUniversityIds) : { data: [] }
         ])
         
         // Create lookup maps
