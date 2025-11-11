@@ -46,6 +46,7 @@ import {
   XCircle
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { PageLoader, CardGridLoader } from '@/components/ui/page-loader'
 
 export default function ApprovalsPage({ currentUser }) {
   const [universities, setUniversities] = useState([])
