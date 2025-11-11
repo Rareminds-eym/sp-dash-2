@@ -117,12 +117,12 @@ export default function DashboardOptimized({ user }) {
         <div className="relative overflow-hidden bg-gradient-to-br from-campaign-blue1 via-campaign-blue2 to-campaign-red rounded-3xl p-8 text-white shadow-2xl shadow-campaign-blue1/25">
           <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent"></div>
           <ShimmerEffect className="absolute inset-0" />
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-16 translate-x-16 animate-pulse"></div>
-          <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-12 -translate-x-12 animate-pulse"></div>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-16 translate-x-16 animate-ping opacity-20"></div>
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-12 -translate-x-12 animate-ping opacity-20" style={{ animationDelay: '0.5s' }}></div>
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
-                <Sparkles className="h-6 w-6 text-white animate-pulse" />
+                <Sparkles className="h-6 w-6 text-white animate-spin" style={{ animationDuration: '3s' }} />
               </div>
               <div className="space-y-3">
                 <div className="relative h-8 w-72 bg-white/20 rounded-lg overflow-hidden">
