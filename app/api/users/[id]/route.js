@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { createRLSClient, getUserContext } from '../../../../../lib/supabase-rls';
+import { createRLSClient, getUserContext } from '../../../lib/supabase-rls';
 import { logAudit } from '../../../../../lib/services/auditService';
 
 export const runtime = 'edge';

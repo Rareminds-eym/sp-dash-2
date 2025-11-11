@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 import { logAudit } from '../../../../../lib/services/auditService';
-import { createRLSClient, getUserContext } from '../../../../../lib/supabase-rls';
+import { createRLSClient, getUserContext } from '../../../lib/supabase-rls';
 
 export const runtime = 'edge';
 
