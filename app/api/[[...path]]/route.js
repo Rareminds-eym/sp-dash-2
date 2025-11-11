@@ -2724,14 +2724,31 @@ export async function GET(request) {
       // Calculate average salaries from actual data
       const soughtSkillTags = sortedJobTitles.map((jt, index) => {
         // Calculate average salary for this job title from actual placement data
-        const matchingPlacements = placementsResult.data.filter(p => p.jobTitle === jt.title)
+        // Only include successful placements (placed status) with valid salary data
+        const matchingPlacements = placementsResult.data.filter(p => 
+          p.jobTitle === jt.title && 
+          p.placementStatus === 'placed' && 
+          p.salaryOffered && 
+          p.salaryOffered > 0
+        )
         let avgSalary = 0
         if (matchingPlacements.length > 0) {
-          const totalSalary = matchingPlacements.reduce((sum, p) => sum + (p.salaryOffered || 0), 0)
+          const totalSalary = matchingPlacements.reduce((sum, p) => sum + p.salaryOffered, 0)
           avgSalary = Math.floor(totalSalary / matchingPlacements.length)
         } else {
-          // Fallback to random if no data
-          avgSalary = Math.floor(Math.random() * 500000) + 300000
+          // Fallback: try to get any placement data for this job title
+          const anyMatchingPlacements = placementsResult.data.filter(p => 
+            p.jobTitle === jt.title && 
+            p.salaryOffered && 
+            p.salaryOffered > 0
+          )
+          if (anyMatchingPlacements.length > 0) {
+            const totalSalary = anyMatchingPlacements.reduce((sum, p) => sum + p.salaryOffered, 0)
+            avgSalary = Math.floor(totalSalary / anyMatchingPlacements.length)
+          } else {
+            // If still no data, use reasonable default based on job title position
+            avgSalary = 500000 + (index * 100000) // Range from 5L to 9L
+          }
         }
         
         return {
