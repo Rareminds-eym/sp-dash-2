@@ -932,9 +932,7 @@ export default function RecruitersPageEnhanced({ currentUser }) {
           </DialogHeader>
           
           {detailsDialog.loading ? (
-            <div className="py-8">
-              <AnimatedCardLoader />
-            </div>
+            <InlineLoader message="Loading recruiter details..." />
           ) : detailsDialog.recruiter ? (
             <div className="space-y-6">
               {/* Basic Info */}
