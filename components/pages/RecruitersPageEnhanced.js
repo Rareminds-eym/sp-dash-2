@@ -371,7 +371,7 @@ export default function RecruitersPageEnhanced({ currentUser }) {
     setDetailsDialog({ open: true, recruiter: null, loading: true })
     
     try {
-      const response = await fetch(`/api/recruiter/${recruiter.id}`)
+      const response = await fetch(`/api/recruiters/${recruiter.id}`)
       const data = await response.json()
       setDetailsDialog({ open: true, recruiter: data, loading: false })
     } catch (error) {
