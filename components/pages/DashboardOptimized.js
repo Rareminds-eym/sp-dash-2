@@ -1,7 +1,7 @@
 "use client";
 
 import { DashboardKPIs } from "@/components/sections/DashboardKPIs";
-import { PageLoader, CardGridLoader } from "@/components/ui/page-loader";
+import { CardGridLoader, PageLoader } from "@/components/ui/page-loader";
 import { Sparkles } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
 
@@ -85,7 +85,7 @@ export default function DashboardOptimized({ user }) {
         (metricsData.snapshotDate && metricsData.snapshotDate !== today);
 
       if (shouldUpdate) {
-        fetch("/api/update-metrics", { method: "POST" })
+        fetch("/api/metrics/update", { method: "POST" })
           .catch(err => console.error('Error updating metrics:', err));
       }
 
