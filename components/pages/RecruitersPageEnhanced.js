@@ -660,15 +660,7 @@ export default function RecruitersPageEnhanced({ currentUser }) {
               {loading ? (
                 <div className="space-y-4">
                   {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg animate-pulse dark:bg-gray-800/50">
-                      <div className="flex items-center gap-4 flex-1">
-                        <div className="w-12 h-12 bg-gray-300 rounded-full dark:bg-gray-700"></div>
-                        <div className="flex-1 space-y-2">
-                          <div className="h-4 bg-gray-300 rounded w-1/4 dark:bg-gray-700"></div>
-                          <div className="h-3 bg-gray-300 rounded w-1/3 dark:bg-gray-700"></div>
-                        </div>
-                      </div>
-                    </div>
+                    <AnimatedCardLoader key={i} />
                   ))}
                 </div>
               ) : (
