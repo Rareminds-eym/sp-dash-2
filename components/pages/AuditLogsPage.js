@@ -193,15 +193,15 @@ export default function AuditLogsPage() {
   }
 
   const getActionIcon = (action) => {
-    if (action.includes('login')) return '🔐'
-    if (action.includes('verify')) return '✅'
-    if (action.includes('reject')) return '❌'
-    if (action.includes('suspend')) return '🚫'
-    if (action.includes('activate')) return '✔️'
-    if (action.includes('delete')) return '🗑️'
-    if (action.includes('update')) return '✏️'
-    if (action.includes('approve')) return '👍'
-    return '📝'
+    if (action.includes('login')) return <LogIn className="h-4 w-4" />
+    if (action.includes('verify')) return <CheckCircle2 className="h-4 w-4" />
+    if (action.includes('reject')) return <XCircle className="h-4 w-4" />
+    if (action.includes('suspend')) return <Ban className="h-4 w-4" />
+    if (action.includes('activate')) return <Check className="h-4 w-4" />
+    if (action.includes('delete')) return <Trash2 className="h-4 w-4" />
+    if (action.includes('update')) return <Edit3 className="h-4 w-4" />
+    if (action.includes('approve')) return <ThumbsUp className="h-4 w-4" />
+    return <FileText className="h-4 w-4" />
   }
 
   // Group logs by date
