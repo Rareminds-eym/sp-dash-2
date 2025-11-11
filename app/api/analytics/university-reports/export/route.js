@@ -1,5 +1,5 @@
+import { createRLSClient } from '@/lib/supabase-rls';
 import { NextResponse } from 'next/server';
-import { createRLSClient } from '../../../../lib/supabase-rls';
 
 export const runtime = 'edge';
 
