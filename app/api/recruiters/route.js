@@ -64,7 +64,7 @@ export async function GET(request) {
     if (recruiters && recruiters.length > 0) {
       const recruiterIds = recruiters.map(r => r.id);
       
-      const { data: users } = await supabase
+      const { data: users } = await supabaseAdmin
         .from('users')
         .select('id, organizationId')
         .in('organizationId', recruiterIds);
