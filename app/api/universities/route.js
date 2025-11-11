@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { addCacheHeaders } from '@/lib/services/cacheService';
 import { handleError } from '@/lib/middleware/errorHandler';
 
@@ -22,8 +22,8 @@ export async function GET(request) {
     const accountStatus = url.searchParams.get('account_status');
     const searchTerm = url.searchParams.get('search');
     
-    // Build query
-    let query = supabase.from('universities').select('*', { count: 'exact' });
+    // Build query - using supabaseAdmin to bypass RLS for admin operations
+    let query = supabaseAdmin.from('universities').select('*', { count: 'exact' });
     
     // Apply filters
     if (approvalStatus) {
