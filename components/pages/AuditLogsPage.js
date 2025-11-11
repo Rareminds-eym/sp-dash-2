@@ -19,7 +19,17 @@ import {
   Calendar as CalendarIcon,
   Eye,
   ArrowUpDown,
-  Activity
+  Activity,
+  Lock,
+  CheckCircle2,
+  XCircle,
+  Ban,
+  Check,
+  Trash2,
+  Edit3,
+  ThumbsUp,
+  FileText,
+  LogIn
 } from 'lucide-react'
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { format } from 'date-fns'
