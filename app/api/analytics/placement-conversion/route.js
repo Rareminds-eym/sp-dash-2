@@ -7,7 +7,7 @@ export const runtime = 'edge';
 export async function GET(request) {
   try {
     // Fetch all placement data from the placements table
-    const { data: placements, error } = await supabase
+    const { data: placements, error } = await supabaseAdmin
       .from('placements')
       .select('*');
     
