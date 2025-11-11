@@ -83,7 +83,7 @@ export async function GET(request) {
     });
     
     // Get skills from student skills table
-    const { data: studentSkills, error: skillError } = await supabase
+    const { data: studentSkills, error: skillError } = await supabaseAdmin
       .from('skills')
       .select('name');
     
