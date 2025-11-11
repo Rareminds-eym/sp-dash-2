@@ -55,7 +55,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { AnimatedCardLoader } from '@/components/ui/animated-loader'
+import { TableLoader, InlineLoader } from '@/components/ui/page-loader'
 import {
   DropdownMenu,
   DropdownMenuContent,
