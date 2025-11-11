@@ -1880,10 +1880,10 @@ npx supabase db reset
 npm run dev
 
 # This will start:
-# - Admin App: http://localhost:3000
-# - Platform App: http://localhost:5173
-# - Admin API: http://localhost:8787
-# - Platform API: http://localhost:8788
+# - Admin App: ${ADMIN_APP_URL:-http://localhost:3000}
+# - Platform App: ${PLATFORM_APP_URL:-http://localhost:5173}
+# - Admin API: ${ADMIN_API_URL:-http://localhost:8787}
+# - Platform API: ${PLATFORM_API_URL:-http://localhost:8788}
 
 # 7. Create first admin user
 npm run seed:admin
@@ -1901,7 +1901,7 @@ npm run seed:admin
 
 # 2. Set environment variables
 {
-  "API_URL": "http://localhost:8787",
+  "API_URL": process.env.ADMIN_API_URL || "http://localhost:8787",
   "TOKEN": ""
 }
 
@@ -2176,7 +2176,7 @@ describe('Schools API', () => {
   
   beforeAll(async () => {
     // Login as admin
-    const loginRes = await fetch('http://localhost:8787/api/auth/login', {
+    const loginRes = await fetch(`${process.env.ADMIN_API_URL || 'http://localhost:8787'}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -2190,7 +2190,7 @@ describe('Schools API', () => {
   });
   
   it('should create a school', async () => {
-    const res = await fetch('http://localhost:8787/api/admin/schools', {
+    const res = await fetch(`${process.env.ADMIN_API_URL || 'http://localhost:8787'}/api/admin/schools`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -2212,7 +2212,7 @@ describe('Schools API', () => {
   });
   
   it('should get school details', async () => {
-    const res = await fetch(`http://localhost:8787/api/admin/schools/${schoolId}`, {
+    const res = await fetch(`${process.env.ADMIN_API_URL || 'http://localhost:8787'}/api/admin/schools/${schoolId}`, {
       headers: {
         'Authorization': `Bearer ${adminToken}`
       }
@@ -2233,7 +2233,7 @@ import { test, expect } from '@playwright/test';
 
 test('School admin can create a class', async ({ page }) => {
   // Login
-  await page.goto('http://localhost:5173/login');
+  await page.goto(process.env.PLATFORM_APP_URL || 'http://localhost:5173/login');
   await page.fill('[name="email"]', 'school@test.com');
   await page.fill('[name="password"]', 'Password@123');
   await page.click('button[type="submit"]');

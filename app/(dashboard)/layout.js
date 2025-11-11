@@ -43,7 +43,7 @@ import Link from 'next/link'
 
 const navigation = [
   { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
-  { name: 'User Management', icon: Users, href: '/users' },
+  { name: 'Admin Management', icon: Shield, href: '/users' },
   { name: 'Recruiter Management', icon: Briefcase, href: '/recruiters' },
   { name: 'Skill Passports', icon: FileText, href: '/passports' },
   { name: 'Approval Center', icon: CheckCircle, href: '/approvals' },

@@ -7,7 +7,7 @@ require('dotenv').config();
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabaseProjectRef = 'dpooleduinyyzxgrcwko';
+const supabaseProjectRef = supabaseUrl ? new URL(supabaseUrl).hostname.split('.')[0] : null;
 
 console.log('\n============================================================');
 console.log('🚀 RAREMINDS DATABASE MIGRATION - MANUAL EXECUTION GUIDE');
@@ -26,6 +26,7 @@ console.log('============================================================\n');
 console.log('✅ Step 1: Create Backup (CRITICAL)');
 console.log('-----------------------------------');
 console.log('1. Open: https://supabase.com/dashboard/project/' + supabaseProjectRef + '/settings/database');
+  console.log('   (If this URL is incorrect, please set NEXT_PUBLIC_SUPABASE_URL in your environment variables)');
 console.log('2. Scroll to "Database Backups"');
 console.log('3. Click "Create Backup" or verify latest backup exists');
 console.log('4. Wait for backup to complete\n');
@@ -33,6 +34,7 @@ console.log('4. Wait for backup to complete\n');
 console.log('✅ Step 2: Execute Migration Script - Part 1');
 console.log('-------------------------------------------');
 console.log('1. Open SQL Editor: https://supabase.com/dashboard/project/' + supabaseProjectRef + '/sql/new');
+  console.log('   (If this URL is incorrect, please set NEXT_PUBLIC_SUPABASE_URL in your environment variables)');
 console.log('2. Click "+ New Query" button');
 console.log('3. Copy the file content from your local machine:');
 console.log('   File: /app/database/migration_script_step1_complete_schema.sql');
@@ -122,3 +124,4 @@ console.log('💡 TIP: You can scroll up in this terminal to copy the SQL,');
 console.log('   or open the files directly from /app/database/ folder.\n');
 
 console.log('Supabase SQL Editor: https://supabase.com/dashboard/project/' + supabaseProjectRef + '/sql/new\n');
+  console.log('If this URL is incorrect, please set NEXT_PUBLIC_SUPABASE_URL in your environment variables\n');

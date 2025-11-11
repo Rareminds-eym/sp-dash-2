@@ -46,6 +46,7 @@ import {
   XCircle
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { PageLoader, CardGridLoader } from '@/components/ui/page-loader'
 
 export default function ApprovalsPage({ currentUser }) {
   const [universities, setUniversities] = useState([])
@@ -839,9 +840,7 @@ export default function ApprovalsPage({ currentUser }) {
           </Card>
           
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <RefreshCw className="h-8 w-8 animate-spin text-blue-500" />
-            </div>
+            <CardGridLoader count={6} columns={3} />
           ) : filteredUniversities.length === 0 ? (
             <Card className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50">
               <CardContent className="text-center py-12">
@@ -972,9 +971,7 @@ export default function ApprovalsPage({ currentUser }) {
           </Card>
           
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <RefreshCw className="h-8 w-8 animate-spin text-purple-500" />
-            </div>
+            <CardGridLoader count={6} columns={3} />
           ) : filteredRecruiters.length === 0 ? (
             <Card className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50">
               <CardContent className="text-center py-12">
@@ -1105,9 +1102,7 @@ export default function ApprovalsPage({ currentUser }) {
           </Card>
           
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <RefreshCw className="h-8 w-8 animate-spin text-green-500" />
-            </div>
+            <CardGridLoader count={6} columns={3} />
           ) : filteredColleges.length === 0 ? (
             <Card className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50">
               <CardContent className="text-center py-12">
@@ -1260,9 +1255,7 @@ export default function ApprovalsPage({ currentUser }) {
           </Card>
           
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <RefreshCw className="h-8 w-8 animate-spin text-orange-500" />
-            </div>
+            <CardGridLoader count={6} columns={3} />
           ) : filteredStudents.length === 0 ? (
             <Card className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50">
               <CardContent className="text-center py-12">

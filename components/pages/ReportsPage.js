@@ -1,54 +1,49 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { 
-  Download, 
-  FileSpreadsheet, 
-  Building2, 
-  Users, 
-  TrendingUp, 
-  MapPin,
-  Sparkles,
-  ArrowUp,
-  ArrowDown,
-  Minus,
-  Eye,
-  Search,
-  UserCheck,
-  Award,
-  Target,
-  Briefcase,
-  BarChart3,
-  Activity,
-  PieChart as PieChartIcon,
-  Globe,
-  Brain,
-  Rocket,
-  Star,
-  Trophy,
-  Zap,
-  TrendingDown,
-  Filter
-} from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
+  Activity,
+  Award,
+  BarChart3,
+  Brain,
+  Briefcase,
+  Building2,
+  Download,
+  Eye,
+  Filter,
+  Globe,
+  MapPin,
+  Minus,
+  Rocket,
+  Search,
+  Sparkles,
+  Star,
+  Target,
+  TrendingDown,
+  TrendingUp,
+  Trophy,
+  UserCheck,
+  Users
+} from 'lucide-react'
+import { useEffect, useState } from 'react'
+import {
+  Area,
   AreaChart,
-  Area
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
 } from 'recharts'
 
 // Custom Tooltip Component
@@ -341,26 +336,12 @@ export default function ReportsPage() {
 
           <div className="grid gap-4">
             {loading.university ? (
-              // Loading skeleton
+              // Loading with animated cards
               Array.from({ length: 3 }).map((_, index) => (
-                <Card key={index} className="neu-card animate-pulse">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-2">
-                        <div className="h-5 w-48 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                        <div className="h-4 w-24 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                      </div>
-                      <div className="h-6 w-32 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {Array.from({ length: 4 }).map((_, i) => (
-                        <div key={i} className="text-center space-y-2">
-                          <div className="h-8 w-16 bg-slate-200 dark:bg-slate-700 rounded mx-auto"></div>
-                          <div className="h-3 w-20 bg-slate-200 dark:bg-slate-700 rounded mx-auto"></div>
-                        </div>
-                      ))}
+                <Card key={index} className="neu-card">
+                  <CardContent className="p-6">
+                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 h-40">
+                      <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/30 dark:via-white/10 to-transparent"></div>
                     </div>
                   </CardContent>
                 </Card>
@@ -820,7 +801,7 @@ export default function ReportsPage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-bold text-green-600">₹{(tag.avgSalary / 100000).toFixed(1)}L</div>
+                      <div className="font-bold text-green-600">₹{((tag.avgSalary || 0) / 100000).toFixed(1)}L</div>
                       <div className="text-xs text-muted-foreground">Avg Package</div>
                     </div>
                   </div>
@@ -847,7 +828,7 @@ export default function ReportsPage() {
                       <div>
                         <div className="font-semibold">{uni.name}</div>
                         <div className="text-sm text-muted-foreground">
-                          {uni.placementRate}% placement • ₹{(uni.avgPackage / 100000).toFixed(1)}L avg package
+                          {uni.placementRate}% placement • ₹{((uni.avgPackage || 0) / 100000).toFixed(1)}L avg package
                         </div>
                       </div>
                     </div>
