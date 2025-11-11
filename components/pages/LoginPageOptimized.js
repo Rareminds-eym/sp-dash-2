@@ -35,8 +35,10 @@ export default function LoginPageOptimized() {
         }
 
         if (data.success) {
-          // Use replace to avoid back button issues
-          router.replace('/dashboard')
+          // Wait a bit for cookies to be set, then force a full page reload
+          // This ensures middleware properly validates the session
+          await new Promise(resolve => setTimeout(resolve, 100))
+          window.location.href = '/dashboard'
         }
       } catch (err) {
         setError('Network error. Please try again.')
