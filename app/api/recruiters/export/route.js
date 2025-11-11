@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { filterAndRankResults } from '@/lib/search-utils';
 import { createCSVResponse } from '@/lib/services/exportService';
 import { handleError } from '@/lib/middleware/errorHandler';
@@ -18,7 +18,7 @@ export async function GET(request) {
     const stateFilter = url.searchParams.get('state');
     const searchTerm = url.searchParams.get('search');
     
-    let query = supabase.from('recruiters').select('*');
+    let query = supabaseAdmin.from('recruiters').select('*');
     
     // Apply status filter
     if (statusFilter && statusFilter !== 'all') {

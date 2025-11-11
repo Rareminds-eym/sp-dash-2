@@ -1,5 +1,5 @@
 import { addCacheHeaders } from '@/lib/services/cacheService';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'edge';

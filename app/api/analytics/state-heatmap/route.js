@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'edge';
@@ -7,10 +7,10 @@ export async function GET(request) {
   try {
     // Fetch all data in parallel from new tables
     const [universitiesResult, recruitersResult, studentsResult, passportsResult] = await Promise.all([
-      supabase.from('universities').select('id, state'),
-      supabase.from('recruiters').select('id, state'),
-      supabase.from('students').select('id, universityId'),
-      supabase.from('skill_passports').select('studentId, status')
+      supabaseAdmin.from('universities').select('id, state'),
+      supabaseAdmin.from('recruiters').select('id, state'),
+      supabaseAdmin.from('students').select('id, universityId'),
+      supabaseAdmin.from('skill_passports').select('studentId, status')
     ]);
 
     if (universitiesResult.error) throw universitiesResult.error;

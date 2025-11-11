@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { filterAndRankResults, fuzzyMatch } from '@/lib/search-utils';
 import { createCSVResponse } from '@/lib/services/exportService';
 import { handleError } from '@/lib/middleware/errorHandler';
@@ -37,7 +37,7 @@ export async function GET(request) {
     }
     
     // STEP 2: Build passport query with filters
-    let query = supabase.from('skill_passports').select('*');
+    let query = supabaseAdmin.from('skill_passports').select('*');
     
     // Apply university filter by studentId if available
     if (studentIdsFromUniversity) {
@@ -77,12 +77,12 @@ export async function GET(request) {
           
           try {
             const [studentsResult, usersResult] = await Promise.all([
-              supabase.from('students').select('*').in('id', batch),
-              supabase.from('students').select('userId, organizationId').in('id', batch).then(async (result) => {
+              supabaseAdmin.from('students').select('*').in('id', batch),
+              supabaseAdmin.from('students').select('userId, organizationId').in('id', batch).then(async (result) => {
                 if (result.data && result.data.length > 0) {
                   const userIds = result.data.map(s => s.userId).filter(Boolean);
                   if (userIds.length > 0) {
-                    return await supabase.from('users').select('id, email, metadata').in('id', userIds);
+                    return await supabaseAdmin.from('users').select('id, email, metadata').in('id', userIds);
                   }
                 }
                 return { data: [] };
@@ -112,7 +112,7 @@ export async function GET(request) {
         const orgIds = students.map(s => s.universityId || s.organizationId).filter(Boolean);
         let universities = [];
         if (orgIds.length > 0) {
-          const { data: univData } = await supabase.from('universities').select('id, name').in('id', orgIds);
+          const { data: univData } = await supabaseAdmin.from('universities').select('id, name').in('id', orgIds);
           universities = univData || [];
         }
         

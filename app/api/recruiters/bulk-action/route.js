@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createRLSClient, getUserContext } from '@/lib/supabase-rls';
 import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
@@ -75,8 +75,8 @@ export async function POST(request) {
     }));
     
     // Insert in bulk
-    await supabase.from('verifications').insert(verificationRecords);
-    await supabase.from('audit_logs').insert(auditRecords);
+    await supabaseAdmin.from('verifications').insert(verificationRecords);
+    await supabaseAdmin.from('audit_logs').insert(auditRecords);
     
     return NextResponse.json({ 
       success: true, 

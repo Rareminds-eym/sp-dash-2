@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { handleError, notFoundError } from '@/lib/middleware/errorHandler';
 
 export const runtime = 'edge';

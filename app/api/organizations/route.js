@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { addCacheHeaders } from '@/lib/services/cacheService';
 import { handleError } from '@/lib/middleware/errorHandler';
 
@@ -12,8 +12,8 @@ export async function GET(request) {
   try {
     // Fetch from both universities and recruiters tables
     const [universitiesResult, recruitersResult] = await Promise.all([
-      supabase.from('universities').select('*').order('createdat', { ascending: false }),
-      supabase.from('recruiters').select('*').order('createdat', { ascending: false })
+      supabaseAdmin.from('universities').select('*').order('createdat', { ascending: false }),
+      supabaseAdmin.from('recruiters').select('*').order('createdat', { ascending: false })
     ]);
 
     if (universitiesResult.error) throw universitiesResult.error;

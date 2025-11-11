@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'edge';
@@ -8,8 +8,8 @@ export async function GET(request) {
     const url = new URL(request.url);
     const stateFilter = url.searchParams.get('state');
     
-    let universityQuery = supabase.from('universities').select('id, state');
-    let recruiterQuery = supabase.from('recruiters').select('id, state');
+    let universityQuery = supabaseAdmin.from('universities').select('id, state');
+    let recruiterQuery = supabaseAdmin.from('recruiters').select('id, state');
     
     if (stateFilter) {
       universityQuery = universityQuery.eq('state', stateFilter);
@@ -19,8 +19,8 @@ export async function GET(request) {
     const [universitiesResult, recruitersResult, studentsResult, passportsResult] = await Promise.all([
       universityQuery,
       recruiterQuery,
-      supabase.from('students').select('id, universityId'),
-      supabase.from('skill_passports').select('studentId, status')
+      supabaseAdmin.from('students').select('id, universityId'),
+      supabaseAdmin.from('skill_passports').select('studentId, status')
     ]);
 
     if (universitiesResult.error) {

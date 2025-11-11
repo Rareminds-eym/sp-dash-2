@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { filterAndRankResults } from '@/lib/search-utils';
 import { addCacheHeaders } from '@/lib/services/cacheService';
 import { handleError } from '@/lib/middleware/errorHandler';
@@ -29,7 +29,7 @@ export async function GET(request) {
     const sortOrder = url.searchParams.get('sortOrder') || 'desc';
     
     // Build query
-    let query = supabase.from('recruiters').select('*', { count: 'exact' });
+    let query = supabaseAdmin.from('recruiters').select('*', { count: 'exact' });
     
     // Apply filters
     if (statusFilter) {

@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export const runtime = 'edge';
 
@@ -141,10 +141,10 @@ export async function GET(request) {
   try {
     // Fetch real data for AI insights export
     const [skillsResult, universitiesResult, studentsResult, placementsResult] = await Promise.all([
-      supabase.from('skills').select('name, type, level'),
-      supabase.from('universities').select('id, name, state'),
-      supabase.from('students').select('id, universityId'),
-      supabase.from('placements').select('jobTitle, salaryOffered, placementStatus, studentId')
+      supabaseAdmin.from('skills').select('name, type, level'),
+      supabaseAdmin.from('universities').select('id, name, state'),
+      supabaseAdmin.from('students').select('id, universityId'),
+      supabaseAdmin.from('placements').select('jobTitle, salaryOffered, placementStatus, studentId')
     ]);
 
     const processedData = await processAIInsightsData(

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { filterAndRankResults } from '@/lib/search-utils';
 import { handleError } from '@/lib/middleware/errorHandler';
 
