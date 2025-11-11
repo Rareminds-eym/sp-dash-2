@@ -158,10 +158,10 @@ export default function UsersPageEnhanced({ currentUser }) {
       let body = {}
 
       if (action === 'suspend') {
-        endpoint = '/api/suspend-user'
+        endpoint = '/api/users/suspend'
         body = { targetUserId: user.id, actorId: currentUser?.id, reason: 'Admin action' }
       } else if (action === 'activate') {
-        endpoint = '/api/activate-user'
+        endpoint = '/api/users/activate'
         body = { targetUserId: user.id, actorId: currentUser?.id, note: 'User activated' }
       }
 
@@ -179,6 +179,7 @@ export default function UsersPageEnhanced({ currentUser }) {
           description: data.message
         })
         fetchUsers()
+        fetchOverallStats()
       } else {
         throw new Error(data.error)
       }
