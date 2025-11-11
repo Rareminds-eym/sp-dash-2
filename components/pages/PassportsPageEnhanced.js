@@ -33,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { AnimatedCardLoader } from '@/components/ui/animated-loader'
 
 export default function PassportsPageEnhanced({ currentUser }) {
   const [passports, setPassports] = useState([])
