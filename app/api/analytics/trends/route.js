@@ -9,7 +9,7 @@ export const runtime = 'edge';
  */
 export async function GET(request) {
   try {
-    const { data: metrics, error } = await supabase
+    const { data: metrics, error } = await supabaseAdmin
       .from('metrics_snapshots')
       .select('*')
       .order('snapshotDate', { ascending: true })
