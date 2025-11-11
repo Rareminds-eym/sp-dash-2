@@ -419,10 +419,10 @@ export default function RecruitersPageEnhanced({ currentUser }) {
       let body = {}
       
       if (newStatus === 'approved') {
-        endpoint = '/api/approve-recruiter'
+        endpoint = '/api/recruiters/approve'
         body = { recruiterId: recruiter.id, userId: currentUser?.id, note: 'Status changed to approved' }
       } else if (newStatus === 'rejected') {
-        endpoint = '/api/reject-recruiter'
+        endpoint = '/api/recruiters/reject'
         body = { recruiterId: recruiter.id, userId: currentUser?.id, reason: 'Status changed to rejected' }
       } else if (newStatus === 'pending') {
         // For setting back to pending, we'll use reject-recruiter but with a special note
