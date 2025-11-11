@@ -12,7 +12,7 @@ export async function GET(request, { params }) {
     const recruiterId = params.id;
     
     // Fetch recruiter details
-    const { data: recruiter, error } = await supabase
+    const { data: recruiter, error } = await supabaseAdmin
       .from('recruiters')
       .select('*')
       .eq('id', recruiterId)
@@ -23,13 +23,13 @@ export async function GET(request, { params }) {
     }
     
     // Fetch user count
-    const { data: users } = await supabase
+    const { data: users } = await supabaseAdmin
       .from('users')
       .select('id')
       .eq('organizationId', recruiterId);
     
     // Fetch audit history for this recruiter
-    const { data: auditLogs } = await supabase
+    const { data: auditLogs } = await supabaseAdmin
       .from('audit_logs')
       .select('*, users!inner(email)')
       .eq('target', recruiterId)
@@ -37,7 +37,7 @@ export async function GET(request, { params }) {
       .limit(20);
     
     // Fetch verification history
-    const { data: verifications } = await supabase
+    const { data: verifications } = await supabaseAdmin
       .from('verifications')
       .select('*, users!inner(email)')
       .eq('targetId', recruiterId)
