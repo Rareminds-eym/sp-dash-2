@@ -364,14 +364,7 @@ export default function UsersPageEnhanced({ currentUser }) {
 
             {/* Results count */}
             <div className="text-sm text-muted-foreground">
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  Loading users...
-                </span>
-              ) : (
-                `Showing ${users.length} of ${pagination.total} users`
-              )}
+              {!loading && `Showing ${users.length} of ${pagination.total} users`}
             </div>
           </div>
         </CardHeader>
