@@ -422,14 +422,7 @@ export default function PassportsPageEnhanced({ currentUser }) {
 
             {/* Results count */}
             <div className="text-sm text-muted-foreground">
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  Loading passports...
-                </span>
-              ) : (
-                `Showing ${passports.length} of ${pagination.total} passports`
-              )}
+              {!loading && `Showing ${passports.length} of ${pagination.total} passports`}
             </div>
           </div>
         </CardHeader>
