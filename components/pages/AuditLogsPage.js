@@ -456,12 +456,7 @@ export default function AuditLogsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="space-y-4">
-              {/* Modern animated loading */}
-              {[1, 2, 3, 4, 5].map((i) => (
-                <AnimatedCardLoader key={i} />
-              ))}
-            </div>
+            <TableLoader rows={8} />
           ) : logs.length > 0 ? (
             <div className="space-y-6">
               {Object.entries(groupedLogs).map(([date, dateLogs]) => (
