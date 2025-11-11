@@ -131,28 +131,24 @@ export default function DashboardOptimized({ user }) {
         </div>
       </div>
 
-      {/* KPI Cards - Load immediately (no lazy loading for above-the-fold content) */}
-      <Suspense fallback={
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3, 4, 5, 6].map((i) => <KPICardSkeleton key={i} />)}
-        </div>
-      }>
+      {/* KPI Cards - Load immediately */}
+      <Suspense fallback={<CardGridLoader count={6} columns={3} />}>
         <DashboardKPIs metrics={metrics} placementData={placementData} />
       </Suspense>
 
-      {/* Charts - Lazy loaded (Phase 2) */}
+      {/* Charts - Lazy loaded */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Suspense fallback={<ChartSkeleton title subtitle />}>
+        <Suspense fallback={<CardGridLoader count={1} columns={1} />}>
           <EmployabilityChart data={trends} />
         </Suspense>
 
-        <Suspense fallback={<ChartSkeleton title />}>
+        <Suspense fallback={<CardGridLoader count={1} columns={1} />}>
           <StateDistributionChart data={stateData} />
         </Suspense>
       </div>
 
-      {/* Recent Verifications - Lazy loaded (Phase 2) */}
-      <Suspense fallback={<VerificationListSkeleton />}>
+      {/* Recent Verifications - Lazy loaded */}
+      <Suspense fallback={<CardGridLoader count={3} columns={1} />}>
         <RecentVerifications verifications={recentVerifications} />
       </Suspense>
     </div>
