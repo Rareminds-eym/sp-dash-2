@@ -19,10 +19,21 @@ import {
   Calendar as CalendarIcon,
   Eye,
   ArrowUpDown,
-  Activity
+  Activity,
+  Lock,
+  CheckCircle2,
+  XCircle,
+  Ban,
+  Check,
+  Trash2,
+  Edit3,
+  ThumbsUp,
+  FileText,
+  LogIn
 } from 'lucide-react'
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { format } from 'date-fns'
+import { TableLoader } from '@/components/ui/page-loader'
 
 export default function AuditLogsPage() {
   const [logs, setLogs] = useState([])
@@ -183,15 +194,15 @@ export default function AuditLogsPage() {
   }
 
   const getActionIcon = (action) => {
-    if (action.includes('login')) return '🔐'
-    if (action.includes('verify')) return '✅'
-    if (action.includes('reject')) return '❌'
-    if (action.includes('suspend')) return '🚫'
-    if (action.includes('activate')) return '✔️'
-    if (action.includes('delete')) return '🗑️'
-    if (action.includes('update')) return '✏️'
-    if (action.includes('approve')) return '👍'
-    return '📝'
+    if (action.includes('login')) return <LogIn className="h-4 w-4" />
+    if (action.includes('verify')) return <CheckCircle2 className="h-4 w-4" />
+    if (action.includes('reject')) return <XCircle className="h-4 w-4" />
+    if (action.includes('suspend')) return <Ban className="h-4 w-4" />
+    if (action.includes('activate')) return <Check className="h-4 w-4" />
+    if (action.includes('delete')) return <Trash2 className="h-4 w-4" />
+    if (action.includes('update')) return <Edit3 className="h-4 w-4" />
+    if (action.includes('approve')) return <ThumbsUp className="h-4 w-4" />
+    return <FileText className="h-4 w-4" />
   }
 
   // Group logs by date
@@ -445,19 +456,7 @@ export default function AuditLogsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="space-y-4">
-              {/* Loading skeletons */}
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg animate-pulse dark:bg-gray-800/50">
-                  <div className="w-2 h-2 bg-gray-300 rounded-full mt-2 dark:bg-gray-700"></div>
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-gray-300 rounded w-1/4 dark:bg-gray-700"></div>
-                    <div className="h-3 bg-gray-300 rounded w-1/2 dark:bg-gray-700"></div>
-                  </div>
-                  <div className="h-3 bg-gray-300 rounded w-24 dark:bg-gray-700"></div>
-                </div>
-              ))}
-            </div>
+            <TableLoader rows={8} />
           ) : logs.length > 0 ? (
             <div className="space-y-6">
               {Object.entries(groupedLogs).map(([date, dateLogs]) => (
@@ -477,7 +476,7 @@ export default function AuditLogsPage() {
                         className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer group"
                         onClick={() => viewLogDetails(log)}
                       >
-                        <div className="text-2xl mt-1">{getActionIcon(log.action)}</div>
+                        <div className="p-2 bg-white dark:bg-gray-700 rounded-lg mt-1">{getActionIcon(log.action)}</div>
                         
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">

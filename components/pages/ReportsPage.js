@@ -336,26 +336,12 @@ export default function ReportsPage() {
 
           <div className="grid gap-4">
             {loading.university ? (
-              // Loading skeleton
+              // Loading with animated cards
               Array.from({ length: 3 }).map((_, index) => (
-                <Card key={index} className="neu-card animate-pulse">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-2">
-                        <div className="h-5 w-48 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                        <div className="h-4 w-24 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                      </div>
-                      <div className="h-6 w-32 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {Array.from({ length: 4 }).map((_, i) => (
-                        <div key={i} className="text-center space-y-2">
-                          <div className="h-8 w-16 bg-slate-200 dark:bg-slate-700 rounded mx-auto"></div>
-                          <div className="h-3 w-20 bg-slate-200 dark:bg-slate-700 rounded mx-auto"></div>
-                        </div>
-                      ))}
+                <Card key={index} className="neu-card">
+                  <CardContent className="p-6">
+                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 h-40">
+                      <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/30 dark:via-white/10 to-transparent"></div>
                     </div>
                   </CardContent>
                 </Card>

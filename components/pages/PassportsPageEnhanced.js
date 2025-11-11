@@ -33,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { TableLoader, InlineLoader } from '@/components/ui/page-loader'
 
 export default function PassportsPageEnhanced({ currentUser }) {
   const [passports, setPassports] = useState([])
@@ -421,32 +422,13 @@ export default function PassportsPageEnhanced({ currentUser }) {
 
             {/* Results count */}
             <div className="text-sm text-muted-foreground">
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  Loading passports...
-                </span>
-              ) : (
-                `Showing ${passports.length} of ${pagination.total} passports`
-              )}
+              {!loading && `Showing ${passports.length} of ${pagination.total} passports`}
             </div>
           </div>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="space-y-4">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg animate-pulse dark:bg-gray-800/50">
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className="w-12 h-12 bg-gray-300 rounded-full dark:bg-gray-700"></div>
-                    <div className="flex-1 space-y-2">
-                      <div className="h-4 bg-gray-300 rounded w-1/4 dark:bg-gray-700"></div>
-                      <div className="h-3 bg-gray-300 rounded w-1/3 dark:bg-gray-700"></div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <TableLoader rows={5} />
           ) : (
             <div className="space-y-4">
               {passports.length > 0 ? (

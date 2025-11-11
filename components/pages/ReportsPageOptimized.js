@@ -1,9 +1,7 @@
 'use client'
 
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ChartSkeleton } from '@/components/ui/chart-skeleton'
+import { AnimatedPulseLoader, AnimatedCardLoader } from '@/components/ui/animated-loader'
 import { Sparkles } from 'lucide-react'
 
 // Lazy load the full reports page for better initial load
@@ -20,19 +18,16 @@ export default function ReportsPageOptimized() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl animate-pulse">
-            <Sparkles className="h-6 w-6 text-white" />
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-6">
+        <AnimatedPulseLoader />
+        <div className="text-center space-y-2">
+          <div className="flex items-center gap-2 justify-center">
+            <Sparkles className="h-5 w-5 text-purple-500 animate-pulse" />
+            <p className="text-lg font-semibold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+              Loading Analytics
+            </p>
           </div>
-          <div>
-            <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse mb-2"></div>
-            <div className="h-4 w-64 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse"></div>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ChartSkeleton />
-          <ChartSkeleton />
+          <p className="text-sm text-muted-foreground">Preparing your insights...</p>
         </div>
       </div>
     )
@@ -40,10 +35,10 @@ export default function ReportsPageOptimized() {
 
   return (
     <Suspense fallback={
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ChartSkeleton />
-          <ChartSkeleton />
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-6">
+        <AnimatedPulseLoader />
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground">Loading reports...</p>
         </div>
       </div>
     }>
