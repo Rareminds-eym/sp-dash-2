@@ -457,16 +457,9 @@ export default function AuditLogsPage() {
         <CardContent>
           {loading ? (
             <div className="space-y-4">
-              {/* Loading skeletons */}
+              {/* Modern animated loading */}
               {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg animate-pulse dark:bg-gray-800/50">
-                  <div className="w-2 h-2 bg-gray-300 rounded-full mt-2 dark:bg-gray-700"></div>
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-gray-300 rounded w-1/4 dark:bg-gray-700"></div>
-                    <div className="h-3 bg-gray-300 rounded w-1/2 dark:bg-gray-700"></div>
-                  </div>
-                  <div className="h-3 bg-gray-300 rounded w-24 dark:bg-gray-700"></div>
-                </div>
+                <AnimatedCardLoader key={i} />
               ))}
             </div>
           ) : logs.length > 0 ? (
