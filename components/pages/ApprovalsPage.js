@@ -840,9 +840,7 @@ export default function ApprovalsPage({ currentUser }) {
           </Card>
           
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <RefreshCw className="h-8 w-8 animate-spin text-blue-500" />
-            </div>
+            <CardGridLoader count={6} columns={3} />
           ) : filteredUniversities.length === 0 ? (
             <Card className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50">
               <CardContent className="text-center py-12">
