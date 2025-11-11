@@ -11,20 +11,20 @@ export const runtime = 'edge';
 export async function GET(request) {
   try {
     // Fetch real recruiter metrics data
-    const { data: recruiters, error: recruiterError } = await supabase
+    const { data: recruiters, error: recruiterError } = await supabaseAdmin
       .from('recruiters')
       .select('id');
     
     if (recruiterError) throw recruiterError;
     
-    const { data: placements, error: placementError } = await supabase
+    const { data: placements, error: placementError } = await supabaseAdmin
       .from('placements')
       .select('recruiterId, placementStatus');
     
     if (placementError) throw placementError;
     
     // Get actual search data from recruiter_saved_searches
-    const { data: savedSearches, error: searchError } = await supabase
+    const { data: savedSearches, error: searchError } = await supabaseAdmin
       .from('recruiter_saved_searches')
       .select('search_criteria');
     
@@ -34,7 +34,7 @@ export async function GET(request) {
     const totalSearches = savedSearches.length;
     
     // Get actual profile views from profile_views table
-    const { data: profileViewsData, error: profileViewError } = await supabase
+    const { data: profileViewsData, error: profileViewError } = await supabaseAdmin
       .from('profile_views')
       .select('id')
       .eq('viewer_type', 'recruiter');
@@ -44,7 +44,7 @@ export async function GET(request) {
     const profileViews = profileViewsData.length;
     
     // Get actual contact attempts from recruiter_activities
-    const { data: contactActivities, error: contactError } = await supabase
+    const { data: contactActivities, error: contactError } = await supabaseAdmin
       .from('recruiter_activities')
       .select('id')
       .eq('activityType', 'contact');
