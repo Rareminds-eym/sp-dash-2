@@ -9,9 +9,6 @@ const nextConfig = {
   experimental: {
     // Remove if not using Server Components
   },
-  // Disable automatic optimizations that might cause preload warnings
-  optimizeFonts: false,
-  optimizeCss: false,
   webpack(config, { dev }) {
     if (dev) {
       // Reduce CPU/memory from file watching
