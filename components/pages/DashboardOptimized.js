@@ -84,9 +84,12 @@ export default function DashboardOptimized({ user }) {
 
       // Load verifications in background after page is interactive
       fetch("/api/verifications")
-        .then(res => res.json())
-        .then(data => setRecentVerifications(data.slice(0, 10)))
-        .catch(err => console.error("Error fetching verifications:", err));
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setRecentVerifications(Array.isArray(data) ? data.slice(0, 10) : []))
+        .catch(err => {
+          console.error("Error fetching verifications:", err);
+          setRecentVerifications([]);
+        });
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
       setLoading(false);
