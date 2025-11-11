@@ -487,7 +487,7 @@ export default function AuditLogsPage() {
                         className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer group"
                         onClick={() => viewLogDetails(log)}
                       >
-                        <div className="text-2xl mt-1">{getActionIcon(log.action)}</div>
+                        <div className="p-2 bg-white dark:bg-gray-700 rounded-lg mt-1">{getActionIcon(log.action)}</div>
                         
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
