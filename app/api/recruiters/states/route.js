@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
 import { handleError } from '@/lib/middleware/errorHandler';
+import { supabaseAdmin } from '@/lib/supabase-admin';
+import { NextResponse } from 'next/server';
 
 export const runtime = 'edge';
 
@@ -9,10 +9,12 @@ export const runtime = 'edge';
  */
 export async function GET(request) {
   try {
-    const { data: recruiters } = await supabase
+    const { data: recruiters, error } = await supabaseAdmin
       .from('recruiters')
       .select('state')
       .not('state', 'is', null);
+    
+    if (error) throw error;
     
     const uniqueStates = [...new Set(recruiters?.map(r => r.state).filter(Boolean))].sort();
     

@@ -1,53 +1,19 @@
 'use client'
 
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { useToast } from '@/hooks/use-toast'
-import {
-    Briefcase,
-    CheckCircle2,
-    RefreshCw,
-    Search,
-    UserCheck,
-    UserX,
-    XCircle,
-    Building2,
-    Download,
-    ChevronLeft,
-    ChevronRight,
-    Filter,
-    SortAsc,
-    Eye,
-    Mail,
-    Phone,
-    Globe,
-    MapPin,
-    Calendar,
-    Users,
-    MoreVertical
-} from 'lucide-react'
-import { useEffect, useState, useCallback, useRef } from 'react'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Dialog,
   DialogContent,
@@ -55,7 +21,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { TableLoader, InlineLoader } from '@/components/ui/page-loader'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,6 +29,37 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Input } from '@/components/ui/input'
+import { InlineLoader, TableLoader } from '@/components/ui/page-loader'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useToast } from '@/hooks/use-toast'
+import {
+  Briefcase,
+  Building2,
+  Calendar,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Globe,
+  Mail,
+  MapPin,
+  MoreVertical,
+  Phone,
+  Search,
+  UserCheck,
+  Users,
+  UserX,
+  XCircle
+} from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 
 export default function RecruitersPageEnhanced({ currentUser }) {
   const [recruiters, setRecruiters] = useState([])
@@ -148,9 +144,10 @@ export default function RecruitersPageEnhanced({ currentUser }) {
     try {
       const response = await fetch('/api/recruiters/states')
       const data = await response.json()
-      setStates(data || [])
+      setStates(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Error fetching states:', error)
+      setStates([]) // Ensure states is always an array
     }
   }
 
@@ -566,7 +563,7 @@ export default function RecruitersPageEnhanced({ currentUser }) {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All States</SelectItem>
-                      {states.map(state => (
+                      {Array.isArray(states) && states.map(state => (
                         <SelectItem key={state} value={state}>{state}</SelectItem>
                       ))}
                     </SelectContent>
