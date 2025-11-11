@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../../../lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { createRLSClient, getUserContext } from '../../../../../lib/supabase-rls';
 import { logAudit } from '../../../../../lib/services/auditService';
 
