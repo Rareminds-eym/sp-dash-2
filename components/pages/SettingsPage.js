@@ -145,7 +145,8 @@ export default function SettingsPage({ user }) {
 
   const handleCancelEdit = () => {
     setProfileData({
-      name: user?.name || '',
+      firstName: user?.firstName || '',
+      lastName: user?.lastName || '',
       email: user?.email || '',
       organizationName: user?.organization?.name || ''
     })
