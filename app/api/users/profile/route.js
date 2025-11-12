@@ -73,7 +73,7 @@ export async function PUT(request) {
     if (organizationName && user.organizationId && uuidRegex.test(user.organizationId)) {
       console.log('Attempting to update organization:', user.organizationId, 'with name:', organizationName);
       
-      const { data: orgData, error: updateOrgError } = await supabase
+      const { data: orgData, error: updateOrgError } = await supabaseAdmin
         .from('organizations')
         .update({ name: organizationName })
         .eq('id', user.organizationId)
