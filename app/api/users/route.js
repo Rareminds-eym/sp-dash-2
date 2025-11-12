@@ -113,12 +113,16 @@ export async function GET(request) {
       transformedUsers = transformedUsers.filter(user => {
         const email = user.email?.toLowerCase() || '';
         const role = user.role?.toLowerCase() || '';
-        const name = user.metadata?.name?.toLowerCase() || '';
+        const firstName = user.firstName?.toLowerCase() || '';
+        const lastName = user.lastName?.toLowerCase() || '';
+        const fullName = `${firstName} ${lastName}`.trim();
         const grantedByEmail = user.grantedByEmail?.toLowerCase() || '';
         
         return email.includes(searchLower) || 
                role.includes(searchLower) || 
-               name.includes(searchLower) ||
+               firstName.includes(searchLower) ||
+               lastName.includes(searchLower) ||
+               fullName.includes(searchLower) ||
                grantedByEmail.includes(searchLower);
       });
     }
