@@ -51,9 +51,10 @@ The application uses **three Supabase client implementations**, each designed fo
 
 ---
 
-#### C. `@/lib/supabase-rls` (For User-Context Operations)
+#### C. `@/lib/supabase-rls` (For User-Context Operations & ALL Protected Pages) ⭐
 **Purpose**: Operations that require authenticated user context and respect Row Level Security  
 **Used By**:
+- **ALL 6 protected page components** (NEW - Enhanced Security)
 - Approval/rejection endpoints (need audit trail with user ID)
 - Activation/suspension endpoints (need to track who performed action)
 - Verification workflows (need user context for permissions)
@@ -62,10 +63,21 @@ The application uses **three Supabase client implementations**, each designed fo
 **Key Features:**
 - Creates RLS-aware Supabase client using user's authentication
 - Extracts user context from request cookies
-- Enforces Row Level Security policies
+- Enforces Row Level Security policies based on user role
 - Used for operations requiring user attribution
+- **Now includes `getSession()` for server components**
 
 **Files Using This:**
+
+**Protected Pages (6 files):**
+- `/app/app/(dashboard)/dashboard/page.js`
+- `/app/app/(dashboard)/users/page.js`
+- `/app/app/(dashboard)/passports/page.js`
+- `/app/app/(dashboard)/recruiters/page.js`
+- `/app/app/(dashboard)/settings/page.js`
+- `/app/app/(dashboard)/approvals/page.js`
+
+**API Routes (~19 files):**
 - `/api/recruiters/approve`, `/api/recruiters/reject`, `/api/recruiters/suspend`, `/api/recruiters/activate`
 - `/api/universities/approve`, `/api/universities/reject`
 - `/api/colleges/approve`, `/api/colleges/reject`
@@ -75,7 +87,7 @@ The application uses **three Supabase client implementations**, each designed fo
 - `/api/users/activate`, `/api/users/suspend`
 - `/api/users/profile` (user updating their own profile)
 
-**Total: ~19 files**
+**Total: ~25 files**
 
 ---
 
