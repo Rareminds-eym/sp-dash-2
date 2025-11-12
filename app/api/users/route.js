@@ -212,12 +212,13 @@ export async function POST(request) {
         .insert({
           id: newUserId,
           email: email,
+          firstName: firstName,
+          lastName: lastName,
           role: 'platform_admin', // Set role as platform_admin for admin users
           isActive: false,
           organizationId: '3c5c2637-9f1e-4b68-83a3-bdc4d1a92f00', // Rareminds organization
           createdAt: new Date().toISOString(),
           metadata: {
-            name: fullName,
             emailVerificationPending: true
           }
         });
