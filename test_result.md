@@ -1007,6 +1007,65 @@ userData.organizationId
 ### Status: 🟢 FIXED
 Profile Settings save changes functionality is now working correctly.
 
+---
+
+## Profile Settings - Remove Page Refresh After Save
+
+### Issue Reported
+Settings page was performing a full page reload after saving profile changes, causing a disruptive user experience.
+
+### Root Cause
+The `handleSaveProfile` function had a `window.location.reload()` call wrapped in a `setTimeout` that was forcing a full page refresh after successful profile update.
+
+### Solution
+Removed the page reload logic. The profile data is already updated in the local state, and exiting edit mode provides sufficient feedback to the user without a disruptive reload.
+
+### Files Modified
+
+#### `/app/components/pages/SettingsPage.js` (Lines 132-135)
+**Before:**
+```javascript
+toast({
+  title: 'Profile Updated',
+  description: 'Your profile information has been updated successfully.',
+  variant: 'default',
+})
+setIsEditing(false)
+
+// Refresh the page to show updated data
+setTimeout(() => {
+  window.location.reload()
+}, 1000)
+```
+
+**After:**
+```javascript
+toast({
+  title: 'Profile Updated',
+  description: 'Your profile information has been updated successfully.',
+  variant: 'default',
+})
+setIsEditing(false)
+```
+
+### Impact
+- ✅ No more page reload after saving profile
+- ✅ Smoother user experience
+- ✅ Form exits edit mode immediately
+- ✅ Success toast notification still displayed
+- ✅ Updated data persists in local state
+- ✅ Faster response - no waiting for page reload
+
+### User Flow (Improved)
+1. User clicks "Edit" on Profile Settings
+2. Updates name and/or organization name
+3. Clicks "Save Changes"
+4. Success message appears
+5. Form exits edit mode instantly ✅ (no page reload)
+6. Updated values remain visible in the form
+
+### Status: 🟢 FIXED
+Profile settings now save without page refresh for a better UX.
 
 ---
 
