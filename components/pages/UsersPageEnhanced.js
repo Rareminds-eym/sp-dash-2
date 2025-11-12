@@ -206,6 +206,71 @@ export default function UsersPageEnhanced({ currentUser }) {
     }
   }
 
+  const handleAddAdmin = async () => {
+    // Validate form
+    if (!addAdminForm.email || !addAdminForm.fullName || !addAdminForm.role) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please fill in all required fields',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(addAdminForm.email)) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please enter a valid email address',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    try {
+      setAddAdminLoading(true)
+      
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(addAdminForm)
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: 'Success',
+          description: data.message || 'Admin user created successfully'
+        })
+        
+        // Reset form and close dialog
+        setAddAdminForm({ email: '', fullName: '', role: 'platform_admin' })
+        setAddAdminDialog(false)
+        
+        // Refresh the user list
+        fetchUsers()
+        fetchOverallStats()
+      } else {
+        toast({
+          title: 'Error',
+          description: data.error || 'Failed to create admin user',
+          variant: 'destructive'
+        })
+      }
+    } catch (error) {
+      console.error('Error adding admin:', error)
+      toast({
+        title: 'Error',
+        description: 'An error occurred while creating the admin user',
+        variant: 'destructive'
+      })
+    } finally {
+      setAddAdminLoading(false)
+    }
+  }
+
   const handleSearchChange = (e) => {
     const value = e.target.value
     setFilters(prev => ({ ...prev, search: value }))
