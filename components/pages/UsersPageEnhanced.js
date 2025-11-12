@@ -522,8 +522,14 @@ export default function UsersPageEnhanced({ currentUser }) {
                           <div className="flex items-center gap-3 mb-2">
                             <p className="font-semibold text-lg dark:text-white">{user.email}</p>
                             <Badge variant={user.isActive ? 'default' : 'secondary'} className="font-medium">
-                              {user.isActive ? '● Active' : '○ Suspended'}
+                              {user.isActive ? '● Active' : '○ Inactive'}
                             </Badge>
+                            {!user.isActive && user.metadata?.emailVerificationPending && (
+                              <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-400 font-medium">
+                                <AlertCircle className="h-3 w-3 mr-1" />
+                                Email Verification Pending
+                              </Badge>
+                            )}
                           </div>
                           <div className="flex flex-wrap items-center gap-3 text-sm">
                             <Badge className={getRoleBadge(user.role)}>
