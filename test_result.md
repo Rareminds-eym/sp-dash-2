@@ -896,3 +896,44 @@ Added a complete password update functionality in the Settings page, allowing au
 
 ### Status: 🟢 FULLY FUNCTIONAL
 Authenticated admin users can now update their password from the Settings page with complete validation and security checks.
+
+---
+
+## Settings Page Loading Shimmer - Fixed
+
+### Issue
+The Settings page was using a generic `SimpleSkeleton` loading component that didn't match the actual structure of the settings page, causing layout shifts and visual inconsistency during page load.
+
+### Solution Implemented
+
+#### Created Settings-Specific Skeleton Loader
+**File Modified**: `/app/components/ui/loading-skeleton.js`
+
+**New Component**: `SettingsSkeleton()`
+- Matches the exact structure of the Settings page
+- Three cards matching the actual page layout:
+  - Profile Settings card with 4 input fields in 2 columns
+  - Notification Settings card with 3 toggle switches
+  - Security card with 2FA option and password update button
+
+**Features**:
+- Proper shimmer animations on all skeleton elements
+- Matches card dimensions and spacing
+- Smooth fade-in animation
+- Responsive grid layouts matching actual content
+- Dark mode support
+
+#### Updated Settings Loading File
+**File Modified**: `/app/app/(dashboard)/settings/loading.js`
+- Changed from `SimpleSkeleton` to `SettingsSkeleton`
+- Now shows accurate loading state preview
+
+### Benefits
+- ✅ No layout shift when page loads
+- ✅ Better user experience with accurate loading preview
+- ✅ Consistent visual feedback
+- ✅ Proper shimmer effects throughout
+- ✅ Matches page structure exactly
+
+### Status: 🟢 FIXED
+Settings page now displays a proper skeleton loader that matches the actual page structure.
