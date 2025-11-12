@@ -139,31 +139,8 @@ class RaremindsAPITester:
             except Exception as e:
                 self.log_test('/users', 'GET', 0, False, str(e))
         
-        # Test POST /api/users (create new admin user)
-        new_user_data = {
-            "email": f"testadmin_{hash('test')}@rareminds.in",
-            "role": "admin",
-            "metadata": {"name": "Test Admin User"}
-        }
-        
-        try:
-            response = self.make_request('POST', '/users', new_user_data)
-            success = response.status_code in [200, 201]
-            error = None if success else f"HTTP {response.status_code}"
-            
-            if not success and response.status_code == 400:
-                # Check if it's a validation error (acceptable)
-                try:
-                    error_data = response.json()
-                    if 'error' in error_data:
-                        error = f"Validation error: {error_data['error']}"
-                except:
-                    pass
-            
-            self.log_test('/users', 'POST', response.status_code, success, error)
-            
-        except Exception as e:
-            self.log_test('/users', 'POST', 0, False, str(e))
+        # Test POST /api/users - Comprehensive testing for admin user creation
+        self.test_post_users_endpoint()
         
         # Test user activation/suspension endpoints
         test_user_id = "test-user-id-123"  # Mock ID for testing
@@ -178,6 +155,169 @@ class RaremindsAPITester:
                 
             except Exception as e:
                 self.log_test(f'/users/[id]/{action}', 'PATCH', 0, False, str(e))
+    
+    def test_post_users_endpoint(self):
+        """Comprehensive testing for POST /api/users endpoint for creating admin users"""
+        print("\n🔐 Testing POST /api/users - Admin User Creation with Supabase...")
+        
+        import time
+        import random
+        
+        # Generate unique email for testing
+        timestamp = int(time.time())
+        random_suffix = random.randint(1000, 9999)
+        test_email = f"testadmin{timestamp}{random_suffix}@rareminds.in"
+        
+        # Test 1: Valid admin user creation
+        print("   Testing valid admin user creation...")
+        valid_user_data = {
+            "email": test_email,
+            "fullName": "Test Admin User",
+            "role": "platform_admin"
+        }
+        
+        try:
+            response = self.make_request('POST', '/users', valid_user_data)
+            success = response.status_code == 200
+            error = None
+            
+            if success:
+                data = response.json()
+                if not data.get('success'):
+                    success = False
+                    error = data.get('error', 'Unknown error')
+                else:
+                    print(f"      ✅ User created successfully: {data.get('message', '')}")
+                    # Store the created user ID for potential cleanup
+                    created_user_id = data.get('data', {}).get('id')
+                    if created_user_id:
+                        print(f"      📝 Created user ID: {created_user_id}")
+            else:
+                try:
+                    error_data = response.json()
+                    error = error_data.get('error', f"HTTP {response.status_code}")
+                except:
+                    error = f"HTTP {response.status_code}"
+            
+            self.log_test('/users (valid data)', 'POST', response.status_code, success, error)
+            
+        except Exception as e:
+            self.log_test('/users (valid data)', 'POST', 0, False, str(e))
+        
+        # Test 2: Missing required fields
+        print("   Testing validation errors...")
+        
+        # Missing email
+        try:
+            response = self.make_request('POST', '/users', {
+                "fullName": "Test User",
+                "role": "platform_admin"
+            })
+            success = response.status_code == 400
+            error = None if success else f"Expected 400, got {response.status_code}"
+            self.log_test('/users (missing email)', 'POST', response.status_code, success, error)
+        except Exception as e:
+            self.log_test('/users (missing email)', 'POST', 0, False, str(e))
+        
+        # Missing fullName
+        try:
+            response = self.make_request('POST', '/users', {
+                "email": "test@rareminds.in",
+                "role": "platform_admin"
+            })
+            success = response.status_code == 400
+            error = None if success else f"Expected 400, got {response.status_code}"
+            self.log_test('/users (missing fullName)', 'POST', response.status_code, success, error)
+        except Exception as e:
+            self.log_test('/users (missing fullName)', 'POST', 0, False, str(e))
+        
+        # Missing role
+        try:
+            response = self.make_request('POST', '/users', {
+                "email": "test@rareminds.in",
+                "fullName": "Test User"
+            })
+            success = response.status_code == 400
+            error = None if success else f"Expected 400, got {response.status_code}"
+            self.log_test('/users (missing role)', 'POST', response.status_code, success, error)
+        except Exception as e:
+            self.log_test('/users (missing role)', 'POST', 0, False, str(e))
+        
+        # Test 3: Invalid email format
+        try:
+            response = self.make_request('POST', '/users', {
+                "email": "invalid-email",
+                "fullName": "Test User",
+                "role": "platform_admin"
+            })
+            success = response.status_code == 400
+            error = None if success else f"Expected 400, got {response.status_code}"
+            self.log_test('/users (invalid email)', 'POST', response.status_code, success, error)
+        except Exception as e:
+            self.log_test('/users (invalid email)', 'POST', 0, False, str(e))
+        
+        # Test 4: Invalid role
+        try:
+            response = self.make_request('POST', '/users', {
+                "email": "test2@rareminds.in",
+                "fullName": "Test User",
+                "role": "invalid_role"
+            })
+            success = response.status_code == 400
+            error = None if success else f"Expected 400, got {response.status_code}"
+            self.log_test('/users (invalid role)', 'POST', response.status_code, success, error)
+        except Exception as e:
+            self.log_test('/users (invalid role)', 'POST', 0, False, str(e))
+        
+        # Test 5: Duplicate email (try to create the same user again)
+        print("   Testing duplicate email scenario...")
+        try:
+            response = self.make_request('POST', '/users', valid_user_data)
+            # Should fail with 500 or 400 due to duplicate email
+            success = response.status_code in [400, 500]
+            error = None if success else f"Expected 400/500, got {response.status_code}"
+            
+            if success:
+                try:
+                    error_data = response.json()
+                    print(f"      ✅ Duplicate email properly rejected: {error_data.get('error', 'Duplicate detected')}")
+                except:
+                    pass
+            
+            self.log_test('/users (duplicate email)', 'POST', response.status_code, success, error)
+        except Exception as e:
+            self.log_test('/users (duplicate email)', 'POST', 0, False, str(e))
+        
+        # Test 6: Test with super_admin role
+        print("   Testing super_admin role creation...")
+        super_admin_email = f"superadmin{timestamp}{random_suffix}@rareminds.in"
+        try:
+            response = self.make_request('POST', '/users', {
+                "email": super_admin_email,
+                "fullName": "Test Super Admin",
+                "role": "super_admin"
+            })
+            success = response.status_code == 200
+            error = None
+            
+            if success:
+                data = response.json()
+                if not data.get('success'):
+                    success = False
+                    error = data.get('error', 'Unknown error')
+                else:
+                    print(f"      ✅ Super admin created successfully")
+            else:
+                try:
+                    error_data = response.json()
+                    error = error_data.get('error', f"HTTP {response.status_code}")
+                except:
+                    error = f"HTTP {response.status_code}"
+            
+            self.log_test('/users (super_admin role)', 'POST', response.status_code, success, error)
+            
+        except Exception as e:
+            self.log_test('/users (super_admin role)', 'POST', 0, False, str(e))
     
     def test_recruiters_management(self):
         """Test recruiter management endpoints"""

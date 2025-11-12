@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/middleware/auth';
 import { handleError } from '@/lib/middleware/errorHandler';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export const runtime = 'edge';
 
@@ -141,5 +142,154 @@ export async function GET(request) {
     });
   } catch (error) {
     return handleError(error, 'Users');
+  }
+}
+
+/**
+ * POST /api/users - Create a new admin user in Supabase and admin_users table
+ */
+export async function POST(request) {
+  try {
+    const { rlsClient, session, error } = await authenticateRequest(request, ['/users']);
+    if (error) return error;
+    
+    // Parse request body
+    const body = await request.json();
+    const { email, fullName, role } = body;
+    
+    // Validate required fields
+    if (!email || !fullName || !role) {
+      return NextResponse.json({
+        success: false,
+        error: 'Email, full name, and role are required'
+      }, { status: 400 });
+    }
+    
+    // Validate role
+    if (!['super_admin', 'platform_admin'].includes(role)) {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid role. Must be super_admin or platform_admin'
+      }, { status: 400 });
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid email format'
+      }, { status: 400 });
+    }
+    
+    // Create user in Supabase Auth with admin client
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      email_confirm: false, // User needs to verify email
+      user_metadata: {
+        name: fullName,
+        role: 'admin'
+      }
+    });
+    
+    if (authError) {
+      console.error('Error creating user in Supabase Auth:', authError);
+      return NextResponse.json({
+        success: false,
+        error: authError.message || 'Failed to create user in authentication system'
+      }, { status: 500 });
+    }
+    
+    const newUserId = authData.user.id;
+    
+    try {
+      // Insert user record in users table using supabaseAdmin
+      // Set isActive to false until they verify their email and set password
+      const { error: userInsertError } = await supabaseAdmin
+        .from('users')
+        .insert({
+          id: newUserId,
+          email: email,
+          role: 'platform_admin', // Set role as platform_admin for admin users
+          isActive: false,
+          createdAt: new Date().toISOString(),
+          metadata: {
+            name: fullName,
+            emailVerificationPending: true
+          }
+        });
+      
+      if (userInsertError) {
+        console.error('Error inserting user in users table:', userInsertError);
+        // Rollback: Delete the auth user
+        await supabaseAdmin.auth.admin.deleteUser(newUserId);
+        return NextResponse.json({
+          success: false,
+          error: 'Failed to create user record'
+        }, { status: 500 });
+      }
+      
+      // Insert admin role in admin_users table
+      const { error: adminInsertError } = await supabaseAdmin
+        .from('admin_users')
+        .insert({
+          user_id: newUserId,
+          admin_role: role,
+          granted_by: session?.user?.id || null,
+          granted_at: new Date().toISOString()
+        });
+      
+      if (adminInsertError) {
+        console.error('Error inserting admin role:', adminInsertError);
+        // Rollback: Delete user from users table and auth
+        await supabaseAdmin.from('users').delete().eq('id', newUserId);
+        await supabaseAdmin.auth.admin.deleteUser(newUserId);
+        return NextResponse.json({
+          success: false,
+          error: 'Failed to assign admin role'
+        }, { status: 500 });
+      }
+      
+      // Send password reset email to the new admin
+      const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
+        redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/reset-password`
+      });
+      
+      if (resetError) {
+        console.error('Error sending password reset email:', resetError);
+        // Don't rollback - user is created, just notify about email issue
+        return NextResponse.json({
+          success: true,
+          message: `Admin user created successfully, but failed to send password reset email: ${resetError.message || 'Unknown error'}. Please contact the user directly.`,
+          data: {
+            id: newUserId,
+            email,
+            role,
+            fullName
+          },
+          emailError: resetError.message || 'Unknown error'
+        });
+      }
+      
+      return NextResponse.json({
+        success: true,
+        message: `Admin user created successfully. Password reset email sent to ${email}`,
+        data: {
+          id: newUserId,
+          email,
+          role,
+          fullName
+        }
+      });
+      
+    } catch (innerError) {
+      // Rollback: Delete the auth user if any error occurs
+      await supabaseAdmin.auth.admin.deleteUser(newUserId);
+      throw innerError;
+    }
+    
+  } catch (error) {
+    console.error('Error in POST /api/users:', error);
+    return handleError(error, 'Create Admin User');
   }
 }

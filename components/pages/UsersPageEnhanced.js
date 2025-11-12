@@ -13,7 +13,16 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { TableLoader } from '@/components/ui/page-loader'
 import {
     Select,
@@ -24,10 +33,13 @@ import {
 } from "@/components/ui/select"
 import { useToast } from '@/hooks/use-toast'
 import {
+    AlertCircle,
     ChevronLeft,
     ChevronRight,
     Clock,
     Crown,
+    Mail,
+    Plus,
     Search,
     Shield,
     ShieldCheck,
@@ -41,6 +53,9 @@ export default function UsersPageEnhanced({ currentUser }) {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [actionDialog, setActionDialog] = useState({ open: false, user: null, action: null })
+  const [addAdminDialog, setAddAdminDialog] = useState(false)
+  const [addAdminForm, setAddAdminForm] = useState({ email: '', fullName: '', role: 'platform_admin' })
+  const [addAdminLoading, setAddAdminLoading] = useState(false)
   const { toast } = useToast()
   
   // Overall stats (don't change with filters)
@@ -193,6 +208,103 @@ export default function UsersPageEnhanced({ currentUser }) {
     }
   }
 
+  const handleAddAdmin = async () => {
+    // Validate form
+    if (!addAdminForm.email || !addAdminForm.fullName || !addAdminForm.role) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please fill in all required fields',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(addAdminForm.email)) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please enter a valid email address',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    try {
+      setAddAdminLoading(true)
+      
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(addAdminForm)
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: 'Success',
+          description: data.message || 'Admin user created successfully'
+        })
+        
+        // Reset form and close dialog
+        setAddAdminForm({ email: '', fullName: '', role: 'platform_admin' })
+        setAddAdminDialog(false)
+        
+        // Refresh the user list
+        fetchUsers()
+        fetchOverallStats()
+      } else {
+        toast({
+          title: 'Error',
+          description: data.error || 'Failed to create admin user',
+          variant: 'destructive'
+        })
+      }
+    } catch (error) {
+      console.error('Error adding admin:', error)
+      toast({
+        title: 'Error',
+        description: 'An error occurred while creating the admin user',
+        variant: 'destructive'
+      })
+    } finally {
+      setAddAdminLoading(false)
+    }
+  }
+
+  const handleResendEmail = async (user) => {
+    try {
+      const response = await fetch('/api/users/resend-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id })
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: 'Email Sent',
+          description: data.message || 'Password reset email sent successfully'
+        })
+      } else {
+        toast({
+          title: 'Error',
+          description: data.error || 'Failed to send email',
+          variant: 'destructive'
+        })
+      }
+    } catch (error) {
+      console.error('Error resending email:', error)
+      toast({
+        title: 'Error',
+        description: 'An error occurred while sending the email',
+        variant: 'destructive'
+      })
+    }
+  }
+
   const handleSearchChange = (e) => {
     const value = e.target.value
     setFilters(prev => ({ ...prev, search: value }))
@@ -295,6 +407,23 @@ export default function UsersPageEnhanced({ currentUser }) {
       <Card className="neu-card">
         <CardHeader>
           <div className="space-y-4">
+            {/* Title and Add Admin Button */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Admin Users Management</h2>
+                <p className="text-sm text-muted-foreground mt-1">Manage admin users and their roles</p>
+              </div>
+              {currentUser?.role === 'super_admin' && (
+                <Button
+                  onClick={() => setAddAdminDialog(true)}
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Admin
+                </Button>
+              )}
+            </div>
+
             {/* Search and Filters Row */}
             <div className="flex flex-col md:flex-row gap-4">
               <div className="relative flex-1">
@@ -393,8 +522,14 @@ export default function UsersPageEnhanced({ currentUser }) {
                           <div className="flex items-center gap-3 mb-2">
                             <p className="font-semibold text-lg dark:text-white">{user.email}</p>
                             <Badge variant={user.isActive ? 'default' : 'secondary'} className="font-medium">
-                              {user.isActive ? '● Active' : '○ Suspended'}
+                              {user.isActive ? '● Active' : '○ Inactive'}
                             </Badge>
+                            {!user.isActive && user.metadata?.emailVerificationPending && (
+                              <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-400 font-medium">
+                                <AlertCircle className="h-3 w-3 mr-1" />
+                                Email Verification Pending
+                              </Badge>
+                            )}
                           </div>
                           <div className="flex flex-wrap items-center gap-3 text-sm">
                             <Badge className={getRoleBadge(user.role)}>
@@ -424,27 +559,43 @@ export default function UsersPageEnhanced({ currentUser }) {
                       </div>
                       <div className="flex items-center gap-2 ml-4">
                         {currentUser?.role === 'super_admin' && user.id !== currentUser?.id && (
-                          user.isActive ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleAction(user, 'suspend')}
-                              className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
-                            >
-                              <UserX className="h-4 w-4 mr-2" />
-                              Suspend
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleAction(user, 'activate')}
-                              className="border-green-200 text-green-600 hover:bg-green-50 hover:text-green-700 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-900/20"
-                            >
-                              <UserCheck className="h-4 w-4 mr-2" />
-                              Activate
-                            </Button>
-                          )
+                          <>
+                            {user.isActive ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleAction(user, 'suspend')}
+                                className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
+                              >
+                                <UserX className="h-4 w-4 mr-2" />
+                                Suspend
+                              </Button>
+                            ) : (
+                              <>
+                                {user.metadata?.emailVerificationPending ? (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleResendEmail(user)}
+                                    className="border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                                  >
+                                    <Mail className="h-4 w-4 mr-2" />
+                                    Resend Email
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleAction(user, 'activate')}
+                                    className="border-green-200 text-green-600 hover:bg-green-50 hover:text-green-700 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-900/20"
+                                  >
+                                    <UserCheck className="h-4 w-4 mr-2" />
+                                    Activate
+                                  </Button>
+                                )}
+                              </>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
@@ -562,6 +713,124 @@ export default function UsersPageEnhanced({ currentUser }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={addAdminDialog} onOpenChange={setAddAdminDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold">Add New Admin User</DialogTitle>
+            <DialogDescription>
+              Create a new admin user. They will receive an email with a password reset link. Their account will be inactive until they verify their email and set a password.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-medium">
+                Email <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="admin@example.com"
+                value={addAdminForm.email}
+                onChange={(e) => setAddAdminForm(prev => ({ ...prev, email: e.target.value }))}
+                disabled={addAdminLoading}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="fullName" className="text-sm font-medium">
+                Full Name <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="fullName"
+                type="text"
+                placeholder="John Doe"
+                value={addAdminForm.fullName}
+                onChange={(e) => setAddAdminForm(prev => ({ ...prev, fullName: e.target.value }))}
+                disabled={addAdminLoading}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="role" className="text-sm font-medium">
+                Admin Role <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={addAdminForm.role}
+                onValueChange={(value) => setAddAdminForm(prev => ({ ...prev, role: value }))}
+                disabled={addAdminLoading}
+              >
+                <SelectTrigger id="role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="platform_admin">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4 text-blue-600" />
+                      <span>Platform Admin</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="super_admin">
+                    <div className="flex items-center gap-2">
+                      <Crown className="h-4 w-4 text-purple-600" />
+                      <span>Super Admin</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Super Admins have full system access. Platform Admins have limited permissions.
+              </p>
+            </div>
+
+            <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 p-4 border border-blue-200 dark:border-blue-800">
+              <div className="flex items-start gap-3">
+                <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-blue-900 dark:text-blue-100">
+                  <p className="font-medium mb-1">Account Activation Process</p>
+                  <ul className="text-blue-700 dark:text-blue-300 space-y-1 mt-2">
+                    <li>• Admin will receive a password reset email</li>
+                    <li>• Account status will be <strong>Inactive</strong> until verified</li>
+                    <li>• They must verify email and set password to activate</li>
+                    <li>• You can resend the email if they don't receive it</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAddAdminDialog(false)
+                setAddAdminForm({ email: '', fullName: '', role: 'platform_admin' })
+              }}
+              disabled={addAdminLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddAdmin}
+              disabled={addAdminLoading}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+            >
+              {addAdminLoading ? (
+                <>
+                  <div className="h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Admin
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
