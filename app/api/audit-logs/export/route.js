@@ -20,7 +20,7 @@ export async function GET(request) {
     const search = searchParams.get('search');
     
     // Build query (no pagination for export)
-    let query = supabase
+    let query = supabaseAdmin
       .from('audit_logs')
       .select('*')
       .order('createdAt', { ascending: false })
@@ -46,7 +46,7 @@ export async function GET(request) {
       const userIds = [...new Set(enrichedLogs.map(l => l.actorId).filter(Boolean))];
       
       if (userIds.length > 0) {
-        const { data: users } = await supabase
+        const { data: users } = await supabaseAdmin
           .from('users')
           .select('id, email, metadata')
           .in('id', userIds);

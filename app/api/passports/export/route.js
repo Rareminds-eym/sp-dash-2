@@ -22,7 +22,7 @@ export async function GET(request) {
     // STEP 1: If we have university filter, first get all student IDs from that university
     let studentIdsFromUniversity = null;
     if (universityFilter && universityFilter !== 'all') {
-      const { data: studentsFromUniv } = await supabase
+      const { data: studentsFromUniv } = await supabaseAdmin
         .from('students')
         .select('id')
         .or(`universityId.eq.${universityFilter},organizationId.eq.${universityFilter}`);
