@@ -204,16 +204,18 @@ export async function POST(request) {
     
     try {
       // Insert user record in users table using supabaseAdmin
+      // Set isActive to false until they verify their email and set password
       const { error: userInsertError } = await supabaseAdmin
         .from('users')
         .insert({
           id: newUserId,
           email: email,
           role: 'platform_admin', // Set role as platform_admin for admin users
-          isActive: true,
+          isActive: false,
           createdAt: new Date().toISOString(),
           metadata: {
-            name: fullName
+            name: fullName,
+            emailVerificationPending: true
           }
         });
       
