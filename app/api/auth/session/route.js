@@ -106,6 +106,8 @@ export async function GET(request) {
       user: {
         id: userData.id,
         email: userData.email,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
         name: userName,
         role: userData.role,
         organizationId: userData.organizationId,
