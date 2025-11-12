@@ -29,7 +29,7 @@ export async function GET(request) {
     // Fetch additional user data from users table (lookup by email since IDs may not match)
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('*')
+      .select('id, email, firstName, lastName, role, isActive, organizationId, createdAt, metadata')
       .eq('email', user.email)
       .maybeSingle()
     
