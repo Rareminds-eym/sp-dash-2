@@ -60,7 +60,7 @@ export async function GET(request) {
     if (userIds.length > 0) {
       const { data: usersData } = await rlsClient
         .from('users')
-        .select('id, email, isActive, createdAt, metadata')
+        .select('id, email, isActive, createdAt, firstName, lastName, metadata')
         .in('id', userIds);
       
       usersData?.forEach(u => {
@@ -71,7 +71,7 @@ export async function GET(request) {
     if (grantedByIds.length > 0) {
       const { data: grantedByData } = await rlsClient
         .from('users')
-        .select('id, email, metadata')
+        .select('id, email, firstName, lastName, metadata')
         .in('id', grantedByIds);
       
       grantedByData?.forEach(u => {
