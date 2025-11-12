@@ -373,6 +373,23 @@ export default function UsersPageEnhanced({ currentUser }) {
       <Card className="neu-card">
         <CardHeader>
           <div className="space-y-4">
+            {/* Title and Add Admin Button */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Admin Users Management</h2>
+                <p className="text-sm text-muted-foreground mt-1">Manage admin users and their roles</p>
+              </div>
+              {currentUser?.role === 'super_admin' && (
+                <Button
+                  onClick={() => setAddAdminDialog(true)}
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Admin
+                </Button>
+              )}
+            </div>
+
             {/* Search and Filters Row */}
             <div className="flex flex-col md:flex-row gap-4">
               <div className="relative flex-1">
