@@ -111,7 +111,8 @@ export default function SettingsPage({ user }) {
         },
         body: JSON.stringify({
           email: profileData.email,
-          name: profileData.name,
+          firstName: profileData.firstName,
+          lastName: profileData.lastName,
           organizationName: profileData.organizationName,
         }),
       })
