@@ -1078,6 +1078,136 @@ Console error: `SyntaxError: Failed to execute 'json' on 'Response': Unexpected 
 The DashboardLayout was attempting to parse JSON from API responses without first checking if the response was successful (response.ok). This caused errors when:
 - Network requests failed
 - API returned non-200 status codes
+---
+
+## Admin User Management - firstName and lastName Implementation
+
+### Objective
+Update the entire admin user management system to use `firstName` and `lastName` columns from the public `users` table instead of storing names in metadata or using a single `name` field.
+
+### Changes Implemented
+
+#### 1. Admin User Creation API - `/app/app/api/users/route.js`
+
+**POST Endpoint Updates:**
+- Changed input parameters from `fullName` to `firstName` and `lastName`
+- Updated validation to require both firstName and lastName
+- Modified Supabase Auth user creation to store firstName and lastName in user_metadata
+- Updated users table insert to use firstName and lastName columns
+- Removed name from metadata object
+- Updated response data to return firstName and lastName separately
+
+**GET Endpoint Updates:**
+- Added firstName and lastName to the SELECT queries for users table
+- Updated transformedUsers to include firstName and lastName fields
+- Updated grantedByName to concatenate firstName and lastName
+- Enhanced search functionality to search across firstName, lastName, and full name combination
+
+#### 2. Profile Update API - `/app/app/api/users/profile/route.js`
+
+**Updates:**
+- Changed input parameters from `name` to `firstName` and `lastName`
+- Updated user lookup to select firstName and lastName from users table
+- Modified update logic to update firstName and lastName columns directly (not metadata)
+- Updated audit logging to track firstName and lastName changes
+- Updated response to return firstName and lastName
+
+#### 3. Session API - `/app/app/api/auth/session/route.js`
+
+**Updates:**
+- Updated user data query to explicitly select firstName and lastName
+- Modified error fallback to use firstName and lastName from user_metadata
+- Updated userName construction to concatenate firstName and lastName
+- Added firstName and lastName to the session response object
+- Maintained backward compatibility with `name` field (computed from firstName + lastName)
+
+#### 4. Settings Page UI - `/app/components/pages/SettingsPage.js`
+
+**Updates:**
+- Changed profileData state to use firstName and lastName instead of name
+- Updated useEffect to sync firstName and lastName from user prop
+- Modified API request to send firstName and lastName separately
+- Updated handleCancelEdit to reset firstName and lastName
+- Changed UI to display two separate input fields:
+  - "First Name" field
+  - "Last Name" field
+- Both fields appear in the same row using grid layout
+
+### Database Schema Alignment
+
+The implementation now correctly uses the `users` table structure:
+```
+users table columns used:
+- id (UUID)
+- email (text)
+- firstName (text) ✅ NEW
+- lastName (text) ✅ NEW
+- role (enum)
+- isActive (boolean)
+- organizationId (UUID)
+- createdAt (timestamp)
+- metadata (jsonb) - no longer stores name
+```
+
+### Benefits
+
+1. **Data Integrity**
+   - Names stored in proper database columns (not metadata)
+   - Better data structure and querying capabilities
+   - Easier to search and sort by first/last name
+
+2. **Flexibility**
+   - Can display first name, last name, or full name as needed
+   - Supports various name display formats
+   - Better for internationalization
+
+3. **Consistency**
+   - All admin users follow the same data structure
+   - No mixing of metadata and column storage
+   - Cleaner API responses
+
+4. **Search Enhancement**
+   - Can search by first name only
+   - Can search by last name only
+   - Can search by full name
+   - More accurate search results
+
+### Files Modified
+
+1. `/app/app/api/users/route.js` - Admin user CRUD operations
+2. `/app/app/api/users/profile/route.js` - Profile update endpoint
+3. `/app/app/api/auth/session/route.js` - Session data retrieval
+4. `/app/components/pages/SettingsPage.js` - Settings UI
+
+### User Flows Updated
+
+**1. Admin User Creation:**
+- Super admin enters first name and last name separately
+- System stores in firstName and lastName columns
+- Password reset email sent
+- User activates account
+
+**2. Profile Update:**
+- User edits first name and/or last name
+- Both fields updated independently
+- Changes saved to firstName and lastName columns
+- No page refresh needed
+
+**3. Session Loading:**
+- System fetches firstName and lastName from users table
+- Combines into `name` field for display compatibility
+- Both firstName and lastName available separately in session object
+
+### Backward Compatibility
+
+- Session API still provides `name` field (computed from firstName + lastName)
+- Existing code using `user.name` will continue to work
+- New code can use `user.firstName` and `user.lastName` for more flexibility
+
+### Status: 🟢 IMPLEMENTED
+All admin user management operations now use firstName and lastName columns from the users table.
+
+
 - Response body was empty or malformed
 
 ### Files Modified
