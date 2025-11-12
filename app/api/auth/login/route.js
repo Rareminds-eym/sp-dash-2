@@ -37,6 +37,31 @@ export async function POST(request) {
       .eq('email', authData.user.email)
       .maybeSingle()
     
+    // Auto-activate user if they verified email and set password but account is still inactive
+    if (userData && !userData.isActive && userData.metadata?.emailVerificationPending && authData.user.email_confirmed_at) {
+      const { error: activateError } = await supabase
+        .from('users')
+        .update({
+          isActive: true,
+          metadata: {
+            ...userData.metadata,
+            emailVerificationPending: false,
+            activatedAt: new Date().toISOString()
+          }
+        })
+        .eq('id', userData.id)
+      
+      if (!activateError) {
+        // Update local userData object
+        userData.isActive = true
+        userData.metadata = {
+          ...userData.metadata,
+          emailVerificationPending: false,
+          activatedAt: new Date().toISOString()
+        }
+      }
+    }
+    
     // Fetch organization data from universities or recruiters tables
     let organizationData = null
     if (userData && userData.organizationId) {
