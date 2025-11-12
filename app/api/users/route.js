@@ -252,12 +252,23 @@ export async function POST(request) {
       
       // Send password reset email to the new admin
       const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
-        redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/login`
+        redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/dashboard`
       });
       
       if (resetError) {
         console.error('Error sending password reset email:', resetError);
         // Don't rollback - user is created, just notify about email issue
+        return NextResponse.json({
+          success: true,
+          message: `Admin user created successfully, but failed to send password reset email: ${resetError.message || 'Unknown error'}. Please contact the user directly.`,
+          data: {
+            id: newUserId,
+            email,
+            role,
+            fullName
+          },
+          emailError: resetError.message || 'Unknown error'
+        });
       }
       
       return NextResponse.json({

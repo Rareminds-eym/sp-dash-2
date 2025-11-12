@@ -51,7 +51,7 @@ export async function POST(request) {
     const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(
       userData.email,
       {
-        redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/login`
+        redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/dashboard`
       }
     );
     
