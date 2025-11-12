@@ -703,3 +703,93 @@ These 19 files correctly use `createRLSClient` for user-specific operations that
 **Minor Note**: Email rate limiting encountered during testing is expected behavior and indicates proper rate limit implementation.
 
 **Testing Completed**: All requested admin user creation and activation flow scenarios have been successfully validated and confirmed working.
+
+---
+
+## Password Reset Link Issue - Fix Applied
+
+### Issue Reported
+When admin clicks on the password reset link received during admin creation from the admin management page, they were being redirected to the login page instead of a password reset page.
+
+### Root Cause
+The password reset email was configured with `redirectTo: /dashboard`, but when admins clicked the link, they had no authentication session yet. The middleware detected this and redirected them to `/login`, preventing them from setting their password.
+
+### Solution Implemented
+
+#### 1. Created Dedicated Password Reset Page
+**File Created**: `/app/app/reset-password/page.js`
+
+Features:
+- Extracts password reset token from URL hash (Supabase format)
+- Validates token presence and type (recovery)
+- Shows password reset form with strength validation
+- Password requirements:
+  - Minimum 8 characters
+  - At least one uppercase letter
+  - At least one lowercase letter
+  - At least one number
+- Confirms password match validation
+- Updates password via Supabase Auth API
+- Calls `/api/users/verify-and-activate` to activate admin account
+- Auto-logs in user after successful password reset
+- Redirects to `/dashboard` automatically
+- Handles errors gracefully with proper messaging
+
+#### 2. Updated Middleware Configuration
+**File Modified**: `/app/middleware.js`
+- Added `/reset-password` to public routes array
+- Allows unauthenticated access to reset password page
+
+#### 3. Updated API Routes - Redirect URLs
+**Files Modified**:
+- `/app/app/api/users/route.js` (Line 255)
+  - Changed: `redirectTo: .../dashboard`
+  - To: `redirectTo: .../reset-password`
+  
+- `/app/app/api/users/resend-email/route.js` (Line 54)
+  - Changed: `redirectTo: .../dashboard`
+  - To: `redirectTo: .../reset-password`
+
+#### 4. Updated Verify and Activate Endpoint
+**File Modified**: `/app/app/api/users/verify-and-activate/route.js`
+- Removed strict email_confirmed_at check
+- Accounts are activated when password is set via reset link
+- Email is automatically confirmed by Supabase during password reset flow
+
+### User Flow After Fix
+
+1. **Admin Creation**:
+   - Super admin creates new admin user via Admin Management page
+   - System sends password reset email to new admin
+   - Admin account created with `isActive: false`, `emailVerificationPending: true`
+
+2. **Password Reset Link Clicked**:
+   - Admin clicks link in email
+   - Redirected to `/reset-password` page (not `/dashboard` → `/login`)
+   - Reset token extracted from URL hash
+
+3. **Password Setup**:
+   - Admin enters new password (with strength validation)
+   - Confirms password
+   - Clicks "Set Password & Activate Account"
+
+4. **Account Activation**:
+   - Password updated in Supabase Auth
+   - Email automatically confirmed by Supabase
+   - `/api/users/verify-and-activate` called to set `isActive: true`
+   - Admin account fully activated
+
+5. **Auto-Login & Redirect**:
+   - Admin automatically logged in (has valid session after password reset)
+   - Redirected to `/dashboard`
+   - Can start using admin panel immediately
+
+### Files Changed
+- **Created**: `/app/app/reset-password/page.js` (new password reset page)
+- **Modified**: `/app/middleware.js` (added public route)
+- **Modified**: `/app/app/api/users/route.js` (updated redirect URL)
+- **Modified**: `/app/app/api/users/resend-email/route.js` (updated redirect URL)
+- **Modified**: `/app/app/api/users/verify-and-activate/route.js` (removed strict email check)
+
+### Status: 🟢 FIXED
+Admin users can now successfully set their password and activate their account via the password reset link.
