@@ -1,5 +1,5 @@
 import SettingsPage from '@/components/pages/SettingsPage'
-import { getSession } from '@/lib/supabase-server'
+import { getSession } from '@/lib/supabase-rls'
 
 export const runtime = 'edge'
 

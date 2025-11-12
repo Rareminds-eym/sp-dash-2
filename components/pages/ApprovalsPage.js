@@ -394,19 +394,19 @@ export default function ApprovalsPage({ currentUser }) {
       
       switch(entityType) {
         case 'university':
-          endpoint = '/api/approve-university'
+          endpoint = '/api/universities/approve'
           bodyKey = 'universityId'
           break
         case 'recruiter':
-          endpoint = '/api/approve-recruiter'
+          endpoint = '/api/recruiters/approve'
           bodyKey = 'recruiterId'
           break
         case 'college':
-          endpoint = '/api/approve-college'
+          endpoint = '/api/colleges/approve'
           bodyKey = 'collegeId'
           break
         case 'student':
-          endpoint = '/api/approve-student'
+          endpoint = '/api/students/approve'
           bodyKey = 'studentId'
           break
         default:
@@ -460,19 +460,19 @@ export default function ApprovalsPage({ currentUser }) {
       
       switch(entityType) {
         case 'university':
-          endpoint = '/api/reject-university'
+          endpoint = '/api/universities/reject'
           bodyKey = 'universityId'
           break
         case 'recruiter':
-          endpoint = '/api/reject-recruiter'
+          endpoint = '/api/recruiters/reject'
           bodyKey = 'recruiterId'
           break
         case 'college':
-          endpoint = '/api/reject-college'
+          endpoint = '/api/colleges/reject'
           bodyKey = 'collegeId'
           break
         case 'student':
-          endpoint = '/api/reject-student'
+          endpoint = '/api/students/reject'
           bodyKey = 'studentId'
           break
         default:

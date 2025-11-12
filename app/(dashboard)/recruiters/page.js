@@ -1,5 +1,5 @@
 import RecruitersPageEnhanced from '@/components/pages/RecruitersPageEnhanced'
-import { getSession } from '@/lib/session'
+import { getSession } from '@/lib/supabase-rls'
 
 export const runtime = 'edge'
 

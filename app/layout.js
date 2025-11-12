@@ -1,4 +1,5 @@
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
+import { Toaster } from '@/components/ui/toaster'
 import './globals.css'
 
 export const metadata = {
@@ -17,6 +18,7 @@ export default function RootLayout({ children }) {
           disableTransitionOnChange={false}
         >
           {children}
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

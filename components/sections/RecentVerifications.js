@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Activity, CheckCircle2 } from 'lucide-react'
 
-export function RecentVerifications({ verifications }) {
+export function RecentVerifications({ verifications = [] }) {
   return (
     <Card className="neu-card">
       <CardHeader className="pb-4">
@@ -18,7 +18,7 @@ export function RecentVerifications({ verifications }) {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {verifications.length > 0 ? (
+          {verifications && verifications.length > 0 ? (
             verifications.map((verification, index) => (
               <div
                 key={verification.id}

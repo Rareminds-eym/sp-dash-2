@@ -14,29 +14,28 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { TableLoader } from '@/components/ui/page-loader'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 import { useToast } from '@/hooks/use-toast'
 import {
-    RefreshCw,
-    Search,
-    Shield,
-    UserCheck,
-    UserX,
     ChevronLeft,
     ChevronRight,
-    Users,
-    ShieldCheck,
+    Clock,
     Crown,
-    Clock
+    Search,
+    Shield,
+    ShieldCheck,
+    UserCheck,
+    Users,
+    UserX
 } from 'lucide-react'
-import { useEffect, useState, useRef } from 'react'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { TableLoader } from '@/components/ui/page-loader'
+import { useEffect, useRef, useState } from 'react'
 
 export default function UsersPageEnhanced({ currentUser }) {
   const [users, setUsers] = useState([])
@@ -158,10 +157,10 @@ export default function UsersPageEnhanced({ currentUser }) {
       let body = {}
 
       if (action === 'suspend') {
-        endpoint = '/api/suspend-user'
+        endpoint = '/api/users/suspend'
         body = { targetUserId: user.id, actorId: currentUser?.id, reason: 'Admin action' }
       } else if (action === 'activate') {
-        endpoint = '/api/activate-user'
+        endpoint = '/api/users/activate'
         body = { targetUserId: user.id, actorId: currentUser?.id, note: 'User activated' }
       }
 
@@ -179,6 +178,7 @@ export default function UsersPageEnhanced({ currentUser }) {
           description: data.message
         })
         fetchUsers()
+        fetchOverallStats()
       } else {
         throw new Error(data.error)
       }
@@ -415,13 +415,7 @@ export default function UsersPageEnhanced({ currentUser }) {
                               {user.grantedAt && (
                                 <span className="flex items-center gap-1.5">
                                   <Clock className="h-3.5 w-3.5" />
-                                  <span className="font-medium">On:</span> {new Date(user.grantedAt).toLocaleDateString('en-US', { 
-                                    year: 'numeric', 
-                                    month: 'short', 
-                                    day: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  })}
+                                  <span className="font-medium">On:</span> {new Date(user.grantedAt).toISOString().replace('T', ' ').substring(0, 16)}
                                 </span>
                               )}
                             </div>

@@ -1,5 +1,5 @@
 import DashboardOptimized from '@/components/pages/DashboardOptimized'
-import { getSession } from '@/lib/supabase-server'
+import { getSession } from '@/lib/supabase-rls'
 
 export const runtime = 'edge'
 

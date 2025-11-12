@@ -118,8 +118,6 @@ export async function POST(request) {
         role: userData.role,
         organizationId: userData.organizationId,
         organization: organizationData,
-        entity_type: userData.entity_type,
-        entity_id: userData.entity_id,
         permissions: permissions,
       },
       session: authData.session,
