@@ -7,13 +7,34 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/hooks/use-toast'
-import { RefreshCw, Database, CheckCircle2, Save, Edit3 } from 'lucide-react'
+import { RefreshCw, Database, CheckCircle2, Save, Edit3, Lock, Eye, EyeOff } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { createClient } from '@/lib/supabase-browser'
 
 export default function SettingsPage({ user }) {
   const { toast } = useToast()
   const [isUpdating, setIsUpdating] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
+  
+  // Password update dialog state
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false)
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  })
   
   // Profile form state  
   const [profileData, setProfileData] = useState({
@@ -131,6 +152,125 @@ export default function SettingsPage({ user }) {
       organizationName: user?.organization?.name || ''
     })
     setIsEditing(false)
+  }
+
+  const validatePassword = (pwd) => {
+    if (pwd.length < 8) {
+      return 'Password must be at least 8 characters long'
+    }
+    if (!/[A-Z]/.test(pwd)) {
+      return 'Password must contain at least one uppercase letter'
+    }
+    if (!/[a-z]/.test(pwd)) {
+      return 'Password must contain at least one lowercase letter'
+    }
+    if (!/[0-9]/.test(pwd)) {
+      return 'Password must contain at least one number'
+    }
+    return null
+  }
+
+  const handleUpdatePassword = async () => {
+    // Validate inputs
+    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      toast({
+        title: 'Error',
+        description: 'All fields are required',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    // Validate passwords match
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast({
+        title: 'Error',
+        description: 'New passwords do not match',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    // Validate password strength
+    const validationError = validatePassword(passwordData.newPassword)
+    if (validationError) {
+      toast({
+        title: 'Error',
+        description: validationError,
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setIsUpdatingPassword(true)
+
+    try {
+      const supabase = createClient()
+
+      // First, verify current password by trying to sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: passwordData.currentPassword,
+      })
+
+      if (signInError) {
+        toast({
+          title: 'Error',
+          description: 'Current password is incorrect',
+          variant: 'destructive',
+        })
+        setIsUpdatingPassword(false)
+        return
+      }
+
+      // Update the password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: passwordData.newPassword
+      })
+
+      if (updateError) {
+        toast({
+          title: 'Error',
+          description: updateError.message || 'Failed to update password',
+          variant: 'destructive',
+        })
+        setIsUpdatingPassword(false)
+        return
+      }
+
+      // Success
+      toast({
+        title: 'Password Updated',
+        description: 'Your password has been updated successfully',
+        variant: 'default',
+      })
+
+      // Reset form and close dialog
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      })
+      setShowPasswordDialog(false)
+    } catch (error) {
+      console.error('Password update error:', error)
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred. Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsUpdatingPassword(false)
+    }
+  }
+
+  const handleCancelPasswordUpdate = () => {
+    setPasswordData({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    })
+    setShowPasswordDialog(false)
   }
 
   return (
@@ -276,7 +416,14 @@ export default function SettingsPage({ user }) {
           </div>
           <div className="space-y-2">
             <Label>Change Password</Label>
-            <Button variant="outline" className="w-full">Update Password</Button>
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => setShowPasswordDialog(true)}
+            >
+              <Lock className="h-4 w-4 mr-2" />
+              Update Password
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -323,6 +470,146 @@ export default function SettingsPage({ user }) {
           </CardContent>
         </Card>
       )}
+
+      {/* Password Update Dialog */}
+      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5" />
+              Update Password
+            </DialogTitle>
+            <DialogDescription>
+              Enter your current password and choose a new secure password.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Current Password */}
+            <div className="space-y-2">
+              <Label htmlFor="currentPassword">Current Password</Label>
+              <div className="relative">
+                <Input
+                  id="currentPassword"
+                  type={showCurrentPassword ? "text" : "password"}
+                  value={passwordData.currentPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                  placeholder="Enter current password"
+                  disabled={isUpdatingPassword}
+                  autoComplete="current-password"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  disabled={isUpdatingPassword}
+                >
+                  {showCurrentPassword ? (
+                    <EyeOff className="h-4 w-4 text-gray-400" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-gray-400" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* New Password */}
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">New Password</Label>
+              <div className="relative">
+                <Input
+                  id="newPassword"
+                  type={showNewPassword ? "text" : "password"}
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                  placeholder="Enter new password"
+                  disabled={isUpdatingPassword}
+                  autoComplete="new-password"
+                  minLength={8}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  disabled={isUpdatingPassword}
+                >
+                  {showNewPassword ? (
+                    <EyeOff className="h-4 w-4 text-gray-400" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-gray-400" />
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Must be at least 8 characters with uppercase, lowercase, and number
+              </p>
+            </div>
+
+            {/* Confirm New Password */}
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm New Password</Label>
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                  placeholder="Confirm new password"
+                  disabled={isUpdatingPassword}
+                  autoComplete="new-password"
+                  minLength={8}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  disabled={isUpdatingPassword}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4 text-gray-400" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-gray-400" />
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCancelPasswordUpdate}
+              disabled={isUpdatingPassword}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleUpdatePassword}
+              disabled={isUpdatingPassword}
+            >
+              {isUpdatingPassword ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <Lock className="h-4 w-4 mr-2" />
+                  Update Password
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
