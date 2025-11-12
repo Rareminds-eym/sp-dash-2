@@ -19,14 +19,48 @@ export default function ResetPasswordPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Check if there's a password reset token in the URL hash
-    const checkForToken = () => {
+    // Check if there's a password reset token in the URL hash and establish session
+    const initializeSession = async () => {
       const hashParams = new URLSearchParams(window.location.hash.substring(1))
       const accessToken = hashParams.get('access_token')
+      const refreshToken = hashParams.get('refresh_token')
       const type = hashParams.get('type')
       
       if (accessToken && type === 'recovery') {
-        setHasToken(true)
+        try {
+          // Create Supabase client and set the session
+          const supabase = createClient()
+          
+          // Set the session using the tokens from the URL
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken || ''
+          })
+          
+          if (error) {
+            console.error('Error setting session:', error)
+            setError('Failed to verify password reset link. Please request a new one.')
+            setTimeout(() => {
+              router.push('/login')
+            }, 3000)
+            return
+          }
+          
+          if (data.session) {
+            setHasToken(true)
+          } else {
+            setError('Invalid or expired password reset link. Please request a new one.')
+            setTimeout(() => {
+              router.push('/login')
+            }, 3000)
+          }
+        } catch (err) {
+          console.error('Error initializing session:', err)
+          setError('An error occurred. Please request a new password reset link.')
+          setTimeout(() => {
+            router.push('/login')
+          }, 3000)
+        }
       } else {
         // No valid token, redirect to login
         setError('Invalid or expired password reset link. Please request a new one.')
@@ -36,7 +70,7 @@ export default function ResetPasswordPage() {
       }
     }
 
-    checkForToken()
+    initializeSession()
   }, [router])
 
   const validatePassword = (pwd) => {
