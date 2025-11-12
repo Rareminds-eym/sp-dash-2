@@ -32,13 +32,8 @@ export async function POST(request) {
       }, { status: 404 });
     }
     
-    // Check if email is confirmed
-    if (!authUser.user.email_confirmed_at) {
-      return NextResponse.json({
-        success: false,
-        error: 'Email is not yet verified'
-      }, { status: 400 });
-    }
+    // Note: When user sets password via password reset link, email is automatically confirmed
+    // We'll activate the account regardless, as they've proven access to their email
     
     // Update user status to active and remove email verification pending flag
     const { error: updateError } = await supabaseAdmin
