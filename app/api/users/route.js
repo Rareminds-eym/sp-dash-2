@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/middleware/auth';
 import { handleError } from '@/lib/middleware/errorHandler';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export const runtime = 'edge';
 
