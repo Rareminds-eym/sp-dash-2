@@ -51,6 +51,9 @@ export default function UsersPageEnhanced({ currentUser }) {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [actionDialog, setActionDialog] = useState({ open: false, user: null, action: null })
+  const [addAdminDialog, setAddAdminDialog] = useState(false)
+  const [addAdminForm, setAddAdminForm] = useState({ email: '', fullName: '', role: 'platform_admin' })
+  const [addAdminLoading, setAddAdminLoading] = useState(false)
   const { toast } = useToast()
   
   // Overall stats (don't change with filters)
