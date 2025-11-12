@@ -788,10 +788,13 @@ export default function UsersPageEnhanced({ currentUser }) {
               <div className="flex items-start gap-3">
                 <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                 <div className="text-sm text-blue-900 dark:text-blue-100">
-                  <p className="font-medium mb-1">Password Setup</p>
-                  <p className="text-blue-700 dark:text-blue-300">
-                    The new admin will receive an email with a secure password reset link. They must verify their email and set their password before accessing the system.
-                  </p>
+                  <p className="font-medium mb-1">Account Activation Process</p>
+                  <ul className="text-blue-700 dark:text-blue-300 space-y-1 mt-2">
+                    <li>• Admin will receive a password reset email</li>
+                    <li>• Account status will be <strong>Inactive</strong> until verified</li>
+                    <li>• They must verify email and set password to activate</li>
+                    <li>• You can resend the email if they don't receive it</li>
+                  </ul>
                 </div>
               </div>
             </div>
