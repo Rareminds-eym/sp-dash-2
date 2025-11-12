@@ -559,27 +559,43 @@ export default function UsersPageEnhanced({ currentUser }) {
                       </div>
                       <div className="flex items-center gap-2 ml-4">
                         {currentUser?.role === 'super_admin' && user.id !== currentUser?.id && (
-                          user.isActive ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleAction(user, 'suspend')}
-                              className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
-                            >
-                              <UserX className="h-4 w-4 mr-2" />
-                              Suspend
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleAction(user, 'activate')}
-                              className="border-green-200 text-green-600 hover:bg-green-50 hover:text-green-700 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-900/20"
-                            >
-                              <UserCheck className="h-4 w-4 mr-2" />
-                              Activate
-                            </Button>
-                          )
+                          <>
+                            {user.isActive ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleAction(user, 'suspend')}
+                                className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
+                              >
+                                <UserX className="h-4 w-4 mr-2" />
+                                Suspend
+                              </Button>
+                            ) : (
+                              <>
+                                {user.metadata?.emailVerificationPending ? (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleResendEmail(user)}
+                                    className="border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                                  >
+                                    <Mail className="h-4 w-4 mr-2" />
+                                    Resend Email
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleAction(user, 'activate')}
+                                    className="border-green-200 text-green-600 hover:bg-green-50 hover:text-green-700 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-900/20"
+                                  >
+                                    <UserCheck className="h-4 w-4 mr-2" />
+                                    Activate
+                                  </Button>
+                                )}
+                              </>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
