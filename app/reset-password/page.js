@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { AlertCircle, CheckCircle, Lock } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase-client'
+import { createClient } from '@/lib/supabase-browser'
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState('')
