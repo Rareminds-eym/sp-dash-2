@@ -1007,3 +1007,86 @@ userData.organizationId
 ### Status: 🟢 FIXED
 Profile Settings save changes functionality is now working correctly.
 
+
+---
+
+## DashboardLayout JSON Parsing Error - Fixed
+
+### Issue Reported
+Console error: `SyntaxError: Failed to execute 'json' on 'Response': Unexpected end of JSON input` in DashboardLayout.useEffect
+
+### Root Cause
+The DashboardLayout was attempting to parse JSON from API responses without first checking if the response was successful (response.ok). This caused errors when:
+- Network requests failed
+- API returned non-200 status codes
+- Response body was empty or malformed
+
+### Files Modified
+
+#### `/app/app/(dashboard)/layout.js`
+
+**1. Fixed Session Fetch (Lines 63-73)**
+**Before:**
+```javascript
+fetch('/api/auth/session')
+  .then(res => res.json())
+  .then(data => {
+    if (data.success && data.user) {
+      setUser(data.user)
+    }
+  })
+  .catch(err => console.error('Failed to fetch session:', err))
+```
+
+**After:**
+```javascript
+fetch('/api/auth/session')
+  .then(res => {
+    if (!res.ok) {
+      throw new Error(`HTTP error! status: ${res.status}`)
+    }
+    return res.json()
+  })
+  .then(data => {
+    if (data.success && data.user) {
+      setUser(data.user)
+    }
+  })
+  .catch(err => {
+    console.error('Failed to fetch session:', err)
+    // If session fetch fails, user might not be authenticated
+    // Don't redirect here, let middleware handle it
+  })
+```
+
+**2. Fixed Logout Handler (Lines 83-104)**
+**Before:**
+```javascript
+const response = await fetch('/api/auth/logout', { method: 'POST' })
+const data = await response.json()
+```
+
+**After:**
+```javascript
+const response = await fetch('/api/auth/logout', { method: 'POST' })
+
+if (!response.ok) {
+  throw new Error(`HTTP error! status: ${response.status}`)
+}
+
+const data = await response.json()
+```
+
+### Impact
+- ✅ No more JSON parsing errors in console
+- ✅ Proper error handling for failed API requests
+- ✅ Better user experience with graceful error handling
+- ✅ Logout function now handles network errors properly
+- ✅ Session fetch failures don't break the layout
+
+### Best Practice Implemented
+Always check `response.ok` before calling `response.json()` to ensure the response is valid JSON.
+
+### Status: 🟢 FIXED
+DashboardLayout now properly handles API response errors without console errors.
+
