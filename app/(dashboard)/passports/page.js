@@ -1,5 +1,5 @@
 import PassportsPageEnhanced from '@/components/pages/PassportsPageEnhanced'
-import { getSession } from '@/lib/supabase-server'
+import { getSession } from '@/lib/supabase-rls'
 
 export const runtime = 'edge'
 

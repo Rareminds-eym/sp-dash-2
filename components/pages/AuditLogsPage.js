@@ -2,38 +2,37 @@
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Calendar } from '@/components/ui/calendar'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { TableLoader } from '@/components/ui/page-loader'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { 
-  History, 
-  Search, 
-  Download, 
-  Filter, 
-  X,
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { format } from 'date-fns'
+import {
+  Activity,
+  ArrowUpDown,
+  Ban,
+  Calendar as CalendarIcon,
+  Check,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  Calendar as CalendarIcon,
-  Eye,
-  ArrowUpDown,
-  Activity,
-  Lock,
-  CheckCircle2,
-  XCircle,
-  Ban,
-  Check,
-  Trash2,
+  Download,
   Edit3,
-  ThumbsUp,
+  Eye,
   FileText,
-  LogIn
+  Filter,
+  History,
+  LogIn,
+  Search,
+  ThumbsUp,
+  Trash2,
+  X,
+  XCircle
 } from 'lucide-react'
-import { useEffect, useState, useMemo, useCallback } from 'react'
-import { format } from 'date-fns'
-import { TableLoader } from '@/components/ui/page-loader'
+import { useEffect, useMemo, useState } from 'react'
 
 export default function AuditLogsPage() {
   const [logs, setLogs] = useState([])
@@ -123,9 +122,12 @@ export default function AuditLogsPage() {
     try {
       const response = await fetch('/api/audit-logs/actions')
       const data = await response.json()
-      setActionTypes(data)
+      // Ensure data is an array before setting it
+      setActionTypes(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Error fetching action types:', error)
+      // Set to empty array on error
+      setActionTypes([])
     }
   }
 
@@ -133,9 +135,12 @@ export default function AuditLogsPage() {
     try {
       const response = await fetch('/api/audit-logs/users')
       const data = await response.json()
-      setUsers(data)
+      // Ensure data is an array before setting it
+      setUsers(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Error fetching users:', error)
+      // Set to empty array on error
+      setUsers([])
     }
   }
 
@@ -331,7 +336,7 @@ export default function AuditLogsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Actions</SelectItem>
-                  {actionTypes.map((action) => (
+                  {Array.isArray(actionTypes) && actionTypes.map((action) => (
                     <SelectItem key={action} value={action}>
                       {action.replace(/_/g, ' ').toUpperCase()}
                     </SelectItem>
@@ -349,7 +354,7 @@ export default function AuditLogsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Users</SelectItem>
-                  {users.map((user) => (
+                  {Array.isArray(users) && users.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
                       {user.name}
                     </SelectItem>

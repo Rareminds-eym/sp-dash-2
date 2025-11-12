@@ -47,7 +47,7 @@ const CustomTooltip = ({
 
 export function EmployabilityChart({ data }) {
   // Use empty array as fallback instead of mock data
-  const chartData = data.length > 0 ? data : []
+  const chartData = data && data.length > 0 ? data : []
 
   return (
     <Card className="neu-card">
@@ -109,7 +109,7 @@ export function EmployabilityChart({ data }) {
 
 export function StateDistributionChart({ data }) {
   // Use empty array as fallback instead of mock data
-  const chartData = data.length > 0 ? data : []
+  const chartData = data && data.length > 0 ? data : []
 
   return (
     <Card className="neu-card">

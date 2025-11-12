@@ -1,7 +1,7 @@
 "use client";
 
 import { DashboardKPIs } from "@/components/sections/DashboardKPIs";
-import { PageLoader, CardGridLoader } from "@/components/ui/page-loader";
+import { CardGridLoader, PageLoader } from "@/components/ui/page-loader";
 import { Sparkles } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
 
@@ -46,24 +46,17 @@ export default function DashboardOptimized({ user }) {
         fetch("/api/analytics/placement-conversion")
       ]);
 
-      // Check for errors in responses
-      if (!metricsRes.ok) {
-        console.error('Metrics API error:', metricsRes.status);
-      }
-      if (!trendsRes.ok) {
-        console.error('Trends API error:', trendsRes.status);
-      }
-      if (!stateRes.ok) {
-        console.error('State API error:', stateRes.status);
-      }
-      if (!placementRes.ok) {
-        console.error('Placement API error:', placementRes.status);
-      }
+      // Parse JSON responses, with fallbacks for errors
+      const metricsData = metricsRes.ok ? await metricsRes.json() : {};
+      const trendsData = trendsRes.ok ? await trendsRes.json() : [];
+      const stateDataRes = stateRes.ok ? await stateRes.json() : [];
+      const placementDataRes = placementRes.ok ? await placementRes.json() : null;
 
-      const metricsData = await metricsRes.json();
-      const trendsData = await trendsRes.json();
-      const stateDataRes = await stateRes.json();
-      const placementDataRes = await placementRes.json();
+      // Log any errors
+      if (!metricsRes.ok) console.error('Metrics API error:', metricsRes.status);
+      if (!trendsRes.ok) console.error('Trends API error:', trendsRes.status);
+      if (!stateRes.ok) console.error('State API error:', stateRes.status);
+      if (!placementRes.ok) console.error('Placement API error:', placementRes.status);
 
       console.log('Dashboard data loaded:', {
         metrics: metricsData,
@@ -73,8 +66,8 @@ export default function DashboardOptimized({ user }) {
       });
 
       setMetrics(metricsData);
-      setTrends(trendsData);
-      setStateData(stateDataRes);
+      setTrends(trendsData || []);
+      setStateData(stateDataRes || []);
       setPlacementData(placementDataRes);
       setLoading(false);
 
@@ -85,15 +78,18 @@ export default function DashboardOptimized({ user }) {
         (metricsData.snapshotDate && metricsData.snapshotDate !== today);
 
       if (shouldUpdate) {
-        fetch("/api/update-metrics", { method: "POST" })
+        fetch("/api/metrics/update", { method: "POST" })
           .catch(err => console.error('Error updating metrics:', err));
       }
 
       // Load verifications in background after page is interactive
       fetch("/api/verifications")
-        .then(res => res.json())
-        .then(data => setRecentVerifications(data.slice(0, 10)))
-        .catch(err => console.error("Error fetching verifications:", err));
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setRecentVerifications(Array.isArray(data) ? data.slice(0, 10) : []))
+        .catch(err => {
+          console.error("Error fetching verifications:", err);
+          setRecentVerifications([]);
+        });
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
       setLoading(false);
