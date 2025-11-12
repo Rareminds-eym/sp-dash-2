@@ -87,13 +87,14 @@ export async function PUT(request) {
     }
 
     // Log audit
-    await logAudit(user.id, 'update_profile', user.id, { name, organizationName });
+    await logAudit(user.id, 'update_profile', user.id, { firstName, lastName, organizationName });
 
     return NextResponse.json({ 
       success: true, 
       message: 'Profile updated successfully',
       data: {
-        name,
+        firstName,
+        lastName,
         organizationName
       }
     });
