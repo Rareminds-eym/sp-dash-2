@@ -101,8 +101,8 @@ export default function SettingsPage({ user }) {
     
     setIsSaving(true)
     try {
-      console.log('Sending PUT request to /api/profile...')
-      const response = await fetch('/api/profile', {
+      console.log('Sending PUT request to /api/users/profile...')
+      const response = await fetch('/api/users/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
