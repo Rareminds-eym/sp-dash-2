@@ -1,13 +1,6 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { ThemeToggle } from '@/components/ui/theme-toggle'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,30 +9,36 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import {
-    BarChart3,
-    Briefcase,
-    CheckCircle,
-    ChevronRight,
-    Download,
-    FileText,
-    History,
-    LayoutDashboard,
-    LogOut,
-    Menu,
-    MoreVertical,
-    Plug,
-    RefreshCw,
-    Settings,
-    Shield,
-    Users,
-    X
+  BarChart3,
+  Briefcase,
+  CheckCircle,
+  ChevronRight,
+  Download,
+  FileText,
+  History,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  MoreVertical,
+  Plug,
+  RefreshCw,
+  Settings,
+  Shield,
+  X
 } from 'lucide-react'
-import { useState, useEffect } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 const navigation = [
   { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
@@ -267,9 +266,9 @@ export default function DashboardLayout({ children }) {
                       size="icon"
                       onClick={handleRefresh}
                       disabled={refreshing}
-                      className="hover:bg-white/50 dark:hover:bg-slate-800/50"
+                      className="w-9 h-9 transition-all duration-300 hover:scale-110"
                     >
-                      <RefreshCw className={cn("h-5 w-5", refreshing && "animate-spin")} />
+                      <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
