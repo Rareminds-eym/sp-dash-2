@@ -154,12 +154,14 @@ The application uses **three Supabase client implementations**, each designed fo
 
 | Component Type | Files Count | Supabase Client Type |
 |---------------|-------------|---------------------|
-| Protected Pages | 6 | `supabase-server` |
+| Protected Pages | 6 | `supabase-rls` ⭐ (RLS enforced) |
 | Auth API Endpoints | 3 | `supabase-server` |
 | Admin API Routes | 37 | `supabase-admin` |
-| User-Context APIs | 19 | `supabase-rls` |
+| User-Context APIs | 19 | `supabase-rls` ⭐ (RLS enforced) |
 | Middleware | 1 | `@supabase/ssr` directly |
 | **TOTAL** | **66** | **100% Supabase** |
+
+⭐ = Row Level Security enforced for role-based access control
 
 ---
 
