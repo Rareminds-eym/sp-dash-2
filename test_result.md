@@ -1,5 +1,50 @@
 # Bug Fixes - Production Issues Resolution
 
+## Issue 4: Production Internal Server Error - Recruiters Page (Session Mismatch)
+
+### Root Cause
+The `/recruiters` page was using the wrong session management system, causing it to crash in production environments where the `SESSION_SECRET` environment variable was not configured.
+
+### Problem Details:
+1. **Session System Mismatch**:
+   - ❌ Recruiters page was importing: `import { getSession } from '@/lib/session'` (JWT-based session)
+   - ✅ All other pages correctly used: `import { getSession } from '@/lib/supabase-server'` (Supabase-based session)
+
+2. **Module Initialization Crash**:
+   - The JWT session library (`/lib/session.js`) threw an error during module initialization if `SESSION_SECRET` was missing
+   - This caused an Internal Server Error (500) before the page could even render
+   - Worked in local development because `.env.local` had `SESSION_SECRET`, but production didn't
+
+### Issues Fixed:
+
+1. **Fixed Recruiters Page Import** (`/app/app/(dashboard)/recruiters/page.js`)
+   - ❌ Before: `import { getSession } from '@/lib/session'`
+   - ✅ After: `import { getSession } from '@/lib/supabase-server'`
+   - Now uses the same Supabase-based session as all other protected pages
+
+2. **Improved JWT Session Error Handling** (`/app/lib/session.js`)
+   - Changed from throwing error during module initialization to runtime check
+   - Added warning message when `SESSION_SECRET` is missing
+   - Moved error to `getKey()` helper function that throws at runtime with helpful message
+   - This prevents the entire module from crashing if the library is accidentally imported
+
+### Files Modified:
+- `/app/app/(dashboard)/recruiters/page.js` - Changed to use Supabase session
+- `/app/lib/session.js` - Improved error handling (defensive coding for future)
+
+### Impact:
+- ✅ Recruiters page now works in production without requiring `SESSION_SECRET`
+- ✅ Uses consistent authentication system across all pages
+- ✅ Better error messages if JWT session is accidentally used in future
+- ✅ No dependency on environment variables that aren't configured
+
+### Status:
+🟢 **FIXED** - Recruiters page should now work in production
+
+---
+
+
+
 ## Issue 1: Recruiters Page Internal Server Error
 
 ### Root Cause
