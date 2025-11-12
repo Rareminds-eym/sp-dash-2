@@ -87,13 +87,15 @@ export async function GET(request) {
       return {
         id: admin.user_id,
         email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
         isActive: user.isActive,
         role: admin.admin_role,
         createdAt: user.createdAt,
         metadata: user.metadata || {},
         grantedBy: admin.granted_by,
         grantedByEmail: grantedByUser?.email || null,
-        grantedByName: grantedByUser?.metadata?.name || null,
+        grantedByName: grantedByUser ? `${grantedByUser.firstName || ''} ${grantedByUser.lastName || ''}`.trim() : null,
         grantedAt: admin.granted_at
       };
     });
