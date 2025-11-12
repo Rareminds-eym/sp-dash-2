@@ -1,6 +1,5 @@
-import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { handleError } from '@/lib/middleware/errorHandler';
+import { NextResponse } from 'next/server';
 
 export const runtime = 'edge';
 
@@ -9,7 +8,7 @@ export const runtime = 'edge';
  */
 export async function GET(request) {
   try {
-    const { data: logs, error } = await supabase
+    const { data: logs, error } = await supabaseAdmin
       .from('audit_logs')
       .select('action')
       .limit(1000);
@@ -22,6 +21,7 @@ export async function GET(request) {
     const uniqueActions = [...new Set(logs.map(l => l.action))].filter(Boolean).sort();
     return NextResponse.json(uniqueActions);
   } catch (error) {
-    return handleError(error, 'Audit Log Actions');
+    console.error('Error fetching action types:', error);
+    return NextResponse.json([], { status: 500 });
   }
 }

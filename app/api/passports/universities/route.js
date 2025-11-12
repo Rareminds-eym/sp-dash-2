@@ -1,6 +1,5 @@
-import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { handleError } from '@/lib/middleware/errorHandler';
+import { NextResponse } from 'next/server';
 
 export const runtime = 'edge';
 
@@ -9,13 +8,14 @@ export const runtime = 'edge';
  */
 export async function GET(request) {
   try {
-    const { data: universities } = await supabase
+    const { data: universities } = await supabaseAdmin
       .from('universities')
       .select('id, name')
       .order('name', { ascending: true });
     
     return NextResponse.json(universities || []);
   } catch (error) {
-    return handleError(error, 'Passport Universities');
+    console.error('Error fetching universities:', error);
+    return NextResponse.json([], { status: 500 });
   }
 }

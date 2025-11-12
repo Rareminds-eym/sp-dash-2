@@ -1,31 +1,20 @@
 'use client'
 
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { useToast } from '@/hooks/use-toast'
-import {
-  Award,
-  CheckCircle2,
-  RefreshCw,
-  Search,
-  XCircle,
-  ChevronLeft,
-  ChevronRight,
-  Filter
-} from 'lucide-react'
-import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
+import { TableLoader } from '@/components/ui/page-loader'
 import {
   Select,
   SelectContent,
@@ -33,7 +22,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { TableLoader, InlineLoader } from '@/components/ui/page-loader'
+import { useToast } from '@/hooks/use-toast'
+import {
+  Award,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  RefreshCw,
+  Search,
+  XCircle
+} from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 
 export default function PassportsPageEnhanced({ currentUser }) {
   const [passports, setPassports] = useState([])
@@ -104,9 +103,12 @@ export default function PassportsPageEnhanced({ currentUser }) {
     try {
       const response = await fetch('/api/passports/universities')
       const data = await response.json()
-      setUniversities(data || [])
+      // Ensure data is an array before setting it
+      setUniversities(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Error fetching universities:', error)
+      // Set to empty array on error
+      setUniversities([])
     }
   }
 
@@ -393,7 +395,7 @@ export default function PassportsPageEnhanced({ currentUser }) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Universities</SelectItem>
-                  {universities.map(univ => (
+                  {Array.isArray(universities) && universities.map(univ => (
                     <SelectItem key={univ.id} value={univ.id}>{univ.name}</SelectItem>
                   ))}
                 </SelectContent>

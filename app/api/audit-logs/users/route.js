@@ -1,6 +1,5 @@
-import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { handleError } from '@/lib/middleware/errorHandler';
+import { NextResponse } from 'next/server';
 
 export const runtime = 'edge';
 
@@ -9,7 +8,7 @@ export const runtime = 'edge';
  */
 export async function GET(request) {
   try {
-    const { data: logs, error } = await supabase
+    const { data: logs, error } = await supabaseAdmin
       .from('audit_logs')
       .select('actorId')
       .not('actorId', 'is', null)
@@ -23,7 +22,7 @@ export async function GET(request) {
     const uniqueUserIds = [...new Set(logs.map(l => l.actorId))];
     
     if (uniqueUserIds.length > 0) {
-      const { data: users, error: usersError } = await supabase
+      const { data: users, error: usersError } = await supabaseAdmin
         .from('users')
         .select('id, email, metadata')
         .in('id', uniqueUserIds);
@@ -44,6 +43,7 @@ export async function GET(request) {
     
     return NextResponse.json([]);
   } catch (error) {
-    return handleError(error, 'Audit Log Users');
+    console.error('Error fetching users:', error);
+    return NextResponse.json([], { status: 500 });
   }
 }
