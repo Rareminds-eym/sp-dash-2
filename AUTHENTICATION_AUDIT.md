@@ -239,8 +239,8 @@ The application uses **three Supabase client implementations**, each designed fo
 
 ### When Adding New Pages:
 ```javascript
-// Always use this pattern:
-import { getSession } from '@/lib/supabase-server'
+// Always use this pattern with RLS for role-based access:
+import { getSession } from '@/lib/supabase-rls'
 
 export const runtime = 'edge'
 
@@ -249,6 +249,8 @@ export default async function NewPage() {
   return <YourComponent currentUser={session?.user} />
 }
 ```
+
+**Important**: Use `supabase-rls` for pages to enforce Row Level Security and role-based access control.
 
 ### When Adding New Admin API Routes:
 ```javascript
