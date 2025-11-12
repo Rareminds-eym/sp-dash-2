@@ -416,7 +416,14 @@ export default function SettingsPage({ user }) {
           </div>
           <div className="space-y-2">
             <Label>Change Password</Label>
-            <Button variant="outline" className="w-full">Update Password</Button>
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => setShowPasswordDialog(true)}
+            >
+              <Lock className="h-4 w-4 mr-2" />
+              Update Password
+            </Button>
           </div>
         </CardContent>
       </Card>
