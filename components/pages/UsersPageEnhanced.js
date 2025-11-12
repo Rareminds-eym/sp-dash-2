@@ -33,10 +33,12 @@ import {
 } from "@/components/ui/select"
 import { useToast } from '@/hooks/use-toast'
 import {
+    AlertCircle,
     ChevronLeft,
     ChevronRight,
     Clock,
     Crown,
+    Mail,
     Plus,
     Search,
     Shield,
