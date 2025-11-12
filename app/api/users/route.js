@@ -282,7 +282,8 @@ export async function POST(request) {
           id: newUserId,
           email,
           role,
-          fullName
+          firstName,
+          lastName
         }
       });
       
