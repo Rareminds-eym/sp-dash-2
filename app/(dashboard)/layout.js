@@ -92,6 +92,11 @@ export default function DashboardLayout({ children }) {
   const handleLogout = async () => {
     try {
       const response = await fetch('/api/auth/logout', { method: 'POST' })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
       const data = await response.json()
       
       if (data.success) {
