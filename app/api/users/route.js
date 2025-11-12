@@ -209,7 +209,7 @@ export async function POST(request) {
         .insert({
           id: newUserId,
           email: email,
-          role: 'admin', // Set role as admin for admin users
+          role: 'platform_admin', // Set role as platform_admin for admin users
           isActive: true,
           createdAt: new Date().toISOString(),
           metadata: {
