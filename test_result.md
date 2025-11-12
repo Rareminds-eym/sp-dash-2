@@ -1194,6 +1194,108 @@ users table columns used:
 - No page refresh needed
 
 **3. Session Loading:**
+---
+
+## Profile Settings Display Issue - Fixed
+
+### Issue Reported
+firstName and lastName were not displaying in the Profile Settings page despite being stored in the database.
+
+### Root Cause
+The `getSession()` function in `/app/lib/supabase-rls.js` was not including firstName and lastName in the returned user object. While it was fetching the data from the database, it wasn't passing those fields through to the SettingsPage component.
+
+### Files Modified
+
+#### `/app/lib/supabase-rls.js`
+
+**1. Updated getSession() function:**
+
+**Before:**
+```javascript
+const { data: userData, error: userError } = await supabase
+  .from('users')
+  .select('*')
+  .eq('email', user.email)
+  .maybeSingle()
+
+// ... later in return
+return {
+  user: {
+    id: userData.id,
+    email: userData.email,
+    name: userName,
+    role: userData.role,
+    organizationId: userData.organizationId,
+    organization: organizationData,
+    isActive: userData.isActive,
+  }
+}
+```
+
+**After:**
+```javascript
+const { data: userData, error: userError } = await supabase
+  .from('users')
+  .select('id, email, firstName, lastName, role, isActive, organizationId, createdAt, metadata')
+  .eq('email', user.email)
+  .maybeSingle()
+
+// ... later in return
+return {
+  user: {
+    id: userData.id,
+    email: userData.email,
+    firstName: userData.firstName,
+    lastName: userData.lastName,
+    name: userName,
+    role: userData.role,
+    organizationId: userData.organizationId,
+    organization: organizationData,
+    isActive: userData.isActive,
+  }
+}
+```
+
+**2. Updated getUserContext() function:**
+
+Added firstName and lastName to both the SELECT query and return object:
+```javascript
+// SELECT query updated
+.select('id, email, firstName, lastName, isActive, metadata, organizationId')
+
+// Return object updated
+return {
+  id: userData.id,
+  authId: user.id,
+  email: userData.email,
+  firstName: userData.firstName,
+  lastName: userData.lastName,
+  // ... rest of fields
+}
+```
+
+**3. Updated userName computation:**
+
+Changed from using metadata to using firstName and lastName columns:
+```javascript
+const userName = userData?.firstName && userData?.lastName 
+  ? `${userData.firstName} ${userData.lastName}` 
+  : user.user_metadata?.firstName && user.user_metadata?.lastName
+  ? `${user.user_metadata.firstName} ${user.user_metadata.lastName}`
+  : user.email.split('@')[0]
+```
+
+### Impact
+- ✅ firstName and lastName now display in Profile Settings page
+- ✅ Settings page shows separate First Name and Last Name input fields
+- ✅ Users can view and edit their first and last names
+- ✅ getUserContext also returns firstName and lastName for API routes
+- ✅ Consistent data structure across all session management
+
+### Status: 🟢 FIXED
+Profile Settings now correctly displays firstName and lastName fields from the database.
+
+
 - System fetches firstName and lastName from users table
 - Combines into `name` field for display compatibility
 - Both firstName and lastName available separately in session object
