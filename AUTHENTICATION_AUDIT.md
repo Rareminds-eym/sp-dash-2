@@ -13,24 +13,19 @@ Status: **VERIFIED - 100% Supabase Authentication**
 
 The application uses **three Supabase client implementations**, each designed for specific use cases:
 
-#### A. `@/lib/supabase-server` (For Server Components & Auth APIs)
+#### A. `@/lib/supabase-server` (For Auth APIs Only)
 **Purpose**: Server-side authentication with automatic cookie management  
 **Used By**:
-- All 6 protected page components
-- Login/Logout/Session API endpoints
+- Login/Logout/Session API endpoints ONLY
 
 **Files Using This:**
-- `/app/app/(dashboard)/dashboard/page.js`
-- `/app/app/(dashboard)/users/page.js`
-- `/app/app/(dashboard)/passports/page.js`
-- `/app/app/(dashboard)/recruiters/page.js`
-- `/app/app/(dashboard)/settings/page.js`
-- `/app/app/(dashboard)/approvals/page.js`
 - `/app/app/api/auth/login/route.js`
 - `/app/app/api/auth/logout/route.js`
 - `/app/app/api/auth/session/route.js`
 
-**Total: 9 files**
+**Total: 3 files**
+
+**Note**: Protected pages now use `supabase-rls` for enhanced security with Row Level Security enforcement.
 
 ---
 
