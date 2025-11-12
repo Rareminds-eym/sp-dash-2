@@ -128,11 +128,6 @@ export default function SettingsPage({ user }) {
         variant: 'default',
       })
       setIsEditing(false)
-      
-      // Refresh the page to show updated data
-      setTimeout(() => {
-        window.location.reload()
-      }, 1000)
     } catch (error) {
       console.error('Profile update error:', error)
       toast({
