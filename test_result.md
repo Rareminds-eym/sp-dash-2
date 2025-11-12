@@ -937,3 +937,73 @@ The Settings page was using a generic `SimpleSkeleton` loading component that di
 
 ### Status: 🟢 FIXED
 Settings page now displays a proper skeleton loader that matches the actual page structure.
+
+---
+
+## Profile Settings - Save Changes Fix
+
+### Issues Found
+1. **Incorrect API Endpoint**: The SettingsPage was calling `/api/profile` but the actual endpoint is `/api/users/profile`
+2. **Wrong Supabase Client**: The route was using `supabase` instead of `supabaseAdmin` for organization updates
+3. **Wrong Variable Reference**: The route was using `user.organizationId` instead of `userData.organizationId`
+
+### Root Cause
+- Frontend and backend endpoints were mismatched
+- Missing service role client for organization updates
+- Variable scope issue when accessing organization ID
+
+### Files Modified
+
+#### 1. `/app/components/pages/SettingsPage.js` (Line 105)
+**Changed:**
+```javascript
+const response = await fetch('/api/profile', {
+```
+
+**To:**
+```javascript
+const response = await fetch('/api/users/profile', {
+```
+
+#### 2. `/app/app/api/users/profile/route.js` (Line 76)
+**Changed:**
+```javascript
+const { data: orgData, error: updateOrgError } = await supabase
+```
+
+**To:**
+```javascript
+const { data: orgData, error: updateOrgError } = await supabaseAdmin
+```
+
+#### 3. `/app/app/api/users/profile/route.js` (Lines 73, 74, 79, 89)
+**Changed all references from:**
+```javascript
+user.organizationId
+```
+
+**To:**
+```javascript
+userData.organizationId
+```
+
+### Impact
+- ✅ Profile name updates now work correctly
+- ✅ Organization name updates work correctly (when user has an organization assigned)
+- ✅ Proper service role access for organization updates
+- ✅ Correct variable scoping for organization ID access
+
+### User Flow (Fixed)
+1. User navigates to Settings page
+2. Clicks "Edit" button on Profile Settings card
+3. Updates name and/or organization name
+4. Clicks "Save Changes"
+5. System sends PUT request to `/api/users/profile` ✅ (was `/api/profile` ❌)
+6. Backend updates user metadata with new name
+7. Backend updates organization name if user has organizationId
+8. Success message displayed
+9. Page refreshes to show updated data
+
+### Status: 🟢 FIXED
+Profile Settings save changes functionality is now working correctly.
+
