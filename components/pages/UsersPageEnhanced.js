@@ -657,6 +657,121 @@ export default function UsersPageEnhanced({ currentUser }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={addAdminDialog} onOpenChange={setAddAdminDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold">Add New Admin User</DialogTitle>
+            <DialogDescription>
+              Create a new admin user. They will receive an email with a password reset link to set up their account.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-medium">
+                Email <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="admin@example.com"
+                value={addAdminForm.email}
+                onChange={(e) => setAddAdminForm(prev => ({ ...prev, email: e.target.value }))}
+                disabled={addAdminLoading}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="fullName" className="text-sm font-medium">
+                Full Name <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="fullName"
+                type="text"
+                placeholder="John Doe"
+                value={addAdminForm.fullName}
+                onChange={(e) => setAddAdminForm(prev => ({ ...prev, fullName: e.target.value }))}
+                disabled={addAdminLoading}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="role" className="text-sm font-medium">
+                Admin Role <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={addAdminForm.role}
+                onValueChange={(value) => setAddAdminForm(prev => ({ ...prev, role: value }))}
+                disabled={addAdminLoading}
+              >
+                <SelectTrigger id="role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="platform_admin">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4 text-blue-600" />
+                      <span>Platform Admin</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="super_admin">
+                    <div className="flex items-center gap-2">
+                      <Crown className="h-4 w-4 text-purple-600" />
+                      <span>Super Admin</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Super Admins have full system access. Platform Admins have limited permissions.
+              </p>
+            </div>
+
+            <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 p-4 border border-blue-200 dark:border-blue-800">
+              <div className="flex items-start gap-3">
+                <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-blue-900 dark:text-blue-100">
+                  <p className="font-medium mb-1">Password Setup</p>
+                  <p className="text-blue-700 dark:text-blue-300">
+                    The new admin will receive an email with a secure password reset link. They must verify their email and set their password before accessing the system.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAddAdminDialog(false)
+                setAddAdminForm({ email: '', fullName: '', role: 'platform_admin' })
+              }}
+              disabled={addAdminLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddAdmin}
+              disabled={addAdminLoading}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+            >
+              {addAdminLoading ? (
+                <>
+                  <div className="h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Admin
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
