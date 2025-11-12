@@ -7,7 +7,16 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/hooks/use-toast'
-import { RefreshCw, Database, CheckCircle2, Save, Edit3 } from 'lucide-react'
+import { RefreshCw, Database, CheckCircle2, Save, Edit3, Lock, Eye, EyeOff } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { createClient } from '@/lib/supabase-browser'
 
 export default function SettingsPage({ user }) {
   const { toast } = useToast()
