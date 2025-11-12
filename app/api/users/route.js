@@ -187,7 +187,8 @@ export async function POST(request) {
       email,
       email_confirm: false, // User needs to verify email
       user_metadata: {
-        name: fullName,
+        firstName: firstName,
+        lastName: lastName,
         role: 'admin'
       }
     });
