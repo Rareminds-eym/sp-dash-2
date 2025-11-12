@@ -155,13 +155,13 @@ export async function POST(request) {
     
     // Parse request body
     const body = await request.json();
-    const { email, fullName, role } = body;
+    const { email, firstName, lastName, role } = body;
     
     // Validate required fields
-    if (!email || !fullName || !role) {
+    if (!email || !firstName || !lastName || !role) {
       return NextResponse.json({
         success: false,
-        error: 'Email, full name, and role are required'
+        error: 'Email, first name, last name, and role are required'
       }, { status: 400 });
     }
     
