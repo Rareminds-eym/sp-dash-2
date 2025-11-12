@@ -719,7 +719,7 @@ export default function UsersPageEnhanced({ currentUser }) {
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">Add New Admin User</DialogTitle>
             <DialogDescription>
-              Create a new admin user. They will receive an email with a password reset link to set up their account.
+              Create a new admin user. They will receive an email with a password reset link. Their account will be inactive until they verify their email and set a password.
             </DialogDescription>
           </DialogHeader>
           
