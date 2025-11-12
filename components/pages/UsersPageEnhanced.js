@@ -273,6 +273,38 @@ export default function UsersPageEnhanced({ currentUser }) {
     }
   }
 
+  const handleResendEmail = async (user) => {
+    try {
+      const response = await fetch('/api/users/resend-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id })
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: 'Email Sent',
+          description: data.message || 'Password reset email sent successfully'
+        })
+      } else {
+        toast({
+          title: 'Error',
+          description: data.error || 'Failed to send email',
+          variant: 'destructive'
+        })
+      }
+    } catch (error) {
+      console.error('Error resending email:', error)
+      toast({
+        title: 'Error',
+        description: 'An error occurred while sending the email',
+        variant: 'destructive'
+      })
+    }
+  }
+
   const handleSearchChange = (e) => {
     const value = e.target.value
     setFilters(prev => ({ ...prev, search: value }))
