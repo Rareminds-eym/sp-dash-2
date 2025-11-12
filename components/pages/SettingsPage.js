@@ -38,7 +38,8 @@ export default function SettingsPage({ user }) {
   
   // Profile form state  
   const [profileData, setProfileData] = useState({
-    name: user?.name || '',
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
     email: user?.email || '',
     organizationName: user?.organization?.name || ''
   })
@@ -48,7 +49,8 @@ export default function SettingsPage({ user }) {
     if (user) {
       console.log('User data received:', user)
       setProfileData({
-        name: user.name || '',
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
         email: user.email || '',
         organizationName: user.organization?.name || ''
       })
