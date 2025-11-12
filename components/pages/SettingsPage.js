@@ -154,6 +154,125 @@ export default function SettingsPage({ user }) {
     setIsEditing(false)
   }
 
+  const validatePassword = (pwd) => {
+    if (pwd.length < 8) {
+      return 'Password must be at least 8 characters long'
+    }
+    if (!/[A-Z]/.test(pwd)) {
+      return 'Password must contain at least one uppercase letter'
+    }
+    if (!/[a-z]/.test(pwd)) {
+      return 'Password must contain at least one lowercase letter'
+    }
+    if (!/[0-9]/.test(pwd)) {
+      return 'Password must contain at least one number'
+    }
+    return null
+  }
+
+  const handleUpdatePassword = async () => {
+    // Validate inputs
+    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      toast({
+        title: 'Error',
+        description: 'All fields are required',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    // Validate passwords match
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast({
+        title: 'Error',
+        description: 'New passwords do not match',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    // Validate password strength
+    const validationError = validatePassword(passwordData.newPassword)
+    if (validationError) {
+      toast({
+        title: 'Error',
+        description: validationError,
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setIsUpdatingPassword(true)
+
+    try {
+      const supabase = createClient()
+
+      // First, verify current password by trying to sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: passwordData.currentPassword,
+      })
+
+      if (signInError) {
+        toast({
+          title: 'Error',
+          description: 'Current password is incorrect',
+          variant: 'destructive',
+        })
+        setIsUpdatingPassword(false)
+        return
+      }
+
+      // Update the password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: passwordData.newPassword
+      })
+
+      if (updateError) {
+        toast({
+          title: 'Error',
+          description: updateError.message || 'Failed to update password',
+          variant: 'destructive',
+        })
+        setIsUpdatingPassword(false)
+        return
+      }
+
+      // Success
+      toast({
+        title: 'Password Updated',
+        description: 'Your password has been updated successfully',
+        variant: 'default',
+      })
+
+      // Reset form and close dialog
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      })
+      setShowPasswordDialog(false)
+    } catch (error) {
+      console.error('Password update error:', error)
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred. Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsUpdatingPassword(false)
+    }
+  }
+
+  const handleCancelPasswordUpdate = () => {
+    setPasswordData({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    })
+    setShowPasswordDialog(false)
+  }
+
   return (
     <div className="space-y-6 max-w-4xl">
 
