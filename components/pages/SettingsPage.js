@@ -24,6 +24,18 @@ export default function SettingsPage({ user }) {
   const [isSaving, setIsSaving] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   
+  // Password update dialog state
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false)
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  })
+  
   // Profile form state  
   const [profileData, setProfileData] = useState({
     name: user?.name || '',
