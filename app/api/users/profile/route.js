@@ -70,13 +70,13 @@ export async function PUT(request) {
     // Validate UUID format (UUID v4 format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx)
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     
-    if (organizationName && user.organizationId && uuidRegex.test(user.organizationId)) {
-      console.log('Attempting to update organization:', user.organizationId, 'with name:', organizationName);
+    if (organizationName && userData.organizationId && uuidRegex.test(userData.organizationId)) {
+      console.log('Attempting to update organization:', userData.organizationId, 'with name:', organizationName);
       
       const { data: orgData, error: updateOrgError } = await supabaseAdmin
         .from('organizations')
         .update({ name: organizationName })
-        .eq('id', user.organizationId)
+        .eq('id', userData.organizationId)
         .select();
 
       if (updateOrgError) {
@@ -86,7 +86,7 @@ export async function PUT(request) {
         console.log('Organization updated successfully:', orgData);
       }
     } else {
-      console.log('Skipping organization update. organizationId:', user.organizationId, 'isValidUUID:', user.organizationId ? uuidRegex.test(user.organizationId) : false);
+      console.log('Skipping organization update. organizationId:', userData.organizationId, 'isValidUUID:', userData.organizationId ? uuidRegex.test(userData.organizationId) : false);
     }
 
     // Log audit
