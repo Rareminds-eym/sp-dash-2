@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/middleware/auth';
 import { handleError } from '@/lib/middleware/errorHandler';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { NextResponse } from 'next/server';
 
 export const runtime = 'edge';
 
@@ -205,6 +205,7 @@ export async function POST(request) {
     try {
       // Insert user record in users table using supabaseAdmin
       // Set isActive to false until they verify their email and set password
+      // Assign to Rareminds organization by default
       const { error: userInsertError } = await supabaseAdmin
         .from('users')
         .insert({
@@ -212,6 +213,7 @@ export async function POST(request) {
           email: email,
           role: 'platform_admin', // Set role as platform_admin for admin users
           isActive: false,
+          organizationId: '3c5c2637-9f1e-4b68-83a3-bdc4d1a92f00', // Rareminds organization
           createdAt: new Date().toISOString(),
           metadata: {
             name: fullName,

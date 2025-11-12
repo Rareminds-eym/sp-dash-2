@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
 import { getUserPermissions } from '@/lib/rbac'
+import { createClient } from '@/lib/supabase-server'
+import { NextResponse } from 'next/server'
 
 export const runtime = 'edge'
 
@@ -33,28 +33,39 @@ export async function GET(request) {
       .eq('email', user.email)
       .maybeSingle()
     
-    // Fetch organization data from universities or recruiters tables
+    // Fetch organization data from universities, recruiters, or organizations tables
     let organizationData = null
     if (userData && userData.organizationId) {
-      // Try to fetch from universities first
-      const { data: univData } = await supabase
-        .from('universities')
-        .select('organizationid, name')
-        .eq('organizationid', userData.organizationId)
+      // Try to fetch from organizations first
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('id, name')
+        .eq('id', userData.organizationId)
         .maybeSingle()
       
-      if (univData) {
-        organizationData = { id: univData.organizationid, name: univData.name, type: 'university' }
+      if (orgData) {
+        organizationData = { id: orgData.id, name: orgData.name, type: 'organization' }
       } else {
-        // Try recruiters table
-        const { data: recData } = await supabase
-          .from('recruiters')
+        // Try to fetch from universities
+        const { data: univData } = await supabase
+          .from('universities')
           .select('organizationid, name')
           .eq('organizationid', userData.organizationId)
           .maybeSingle()
         
-        if (recData) {
-          organizationData = { id: recData.organizationid, name: recData.name, type: 'recruiter' }
+        if (univData) {
+          organizationData = { id: univData.organizationid, name: univData.name, type: 'university' }
+        } else {
+          // Try recruiters table
+          const { data: recData } = await supabase
+            .from('recruiters')
+            .select('organizationid, name')
+            .eq('organizationid', userData.organizationId)
+            .maybeSingle()
+          
+          if (recData) {
+            organizationData = { id: recData.organizationid, name: recData.name, type: 'recruiter' }
+          }
         }
       }
     }
