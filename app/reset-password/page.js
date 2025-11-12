@@ -109,10 +109,20 @@ export default function ResetPasswordPage() {
     setLoading(true)
 
     try {
-      // Create Supabase client
+      // Create Supabase client - session is already established from the URL tokens
       const supabase = createClient()
 
-      // Update the user's password
+      // First, verify we have a valid session
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError || !sessionData.session) {
+        console.error('No active session:', sessionError)
+        setError('Session expired. Please request a new password reset link.')
+        setLoading(false)
+        return
+      }
+
+      // Update the user's password using the established session
       const { data, error: updateError } = await supabase.auth.updateUser({
         password: password
       })
