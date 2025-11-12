@@ -63,13 +63,22 @@ export default function DashboardLayout({ children }) {
   useEffect(() => {
     // Fetch current user session
     fetch('/api/auth/session')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`)
+        }
+        return res.json()
+      })
       .then(data => {
         if (data.success && data.user) {
           setUser(data.user)
         }
       })
-      .catch(err => console.error('Failed to fetch session:', err))
+      .catch(err => {
+        console.error('Failed to fetch session:', err)
+        // If session fetch fails, user might not be authenticated
+        // Don't redirect here, let middleware handle it
+      })
   }, [])
 
   const handleRefresh = () => {
