@@ -793,3 +793,106 @@ Features:
 
 ### Status: 🟢 FIXED
 Admin users can now successfully set their password and activate their account via the password reset link.
+
+---
+
+## Update Password Feature in Settings Page - Implemented
+
+### Feature Overview
+Added a complete password update functionality in the Settings page, allowing authenticated admin users to change their password from within the application.
+
+### Implementation Details
+
+#### 1. Password Update Dialog
+**File Modified**: `/app/components/pages/SettingsPage.js`
+
+**Features Added**:
+- Modal dialog for password update with clean UI
+- Three password fields:
+  - Current password (for verification)
+  - New password
+  - Confirm new password
+- Password visibility toggles (eye icons) for all fields
+- Password strength validation
+- Real-time validation and error handling
+
+#### 2. Password Validation Rules
+- Minimum 8 characters
+- At least one uppercase letter
+- At least one lowercase letter
+- At least one number
+- New passwords must match
+
+#### 3. Security Flow
+1. **Current Password Verification**:
+   - Uses Supabase `signInWithPassword` to verify current password
+   - Prevents unauthorized password changes
+   - Shows error if current password is incorrect
+
+2. **Password Update**:
+   - Uses Supabase `auth.updateUser()` to update password
+   - Session remains active after password update
+   - User doesn't need to re-login
+
+3. **Success Handling**:
+   - Shows success toast notification
+   - Clears the form
+   - Closes the dialog automatically
+
+#### 4. User Experience
+- **Access**: Settings page → Security section → "Update Password" button
+- **Visual Feedback**: 
+  - Loading states during update
+  - Success/error toast notifications
+  - Disabled inputs while processing
+- **Form Reset**: All fields cleared after successful update or cancellation
+
+### Technical Implementation
+
+**Dependencies Used**:
+- `@/lib/supabase-browser` for client-side Supabase operations
+- `@/components/ui/dialog` for modal interface
+- `lucide-react` icons (Lock, Eye, EyeOff, RefreshCw)
+- Toast notifications for user feedback
+
+**Key Functions**:
+- `validatePassword()` - Validates password strength
+- `handleUpdatePassword()` - Main password update logic
+- `handleCancelPasswordUpdate()` - Resets form and closes dialog
+
+### User Flow
+
+1. User navigates to Settings page
+2. Scrolls to Security section
+3. Clicks "Update Password" button
+4. Dialog opens with three password fields
+5. User enters:
+   - Current password
+   - New password (with strength requirements)
+   - Confirms new password
+6. Clicks "Update Password"
+7. System verifies current password
+8. System validates new password strength
+9. System updates password in Supabase Auth
+10. Success message displayed
+11. Dialog closes automatically
+
+### Error Handling
+
+- **Missing Fields**: "All fields are required"
+- **Password Mismatch**: "New passwords do not match"
+- **Weak Password**: Specific validation error (e.g., "Password must contain at least one uppercase letter")
+- **Wrong Current Password**: "Current password is incorrect"
+- **Supabase Errors**: Display error message from Supabase
+- **Unexpected Errors**: Generic error message with console logging
+
+### Files Changed
+- **Modified**: `/app/components/pages/SettingsPage.js`
+  - Added password dialog state management
+  - Added password validation function
+  - Added password update handler
+  - Added Dialog UI component with three password fields
+  - Added password visibility toggles
+
+### Status: 🟢 FULLY FUNCTIONAL
+Authenticated admin users can now update their password from the Settings page with complete validation and security checks.
