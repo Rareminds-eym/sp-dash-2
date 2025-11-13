@@ -272,44 +272,6 @@ export default function LoginPageRedesigned() {
                 </Button>
               </motion.div>
             </form>
-
-            {/* Divider */}
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-border" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">Test Credentials</span>
-              </div>
-            </div>
-
-            {/* Test Credentials */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.4, delay: 0.6 }}
-              className="space-y-2 text-xs"
-            >
-              <div className="grid grid-cols-2 gap-2 p-3 bg-muted/50 rounded-lg">
-                <div className="space-y-1">
-                  <p className="font-medium text-muted-foreground">Super Admin:</p>
-                  <code className="block text-foreground font-mono text-[10px] break-all">
-                    superadmin@rareminds.in
-                  </code>
-                </div>
-                <div className="space-y-1">
-                  <p className="font-medium text-muted-foreground">Admin:</p>
-                  <code className="block text-foreground font-mono text-[10px] break-all">
-                    admin@rareminds.in
-                  </code>
-                </div>
-              </div>
-              <div className="text-center p-2 bg-muted/50 rounded-lg">
-                <p className="text-muted-foreground">
-                  Password: <code className="text-foreground font-mono">password123</code>
-                </p>
-              </div>
-            </motion.div>
           </CardContent>
         </Card>
 
