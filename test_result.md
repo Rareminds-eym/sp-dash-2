@@ -1571,3 +1571,100 @@ When toggling from light to dark:
 ### Status: 🟢 IMPLEMENTED
 Theme toggling now features a beautiful circular clipping animation with smooth morphing icons for an enhanced user experience! ✨
 
+---
+
+## Theme Toggle - Upgraded to Expand Animation from toggles.dev
+
+### Enhancement Implemented
+Replaced custom morphing icons with the professional **Expand** animation from [toggles.dev](https://toggles.dev/expand/react).
+
+### What is Expand?
+The Expand toggle is a premium animated icon that shows a sun that smoothly expands and morphs into a moon when switching from light to dark mode.
+
+**Animation Characteristics:**
+- Sun rays elegantly expand outward
+- Center transforms into a crescent moon
+- 750ms smooth animation duration
+- Professional, battle-tested component
+- Built specifically for theme switching
+
+### Implementation Details
+
+**Package Installed:**
+```bash
+@theme-toggles/react@4.1.0
+```
+
+**Component Used:**
+```jsx
+<Expand 
+  toggled={isToggled}
+  toggle={handleThemeToggle}
+  duration={750}
+/>
+```
+
+**Features:**
+- ✅ Controlled component with state management
+- ✅ Integrates seamlessly with next-themes
+- ✅ Maintains circular clipping animation (1.2s)
+- ✅ 750ms icon expand animation
+- ✅ Hover scale effect preserved
+- ✅ Accessible and production-ready
+
+### Files Modified
+
+**1. `/app/components/ui/theme-toggle.jsx`**
+- Replaced custom SVG icons with `<Expand>` component
+- Imported `@theme-toggles/react/css/Expand.css`
+- Added `isToggled` state to sync with theme
+- Maintained View Transitions API integration
+- Preserved circular clipping animation
+
+**2. `/app/package.json`**
+- Added dependency: `@theme-toggles/react@4.1.0`
+
+### Combined Animation Experience
+
+**When clicking the toggle:**
+1. **Icon Animation** (750ms): Sun expands and morphs into moon
+2. **Circular Clipping** (1.2s): Circular reveal spreads from button position
+3. **Result**: Stunning double animation effect!
+
+### Visual Quality Comparison
+
+**Before (Custom Icons):**
+- Basic opacity + rotation + scale transitions
+- Simple fade/morph effect
+- Custom implementation
+
+**After (Expand from toggles.dev):**
+- Professional expand animation
+- Rays elegantly extend before transforming
+- Smooth, polished, industry-standard
+- Maintained by theme-toggles library
+
+### Browser Support
+- ✅ All modern browsers (CSS transforms + transitions)
+- ✅ Hardware accelerated
+- ✅ Smooth 60fps animation
+- ✅ No external dependencies beyond React
+
+### Testing Results
+- ✅ Toggle successfully integrated
+- ✅ Light to dark transition: Working perfectly
+- ✅ Dark to light transition: Working perfectly
+- ✅ Circular clipping still active
+- ✅ Animation timing perfectly synchronized
+- ✅ Hover effects working
+
+### User Experience Impact
+Users now get a **premium, designer-quality** theme toggle animation that:
+- Feels professional and polished
+- Provides clear visual feedback
+- Combines two stunning animations
+- Elevates the entire application aesthetic
+
+### Status: 🟢 ENHANCED
+Theme toggle upgraded with professional Expand animation from toggles.dev! 🌟
+
