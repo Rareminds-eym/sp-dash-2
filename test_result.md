@@ -1457,3 +1457,117 @@ With `disableTransitionOnChange={true}`:
 ### Status: 🟢 FIXED
 Theme toggling now works smoothly throughout the application without any flickering or cascading animation effects.
 
+---
+
+## Enhanced Theme Toggle - Circular Clipping Animation & Morphing Icon
+
+### New Features Implemented
+Added beautiful, modern animations for theme toggling throughout the application.
+
+### Feature 1: Circular Clipping Animation
+Implemented a circular reveal animation that originates from the theme toggle button and expands to cover the entire screen when switching themes.
+
+**Technical Implementation:**
+- Uses **View Transitions API** (modern browsers)
+- Calculates button position dynamically for animation origin
+- Creates expanding circle effect from the toggle button
+- Smooth cubic-bezier easing for professional feel
+- Automatic fallback for older browsers (fade animation)
+
+**Animation Details:**
+- Duration: 0.7 seconds
+- Easing: `cubic-bezier(0.4, 0, 0.2, 1)`
+- Expands from button center to cover entire viewport
+- Clips the new theme layer revealing it progressively
+
+### Feature 2: Morphing Icon Animation
+Replaced static icon switching with smooth morphing animation between sun and moon icons.
+
+**Animation Characteristics:**
+- **Sun Icon (Light Mode):**
+  - Full opacity, no rotation, full scale
+  - Smooth transition when appearing
+  
+- **Moon Icon (Dark Mode):**
+  - Full opacity, no rotation, full scale
+  - Smooth transition when appearing
+
+- **Transition Effects:**
+  - Duration: 500ms (slower than before for smoother morph)
+  - Opacity fade: 0 ↔ 1
+  - Rotation: Sun rotates 90° out, Moon rotates -90° in
+  - Scale: Icons scale down to 50% when hidden, 100% when visible
+  - All transitions use CSS for hardware acceleration
+
+**Visual Effect:**
+When toggling from light to dark:
+1. Sun icon rotates 90° clockwise while fading and shrinking
+2. Moon icon simultaneously rotates from -90° to 0° while fading in and growing
+3. Creates a smooth cross-fade with rotation effect
+
+### Files Modified
+
+**1. `/app/components/ui/theme-toggle.jsx`** - Complete rewrite
+- Added `useRef` for button position tracking
+- Implemented `handleThemeToggle` with View Transitions API
+- Custom SVG icons with layered animation classes
+- Dynamic CSS variable setting for animation origin (--x, --y)
+- Smooth opacity, rotation, and scale transitions
+- Proper SSR handling with mounted state
+
+**2. `/app/app/globals.css`** - Added animation styles
+- View Transitions API pseudo-elements styling
+- Custom `@keyframes reveal` for circular clipping
+- Proper z-index layering for smooth transition
+- Fallback animation for unsupported browsers
+- `clip-path` animation with dynamic CSS variables
+
+**3. `/app/components/providers/ThemeProvider.js`** (Line 11)
+- Changed `disableTransitionOnChange` back to `false`
+- Allows smooth transitions during theme change
+
+**4. `/app/app/layout.js`** (Line 18)
+- Changed `disableTransitionOnChange` back to `false`
+- Enables animations throughout the app
+
+### Browser Compatibility
+
+**Full Support (Circular Animation):**
+- Chrome/Edge 111+
+- Safari 18+
+- Opera 97+
+
+**Fallback Support (Fade Animation):**
+- Firefox (View Transitions coming soon)
+- Older browser versions
+- Still provides smooth experience, just without circular effect
+
+**Icon Animation Support:**
+- All modern browsers (CSS transitions)
+- Hardware accelerated
+- Smooth 60fps animation
+
+### User Experience
+
+**Before Enhancement:**
+- Instant theme switch (no visual feedback)
+- Icons simply swapped
+- Functional but basic
+
+**After Enhancement:**
+- Satisfying circular reveal animation from button
+- Smooth morphing between sun/moon icons
+- Professional, polished feel
+- Clear visual feedback of theme change
+- Delightful micro-interaction
+
+### Performance
+- Hardware-accelerated CSS transforms
+- Efficient View Transitions API
+- No JavaScript animation loops
+- Minimal performance impact
+- Graceful degradation on older devices
+
+### Status: 🟢 IMPLEMENTED
+Theme toggling now features a beautiful circular clipping animation with smooth morphing icons for an enhanced user experience! ✨
+
