@@ -1847,3 +1847,40 @@ Login page updated with 2025 copyright and test credentials removed.
 
 ---
 
+## Logout Button Hover Visibility - Fixed
+
+### Issue Reported
+Logout button text was not clearly visible when hovering over it in the sidebar.
+
+### Root Cause
+The logout button had hover background colors (`hover:bg-red-50 dark:hover:bg-red-900/20`) but no explicit text color change on hover, which could cause visibility issues depending on the theme and contrast.
+
+### Solution Applied
+
+**File**: `/app/app/(dashboard)/layout.js`
+
+**Before:**
+```jsx
+className="... hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800/50 ..."
+```
+
+**After:**
+```jsx
+className="... hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800/50 hover:text-red-700 dark:hover:text-red-300 ..."
+```
+
+**Changes Made:**
+- Added `hover:text-red-700` for light mode hover text color
+- Added `dark:hover:text-red-300` for dark mode hover text color
+
+### Impact
+✅ **Better visibility** - Logout button text clearly visible on hover
+✅ **Improved UX** - Clear visual feedback with red text on hover
+✅ **Theme consistent** - Proper colors for both light and dark modes
+✅ **Maintains design** - Red color theme for destructive action (logout)
+
+### Status: 🟢 FIXED
+Logout button now has proper text color on hover for enhanced visibility.
+
+---
+
