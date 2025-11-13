@@ -271,7 +271,7 @@ export default function DashboardLayout({ children }) {
                 {getPageTitle()}
               </h1>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -280,9 +280,9 @@ export default function DashboardLayout({ children }) {
                       size="icon"
                       onClick={handleRefresh}
                       disabled={refreshing}
-                      className="w-9 h-9 transition-all duration-300 hover:scale-110"
+                      className="w-10 h-10 flex items-center justify-center transition-all duration-300 hover:scale-110 hover:bg-white/50 dark:hover:bg-slate-800/50"
                     >
-                      <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+                      <RefreshCw className={cn("h-5 w-5", refreshing && "animate-spin")} />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -297,7 +297,7 @@ export default function DashboardLayout({ children }) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="hover:bg-white/50 dark:hover:bg-slate-800/50"
+                      className="w-10 h-10 flex items-center justify-center hover:scale-110 transition-all duration-300 hover:bg-white/50 dark:hover:bg-slate-800/50"
                     >
                       <MoreVertical className="h-5 w-5" />
                     </Button>
