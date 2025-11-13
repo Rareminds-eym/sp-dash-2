@@ -153,7 +153,7 @@ export default function DashboardLayout({ children }) {
   }
 
   const canShowMenu = () => {
-    return pathname === '/passports' || pathname === '/recruiters'
+    return pathname === '/passports'
   }
 
   return (
