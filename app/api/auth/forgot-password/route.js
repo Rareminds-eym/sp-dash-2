@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 
 export const runtime = 'edge'
 
@@ -24,11 +24,8 @@ export async function POST(request) {
       )
     }
 
-    // Create Supabase client
-    const supabase = createClient()
-
-    // Check if user exists in our database
-    const { data: userData, error: userError } = await supabase
+    // Check if user exists in our database using admin client
+    const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('id, email, isActive')
       .eq('email', email)
