@@ -282,7 +282,7 @@ export default function LoginPageRedesigned() {
           transition={{ duration: 0.4, delay: 0.7 }}
           className="mt-6 text-center text-sm text-muted-foreground"
         >
-          © 2024 Rareminds. All rights reserved.
+          © 2025 Rareminds. All rights reserved.
         </motion.p>
       </motion.div>
 
