@@ -1475,8 +1475,8 @@ Implemented a circular reveal animation that originates from the theme toggle bu
 - Automatic fallback for older browsers (fade animation)
 
 **Animation Details:**
-- Duration: 0.7 seconds
-- Easing: `cubic-bezier(0.4, 0, 0.2, 1)`
+- Duration: 1.2 seconds (slower for more dramatic effect)
+- Easing: `cubic-bezier(0.25, 0.46, 0.45, 0.94)` (smoother, more elegant curve)
 - Expands from button center to cover entire viewport
 - Clips the new theme layer revealing it progressively
 
