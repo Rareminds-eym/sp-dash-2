@@ -20,7 +20,6 @@ import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import {
   BarChart3,
-  Briefcase,
   CheckCircle,
   ChevronRight,
   Download,
