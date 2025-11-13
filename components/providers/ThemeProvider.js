@@ -8,7 +8,7 @@ export function ThemeProvider({ children, ...props }) {
       attribute="class"
       defaultTheme="light"
       enableSystem
-      disableTransitionOnChange={true}
+      disableTransitionOnChange={false}
       {...props}
     >
       {children}
