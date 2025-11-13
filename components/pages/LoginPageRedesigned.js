@@ -2,14 +2,21 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { AlertCircle, Mail, Lock, ArrowRight } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { AlertCircle, Mail, Lock, ArrowRight, KeyRound, X, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { BorderBeam } from '@/components/magicui/border-beam'
 import { GridPattern } from '@/components/magicui/grid-pattern'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 export default function LoginPageRedesigned() {
   const [email, setEmail] = useState('')
@@ -17,6 +24,13 @@ export default function LoginPageRedesigned() {
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
+
+  // Forgot Password State
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotError, setForgotError] = useState('')
+  const [forgotSuccess, setForgotSuccess] = useState('')
+  const [isSendingReset, setIsSendingReset] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -45,6 +59,63 @@ export default function LoginPageRedesigned() {
         setError('Network error. Please try again.')
       }
     })
+  }
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault()
+    setForgotError('')
+    setForgotSuccess('')
+
+    if (!forgotEmail) {
+      setForgotError('Please enter your email address')
+      return
+    }
+
+    setIsSendingReset(true)
+
+    try {
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setForgotError(data.error || 'Failed to send reset email')
+        setIsSendingReset(false)
+        return
+      }
+
+      setForgotSuccess(data.message)
+      setForgotEmail('')
+      
+      // Close dialog after 3 seconds
+      setTimeout(() => {
+        setShowForgotPassword(false)
+        setForgotSuccess('')
+      }, 3000)
+
+    } catch (err) {
+      setForgotError('Network error. Please try again.')
+    } finally {
+      setIsSendingReset(false)
+    }
+  }
+
+  const handleOpenForgotPassword = () => {
+    setShowForgotPassword(true)
+    setForgotEmail(email) // Pre-fill with login email if available
+    setForgotError('')
+    setForgotSuccess('')
+  }
+
+  const handleCloseForgotPassword = () => {
+    setShowForgotPassword(false)
+    setForgotEmail('')
+    setForgotError('')
+    setForgotSuccess('')
   }
 
   return (
@@ -138,10 +209,19 @@ export default function LoginPageRedesigned() {
                 transition={{ duration: 0.4, delay: 0.4 }}
                 className="space-y-2"
               >
-                <Label htmlFor="password" className="text-sm font-medium flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-muted-foreground" />
-                  Password
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password" className="text-sm font-medium flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-muted-foreground" />
+                    Password
+                  </Label>
+                  <button
+                    type="button"
+                    onClick={handleOpenForgotPassword}
+                    className="text-xs text-primary hover:text-primary/80 hover:underline transition-colors"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
                 <Input
                   id="password"
                   type="password"
@@ -243,6 +323,101 @@ export default function LoginPageRedesigned() {
           © 2024 Rareminds. All rights reserved.
         </motion.p>
       </motion.div>
+
+      {/* Forgot Password Dialog */}
+      <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <KeyRound className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl">Reset Password</DialogTitle>
+                <DialogDescription className="text-sm mt-1">
+                  Enter your email to receive a password reset link
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <form onSubmit={handleForgotPassword} className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label htmlFor="forgot-email" className="text-sm font-medium">
+                Email Address
+              </Label>
+              <Input
+                id="forgot-email"
+                type="email"
+                placeholder="admin@rareminds.in"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                className="h-11"
+                required
+                disabled={isSendingReset}
+                autoComplete="email"
+                autoFocus
+              />
+            </div>
+
+            {/* Success Message */}
+            <AnimatePresence>
+              {forgotSuccess && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="flex items-start gap-3 p-3 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900 rounded-lg"
+                >
+                  <Check className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                  <span>{forgotSuccess}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Error Message */}
+            <AnimatePresence>
+              {forgotError && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="flex items-start gap-3 p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg"
+                >
+                  <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                  <span>{forgotError}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCloseForgotPassword}
+                className="flex-1"
+                disabled={isSendingReset}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="flex-1 bg-gradient-to-r from-primary to-secondary"
+                disabled={isSendingReset}
+              >
+                {isSendingReset ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    <span>Sending...</span>
+                  </div>
+                ) : (
+                  <span>Send Reset Link</span>
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
