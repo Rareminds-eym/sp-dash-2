@@ -280,7 +280,7 @@ export default function DashboardLayout({ children }) {
                       size="icon"
                       onClick={handleRefresh}
                       disabled={refreshing}
-                      className="w-10 h-10 flex items-center justify-center transition-all duration-300 hover:scale-110 hover:bg-white/50 dark:hover:bg-slate-800/50"
+                      className="w-10 h-10 rounded-md flex items-center justify-center transition-all duration-300 hover:scale-110 hover:bg-white/50 dark:hover:bg-slate-800/50"
                     >
                       <RefreshCw className={cn("h-5 w-5", refreshing && "animate-spin")} />
                     </Button>
@@ -297,7 +297,7 @@ export default function DashboardLayout({ children }) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="w-10 h-10 flex items-center justify-center hover:scale-110 transition-all duration-300 hover:bg-white/50 dark:hover:bg-slate-800/50"
+                      className="w-10 h-10 rounded-md flex items-center justify-center hover:scale-110 transition-all duration-300 hover:bg-white/50 dark:hover:bg-slate-800/50"
                     >
                       <MoreVertical className="h-5 w-5" />
                     </Button>
