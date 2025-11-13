@@ -49,6 +49,16 @@ export function AnimatedGridPattern({
       setSquares(generateSquares(numSquares));
     }
   }, [dimensions, numSquares]);
+  
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
+  if (!mounted) {
+    return null;
+  }
 
   useEffect(() => {
     const updateDimensions = () => {
