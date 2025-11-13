@@ -30,6 +30,21 @@ export function ThemeToggle() {
 
     // Check if View Transitions API is supported
     if (document.startViewTransition) {
+      // Manually disable all transitions before theme change
+      const css = document.createElement('style')
+      css.appendChild(
+        document.createTextNode(
+          `* {
+            -webkit-transition: none !important;
+            -moz-transition: none !important;
+            -o-transition: none !important;
+            -ms-transition: none !important;
+            transition: none !important;
+          }`
+        )
+      )
+      document.head.appendChild(css)
+      
       const transition = document.startViewTransition(() => {
         setTheme(newTheme)
         setIsToggled(toggled)
@@ -48,6 +63,11 @@ export function ThemeToggle() {
       document.documentElement.style.setProperty('--x', `${x}px`)
       document.documentElement.style.setProperty('--y', `${y}px`)
       document.documentElement.style.setProperty('--r', `${maxDistance}px`)
+      
+      // Re-enable transitions after animation completes
+      transition.finished.finally(() => {
+        document.head.removeChild(css)
+      })
     } else {
       // Fallback for browsers without View Transitions API
       setTheme(newTheme)
