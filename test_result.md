@@ -1668,3 +1668,90 @@ Users now get a **premium, designer-quality** theme toggle animation that:
 ### Status: 🟢 ENHANCED
 Theme toggle upgraded with professional Expand animation from toggles.dev! 🌟
 
+
+## Theme Toggle Flickering Fix - Final Resolution
+
+### Issue Reported
+After implementing the fancy animations (circular clipping + Expand icon), the UI was flickering again when toggling the theme. Multiple elements throughout the application were animating simultaneously, creating a distracting effect.
+
+### Root Cause
+The `disableTransitionOnChange={false}` setting was causing ALL CSS transitions throughout the app to fire during theme changes, including:
+- Background color transitions
+- Border color transitions
+- Text color transitions
+- Card shadow transitions
+- All elements with `transition-*` Tailwind classes
+
+This happened because when the theme class changes on `<html>`, all CSS variables update, and with `disableTransitionOnChange={false}`, every element with transitions animates to the new values.
+
+### The Confusion
+The View Transitions API (circular clipping animation) and the Expand icon animation work **independently** from the `disableTransitionOnChange` setting. They don't need `disableTransitionOnChange={false}` to function.
+
+**How it works:**
+- **View Transitions API**: Triggered by `document.startViewTransition()` in the theme toggle handler
+- **Expand Icon Animation**: Built into `@theme-toggles/react` component with its own CSS transitions
+- **disableTransitionOnChange**: Only controls whether next-themes allows CSS transitions during theme changes
+
+### Solution Applied
+Changed `disableTransitionOnChange` from `false` to `true` in both locations:
+
+#### Files Modified:
+
+**1. `/app/components/providers/ThemeProvider.js`** (Line 11)
+```javascript
+// Before
+disableTransitionOnChange={false}
+
+// After  
+disableTransitionOnChange={true}
+```
+
+**2. `/app/app/layout.js`** (Line 18)
+```javascript
+// Before
+disableTransitionOnChange={false}
+
+// After
+disableTransitionOnChange={true}
+```
+
+### What This Achieves
+
+**WITH disableTransitionOnChange={true}:**
+✅ Circular clipping animation **still works** (View Transitions API)
+✅ Expand icon morph animation **still works** (@theme-toggles/react)
+✅ Theme colors update **instantly** (no unwanted transitions)
+✅ NO flickering from hundreds of elements transitioning
+✅ Clean, professional theme switching
+
+**How next-themes handles it:**
+1. Temporarily adds a class that disables ALL CSS transitions
+2. Changes the theme class (dark/light) on `<html>`
+3. Removes the disable class after the change
+4. Result: Colors switch instantly, no cascading animations
+
+### Impact
+- ✅ No more flickering during theme toggle
+- ✅ Circular clipping animation preserved
+- ✅ Icon morphing animation preserved
+- ✅ Instant theme color switching (professional UX)
+- ✅ Hover effects and other intentional transitions still work
+- ✅ Best of both worlds: fancy animations where intended, instant switching everywhere else
+
+### Technical Explanation
+The key insight is that `disableTransitionOnChange` only affects **CSS transitions** on regular elements. It does **NOT** affect:
+- View Transitions API animations (controlled by `document.startViewTransition()`)
+- Component-level animations (like Expand icon's built-in transitions)
+- Hover effects and other state-based transitions
+
+So by setting it to `true`, we eliminate unwanted flickering while keeping all the intentional animations intact.
+
+### Status: 🟢 FIXED PERMANENTLY
+Theme toggling now works beautifully with:
+- Stunning circular clipping animation from the button
+- Smooth icon morphing animation
+- Instant color switching without flickering
+- Professional, polished user experience
+
+---
+
