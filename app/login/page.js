@@ -1,5 +1,5 @@
-import LoginPageMagicUI from '@/components/pages/LoginPageMagicUI'
+import LoginPageRedesigned from '@/components/pages/LoginPageRedesigned'
 
 export default function LoginPage() {
-  return <LoginPageMagicUI />
+  return <LoginPageRedesigned />
 }
