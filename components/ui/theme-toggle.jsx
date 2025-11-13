@@ -1,20 +1,27 @@
 'use client'
 
 import { useTheme } from 'next-themes'
-import { Button } from '@/components/ui/button'
 import { useEffect, useState, useRef } from 'react'
+import { Expand } from '@theme-toggles/react'
+import '@theme-toggles/react/css/Expand.css'
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  const [isToggled, setIsToggled] = useState(false)
   const buttonRef = useRef(null)
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  const handleThemeToggle = async (e) => {
-    const newTheme = theme === 'light' ? 'dark' : 'light'
+  useEffect(() => {
+    // Update toggle state when theme changes
+    setIsToggled(theme === 'dark')
+  }, [theme])
+
+  const handleThemeToggle = async (toggled) => {
+    const newTheme = toggled ? 'dark' : 'light'
     
     // Get button position for circular animation origin
     const rect = buttonRef.current?.getBoundingClientRect()
@@ -25,6 +32,7 @@ export function ThemeToggle() {
     if (document.startViewTransition) {
       const transition = document.startViewTransition(() => {
         setTheme(newTheme)
+        setIsToggled(toggled)
       })
       
       // Apply circular reveal animation
@@ -43,92 +51,27 @@ export function ThemeToggle() {
     } else {
       // Fallback for browsers without View Transitions API
       setTheme(newTheme)
+      setIsToggled(toggled)
     }
   }
 
   if (!mounted) {
     return (
-      <Button variant="ghost" size="icon" className="w-9 h-9">
-        <div className="relative w-5 h-5">
-          <svg
-            className="absolute inset-0 w-5 h-5"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="12" cy="12" r="4" />
-            <path d="M12 2v2" />
-            <path d="M12 20v2" />
-            <path d="m4.93 4.93 1.41 1.41" />
-            <path d="m17.66 17.66 1.41 1.41" />
-            <path d="M2 12h2" />
-            <path d="M20 12h2" />
-            <path d="m6.34 17.66-1.41 1.41" />
-            <path d="m19.07 4.93-1.41 1.41" />
-          </svg>
-        </div>
-      </Button>
+      <div className="w-9 h-9 flex items-center justify-center">
+        <div className="w-6 h-6" />
+      </div>
     )
   }
 
   return (
-    <Button
-      ref={buttonRef}
-      variant="ghost"
-      size="icon"
-      onClick={handleThemeToggle}
-      className="w-9 h-9 transition-all duration-300 hover:scale-110 relative overflow-hidden"
-    >
-      <div className="relative w-5 h-5">
-        {/* Sun Icon */}
-        <svg
-          className={`absolute inset-0 w-5 h-5 transition-all duration-500 ${
-            theme === 'light' 
-              ? 'opacity-100 rotate-0 scale-100' 
-              : 'opacity-0 rotate-90 scale-50'
-          }`}
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <circle cx="12" cy="12" r="4" />
-          <path d="M12 2v2" />
-          <path d="M12 20v2" />
-          <path d="m4.93 4.93 1.41 1.41" />
-          <path d="m17.66 17.66 1.41 1.41" />
-          <path d="M2 12h2" />
-          <path d="M20 12h2" />
-          <path d="m6.34 17.66-1.41 1.41" />
-          <path d="m19.07 4.93-1.41 1.41" />
-        </svg>
-
-        {/* Moon Icon */}
-        <svg
-          className={`absolute inset-0 w-5 h-5 transition-all duration-500 ${
-            theme === 'dark' 
-              ? 'opacity-100 rotate-0 scale-100' 
-              : 'opacity-0 -rotate-90 scale-50'
-          }`}
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-        </svg>
-      </div>
-      <span className="sr-only">Toggle theme</span>
-    </Button>
+    <div ref={buttonRef} className="flex items-center justify-center">
+      <Expand
+        toggled={isToggled}
+        toggle={handleThemeToggle}
+        duration={750}
+        className="text-current hover:scale-110 transition-transform cursor-pointer"
+        style={{ fontSize: '1.5rem' }}
+      />
+    </div>
   )
 }
