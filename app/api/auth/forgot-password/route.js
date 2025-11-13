@@ -59,9 +59,13 @@ export async function POST(request) {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `${requestUrl.protocol}//${requestUrl.host}`
     const redirectUrl = `${baseUrl}/reset-password`
 
-    // Send password reset email using Supabase Auth
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: redirectUrl,
+    // Send password reset email using Supabase Auth Admin
+    const { error: resetError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'recovery',
+      email: email,
+      options: {
+        redirectTo: redirectUrl,
+      }
     })
 
     if (resetError) {
