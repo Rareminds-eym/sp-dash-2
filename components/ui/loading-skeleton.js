@@ -297,3 +297,98 @@ export function SimpleSkeleton() {
     </div>
   )
 }
+
+export function SettingsSkeleton() {
+  return (
+    <div className="space-y-6 max-w-4xl animate-in fade-in duration-500">
+      {/* Profile Settings Card */}
+      <Card className="neu-card relative overflow-hidden">
+        <ShimmerEffect className="absolute inset-0 opacity-30" />
+        <CardHeader className="relative z-10">
+          <div className="flex items-center justify-between">
+            <div className="relative h-7 w-40 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
+              <ShimmerEffect />
+            </div>
+            <div className="relative h-9 w-20 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
+              <ShimmerEffect />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4 relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="space-y-2">
+                <div className="relative h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
+                  <ShimmerEffect />
+                </div>
+                <div className="relative h-10 w-full bg-gray-100 dark:bg-gray-800 rounded-md overflow-hidden">
+                  <ShimmerEffect />
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Notification Settings Card */}
+      <Card className="neu-card relative overflow-hidden">
+        <ShimmerEffect className="absolute inset-0 opacity-30" />
+        <CardHeader className="relative z-10">
+          <div className="relative h-7 w-48 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
+            <ShimmerEffect />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4 relative z-10">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center justify-between py-2">
+              <div className="space-y-2 flex-1">
+                <div className="relative h-5 w-40 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
+                  <ShimmerEffect />
+                </div>
+                <div className="relative h-4 w-64 bg-gray-100 dark:bg-gray-800 rounded overflow-hidden">
+                  <ShimmerEffect />
+                </div>
+              </div>
+              <div className="relative h-6 w-11 bg-gray-300 dark:bg-gray-600 rounded-full overflow-hidden">
+                <ShimmerEffect />
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* Security Card */}
+      <Card className="neu-card relative overflow-hidden">
+        <ShimmerEffect className="absolute inset-0 opacity-30" />
+        <CardHeader className="relative z-10">
+          <div className="relative h-7 w-24 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
+            <ShimmerEffect />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4 relative z-10">
+          <div className="flex items-center justify-between">
+            <div className="space-y-2 flex-1">
+              <div className="relative h-5 w-48 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
+                <ShimmerEffect />
+              </div>
+              <div className="relative h-4 w-56 bg-gray-100 dark:bg-gray-800 rounded overflow-hidden">
+                <ShimmerEffect />
+              </div>
+            </div>
+            <div className="relative h-9 w-20 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
+              <ShimmerEffect />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div className="relative h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
+              <ShimmerEffect />
+            </div>
+            <div className="relative h-10 w-full bg-gray-100 dark:bg-gray-800 rounded overflow-hidden">
+              <ShimmerEffect />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

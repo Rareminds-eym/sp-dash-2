@@ -38,7 +38,8 @@ export default function SettingsPage({ user }) {
   
   // Profile form state  
   const [profileData, setProfileData] = useState({
-    name: user?.name || '',
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
     email: user?.email || '',
     organizationName: user?.organization?.name || ''
   })
@@ -48,7 +49,8 @@ export default function SettingsPage({ user }) {
     if (user) {
       console.log('User data received:', user)
       setProfileData({
-        name: user.name || '',
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
         email: user.email || '',
         organizationName: user.organization?.name || ''
       })
@@ -101,15 +103,16 @@ export default function SettingsPage({ user }) {
     
     setIsSaving(true)
     try {
-      console.log('Sending PUT request to /api/profile...')
-      const response = await fetch('/api/profile', {
+      console.log('Sending PUT request to /api/users/profile...')
+      const response = await fetch('/api/users/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           email: profileData.email,
-          name: profileData.name,
+          firstName: profileData.firstName,
+          lastName: profileData.lastName,
           organizationName: profileData.organizationName,
         }),
       })
@@ -128,11 +131,6 @@ export default function SettingsPage({ user }) {
         variant: 'default',
       })
       setIsEditing(false)
-      
-      // Refresh the page to show updated data
-      setTimeout(() => {
-        window.location.reload()
-      }, 1000)
     } catch (error) {
       console.error('Profile update error:', error)
       toast({
@@ -147,7 +145,8 @@ export default function SettingsPage({ user }) {
 
   const handleCancelEdit = () => {
     setProfileData({
-      name: user?.name || '',
+      firstName: user?.firstName || '',
+      lastName: user?.lastName || '',
       email: user?.email || '',
       organizationName: user?.organization?.name || ''
     })
@@ -296,15 +295,25 @@ export default function SettingsPage({ user }) {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
+              <Label htmlFor="firstName">First Name</Label>
               <Input
-                id="name"
-                value={profileData.name}
-                onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
+                id="firstName"
+                value={profileData.firstName}
+                onChange={(e) => setProfileData({ ...profileData, firstName: e.target.value })}
                 disabled={!isEditing}
               />
             </div>
             
+            <div className="space-y-2">
+              <Label htmlFor="lastName">Last Name</Label>
+              <Input
+                id="lastName"
+                value={profileData.lastName}
+                onChange={(e) => setProfileData({ ...profileData, lastName: e.target.value })}
+                disabled={!isEditing}
+              />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input

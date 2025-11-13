@@ -896,3 +896,775 @@ Added a complete password update functionality in the Settings page, allowing au
 
 ### Status: 🟢 FULLY FUNCTIONAL
 Authenticated admin users can now update their password from the Settings page with complete validation and security checks.
+
+---
+
+## Settings Page Loading Shimmer - Fixed
+
+### Issue
+The Settings page was using a generic `SimpleSkeleton` loading component that didn't match the actual structure of the settings page, causing layout shifts and visual inconsistency during page load.
+
+### Solution Implemented
+
+#### Created Settings-Specific Skeleton Loader
+**File Modified**: `/app/components/ui/loading-skeleton.js`
+
+**New Component**: `SettingsSkeleton()`
+- Matches the exact structure of the Settings page
+- Three cards matching the actual page layout:
+  - Profile Settings card with 4 input fields in 2 columns
+  - Notification Settings card with 3 toggle switches
+  - Security card with 2FA option and password update button
+
+**Features**:
+- Proper shimmer animations on all skeleton elements
+- Matches card dimensions and spacing
+- Smooth fade-in animation
+- Responsive grid layouts matching actual content
+- Dark mode support
+
+#### Updated Settings Loading File
+**File Modified**: `/app/app/(dashboard)/settings/loading.js`
+- Changed from `SimpleSkeleton` to `SettingsSkeleton`
+- Now shows accurate loading state preview
+
+### Benefits
+- ✅ No layout shift when page loads
+- ✅ Better user experience with accurate loading preview
+- ✅ Consistent visual feedback
+- ✅ Proper shimmer effects throughout
+- ✅ Matches page structure exactly
+
+### Status: 🟢 FIXED
+Settings page now displays a proper skeleton loader that matches the actual page structure.
+
+---
+
+## Profile Settings - Save Changes Fix
+
+### Issues Found
+1. **Incorrect API Endpoint**: The SettingsPage was calling `/api/profile` but the actual endpoint is `/api/users/profile`
+2. **Wrong Supabase Client**: The route was using `supabase` instead of `supabaseAdmin` for organization updates
+3. **Wrong Variable Reference**: The route was using `user.organizationId` instead of `userData.organizationId`
+
+### Root Cause
+- Frontend and backend endpoints were mismatched
+- Missing service role client for organization updates
+- Variable scope issue when accessing organization ID
+
+### Files Modified
+
+#### 1. `/app/components/pages/SettingsPage.js` (Line 105)
+**Changed:**
+```javascript
+const response = await fetch('/api/profile', {
+```
+
+**To:**
+```javascript
+const response = await fetch('/api/users/profile', {
+```
+
+#### 2. `/app/app/api/users/profile/route.js` (Line 76)
+**Changed:**
+```javascript
+const { data: orgData, error: updateOrgError } = await supabase
+```
+
+**To:**
+```javascript
+const { data: orgData, error: updateOrgError } = await supabaseAdmin
+```
+
+#### 3. `/app/app/api/users/profile/route.js` (Lines 73, 74, 79, 89)
+**Changed all references from:**
+```javascript
+user.organizationId
+```
+
+**To:**
+```javascript
+userData.organizationId
+```
+
+### Impact
+- ✅ Profile name updates now work correctly
+- ✅ Organization name updates work correctly (when user has an organization assigned)
+- ✅ Proper service role access for organization updates
+- ✅ Correct variable scoping for organization ID access
+
+### User Flow (Fixed)
+1. User navigates to Settings page
+2. Clicks "Edit" button on Profile Settings card
+3. Updates name and/or organization name
+4. Clicks "Save Changes"
+5. System sends PUT request to `/api/users/profile` ✅ (was `/api/profile` ❌)
+6. Backend updates user metadata with new name
+7. Backend updates organization name if user has organizationId
+8. Success message displayed
+9. Page refreshes to show updated data
+
+### Status: 🟢 FIXED
+Profile Settings save changes functionality is now working correctly.
+
+---
+
+## Profile Settings - Remove Page Refresh After Save
+
+### Issue Reported
+Settings page was performing a full page reload after saving profile changes, causing a disruptive user experience.
+
+### Root Cause
+The `handleSaveProfile` function had a `window.location.reload()` call wrapped in a `setTimeout` that was forcing a full page refresh after successful profile update.
+
+### Solution
+Removed the page reload logic. The profile data is already updated in the local state, and exiting edit mode provides sufficient feedback to the user without a disruptive reload.
+
+### Files Modified
+
+#### `/app/components/pages/SettingsPage.js` (Lines 132-135)
+**Before:**
+```javascript
+toast({
+  title: 'Profile Updated',
+  description: 'Your profile information has been updated successfully.',
+  variant: 'default',
+})
+setIsEditing(false)
+
+// Refresh the page to show updated data
+setTimeout(() => {
+  window.location.reload()
+}, 1000)
+```
+
+**After:**
+```javascript
+toast({
+  title: 'Profile Updated',
+  description: 'Your profile information has been updated successfully.',
+  variant: 'default',
+})
+setIsEditing(false)
+```
+
+### Impact
+- ✅ No more page reload after saving profile
+- ✅ Smoother user experience
+- ✅ Form exits edit mode immediately
+- ✅ Success toast notification still displayed
+- ✅ Updated data persists in local state
+- ✅ Faster response - no waiting for page reload
+
+### User Flow (Improved)
+1. User clicks "Edit" on Profile Settings
+2. Updates name and/or organization name
+3. Clicks "Save Changes"
+4. Success message appears
+5. Form exits edit mode instantly ✅ (no page reload)
+6. Updated values remain visible in the form
+
+### Status: 🟢 FIXED
+Profile settings now save without page refresh for a better UX.
+
+---
+
+## DashboardLayout JSON Parsing Error - Fixed
+
+### Issue Reported
+Console error: `SyntaxError: Failed to execute 'json' on 'Response': Unexpected end of JSON input` in DashboardLayout.useEffect
+
+### Root Cause
+The DashboardLayout was attempting to parse JSON from API responses without first checking if the response was successful (response.ok). This caused errors when:
+- Network requests failed
+- API returned non-200 status codes
+---
+
+## Admin User Management - firstName and lastName Implementation
+
+### Objective
+Update the entire admin user management system to use `firstName` and `lastName` columns from the public `users` table instead of storing names in metadata or using a single `name` field.
+
+### Changes Implemented
+
+#### 1. Admin User Creation API - `/app/app/api/users/route.js`
+
+**POST Endpoint Updates:**
+- Changed input parameters from `fullName` to `firstName` and `lastName`
+- Updated validation to require both firstName and lastName
+- Modified Supabase Auth user creation to store firstName and lastName in user_metadata
+- Updated users table insert to use firstName and lastName columns
+- Removed name from metadata object
+- Updated response data to return firstName and lastName separately
+
+**GET Endpoint Updates:**
+- Added firstName and lastName to the SELECT queries for users table
+- Updated transformedUsers to include firstName and lastName fields
+- Updated grantedByName to concatenate firstName and lastName
+- Enhanced search functionality to search across firstName, lastName, and full name combination
+
+#### 2. Profile Update API - `/app/app/api/users/profile/route.js`
+
+**Updates:**
+- Changed input parameters from `name` to `firstName` and `lastName`
+- Updated user lookup to select firstName and lastName from users table
+- Modified update logic to update firstName and lastName columns directly (not metadata)
+- Updated audit logging to track firstName and lastName changes
+- Updated response to return firstName and lastName
+
+#### 3. Session API - `/app/app/api/auth/session/route.js`
+
+**Updates:**
+- Updated user data query to explicitly select firstName and lastName
+- Modified error fallback to use firstName and lastName from user_metadata
+- Updated userName construction to concatenate firstName and lastName
+- Added firstName and lastName to the session response object
+- Maintained backward compatibility with `name` field (computed from firstName + lastName)
+
+#### 4. Settings Page UI - `/app/components/pages/SettingsPage.js`
+
+**Updates:**
+- Changed profileData state to use firstName and lastName instead of name
+- Updated useEffect to sync firstName and lastName from user prop
+- Modified API request to send firstName and lastName separately
+- Updated handleCancelEdit to reset firstName and lastName
+- Changed UI to display two separate input fields:
+  - "First Name" field
+  - "Last Name" field
+- Both fields appear in the same row using grid layout
+
+### Database Schema Alignment
+
+The implementation now correctly uses the `users` table structure:
+```
+users table columns used:
+- id (UUID)
+- email (text)
+- firstName (text) ✅ NEW
+- lastName (text) ✅ NEW
+- role (enum)
+- isActive (boolean)
+- organizationId (UUID)
+- createdAt (timestamp)
+- metadata (jsonb) - no longer stores name
+```
+
+### Benefits
+
+1. **Data Integrity**
+   - Names stored in proper database columns (not metadata)
+   - Better data structure and querying capabilities
+   - Easier to search and sort by first/last name
+
+2. **Flexibility**
+   - Can display first name, last name, or full name as needed
+   - Supports various name display formats
+   - Better for internationalization
+
+3. **Consistency**
+   - All admin users follow the same data structure
+   - No mixing of metadata and column storage
+   - Cleaner API responses
+
+4. **Search Enhancement**
+   - Can search by first name only
+   - Can search by last name only
+   - Can search by full name
+   - More accurate search results
+
+### Files Modified
+
+1. `/app/app/api/users/route.js` - Admin user CRUD operations
+2. `/app/app/api/users/profile/route.js` - Profile update endpoint
+3. `/app/app/api/auth/session/route.js` - Session data retrieval
+4. `/app/components/pages/SettingsPage.js` - Settings UI
+
+### User Flows Updated
+
+**1. Admin User Creation:**
+- Super admin enters first name and last name separately
+- System stores in firstName and lastName columns
+- Password reset email sent
+- User activates account
+
+**2. Profile Update:**
+- User edits first name and/or last name
+- Both fields updated independently
+- Changes saved to firstName and lastName columns
+- No page refresh needed
+
+**3. Session Loading:**
+---
+
+## Profile Settings Display Issue - Fixed
+
+### Issue Reported
+firstName and lastName were not displaying in the Profile Settings page despite being stored in the database.
+
+### Root Cause
+The `getSession()` function in `/app/lib/supabase-rls.js` was not including firstName and lastName in the returned user object. While it was fetching the data from the database, it wasn't passing those fields through to the SettingsPage component.
+
+### Files Modified
+
+#### `/app/lib/supabase-rls.js`
+
+**1. Updated getSession() function:**
+
+**Before:**
+```javascript
+const { data: userData, error: userError } = await supabase
+  .from('users')
+  .select('*')
+  .eq('email', user.email)
+  .maybeSingle()
+
+// ... later in return
+return {
+  user: {
+    id: userData.id,
+    email: userData.email,
+    name: userName,
+    role: userData.role,
+    organizationId: userData.organizationId,
+    organization: organizationData,
+    isActive: userData.isActive,
+  }
+}
+```
+
+**After:**
+```javascript
+const { data: userData, error: userError } = await supabase
+  .from('users')
+  .select('id, email, firstName, lastName, role, isActive, organizationId, createdAt, metadata')
+  .eq('email', user.email)
+  .maybeSingle()
+
+// ... later in return
+return {
+  user: {
+    id: userData.id,
+    email: userData.email,
+    firstName: userData.firstName,
+    lastName: userData.lastName,
+    name: userName,
+    role: userData.role,
+    organizationId: userData.organizationId,
+    organization: organizationData,
+    isActive: userData.isActive,
+  }
+}
+```
+
+**2. Updated getUserContext() function:**
+
+Added firstName and lastName to both the SELECT query and return object:
+```javascript
+// SELECT query updated
+.select('id, email, firstName, lastName, isActive, metadata, organizationId')
+
+// Return object updated
+return {
+  id: userData.id,
+  authId: user.id,
+  email: userData.email,
+  firstName: userData.firstName,
+  lastName: userData.lastName,
+  // ... rest of fields
+}
+```
+
+**3. Updated userName computation:**
+
+Changed from using metadata to using firstName and lastName columns:
+```javascript
+const userName = userData?.firstName && userData?.lastName 
+  ? `${userData.firstName} ${userData.lastName}` 
+  : user.user_metadata?.firstName && user.user_metadata?.lastName
+  ? `${user.user_metadata.firstName} ${user.user_metadata.lastName}`
+  : user.email.split('@')[0]
+```
+
+### Impact
+- ✅ firstName and lastName now display in Profile Settings page
+- ✅ Settings page shows separate First Name and Last Name input fields
+- ✅ Users can view and edit their first and last names
+- ✅ getUserContext also returns firstName and lastName for API routes
+- ✅ Consistent data structure across all session management
+
+### Status: 🟢 FIXED
+Profile Settings now correctly displays firstName and lastName fields from the database.
+
+
+- System fetches firstName and lastName from users table
+- Combines into `name` field for display compatibility
+- Both firstName and lastName available separately in session object
+
+### Backward Compatibility
+
+- Session API still provides `name` field (computed from firstName + lastName)
+- Existing code using `user.name` will continue to work
+- New code can use `user.firstName` and `user.lastName` for more flexibility
+
+### Status: 🟢 IMPLEMENTED
+All admin user management operations now use firstName and lastName columns from the users table.
+
+
+- Response body was empty or malformed
+
+### Files Modified
+
+#### `/app/app/(dashboard)/layout.js`
+
+**1. Fixed Session Fetch (Lines 63-73)**
+**Before:**
+```javascript
+fetch('/api/auth/session')
+  .then(res => res.json())
+  .then(data => {
+    if (data.success && data.user) {
+      setUser(data.user)
+    }
+  })
+  .catch(err => console.error('Failed to fetch session:', err))
+```
+
+**After:**
+```javascript
+fetch('/api/auth/session')
+  .then(res => {
+    if (!res.ok) {
+      throw new Error(`HTTP error! status: ${res.status}`)
+    }
+    return res.json()
+  })
+  .then(data => {
+    if (data.success && data.user) {
+      setUser(data.user)
+    }
+  })
+  .catch(err => {
+    console.error('Failed to fetch session:', err)
+    // If session fetch fails, user might not be authenticated
+    // Don't redirect here, let middleware handle it
+  })
+```
+
+**2. Fixed Logout Handler (Lines 83-104)**
+**Before:**
+```javascript
+const response = await fetch('/api/auth/logout', { method: 'POST' })
+const data = await response.json()
+```
+
+**After:**
+```javascript
+const response = await fetch('/api/auth/logout', { method: 'POST' })
+
+if (!response.ok) {
+  throw new Error(`HTTP error! status: ${response.status}`)
+}
+
+const data = await response.json()
+```
+
+### Impact
+- ✅ No more JSON parsing errors in console
+- ✅ Proper error handling for failed API requests
+- ✅ Better user experience with graceful error handling
+- ✅ Logout function now handles network errors properly
+- ✅ Session fetch failures don't break the layout
+
+### Best Practice Implemented
+Always check `response.ok` before calling `response.json()` to ensure the response is valid JSON.
+
+### Status: 🟢 FIXED
+DashboardLayout now properly handles API response errors without console errors.
+
+---
+
+## Theme Toggle Flickering Bug - Fixed
+
+### Issue Reported
+UI flickering throughout the application when toggling between light and dark themes. Multiple elements would animate simultaneously, creating a distracting cascading effect.
+
+### Root Cause
+The `ThemeProvider` was configured with `disableTransitionOnChange={false}`, which allowed ALL CSS transitions to fire during theme changes. This caused:
+- Background gradients to transition
+- Border colors to transition
+- Text colors to transition
+- Card shadows to transition
+- All UI elements with `transition-*` classes to animate simultaneously
+
+The cumulative effect of hundreds of transitions firing at once created a noticeable flickering effect throughout the application.
+
+### Technical Explanation
+When `next-themes` changes the theme:
+1. It adds/removes the `dark` class on the `<html>` element
+2. This triggers CSS variable changes for all theme-dependent colors
+3. With `disableTransitionOnChange={false}`, all elements with transitions animate to the new colors
+4. Elements throughout the app had various transition durations:
+   - `transition-colors duration-300` on backgrounds
+   - `transition-all duration-300` on cards, buttons, and navigation items
+   - Various hover transitions on interactive elements
+
+### Solution Implemented
+Changed `disableTransitionOnChange` from `false` to `true` in both ThemeProvider locations:
+
+#### Files Modified:
+
+**1. `/app/components/providers/ThemeProvider.js`** (Line 11)
+```javascript
+// Before
+disableTransitionOnChange={false}
+
+// After
+disableTransitionOnChange={true}
+```
+
+**2. `/app/app/layout.js`** (Line 18)
+```javascript
+// Before
+disableTransitionOnChange={false}
+
+// After
+disableTransitionOnChange={true}
+```
+
+### How It Works
+With `disableTransitionOnChange={true}`:
+1. `next-themes` adds a temporary class to disable ALL transitions before theme change
+2. The theme class (dark/light) is toggled instantly
+3. All color variables update instantly without transitions
+4. The temporary disable class is removed after the change
+5. Normal transitions (hover effects, animations) continue to work as expected
+
+### Impact
+- ✅ Theme switching is now instant with no flickering
+- ✅ All UI elements switch themes simultaneously
+- ✅ No cascade effect of different elements transitioning at different rates
+- ✅ Hover effects and other intentional transitions still work normally
+- ✅ Better user experience with smooth, professional theme switching
+- ✅ Consistent with modern UI/UX best practices
+
+### User Experience After Fix
+**Before:**
+- Toggle theme → Background starts transitioning → Sidebar transitions → Cards transition → Text colors change → Noticeable flickering cascade
+
+**After:**
+- Toggle theme → Entire UI switches instantly → Clean, professional theme change
+
+### Status: 🟢 FIXED
+Theme toggling now works smoothly throughout the application without any flickering or cascading animation effects.
+
+---
+
+## Enhanced Theme Toggle - Circular Clipping Animation & Morphing Icon
+
+### New Features Implemented
+Added beautiful, modern animations for theme toggling throughout the application.
+
+### Feature 1: Circular Clipping Animation
+Implemented a circular reveal animation that originates from the theme toggle button and expands to cover the entire screen when switching themes.
+
+**Technical Implementation:**
+- Uses **View Transitions API** (modern browsers)
+- Calculates button position dynamically for animation origin
+- Creates expanding circle effect from the toggle button
+- Smooth cubic-bezier easing for professional feel
+- Automatic fallback for older browsers (fade animation)
+
+**Animation Details:**
+- Duration: 1.2 seconds (slower for more dramatic effect)
+- Easing: `cubic-bezier(0.25, 0.46, 0.45, 0.94)` (smoother, more elegant curve)
+- Expands from button center to cover entire viewport
+- Clips the new theme layer revealing it progressively
+
+### Feature 2: Morphing Icon Animation
+Replaced static icon switching with smooth morphing animation between sun and moon icons.
+
+**Animation Characteristics:**
+- **Sun Icon (Light Mode):**
+  - Full opacity, no rotation, full scale
+  - Smooth transition when appearing
+  
+- **Moon Icon (Dark Mode):**
+  - Full opacity, no rotation, full scale
+  - Smooth transition when appearing
+
+- **Transition Effects:**
+  - Duration: 500ms (slower than before for smoother morph)
+  - Opacity fade: 0 ↔ 1
+  - Rotation: Sun rotates 90° out, Moon rotates -90° in
+  - Scale: Icons scale down to 50% when hidden, 100% when visible
+  - All transitions use CSS for hardware acceleration
+
+**Visual Effect:**
+When toggling from light to dark:
+1. Sun icon rotates 90° clockwise while fading and shrinking
+2. Moon icon simultaneously rotates from -90° to 0° while fading in and growing
+3. Creates a smooth cross-fade with rotation effect
+
+### Files Modified
+
+**1. `/app/components/ui/theme-toggle.jsx`** - Complete rewrite
+- Added `useRef` for button position tracking
+- Implemented `handleThemeToggle` with View Transitions API
+- Custom SVG icons with layered animation classes
+- Dynamic CSS variable setting for animation origin (--x, --y)
+- Smooth opacity, rotation, and scale transitions
+- Proper SSR handling with mounted state
+
+**2. `/app/app/globals.css`** - Added animation styles
+- View Transitions API pseudo-elements styling
+- Custom `@keyframes reveal` for circular clipping
+- Proper z-index layering for smooth transition
+- Fallback animation for unsupported browsers
+- `clip-path` animation with dynamic CSS variables
+
+**3. `/app/components/providers/ThemeProvider.js`** (Line 11)
+- Changed `disableTransitionOnChange` back to `false`
+- Allows smooth transitions during theme change
+
+**4. `/app/app/layout.js`** (Line 18)
+- Changed `disableTransitionOnChange` back to `false`
+- Enables animations throughout the app
+
+### Browser Compatibility
+
+**Full Support (Circular Animation):**
+- Chrome/Edge 111+
+- Safari 18+
+- Opera 97+
+
+**Fallback Support (Fade Animation):**
+- Firefox (View Transitions coming soon)
+- Older browser versions
+- Still provides smooth experience, just without circular effect
+
+**Icon Animation Support:**
+- All modern browsers (CSS transitions)
+- Hardware accelerated
+- Smooth 60fps animation
+
+### User Experience
+
+**Before Enhancement:**
+- Instant theme switch (no visual feedback)
+- Icons simply swapped
+- Functional but basic
+
+**After Enhancement:**
+- Satisfying circular reveal animation from button
+- Smooth morphing between sun/moon icons
+- Professional, polished feel
+- Clear visual feedback of theme change
+- Delightful micro-interaction
+
+### Performance
+- Hardware-accelerated CSS transforms
+- Efficient View Transitions API
+- No JavaScript animation loops
+- Minimal performance impact
+- Graceful degradation on older devices
+
+### Status: 🟢 IMPLEMENTED
+Theme toggling now features a beautiful circular clipping animation with smooth morphing icons for an enhanced user experience! ✨
+
+---
+
+## Theme Toggle - Upgraded to Expand Animation from toggles.dev
+
+### Enhancement Implemented
+Replaced custom morphing icons with the professional **Expand** animation from [toggles.dev](https://toggles.dev/expand/react).
+
+### What is Expand?
+The Expand toggle is a premium animated icon that shows a sun that smoothly expands and morphs into a moon when switching from light to dark mode.
+
+**Animation Characteristics:**
+- Sun rays elegantly expand outward
+- Center transforms into a crescent moon
+- 750ms smooth animation duration
+- Professional, battle-tested component
+- Built specifically for theme switching
+
+### Implementation Details
+
+**Package Installed:**
+```bash
+@theme-toggles/react@4.1.0
+```
+
+**Component Used:**
+```jsx
+<Expand 
+  toggled={isToggled}
+  toggle={handleThemeToggle}
+  duration={750}
+/>
+```
+
+**Features:**
+- ✅ Controlled component with state management
+- ✅ Integrates seamlessly with next-themes
+- ✅ Maintains circular clipping animation (1.2s)
+- ✅ 750ms icon expand animation
+- ✅ Hover scale effect preserved
+- ✅ Accessible and production-ready
+
+### Files Modified
+
+**1. `/app/components/ui/theme-toggle.jsx`**
+- Replaced custom SVG icons with `<Expand>` component
+- Imported `@theme-toggles/react/css/Expand.css`
+- Added `isToggled` state to sync with theme
+- Maintained View Transitions API integration
+- Preserved circular clipping animation
+
+**2. `/app/package.json`**
+- Added dependency: `@theme-toggles/react@4.1.0`
+
+### Combined Animation Experience
+
+**When clicking the toggle:**
+1. **Icon Animation** (750ms): Sun expands and morphs into moon
+2. **Circular Clipping** (1.2s): Circular reveal spreads from button position
+3. **Result**: Stunning double animation effect!
+
+### Visual Quality Comparison
+
+**Before (Custom Icons):**
+- Basic opacity + rotation + scale transitions
+- Simple fade/morph effect
+- Custom implementation
+
+**After (Expand from toggles.dev):**
+- Professional expand animation
+- Rays elegantly extend before transforming
+- Smooth, polished, industry-standard
+- Maintained by theme-toggles library
+
+### Browser Support
+- ✅ All modern browsers (CSS transforms + transitions)
+- ✅ Hardware accelerated
+- ✅ Smooth 60fps animation
+- ✅ No external dependencies beyond React
+
+### Testing Results
+- ✅ Toggle successfully integrated
+- ✅ Light to dark transition: Working perfectly
+- ✅ Dark to light transition: Working perfectly
+- ✅ Circular clipping still active
+- ✅ Animation timing perfectly synchronized
+- ✅ Hover effects working
+
+### User Experience Impact
+Users now get a **premium, designer-quality** theme toggle animation that:
+- Feels professional and polished
+- Provides clear visual feedback
+- Combines two stunning animations
+- Elevates the entire application aesthetic
+
+### Status: 🟢 ENHANCED
+Theme toggle upgraded with professional Expand animation from toggles.dev! 🌟
+

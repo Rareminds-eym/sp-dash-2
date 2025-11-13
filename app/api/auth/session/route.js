@@ -29,7 +29,7 @@ export async function GET(request) {
     // Fetch additional user data from users table (lookup by email since IDs may not match)
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('*')
+      .select('id, email, firstName, lastName, role, isActive, organizationId, createdAt, metadata')
       .eq('email', user.email)
       .maybeSingle()
     
@@ -78,13 +78,19 @@ export async function GET(request) {
         user: {
           id: user.id,
           email: user.email,
-          name: user.user_metadata?.name || user.email.split('@')[0],
+          firstName: user.user_metadata?.firstName || '',
+          lastName: user.user_metadata?.lastName || '',
+          name: `${user.user_metadata?.firstName || ''} ${user.user_metadata?.lastName || ''}`.trim() || user.email.split('@')[0],
           role: user.user_metadata?.role || 'user',
         },
       })
     }
 
-    const userName = userData?.metadata?.name || user.user_metadata?.name || user.email.split('@')[0]
+    const userName = userData?.firstName && userData?.lastName 
+      ? `${userData.firstName} ${userData.lastName}` 
+      : user.user_metadata?.firstName && user.user_metadata?.lastName
+      ? `${user.user_metadata.firstName} ${user.user_metadata.lastName}`
+      : user.email.split('@')[0]
 
     // Fetch user permissions based on role
     let permissions = []
@@ -100,6 +106,8 @@ export async function GET(request) {
       user: {
         id: userData.id,
         email: userData.email,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
         name: userName,
         role: userData.role,
         organizationId: userData.organizationId,

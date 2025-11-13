@@ -63,13 +63,22 @@ export default function DashboardLayout({ children }) {
   useEffect(() => {
     // Fetch current user session
     fetch('/api/auth/session')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`)
+        }
+        return res.json()
+      })
       .then(data => {
         if (data.success && data.user) {
           setUser(data.user)
         }
       })
-      .catch(err => console.error('Failed to fetch session:', err))
+      .catch(err => {
+        console.error('Failed to fetch session:', err)
+        // If session fetch fails, user might not be authenticated
+        // Don't redirect here, let middleware handle it
+      })
   }, [])
 
   const handleRefresh = () => {
@@ -83,6 +92,11 @@ export default function DashboardLayout({ children }) {
   const handleLogout = async () => {
     try {
       const response = await fetch('/api/auth/logout', { method: 'POST' })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
       const data = await response.json()
       
       if (data.success) {
@@ -257,7 +271,7 @@ export default function DashboardLayout({ children }) {
                 {getPageTitle()}
               </h1>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -266,9 +280,9 @@ export default function DashboardLayout({ children }) {
                       size="icon"
                       onClick={handleRefresh}
                       disabled={refreshing}
-                      className="w-9 h-9 transition-all duration-300 hover:scale-110"
+                      className="w-10 h-10 rounded-md flex items-center justify-center"
                     >
-                      <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+                      <RefreshCw className={cn("h-5 w-5 transition-transform duration-300 hover:scale-110", refreshing && "animate-spin")} />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -283,7 +297,7 @@ export default function DashboardLayout({ children }) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="hover:bg-white/50 dark:hover:bg-slate-800/50"
+                      className="w-10 h-10 rounded-md flex items-center justify-center hover:scale-110 transition-all duration-300 hover:bg-white/50 dark:hover:bg-slate-800/50"
                     >
                       <MoreVertical className="h-5 w-5" />
                     </Button>
