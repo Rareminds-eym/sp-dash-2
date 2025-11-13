@@ -57,20 +57,20 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <div className="w-9 h-9 flex items-center justify-center">
+      <div className="w-10 h-10 flex items-center justify-center">
         <div className="w-6 h-6" />
       </div>
     )
   }
 
   return (
-    <div ref={buttonRef} className="flex items-center justify-center">
+    <div ref={buttonRef} className="w-10 h-10 flex items-center justify-center rounded-md hover:bg-white/50 dark:hover:bg-slate-800/50 transition-all duration-300">
       <Expand
         toggled={isToggled}
         toggle={handleThemeToggle}
         duration={750}
         className="text-current hover:scale-110 transition-transform cursor-pointer"
-        style={{ fontSize: '1.5rem' }}
+        style={{ fontSize: '1.25rem' }}
       />
     </div>
   )
