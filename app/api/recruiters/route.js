@@ -22,23 +22,8 @@ export async function GET(request) {
     const accountStatus = url.searchParams.get('account_status');
     const searchTerm = url.searchParams.get('search');
     
-    // Build query - fetch recruiters with their associated user data and company info
-    let query = supabaseAdmin
-      .from('recruiters')
-      .select(`
-        *,
-        users!recruiters_user_id_fkey (
-          id,
-          email,
-          metadata
-        ),
-        companies!recruiters_company_id_fkey (
-          id,
-          name,
-          state,
-          city
-        )
-      `, { count: 'exact' });
+    // Build query for recruiters
+    let query = supabaseAdmin.from('recruiters').select('*', { count: 'exact' });
     
     // Apply filters
     if (approvalStatus) {
@@ -46,10 +31,6 @@ export async function GET(request) {
     }
     if (accountStatus) {
       query = query.eq('account_status', accountStatus);
-    }
-    if (searchTerm) {
-      // Search in recruiter name and email from users table
-      query = query.or(`users.email.ilike.%${searchTerm}%,users.metadata->>name.ilike.%${searchTerm}%`);
     }
     
     // Apply sorting (newest first by default)
@@ -65,6 +46,34 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Failed to fetch recruiters' }, { status: 500 });
     }
 
+    // Fetch all related data in parallel
+    if (recruiters && recruiters.length > 0) {
+      const userIds = recruiters.map(r => r.user_id).filter(Boolean);
+      const companyIds = recruiters.map(r => r.company_id).filter(Boolean);
+      
+      const [usersResult, companiesResult] = await Promise.all([
+        userIds.length > 0 ? supabaseAdmin.from('users').select('id, email, metadata').in('id', userIds) : { data: [] },
+        companyIds.length > 0 ? supabaseAdmin.from('companies').select('id, name, state, city').in('id', companyIds) : { data: [] }
+      ]);
+      
+      // Create lookup maps
+      const userMap = {};
+      usersResult.data?.forEach(user => { userMap[user.id] = user; });
+      
+      const companyMap = {};
+      companiesResult.data?.forEach(company => { companyMap[company.id] = company; });
+      
+      // Map data to recruiters
+      recruiters.forEach(recruiter => {
+        if (recruiter.user_id && userMap[recruiter.user_id]) {
+          recruiter.users = userMap[recruiter.user_id];
+        }
+        if (recruiter.company_id && companyMap[recruiter.company_id]) {
+          recruiter.companies = companyMap[recruiter.company_id];
+        }
+      });
+    }
+
     // Normalize data to match frontend expectations
     const normalizedRecruiters = (recruiters || []).map(recruiter => {
       const userName = recruiter.users?.metadata?.name || recruiter.users?.metadata?.first_name || 'Unknown';
@@ -76,6 +85,7 @@ export async function GET(request) {
         email: recruiter.users?.email,
         state: companyState,
         phone: recruiter.users?.metadata?.phone || recruiter.phone || null,
+        website: recruiter.companies?.website || null,
         created_at: recruiter.createdat,
       };
     });
