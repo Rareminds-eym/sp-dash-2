@@ -1,5 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config({ path: '/app/.env' });
+require('dotenv').config({ path: '/app/.env.local' });
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -13,7 +13,7 @@ async function testRecruiterAPI() {
   const { data: recruiters, error } = await supabase
     .from('recruiters')
     .select('*')
-    .limit(1);
+    .limit(2);
   
   if (error) {
     console.error('Error fetching recruiter:', error);
@@ -26,7 +26,7 @@ async function testRecruiterAPI() {
   }
   
   const recruiter = recruiters[0];
-  console.log('Found recruiter:', recruiter.id);
+  console.log('Found recruiter:', recruiter.id, recruiter.name);
   console.log('Current status:', recruiter.approval_status);
   
   // Update to pending
@@ -41,12 +41,12 @@ async function testRecruiterAPI() {
     return;
   }
   
-  console.log('\nUpdated recruiter to pending status');
+  console.log('\n✅ Updated recruiter to pending status');
   console.log('ID:', recruiter.id);
   
-  console.log('\nNow test the approval center in the UI!');
-  console.log('\nTo revert, run:');
-  console.log(`node -e "const {createClient}=require('@supabase/supabase-js');const s=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY);s.from('recruiters').update({approval_status:'approved'}).eq('id','${recruiter.id}').then(r=>console.log('Reverted'))"`);
+  console.log('\n🎯 Now check the approval center in the UI - the Recruiters tab should show 1 pending approval!');
+  console.log('\n📌 To revert after testing, run this command:');
+  console.log(`   cd /app && node -e "require('dotenv').config({path:'.env.local'});const{createClient}=require('@supabase/supabase-js');createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY).from('recruiters').update({approval_status:'approved'}).eq('id','${recruiter.id}').then(()=>console.log('✅ Reverted'))"`);
 }
 
 testRecruiterAPI();
