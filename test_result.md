@@ -1381,3 +1381,79 @@ Always check `response.ok` before calling `response.json()` to ensure the respon
 ### Status: 🟢 FIXED
 DashboardLayout now properly handles API response errors without console errors.
 
+---
+
+## Theme Toggle Flickering Bug - Fixed
+
+### Issue Reported
+UI flickering throughout the application when toggling between light and dark themes. Multiple elements would animate simultaneously, creating a distracting cascading effect.
+
+### Root Cause
+The `ThemeProvider` was configured with `disableTransitionOnChange={false}`, which allowed ALL CSS transitions to fire during theme changes. This caused:
+- Background gradients to transition
+- Border colors to transition
+- Text colors to transition
+- Card shadows to transition
+- All UI elements with `transition-*` classes to animate simultaneously
+
+The cumulative effect of hundreds of transitions firing at once created a noticeable flickering effect throughout the application.
+
+### Technical Explanation
+When `next-themes` changes the theme:
+1. It adds/removes the `dark` class on the `<html>` element
+2. This triggers CSS variable changes for all theme-dependent colors
+3. With `disableTransitionOnChange={false}`, all elements with transitions animate to the new colors
+4. Elements throughout the app had various transition durations:
+   - `transition-colors duration-300` on backgrounds
+   - `transition-all duration-300` on cards, buttons, and navigation items
+   - Various hover transitions on interactive elements
+
+### Solution Implemented
+Changed `disableTransitionOnChange` from `false` to `true` in both ThemeProvider locations:
+
+#### Files Modified:
+
+**1. `/app/components/providers/ThemeProvider.js`** (Line 11)
+```javascript
+// Before
+disableTransitionOnChange={false}
+
+// After
+disableTransitionOnChange={true}
+```
+
+**2. `/app/app/layout.js`** (Line 18)
+```javascript
+// Before
+disableTransitionOnChange={false}
+
+// After
+disableTransitionOnChange={true}
+```
+
+### How It Works
+With `disableTransitionOnChange={true}`:
+1. `next-themes` adds a temporary class to disable ALL transitions before theme change
+2. The theme class (dark/light) is toggled instantly
+3. All color variables update instantly without transitions
+4. The temporary disable class is removed after the change
+5. Normal transitions (hover effects, animations) continue to work as expected
+
+### Impact
+- ✅ Theme switching is now instant with no flickering
+- ✅ All UI elements switch themes simultaneously
+- ✅ No cascade effect of different elements transitioning at different rates
+- ✅ Hover effects and other intentional transitions still work normally
+- ✅ Better user experience with smooth, professional theme switching
+- ✅ Consistent with modern UI/UX best practices
+
+### User Experience After Fix
+**Before:**
+- Toggle theme → Background starts transitioning → Sidebar transitions → Cards transition → Text colors change → Noticeable flickering cascade
+
+**After:**
+- Toggle theme → Entire UI switches instantly → Clean, professional theme change
+
+### Status: 🟢 FIXED
+Theme toggling now works smoothly throughout the application without any flickering or cascading animation effects.
+
