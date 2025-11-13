@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { BorderBeam } from '@/components/magicui/border-beam'
-import { AnimatedGridPattern } from '@/components/magicui/animated-grid-pattern'
+import { GridPattern } from '@/components/magicui/grid-pattern'
 
 export default function LoginPageRedesigned() {
   const [email, setEmail] = useState('')
@@ -49,13 +49,14 @@ export default function LoginPageRedesigned() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-background">
-      {/* Animated Grid Background */}
-      <AnimatedGridPattern
-        numSquares={30}
-        maxOpacity={0.1}
-        duration={3}
-        repeatDelay={1}
-        className="absolute inset-0 text-primary/20 dark:text-primary/10 [mask-image:radial-gradient(500px_circle_at_center,white,transparent)]"
+      {/* Grid Pattern Background */}
+      <GridPattern
+        width={50}
+        height={50}
+        x={-1}
+        y={-1}
+        strokeDasharray="0"
+        className={"[mask-image:radial-gradient(600px_circle_at_center,white,transparent)] stroke-muted-foreground/20 dark:stroke-muted-foreground/10"}
       />
 
       {/* Content */}
