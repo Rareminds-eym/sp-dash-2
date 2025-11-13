@@ -27,12 +27,12 @@ export async function GET(request) {
       .from('recruiters')
       .select(`
         *,
-        users:user_id (
+        users!recruiters_user_id_fkey (
           id,
           email,
           metadata
         ),
-        companies:company_id (
+        companies!recruiters_company_id_fkey (
           id,
           name,
           state,
