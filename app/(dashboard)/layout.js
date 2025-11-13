@@ -280,9 +280,9 @@ export default function DashboardLayout({ children }) {
                       size="icon"
                       onClick={handleRefresh}
                       disabled={refreshing}
-                      className="w-10 h-10 rounded-md flex items-center justify-center transition-all duration-300 hover:scale-110 hover:bg-white/50 dark:hover:bg-slate-800/50"
+                      className="w-10 h-10 rounded-md flex items-center justify-center"
                     >
-                      <RefreshCw className={cn("h-5 w-5", refreshing && "animate-spin")} />
+                      <RefreshCw className={cn("h-5 w-5 transition-transform duration-300 hover:scale-110", refreshing && "animate-spin")} />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
