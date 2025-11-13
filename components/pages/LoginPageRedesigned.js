@@ -51,12 +51,12 @@ export default function LoginPageRedesigned() {
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-background">
       {/* Grid Pattern Background */}
       <GridPattern
-        width={50}
-        height={50}
+        width={60}
+        height={60}
         x={-1}
         y={-1}
         strokeDasharray="0"
-        className={"[mask-image:radial-gradient(600px_circle_at_center,white,transparent)] stroke-muted-foreground/20 dark:stroke-muted-foreground/10"}
+        className={"[mask-image:radial-gradient(700px_circle_at_center,white,transparent)] stroke-muted-foreground/30 fill-muted-foreground/5 dark:stroke-muted-foreground/20 dark:fill-muted-foreground/10"}
       />
 
       {/* Content */}
