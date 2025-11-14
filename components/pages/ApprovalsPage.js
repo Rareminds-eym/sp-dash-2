@@ -78,6 +78,60 @@ export default function ApprovalsPage({ currentUser }) {
     college: 'all',
     branch: 'all'
   })
+
+  // Sort states for each tab (loaded from localStorage)
+  const [universitySort, setUniversitySort] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('approvalSort_universities') || 'date-newest'
+    }
+    return 'date-newest'
+  })
+  
+  const [recruiterSort, setRecruiterSort] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('approvalSort_recruiters') || 'date-newest'
+    }
+    return 'date-newest'
+  })
+  
+  const [collegeSort, setCollegeSort] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('approvalSort_colleges') || 'date-newest'
+    }
+    return 'date-newest'
+  })
+  
+  const [studentSort, setStudentSort] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('approvalSort_students') || 'date-newest'
+    }
+    return 'date-newest'
+  })
+
+  // Save sort preferences to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('approvalSort_universities', universitySort)
+    }
+  }, [universitySort])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('approvalSort_recruiters', recruiterSort)
+    }
+  }, [recruiterSort])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('approvalSort_colleges', collegeSort)
+    }
+  }, [collegeSort])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('approvalSort_students', studentSort)
+    }
+  }, [studentSort])
   
   // Lazy loading state
   const [loadedTabs, setLoadedTabs] = useState({
