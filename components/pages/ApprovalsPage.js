@@ -801,55 +801,15 @@ export default function ApprovalsPage({ currentUser }) {
           {/* Search and Filters for Recruiters */}
           <Card className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50 mb-6">
             <CardContent className="pt-6">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    placeholder="Search recruiters by name, email, or location..."
-                    value={recruiterSearch}
-                    onChange={(e) => setRecruiterSearch(e.target.value)}
-                    className="pl-10 bg-white dark:bg-slate-900"
-                  />
-                </div>
-                <div className="flex gap-2 flex-wrap">
-                  <Select value={recruiterFilters.state} onValueChange={(value) => setRecruiterFilters({...recruiterFilters, state: value})}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="All States" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All States</SelectItem>
-                      {getUniqueStates(recruiters).map(state => (
-                        <SelectItem key={state} value={state}>{state}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="flex gap-2">
-                    <Input
-                      type="date"
-                      value={recruiterFilters.dateFrom}
-                      onChange={(e) => setRecruiterFilters({...recruiterFilters, dateFrom: e.target.value})}
-                      placeholder="From"
-                      className="w-[140px] bg-white dark:bg-slate-900"
-                    />
-                    <Input
-                      type="date"
-                      value={recruiterFilters.dateTo}
-                      onChange={(e) => setRecruiterFilters({...recruiterFilters, dateTo: e.target.value})}
-                      placeholder="To"
-                      className="w-[140px] bg-white dark:bg-slate-900"
-                    />
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setRecruiterFilters({state: 'all', dateFrom: '', dateTo: ''})}
-                    className="flex items-center gap-2"
-                  >
-                    <Filter className="h-4 w-4" />
-                    Clear Filters
-                  </Button>
-                </div>
-              </div>
+              <ApprovalSearchFilter
+                searchValue={recruiterSearch}
+                onSearchChange={setRecruiterSearch}
+                filters={recruiterFilters}
+                onFilterChange={setRecruiterFilters}
+                uniqueStates={getUniqueStates(recruiters)}
+                entityType="recruiter"
+                placeholder="Search recruiters by name, email, or location..."
+              />
             </CardContent>
           </Card>
           
@@ -877,9 +837,7 @@ export default function ApprovalsPage({ currentUser }) {
             </Card>
           ) : (
             <>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {filteredRecruiters.map(rec => renderEntityCard(rec, 'recruiter'))}
-              </div>
+              {renderView(filteredRecruiters, 'recruiter')}
               
               {/* Infinite scroll trigger and Load More button */}
               {pagination.recruiters.hasMore && (
