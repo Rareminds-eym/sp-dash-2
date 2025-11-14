@@ -588,15 +588,6 @@ export default function ApprovalsPage({ currentUser }) {
         return false
       }
       
-      // Date range filter
-      if (filters.dateFrom && new Date(entity.created_at) < new Date(filters.dateFrom)) {
-        return false
-      }
-      
-      if (filters.dateTo && new Date(entity.created_at) > new Date(filters.dateTo)) {
-        return false
-      }
-      
       return true
     })
   }
