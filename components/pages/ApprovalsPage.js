@@ -212,6 +212,50 @@ export default function ApprovalsPage({ currentUser }) {
     }
   }, [activeTab, pagination, loading])
 
+  // Refetch when university filters/search/sort change
+  useEffect(() => {
+    if (loadedTabs.universities) {
+      setPagination(prev => ({
+        ...prev,
+        universities: { ...prev.universities, page: 1, hasMore: true }
+      }))
+      fetchTabData('universities', true, true)
+    }
+  }, [universitySearch, universityFilters, universitySort])
+
+  // Refetch when recruiter filters/search/sort change
+  useEffect(() => {
+    if (loadedTabs.recruiters) {
+      setPagination(prev => ({
+        ...prev,
+        recruiters: { ...prev.recruiters, page: 1, hasMore: true }
+      }))
+      fetchTabData('recruiters', true, true)
+    }
+  }, [recruiterSearch, recruiterFilters, recruiterSort])
+
+  // Refetch when college filters/search/sort change
+  useEffect(() => {
+    if (loadedTabs.colleges) {
+      setPagination(prev => ({
+        ...prev,
+        colleges: { ...prev.colleges, page: 1, hasMore: true }
+      }))
+      fetchTabData('colleges', true, true)
+    }
+  }, [collegeSearch, collegeFilters, collegeSort])
+
+  // Refetch when student filters/search/sort change
+  useEffect(() => {
+    if (loadedTabs.students) {
+      setPagination(prev => ({
+        ...prev,
+        students: { ...prev.students, page: 1, hasMore: true }
+      }))
+      fetchTabData('students', true, true)
+    }
+  }, [studentSearch, studentFilters, studentSort])
+
   // Fetch counts for all entity types on initial load
   const fetchAllCounts = async () => {
     try {
