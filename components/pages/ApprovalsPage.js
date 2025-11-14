@@ -43,7 +43,6 @@ import TableView from '@/components/approvals/views/TableView'
 import ListView from '@/components/approvals/views/ListView'
 import CompactGridView from '@/components/approvals/views/CompactGridView'
 import { useApprovalView } from '@/components/approvals/ApprovalViewContext'
-import ApprovalViewDropdown from '@/components/approvals/ApprovalViewDropdown'
 
 export default function ApprovalsPage({ currentUser }) {
   const [universities, setUniversities] = useState([])
