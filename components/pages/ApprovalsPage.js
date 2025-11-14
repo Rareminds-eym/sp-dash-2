@@ -220,7 +220,7 @@ export default function ApprovalsPage({ currentUser }) {
         ...prev,
         universities: { ...prev.universities, page: 1, hasMore: true }
       }))
-      fetchTabData('universities', true, true)
+      fetchTabData('universities', false, true, true)
     }
   }, [universitySearch, universityFilters, universitySort])
 
@@ -231,7 +231,7 @@ export default function ApprovalsPage({ currentUser }) {
         ...prev,
         recruiters: { ...prev.recruiters, page: 1, hasMore: true }
       }))
-      fetchTabData('recruiters', true, true)
+      fetchTabData('recruiters', false, true, true)
     }
   }, [recruiterSearch, recruiterFilters, recruiterSort])
 
@@ -242,7 +242,7 @@ export default function ApprovalsPage({ currentUser }) {
         ...prev,
         colleges: { ...prev.colleges, page: 1, hasMore: true }
       }))
-      fetchTabData('colleges', true, true)
+      fetchTabData('colleges', false, true, true)
     }
   }, [collegeSearch, collegeFilters, collegeSort])
 
@@ -253,7 +253,7 @@ export default function ApprovalsPage({ currentUser }) {
         ...prev,
         students: { ...prev.students, page: 1, hasMore: true }
       }))
-      fetchTabData('students', true, true)
+      fetchTabData('students', false, true, true)
     }
   }, [studentSearch, studentFilters, studentSort])
 
