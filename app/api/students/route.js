@@ -20,6 +20,10 @@ export async function GET(request) {
     // Filter parameters
     const approvalStatus = url.searchParams.get('approval_status');
     const searchTerm = url.searchParams.get('search');
+    const state = url.searchParams.get('state');
+    const collegeSchoolName = url.searchParams.get('college_school_name');
+    const branchField = url.searchParams.get('branch_field');
+    const sortBy = url.searchParams.get('sort') || 'date-newest';
     
     // Build query with count using admin client to bypass RLS restrictions
     let query = supabaseAdmin.from('students').select('*', { count: 'exact' });
@@ -28,14 +32,43 @@ export async function GET(request) {
     if (approvalStatus) {
       query = query.eq('approval_status', approvalStatus);
     }
+    if (state && state !== 'all') {
+      query = query.eq('state', state);
+    }
+    if (collegeSchoolName && collegeSchoolName !== 'all') {
+      query = query.eq('college_school_name', collegeSchoolName);
+    }
+    if (branchField && branchField !== 'all') {
+      query = query.eq('branch_field', branchField);
+    }
     if (searchTerm) {
-      query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
+      query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,college_school_name.ilike.%${searchTerm}%,branch_field.ilike.%${searchTerm}%`);
     }
     
-    // Apply sorting and pagination
-    const { data: students, error, count } = await query
-      .order('createdAt', { ascending: false })
-      .range(offset, offset + limit - 1);
+    // Apply sorting
+    switch(sortBy) {
+      case 'name-asc':
+        query = query.order('name', { ascending: true, nullsFirst: false });
+        break;
+      case 'name-desc':
+        query = query.order('name', { ascending: false, nullsFirst: false });
+        break;
+      case 'date-oldest':
+        query = query.order('createdAt', { ascending: true });
+        break;
+      case 'state-asc':
+        query = query.order('state', { ascending: true, nullsFirst: false });
+        break;
+      case 'date-newest':
+      default:
+        query = query.order('createdAt', { ascending: false });
+        break;
+    }
+    
+    // Apply pagination
+    query = query.range(offset, offset + limit - 1);
+    
+    const { data: students, error, count } = await query;
 
     if (error) {
       console.error('Error fetching students:', error);
