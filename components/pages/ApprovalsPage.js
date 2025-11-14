@@ -291,9 +291,11 @@ export default function ApprovalsPage({ currentUser }) {
     }
   }
 
-  const fetchTabData = async (tabName, isInitialLoad = false, forceRefresh = false) => {
+  const fetchTabData = async (tabName, isInitialLoad = false, forceRefresh = false, isFiltering = false) => {
     if (isInitialLoad) {
       setLoading(true)
+    } else if (isFiltering) {
+      setFiltering(true)
     }
     
     const limit = 20 // Items per page
