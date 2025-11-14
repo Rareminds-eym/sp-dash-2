@@ -646,10 +646,79 @@ export default function ApprovalsPage({ currentUser }) {
     })
   }
 
-  const filteredUniversities = filterEntities(universities, 'university', universitySearch, universityFilters)
-  const filteredRecruiters = filterEntities(recruiters, 'recruiter', recruiterSearch, recruiterFilters)
-  const filteredColleges = filterEntities(colleges, 'college', collegeSearch, collegeFilters)
-  const filteredStudents = filterEntities(students, 'student', studentSearch, studentFilters)
+  // Sort function for entities
+  const sortEntities = (entities, sortOption, entityType) => {
+    const sorted = [...entities]
+    
+    switch(sortOption) {
+      case 'name-asc':
+        return sorted.sort((a, b) => {
+          const nameA = entityType === 'student' 
+            ? (a.profile?.name || a.name || a.users?.metadata?.name || '').toLowerCase()
+            : (a.name || '').toLowerCase()
+          const nameB = entityType === 'student'
+            ? (b.profile?.name || b.name || b.users?.metadata?.name || '').toLowerCase()
+            : (b.name || '').toLowerCase()
+          return nameA.localeCompare(nameB)
+        })
+      
+      case 'name-desc':
+        return sorted.sort((a, b) => {
+          const nameA = entityType === 'student'
+            ? (a.profile?.name || a.name || a.users?.metadata?.name || '').toLowerCase()
+            : (a.name || '').toLowerCase()
+          const nameB = entityType === 'student'
+            ? (b.profile?.name || b.name || b.users?.metadata?.name || '').toLowerCase()
+            : (b.name || '').toLowerCase()
+          return nameB.localeCompare(nameA)
+        })
+      
+      case 'date-newest':
+        return sorted.sort((a, b) => {
+          const dateA = new Date(a.created_at || 0)
+          const dateB = new Date(b.created_at || 0)
+          return dateB - dateA
+        })
+      
+      case 'date-oldest':
+        return sorted.sort((a, b) => {
+          const dateA = new Date(a.created_at || 0)
+          const dateB = new Date(b.created_at || 0)
+          return dateA - dateB
+        })
+      
+      case 'state-asc':
+        return sorted.sort((a, b) => {
+          const stateA = (a.state || '').toLowerCase()
+          const stateB = (b.state || '').toLowerCase()
+          return stateA.localeCompare(stateB)
+        })
+      
+      default:
+        return sorted
+    }
+  }
+
+  const filteredUniversities = sortEntities(
+    filterEntities(universities, 'university', universitySearch, universityFilters),
+    universitySort,
+    'university'
+  )
+  const filteredRecruiters = sortEntities(
+    filterEntities(recruiters, 'recruiter', recruiterSearch, recruiterFilters),
+    recruiterSort,
+    'recruiter'
+  )
+  const filteredColleges = sortEntities(
+    filterEntities(colleges, 'college', collegeSearch, collegeFilters),
+    collegeSort,
+    'college'
+  )
+  const filteredStudents = sortEntities(
+    filterEntities(students, 'student', studentSearch, studentFilters),
+    studentSort,
+    'student'
+  )
 
   const totalPending = pagination.universities.total + pagination.recruiters.total + pagination.colleges.total + pagination.students.total
 
