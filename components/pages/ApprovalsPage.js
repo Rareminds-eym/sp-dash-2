@@ -412,6 +412,9 @@ export default function ApprovalsPage({ currentUser }) {
       if (isInitialLoad) {
         setLoading(false)
       }
+      if (isFiltering) {
+        setFiltering(false)
+      }
     }
   }
 
