@@ -22,6 +22,8 @@ export async function GET(request) {
     const accountStatus = url.searchParams.get('account_status');
     const collegeType = url.searchParams.get('college_type');
     const searchTerm = url.searchParams.get('search');
+    const state = url.searchParams.get('state');
+    const sortBy = url.searchParams.get('sort') || 'date-newest';
     
     // Build query - using supabaseAdmin to bypass RLS for admin operations
     let query = supabaseAdmin.from('colleges').select('*', { count: 'exact' });
@@ -36,12 +38,32 @@ export async function GET(request) {
     if (collegeType) {
       query = query.eq('collegeType', collegeType);
     }
+    if (state && state !== 'all') {
+      query = query.eq('state', state);
+    }
     if (searchTerm) {
       query = query.or(`name.ilike.%${searchTerm}%,code.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%,state.ilike.%${searchTerm}%`);
     }
     
-    // Apply sorting (newest first by default)
-    query = query.order('createdAt', { ascending: false });
+    // Apply sorting
+    switch(sortBy) {
+      case 'name-asc':
+        query = query.order('name', { ascending: true });
+        break;
+      case 'name-desc':
+        query = query.order('name', { ascending: false });
+        break;
+      case 'date-oldest':
+        query = query.order('createdAt', { ascending: true });
+        break;
+      case 'state-asc':
+        query = query.order('state', { ascending: true });
+        break;
+      case 'date-newest':
+      default:
+        query = query.order('createdAt', { ascending: false });
+        break;
+    }
     
     // Apply pagination
     query = query.range(offset, offset + limit - 1);
