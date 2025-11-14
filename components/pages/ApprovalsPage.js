@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -20,33 +20,29 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import {
-  AlertTriangle,
-  Book,
   Briefcase,
   Building2,
-  Calendar,
   CheckCircle2,
-  Eye,
-  Filter,
-  Globe,
   Loader2,
-  Mail,
-  MapPin,
-  Phone,
   RefreshCw,
   School,
-  Search,
   User,
   XCircle
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { PageLoader, CardGridLoader } from '@/components/ui/page-loader'
+import { CardGridLoader } from '@/components/ui/page-loader'
+
+// Import modular components
+import ApprovalViewSwitcher from '@/components/approvals/ApprovalViewSwitcher'
+import ApprovalSearchFilter from '@/components/approvals/ApprovalSearchFilter'
+import CardView from '@/components/approvals/views/CardView'
+import TableView from '@/components/approvals/views/TableView'
+import ListView from '@/components/approvals/views/ListView'
+import CompactGridView from '@/components/approvals/views/CompactGridView'
 
 export default function ApprovalsPage({ currentUser }) {
   const [universities, setUniversities] = useState([])
