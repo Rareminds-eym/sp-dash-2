@@ -889,6 +889,8 @@ export default function ApprovalsPage({ currentUser }) {
                 onSearchChange={setRecruiterSearch}
                 filters={recruiterFilters}
                 onFilterChange={setRecruiterFilters}
+                sortValue={recruiterSort}
+                onSortChange={setRecruiterSort}
                 uniqueStates={getUniqueStates(recruiters)}
                 entityType="recruiter"
                 placeholder="Search recruiters by name, email, or location..."
