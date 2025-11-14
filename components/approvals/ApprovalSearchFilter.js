@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Filter, Search } from 'lucide-react'
+import { ArrowDownAZ, Filter, Search } from 'lucide-react'
 import ApprovalViewDropdown from './ApprovalViewDropdown'
 
 export default function ApprovalSearchFilter({
@@ -11,6 +11,8 @@ export default function ApprovalSearchFilter({
   onSearchChange,
   filters,
   onFilterChange,
+  sortValue,
+  onSortChange,
   uniqueStates = [],
   uniqueColleges = [],
   uniqueBranches = [],
@@ -44,6 +46,21 @@ export default function ApprovalSearchFilter({
         />
       </div>
       <div className="flex gap-2 flex-wrap">
+        {/* Sort Dropdown */}
+        <Select value={sortValue} onValueChange={onSortChange}>
+          <SelectTrigger className="w-[200px]">
+            <ArrowDownAZ className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Sort by..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="name-asc">Name (A-Z)</SelectItem>
+            <SelectItem value="name-desc">Name (Z-A)</SelectItem>
+            <SelectItem value="date-newest">Date (Newest First)</SelectItem>
+            <SelectItem value="date-oldest">Date (Oldest First)</SelectItem>
+            <SelectItem value="state-asc">State (A-Z)</SelectItem>
+          </SelectContent>
+        </Select>
+
         <Select value={filters.state} onValueChange={(value) => onFilterChange({...filters, state: value})}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="All States" />
