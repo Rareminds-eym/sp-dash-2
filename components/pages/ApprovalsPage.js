@@ -1073,6 +1073,8 @@ export default function ApprovalsPage({ currentUser }) {
                 onSearchChange={setStudentSearch}
                 filters={studentFilters}
                 onFilterChange={setStudentFilters}
+                sortValue={studentSort}
+                onSortChange={setStudentSort}
                 uniqueStates={getUniqueStates(students)}
                 uniqueColleges={getUniqueColleges()}
                 uniqueBranches={getUniqueBranches()}
