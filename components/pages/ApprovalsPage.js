@@ -52,13 +52,8 @@ export default function ApprovalsPage({ currentUser }) {
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('universities')
   
-  // View type state - persistent via localStorage
-  const [viewType, setViewType] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('approvalViewType') || 'card'
-    }
-    return 'card'
-  })
+  // View type from context
+  const { viewType } = useApprovalView()
   
   // Separate search and filter states for each tab
   const [universitySearch, setUniversitySearch] = useState('')
