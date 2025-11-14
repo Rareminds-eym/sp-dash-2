@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Filter, Search } from 'lucide-react'
+import ApprovalViewDropdown from './ApprovalViewDropdown'
 
 export default function ApprovalSearchFilter({
   searchValue,
@@ -14,7 +15,8 @@ export default function ApprovalSearchFilter({
   uniqueColleges = [],
   uniqueBranches = [],
   entityType,
-  placeholder = 'Search...'
+  placeholder = 'Search...',
+  showViewSwitcher = false
 }) {
   const handleClearFilters = () => {
     const clearedFilters = {
