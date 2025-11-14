@@ -62,27 +62,19 @@ export default function ApprovalsPage({ currentUser }) {
   const [studentSearch, setStudentSearch] = useState('')
   
   const [universityFilters, setUniversityFilters] = useState({
-    state: 'all',
-    dateFrom: '',
-    dateTo: ''
+    state: 'all'
   })
   
   const [recruiterFilters, setRecruiterFilters] = useState({
-    state: 'all',
-    dateFrom: '',
-    dateTo: ''
+    state: 'all'
   })
   
   const [collegeFilters, setCollegeFilters] = useState({
-    state: 'all',
-    dateFrom: '',
-    dateTo: ''
+    state: 'all'
   })
   
   const [studentFilters, setStudentFilters] = useState({
     state: 'all',
-    dateFrom: '',
-    dateTo: '',
     college: 'all',
     branch: 'all'
   })
