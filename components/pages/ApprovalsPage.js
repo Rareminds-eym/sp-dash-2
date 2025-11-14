@@ -661,11 +661,6 @@ export default function ApprovalsPage({ currentUser }) {
 
   return (
     <div className="space-y-6">
-      {/* Page Description */}
-      <div>
-        <p className="text-muted-foreground">Review and approve pending registrations</p>
-      </div>
-
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border border-white/20 dark:border-slate-700/50">
