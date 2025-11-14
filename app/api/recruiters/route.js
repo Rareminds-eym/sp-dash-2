@@ -21,6 +21,8 @@ export async function GET(request) {
     const approvalStatus = url.searchParams.get('approval_status');
     const accountStatus = url.searchParams.get('account_status');
     const searchTerm = url.searchParams.get('search');
+    const state = url.searchParams.get('state');
+    const sortBy = url.searchParams.get('sort') || 'date-newest';
     
     // Build query for recruiters
     let query = supabaseAdmin.from('recruiters').select('*', { count: 'exact' });
@@ -32,13 +34,33 @@ export async function GET(request) {
     if (accountStatus) {
       query = query.eq('account_status', accountStatus);
     }
+    if (state && state !== 'all') {
+      query = query.eq('state', state);
+    }
     if (searchTerm) {
       // Search in recruiter name, email, phone
-      query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`);
+      query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,state.ilike.%${searchTerm}%`);
     }
     
-    // Apply sorting (newest first by default)
-    query = query.order('createdat', { ascending: false });
+    // Apply sorting
+    switch(sortBy) {
+      case 'name-asc':
+        query = query.order('name', { ascending: true });
+        break;
+      case 'name-desc':
+        query = query.order('name', { ascending: false });
+        break;
+      case 'date-oldest':
+        query = query.order('createdat', { ascending: true });
+        break;
+      case 'state-asc':
+        query = query.order('state', { ascending: true });
+        break;
+      case 'date-newest':
+      default:
+        query = query.order('createdat', { ascending: false });
+        break;
+    }
     
     // Apply pagination
     query = query.range(offset, offset + limit - 1);
