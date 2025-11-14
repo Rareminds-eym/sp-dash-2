@@ -28,13 +28,12 @@ export default function ApprovalViewDropdown() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="ghost"
-          size="sm"
-          className="flex items-center gap-2 h-10 px-3 hover:bg-white/50 dark:hover:bg-slate-800/50"
+          variant="outline"
+          size="icon"
+          className="h-10 w-10 flex items-center justify-center bg-white dark:bg-slate-900"
+          title={currentView.label}
         >
           <CurrentIcon className="h-4 w-4" />
-          <span className="hidden sm:inline text-sm">{currentView.label}</span>
-          <ChevronDown className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
