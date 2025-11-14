@@ -967,6 +967,7 @@ export default function ApprovalsPage({ currentUser }) {
                 uniqueBranches={getUniqueBranches()}
                 entityType="student"
                 placeholder="Search students by name, email, university, or college..."
+                showViewSwitcher={true}
               />
             </CardContent>
           </Card>
