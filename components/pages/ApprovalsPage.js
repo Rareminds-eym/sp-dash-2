@@ -126,6 +126,18 @@ export default function ApprovalsPage({ currentUser }) {
   // Ref for infinite scroll observer
   const loadMoreRef = useRef(null)
 
+  // Persist view type to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('approvalViewType', viewType)
+    }
+  }, [viewType])
+  
+  // Handle view type change
+  const handleViewChange = (newView) => {
+    setViewType(newView)
+  }
+  
   // Fetch counts for all tabs on initial load
   useEffect(() => {
     fetchAllCounts()
