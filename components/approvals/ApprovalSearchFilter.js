@@ -20,9 +20,7 @@ export default function ApprovalSearchFilter({
 }) {
   const handleClearFilters = () => {
     const clearedFilters = {
-      state: 'all',
-      dateFrom: '',
-      dateTo: ''
+      state: 'all'
     }
     
     if (entityType === 'student') {
