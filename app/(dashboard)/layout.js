@@ -42,7 +42,7 @@ import { useEffect, useState } from 'react'
 const navigation = [
   { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
   { name: 'Admin Management', icon: Shield, href: '/users' },
-  { name: 'Skill Passports', icon: FileText, href: '/passports' },
+  { name: 'Verification Center', icon: FileText, href: '/passports' },
   { name: 'Approval Center', icon: CheckCircle, href: '/approvals' },
   { name: 'Reports & Analytics', icon: BarChart3, href: '/reports' },
   { name: 'Audit Logs', icon: History, href: '/audit-logs' },
