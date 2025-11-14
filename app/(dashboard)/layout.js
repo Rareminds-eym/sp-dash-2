@@ -38,6 +38,8 @@ import {
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { ApprovalViewProvider } from '@/components/approvals/ApprovalViewContext'
+import ApprovalViewDropdown from '@/components/approvals/ApprovalViewDropdown'
 
 const navigation = [
   { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
