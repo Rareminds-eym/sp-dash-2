@@ -785,6 +785,7 @@ export default function ApprovalsPage({ currentUser }) {
                 uniqueStates={getUniqueStates(recruiters)}
                 entityType="recruiter"
                 placeholder="Search recruiters by name, email, or location..."
+                showViewSwitcher={true}
               />
             </CardContent>
           </Card>
