@@ -1039,7 +1039,7 @@ export default function ApprovalsPage({ currentUser }) {
           
           {loading ? (
             <CardGridLoader count={6} columns={3} />
-          ) : filteredStudents.length === 0 ? (
+          ) : students.length === 0 ? (
             <Card className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50">
               <CardContent className="text-center py-12">
                 <CheckCircle2 className="h-16 w-16 mx-auto text-green-500 mb-4" />
@@ -1061,7 +1061,7 @@ export default function ApprovalsPage({ currentUser }) {
             </Card>
           ) : (
             <>
-              {renderView(filteredStudents, 'student')}
+              {renderView(students, 'student')}
               
               {/* Infinite scroll trigger and Load More button */}
               {pagination.students.hasMore && (
