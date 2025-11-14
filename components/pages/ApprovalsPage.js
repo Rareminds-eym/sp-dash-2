@@ -50,6 +50,7 @@ export default function ApprovalsPage({ currentUser }) {
   const [colleges, setColleges] = useState([])
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(false)
+  const [filtering, setFiltering] = useState(false)
   const [activeTab, setActiveTab] = useState('universities')
   
   // View type from context
