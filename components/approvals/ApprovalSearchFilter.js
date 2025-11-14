@@ -34,7 +34,7 @@ export default function ApprovalSearchFilter({
     onFilterChange(clearedFilters)
   }
 
-  // Map sort values to icons
+  // Map sort values to icons and labels
   const getSortIcon = (value) => {
     switch(value) {
       case 'name-asc':
@@ -52,6 +52,23 @@ export default function ApprovalSearchFilter({
     }
   }
 
+  const getSortLabel = (value) => {
+    switch(value) {
+      case 'name-asc':
+        return 'Name (A-Z)'
+      case 'name-desc':
+        return 'Name (Z-A)'
+      case 'date-newest':
+        return 'Date (Newest First)'
+      case 'date-oldest':
+        return 'Date (Oldest First)'
+      case 'state-asc':
+        return 'State (A-Z)'
+      default:
+        return 'Sort by...'
+    }
+  }
+
   return (
     <div className="flex flex-col md:flex-row gap-4">
       <div className="relative flex-1">
@@ -65,44 +82,55 @@ export default function ApprovalSearchFilter({
         />
       </div>
       <div className="flex gap-2 flex-wrap">
-        {/* Sort Dropdown - Icon Only */}
-        <Select value={sortValue} onValueChange={onSortChange}>
-          <SelectTrigger className="w-[50px] px-2">
-            {getSortIcon(sortValue)}
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="name-asc">
-              <div className="flex items-center gap-2">
-                <ArrowDownAZ className="h-4 w-4" />
-                <span>Name (A-Z)</span>
+        {/* Sort Dropdown - Icon Only with Tooltip */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <Select value={sortValue} onValueChange={onSortChange}>
+                  <SelectTrigger className="w-[50px] px-2">
+                    {getSortIcon(sortValue)}
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="name-asc">
+                      <div className="flex items-center gap-2">
+                        <ArrowDownAZ className="h-4 w-4" />
+                        <span>Name (A-Z)</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="name-desc">
+                      <div className="flex items-center gap-2">
+                        <ArrowDownZA className="h-4 w-4" />
+                        <span>Name (Z-A)</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="date-newest">
+                      <div className="flex items-center gap-2">
+                        <ArrowDown10 className="h-4 w-4" />
+                        <span>Date (Newest First)</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="date-oldest">
+                      <div className="flex items-center gap-2">
+                        <ArrowUp10 className="h-4 w-4" />
+                        <span>Date (Oldest First)</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="state-asc">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        <span>State (A-Z)</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </SelectItem>
-            <SelectItem value="name-desc">
-              <div className="flex items-center gap-2">
-                <ArrowDownZA className="h-4 w-4" />
-                <span>Name (Z-A)</span>
-              </div>
-            </SelectItem>
-            <SelectItem value="date-newest">
-              <div className="flex items-center gap-2">
-                <ArrowDown10 className="h-4 w-4" />
-                <span>Date (Newest First)</span>
-              </div>
-            </SelectItem>
-            <SelectItem value="date-oldest">
-              <div className="flex items-center gap-2">
-                <ArrowUp10 className="h-4 w-4" />
-                <span>Date (Oldest First)</span>
-              </div>
-            </SelectItem>
-            <SelectItem value="state-asc">
-              <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                <span>State (A-Z)</span>
-              </div>
-            </SelectItem>
-          </SelectContent>
-        </Select>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{getSortLabel(sortValue)}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
         <Select value={filters.state} onValueChange={(value) => onFilterChange({...filters, state: value})}>
           <SelectTrigger className="w-[180px]">
