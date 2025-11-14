@@ -883,19 +883,22 @@ export default function ApprovalsPage({ currentUser }) {
               </CardContent>
             </Card>
           ) : (
-            <>
+            <div className="relative">
+              {/* Filtering overlay */}
+              {filtering && (
+                <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
+                  <div className="flex items-center gap-2 text-muted-foreground bg-white dark:bg-slate-800 px-4 py-2 rounded-lg shadow-lg">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Filtering...</span>
+                  </div>
+                </div>
+              )}
+              
               {renderView(recruiters, 'recruiter')}
               
               {/* Infinite scroll trigger and Load More button */}
               {pagination.recruiters.hasMore && (
                 <div className="mt-6 flex flex-col items-center gap-4">
-                  {pagination.recruiters.loadingMore && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                      <span>Loading more recruiters...</span>
-                    </div>
-                  )}
-                  
                   {/* Intersection observer target */}
                   <div ref={loadMoreRef} className="h-4" />
                   
@@ -928,7 +931,7 @@ export default function ApprovalsPage({ currentUser }) {
                   All {pagination.recruiters.total} recruiters loaded
                 </div>
               )}
-            </>
+            </div>
           )}
         </TabsContent>
 
