@@ -890,55 +890,15 @@ export default function ApprovalsPage({ currentUser }) {
           {/* Search and Filters for Colleges */}
           <Card className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50 mb-6">
             <CardContent className="pt-6">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    placeholder="Search colleges by name, email, or location..."
-                    value={collegeSearch}
-                    onChange={(e) => setCollegeSearch(e.target.value)}
-                    className="pl-10 bg-white dark:bg-slate-900"
-                  />
-                </div>
-                <div className="flex gap-2 flex-wrap">
-                  <Select value={collegeFilters.state} onValueChange={(value) => setCollegeFilters({...collegeFilters, state: value})}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="All States" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All States</SelectItem>
-                      {getUniqueStates(colleges).map(state => (
-                        <SelectItem key={state} value={state}>{state}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="flex gap-2">
-                    <Input
-                      type="date"
-                      value={collegeFilters.dateFrom}
-                      onChange={(e) => setCollegeFilters({...collegeFilters, dateFrom: e.target.value})}
-                      placeholder="From"
-                      className="w-[140px] bg-white dark:bg-slate-900"
-                    />
-                    <Input
-                      type="date"
-                      value={collegeFilters.dateTo}
-                      onChange={(e) => setCollegeFilters({...collegeFilters, dateTo: e.target.value})}
-                      placeholder="To"
-                      className="w-[140px] bg-white dark:bg-slate-900"
-                    />
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setCollegeFilters({state: 'all', dateFrom: '', dateTo: ''})}
-                    className="flex items-center gap-2"
-                  >
-                    <Filter className="h-4 w-4" />
-                    Clear Filters
-                  </Button>
-                </div>
-              </div>
+              <ApprovalSearchFilter
+                searchValue={collegeSearch}
+                onSearchChange={setCollegeSearch}
+                filters={collegeFilters}
+                onFilterChange={setCollegeFilters}
+                uniqueStates={getUniqueStates(colleges)}
+                entityType="college"
+                placeholder="Search colleges by name, email, or location..."
+              />
             </CardContent>
           </Card>
           
@@ -966,9 +926,7 @@ export default function ApprovalsPage({ currentUser }) {
             </Card>
           ) : (
             <>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {filteredColleges.map(college => renderEntityCard(college, 'college'))}
-              </div>
+              {renderView(filteredColleges, 'college')}
               
               {/* Infinite scroll trigger and Load More button */}
               {pagination.colleges.hasMore && (
