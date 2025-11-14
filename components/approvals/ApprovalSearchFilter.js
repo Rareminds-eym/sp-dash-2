@@ -109,6 +109,7 @@ export default function ApprovalSearchFilter({
           <Filter className="h-4 w-4" />
           Clear Filters
         </Button>
+        {showViewSwitcher && <ApprovalViewDropdown />}
       </div>
     </div>
   )
