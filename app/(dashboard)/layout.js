@@ -240,7 +240,7 @@ export default function DashboardLayout({ children }) {
               </div>
               <Button
                 variant="outline"
-                className="w-full bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800/50 hover:text-red-700 dark:hover:text-red-300 transition-all duration-300"
+                className="w-full text-gray-700 dark:text-gray-300 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800/50 hover:text-red-700 dark:hover:text-red-300 transition-all duration-300"
                 onClick={handleLogout}
               >
                 <LogOut className="h-4 w-4 mr-2" />
