@@ -83,22 +83,6 @@ export default function ApprovalSearchFilter({
           </>
         )}
         
-        <div className="flex gap-2">
-          <Input
-            type="date"
-            value={filters.dateFrom}
-            onChange={(e) => onFilterChange({...filters, dateFrom: e.target.value})}
-            placeholder="From"
-            className="w-[140px] bg-white dark:bg-slate-900"
-          />
-          <Input
-            type="date"
-            value={filters.dateTo}
-            onChange={(e) => onFilterChange({...filters, dateTo: e.target.value})}
-            placeholder="To"
-            className="w-[140px] bg-white dark:bg-slate-900"
-          />
-        </div>
         <Button 
           variant="outline" 
           onClick={handleClearFilters}
