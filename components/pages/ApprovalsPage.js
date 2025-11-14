@@ -388,18 +388,43 @@ export default function ApprovalsPage({ currentUser }) {
     try {
       let endpoint = ''
       
+      // Build endpoint with filters
+      const buildEndpoint = (base, filters, search, sort) => {
+        const params = new URLSearchParams({
+          approval_status: 'pending',
+          page: nextPage.toString(),
+          limit: limit.toString(),
+          sort: sort
+        })
+        
+        if (search) {
+          params.append('search', search)
+        }
+        if (filters.state && filters.state !== 'all') {
+          params.append('state', filters.state)
+        }
+        if (filters.college && filters.college !== 'all') {
+          params.append('college_school_name', filters.college)
+        }
+        if (filters.branch && filters.branch !== 'all') {
+          params.append('branch_field', filters.branch)
+        }
+        
+        return `${base}?${params.toString()}`
+      }
+      
       switch(currentTab) {
         case 'universities':
-          endpoint = `/api/universities?approval_status=pending&page=${nextPage}&limit=${limit}`
+          endpoint = buildEndpoint('/api/universities', universityFilters, universitySearch, universitySort)
           break
         case 'recruiters':
-          endpoint = `/api/recruiters?approval_status=pending&page=${nextPage}&limit=${limit}`
+          endpoint = buildEndpoint('/api/recruiters', recruiterFilters, recruiterSearch, recruiterSort)
           break
         case 'colleges':
-          endpoint = `/api/colleges?approval_status=pending&page=${nextPage}&limit=${limit}`
+          endpoint = buildEndpoint('/api/colleges', collegeFilters, collegeSearch, collegeSort)
           break
         case 'students':
-          endpoint = `/api/students?approval_status=pending&page=${nextPage}&limit=${limit}`
+          endpoint = buildEndpoint('/api/students', studentFilters, studentSearch, studentSort)
           break
       }
       
