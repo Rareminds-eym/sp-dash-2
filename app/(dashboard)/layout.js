@@ -291,7 +291,6 @@ export default function DashboardLayout({ children }) {
                 </Tooltip>
               </TooltipProvider>
               <ThemeToggle />
-              {pathname === '/approvals' && <ApprovalViewDropdown />}
               {canShowMenu() && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
