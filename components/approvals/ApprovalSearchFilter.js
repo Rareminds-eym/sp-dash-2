@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ArrowDownAZ, Filter, Search } from 'lucide-react'
+import { ArrowDownAZ, ArrowDownZA, ArrowDown10, ArrowUp10, MapPin, Filter, Search } from 'lucide-react'
 import ApprovalViewDropdown from './ApprovalViewDropdown'
 
 export default function ApprovalSearchFilter({
@@ -33,6 +33,24 @@ export default function ApprovalSearchFilter({
     onFilterChange(clearedFilters)
   }
 
+  // Map sort values to icons
+  const getSortIcon = (value) => {
+    switch(value) {
+      case 'name-asc':
+        return <ArrowDownAZ className="h-4 w-4" />
+      case 'name-desc':
+        return <ArrowDownZA className="h-4 w-4" />
+      case 'date-newest':
+        return <ArrowDown10 className="h-4 w-4" />
+      case 'date-oldest':
+        return <ArrowUp10 className="h-4 w-4" />
+      case 'state-asc':
+        return <MapPin className="h-4 w-4" />
+      default:
+        return <ArrowDownAZ className="h-4 w-4" />
+    }
+  }
+
   return (
     <div className="flex flex-col md:flex-row gap-4">
       <div className="relative flex-1">
@@ -46,18 +64,42 @@ export default function ApprovalSearchFilter({
         />
       </div>
       <div className="flex gap-2 flex-wrap">
-        {/* Sort Dropdown */}
+        {/* Sort Dropdown - Icon Only */}
         <Select value={sortValue} onValueChange={onSortChange}>
-          <SelectTrigger className="w-[200px]">
-            <ArrowDownAZ className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Sort by..." />
+          <SelectTrigger className="w-[50px] px-2">
+            {getSortIcon(sortValue)}
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="name-asc">Name (A-Z)</SelectItem>
-            <SelectItem value="name-desc">Name (Z-A)</SelectItem>
-            <SelectItem value="date-newest">Date (Newest First)</SelectItem>
-            <SelectItem value="date-oldest">Date (Oldest First)</SelectItem>
-            <SelectItem value="state-asc">State (A-Z)</SelectItem>
+            <SelectItem value="name-asc">
+              <div className="flex items-center gap-2">
+                <ArrowDownAZ className="h-4 w-4" />
+                <span>Name (A-Z)</span>
+              </div>
+            </SelectItem>
+            <SelectItem value="name-desc">
+              <div className="flex items-center gap-2">
+                <ArrowDownZA className="h-4 w-4" />
+                <span>Name (Z-A)</span>
+              </div>
+            </SelectItem>
+            <SelectItem value="date-newest">
+              <div className="flex items-center gap-2">
+                <ArrowDown10 className="h-4 w-4" />
+                <span>Date (Newest First)</span>
+              </div>
+            </SelectItem>
+            <SelectItem value="date-oldest">
+              <div className="flex items-center gap-2">
+                <ArrowUp10 className="h-4 w-4" />
+                <span>Date (Oldest First)</span>
+              </div>
+            </SelectItem>
+            <SelectItem value="state-asc">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                <span>State (A-Z)</span>
+              </div>
+            </SelectItem>
           </SelectContent>
         </Select>
 
