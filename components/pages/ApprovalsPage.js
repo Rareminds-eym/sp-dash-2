@@ -677,6 +677,14 @@ export default function ApprovalsPage({ currentUser }) {
 
   return (
     <div className="space-y-6">
+      {/* View Switcher */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Approval Center</h1>
+          <p className="text-muted-foreground">Review and approve pending registrations</p>
+        </div>
+        <ApprovalViewSwitcher currentView={viewType} onViewChange={handleViewChange} />
+      </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
