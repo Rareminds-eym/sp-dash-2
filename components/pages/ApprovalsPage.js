@@ -875,6 +875,7 @@ export default function ApprovalsPage({ currentUser }) {
                 uniqueStates={getUniqueStates(colleges)}
                 entityType="college"
                 placeholder="Search colleges by name, email, or location..."
+                showViewSwitcher={true}
               />
             </CardContent>
           </Card>
