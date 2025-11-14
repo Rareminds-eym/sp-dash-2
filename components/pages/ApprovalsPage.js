@@ -37,12 +37,12 @@ import { useEffect, useRef, useState } from 'react'
 import { CardGridLoader } from '@/components/ui/page-loader'
 
 // Import modular components
-import ApprovalViewSwitcher from '@/components/approvals/ApprovalViewSwitcher'
 import ApprovalSearchFilter from '@/components/approvals/ApprovalSearchFilter'
 import CardView from '@/components/approvals/views/CardView'
 import TableView from '@/components/approvals/views/TableView'
 import ListView from '@/components/approvals/views/ListView'
 import CompactGridView from '@/components/approvals/views/CompactGridView'
+import { useApprovalView } from '@/components/approvals/ApprovalViewContext'
 
 export default function ApprovalsPage({ currentUser }) {
   const [universities, setUniversities] = useState([])
