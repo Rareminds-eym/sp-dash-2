@@ -797,6 +797,8 @@ export default function ApprovalsPage({ currentUser }) {
                 onSearchChange={setUniversitySearch}
                 filters={universityFilters}
                 onFilterChange={setUniversityFilters}
+                sortValue={universitySort}
+                onSortChange={setUniversitySort}
                 uniqueStates={getUniqueStates(universities)}
                 entityType="university"
                 placeholder="Search universities by name, email, or location..."
