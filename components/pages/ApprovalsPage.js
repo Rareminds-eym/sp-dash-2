@@ -355,7 +355,7 @@ export default function ApprovalsPage({ currentUser }) {
       
       if (response.ok) {
         const newData = data.data || []
-        const paginationInfo = data.pagination || []
+        const paginationInfo = data.pagination || {}
         
         // Update entity data based on tab
         if (forceRefresh) {
@@ -395,14 +395,22 @@ export default function ApprovalsPage({ currentUser }) {
         // Mark tab as loaded
         setLoadedTabs(prev => ({ ...prev, [tabName]: true }))
         
+        // Calculate hasMore properly
+        const currentPage = paginationInfo.page || 1
+        const totalPages = paginationInfo.totalPages || 1
+        const totalItems = paginationInfo.total || 0
+        
+        // hasMore is true if current page < total pages AND there are items left to load
+        const hasMoreItems = currentPage < totalPages || (newData.length === limit && totalItems > newData.length)
+        
         // Update pagination info
         setPagination(prev => ({
           ...prev,
           [tabName]: {
-            page: paginationInfo.page || 1,
-            hasMore: (paginationInfo.page || 1) < (paginationInfo.totalPages || 1),
+            page: currentPage,
+            hasMore: hasMoreItems,
             loadingMore: false,
-            total: paginationInfo.total || 0
+            total: totalItems
           }
         }))
       }
