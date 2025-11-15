@@ -397,6 +397,7 @@ export default function ApprovalsPage({ currentUser }) {
               break
             case 'students':
               setStudents(newData)
+              updateStudentFilterOptions(newData)
               break
           }
         } else {
