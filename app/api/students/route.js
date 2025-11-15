@@ -83,7 +83,7 @@ export async function GET(request) {
       const mappedUniversityIds = universityIds.filter(Boolean);
       
       const [usersResult, universitiesResult] = await Promise.all([
-        userIds.length > 0 ? supabaseAdmin.from('users').select('id, email').in('id', userIds) : { data: [] },
+        userIds.length > 0 ? supabaseAdmin.from('users').select('id, email, metadata').in('id', userIds) : { data: [] },
         mappedUniversityIds.length > 0 ? supabaseAdmin.from('universities').select('id, name').in('id', mappedUniversityIds) : { data: [] }
       ]);
       
@@ -102,7 +102,7 @@ export async function GET(request) {
           student.users = userMap[student.userId];
         }
         if (student.universityId && univMap[student.universityId]) {
-          student.organizations = univMap[student.universityId];
+          student.university = univMap[student.universityId];
         }
       });
     }
