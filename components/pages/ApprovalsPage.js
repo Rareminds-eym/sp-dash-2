@@ -960,7 +960,7 @@ export default function ApprovalsPage({ currentUser }) {
             </CardContent>
           </Card>
           
-          {loading ? (
+          {loading.colleges ? (
             <CardGridLoader count={6} columns={3} />
           ) : colleges.length === 0 ? (
             <Card className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50">
