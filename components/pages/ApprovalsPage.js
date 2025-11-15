@@ -422,11 +422,6 @@ export default function ApprovalsPage({ currentUser }) {
         // Mark tab as loaded
         setLoadedTabs(prev => ({ ...prev, [tabName]: true }))
         
-        // Fetch filter options for students tab on first load
-        if (tabName === 'students' && !filterOptionsLoaded) {
-          fetchStudentFilterOptions()
-        }
-        
         // Calculate hasMore properly
         const currentPage = paginationInfo.page || 1
         const totalPages = paginationInfo.totalPages || 1
