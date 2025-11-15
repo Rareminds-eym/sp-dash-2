@@ -91,7 +91,7 @@ export default function TableView({ entities, entityType, onViewDetails, onAppro
                   {entityType === 'student' && (
                     <>
                       <TableCell className="max-w-[150px] truncate">
-                        {entity.university?.name || 'N/A'}
+                        {entity.university?.name || entity.university || 'N/A'}
                       </TableCell>
                       <TableCell className="max-w-[150px] truncate">
                         {entity.college_school_name || 'N/A'}
