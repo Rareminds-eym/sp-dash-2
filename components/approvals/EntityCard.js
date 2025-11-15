@@ -94,10 +94,10 @@ export default function EntityCard({ entity, entityType, onViewDetails, onApprov
               </a>
             </div>
           )}
-          {isStudent && entity.university?.name && (
+          {isStudent && (entity.university?.name || entity.university) && (
             <div className="flex items-center gap-2 text-muted-foreground">
               <Building2 className="h-4 w-4" />
-              <span className="truncate">{entity.university.name}</span>
+              <span className="truncate">{entity.university?.name || entity.university}</span>
             </div>
           )}
           {isStudent && entity.college_school_name && (
