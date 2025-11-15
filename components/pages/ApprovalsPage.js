@@ -497,7 +497,7 @@ export default function ApprovalsPage({ currentUser }) {
       
       if (response.ok) {
         const newData = data.data || []
-        const paginationInfo = data.pagination || []
+        const paginationInfo = data.pagination || {}
         
         // Append new data to existing data
         switch(currentTab) {
@@ -515,14 +515,21 @@ export default function ApprovalsPage({ currentUser }) {
             break
         }
         
+        // Calculate hasMore properly
+        const totalPages = paginationInfo.totalPages || 1
+        const totalItems = paginationInfo.total || 0
+        
+        // hasMore is true only if next page < total pages
+        const hasMoreItems = nextPage < totalPages
+        
         // Update pagination info
         setPagination(prev => ({
           ...prev,
           [currentTab]: {
             page: nextPage,
-            hasMore: nextPage < (paginationInfo.totalPages || 1),
+            hasMore: hasMoreItems,
             loadingMore: false,
-            total: paginationInfo.total || 0
+            total: totalItems
           }
         }))
       }
