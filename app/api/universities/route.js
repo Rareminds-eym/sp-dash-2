@@ -78,9 +78,9 @@ export async function GET(request) {
     if (universityIds.length > 0) {
       const { data: users } = await supabaseAdmin
         .from('users')
-        .select('id, email, entity_id')
+        .select('id, email, organizationId')
         .eq('entity_type', 'university')
-        .in('entity_id', universityIds);
+        .in('organizationId', universityIds);
       
       adminUsers = users || [];
     }
@@ -88,7 +88,7 @@ export async function GET(request) {
     // Normalize field names to match frontend expectations and add admin email
     const normalizedUniversities = (universities || []).map(university => {
       // Find the admin user for this university
-      const adminUser = adminUsers.find(user => user.entity_id === university.id);
+      const adminUser = adminUsers.find(user => user.organizationId === university.id);
       
       return {
         ...university,
