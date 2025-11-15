@@ -711,7 +711,10 @@ export default function ApprovalsPage({ currentUser }) {
       onReject: (entity, type) => openActionDialog(entity, type, 'reject')
     }
     
-    switch(viewType) {
+    // Use 'card' view until hydrated to prevent hydration mismatch
+    const effectiveViewType = isHydrated ? viewType : 'card'
+    
+    switch(effectiveViewType) {
       case 'card':
         return <CardView {...commonProps} />
       case 'table':
