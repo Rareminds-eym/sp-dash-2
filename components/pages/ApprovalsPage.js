@@ -544,6 +544,7 @@ export default function ApprovalsPage({ currentUser }) {
             break
           case 'students':
             setStudents(prev => [...prev, ...newData])
+            updateStudentFilterOptions(newData)
             break
         }
         
