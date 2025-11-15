@@ -27,7 +27,7 @@ export default function TableView({ entities, entityType, onViewDetails, onAppro
     if (isStudent) {
       return entity.users?.email || entity.email
     }
-    return entity.email
+    return entity.email || entity.deanEmail
   }
   
   const getColumns = () => {
