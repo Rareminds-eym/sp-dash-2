@@ -7,12 +7,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { LayoutGrid, Table2, List, Grid2X2, ChevronDown } from 'lucide-react'
+import { LayoutGrid, Table2, List, Grid2X2 } from 'lucide-react'
 import { useApprovalView } from './ApprovalViewContext'
 import { cn } from '@/lib/utils'
 
 export default function ApprovalViewDropdown() {
-  const { viewType, setViewType } = useApprovalView()
+  const { viewType, setViewType, isHydrated } = useApprovalView()
 
   const views = [
     { id: 'card', icon: LayoutGrid, label: 'Card View' },
@@ -21,7 +21,9 @@ export default function ApprovalViewDropdown() {
     { id: 'compact', icon: Grid2X2, label: 'Compact Grid' }
   ]
 
-  const currentView = views.find(v => v.id === viewType) || views[0]
+  // Always use 'card' view until hydrated to prevent hydration mismatch
+  const effectiveViewType = isHydrated ? viewType : 'card'
+  const currentView = views.find(v => v.id === effectiveViewType) || views[0]
   const CurrentIcon = currentView.icon
 
   return (
@@ -45,7 +47,7 @@ export default function ApprovalViewDropdown() {
               onClick={() => setViewType(view.id)}
               className={cn(
                 'flex items-center gap-2 cursor-pointer',
-                viewType === view.id && 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400'
+                effectiveViewType === view.id && 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400'
               )}
             >
               <Icon className="h-4 w-4" />
