@@ -415,7 +415,7 @@ export default function ApprovalsPage({ currentUser }) {
       })
     } finally {
       if (isInitialLoad) {
-        setLoading(false)
+        setLoading(prev => ({ ...prev, [tabName]: false }))
       }
       if (isFiltering) {
         setFiltering(false)
