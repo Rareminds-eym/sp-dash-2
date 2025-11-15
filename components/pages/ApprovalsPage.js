@@ -298,7 +298,7 @@ export default function ApprovalsPage({ currentUser }) {
 
   const fetchTabData = async (tabName, isInitialLoad = false, forceRefresh = false, isFiltering = false) => {
     if (isInitialLoad) {
-      setLoading(true)
+      setLoading(prev => ({ ...prev, [tabName]: true }))
     } else if (isFiltering) {
       setFiltering(true)
     }
