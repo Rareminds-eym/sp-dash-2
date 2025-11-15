@@ -18,14 +18,14 @@ export default function TableView({ entities, entityType, onViewDetails, onAppro
   
   const getEntityName = (entity) => {
     if (isStudent) {
-      return entity.profile?.name || entity.users?.metadata?.name || 'Unknown Student'
+      return entity.name || entity.profile?.name || entity.users?.metadata?.name || 'Unknown Student'
     }
     return entity.name
   }
   
   const getEntityEmail = (entity) => {
     if (isStudent) {
-      return entity.users?.email
+      return entity.users?.email || entity.email
     }
     return entity.email
   }
