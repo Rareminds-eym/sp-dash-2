@@ -307,9 +307,23 @@ export default function ApprovalsPage({ currentUser }) {
       // Fetch all pending students to get unique values
       // We use a large limit to get all unique values
       const response = await fetch('/api/students?approval_status=pending&page=1&limit=10000')
-      const data = await response.json()
       
-      if (response.ok && data.data) {
+      // Check if response is ok before parsing
+      if (!response.ok) {
+        console.error('Failed to fetch filter options:', response.status, response.statusText)
+        return
+      }
+      
+      // Get response text first to check if it's valid
+      const text = await response.text()
+      if (!text) {
+        console.log('Empty response from students API')
+        return
+      }
+      
+      const data = JSON.parse(text)
+      
+      if (data.data && Array.isArray(data.data)) {
         const allStudents = data.data
         
         // Extract unique colleges
@@ -324,6 +338,8 @@ export default function ApprovalsPage({ currentUser }) {
       }
     } catch (error) {
       console.error('Failed to fetch filter options:', error)
+      // Set as loaded even on error to prevent infinite retries
+      setFilterOptionsLoaded(true)
     }
   }
 
