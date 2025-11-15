@@ -304,13 +304,20 @@ export default function ApprovalsPage({ currentUser }) {
   // Fetch all unique colleges and branches for filter dropdowns
   const fetchStudentFilterOptions = async () => {
     try {
-      // Fetch all pending students to get unique values
-      // We use a large limit to get all unique values
-      const response = await fetch('/api/students?approval_status=pending&page=1&limit=10000')
+      // Use a reasonable limit to avoid timeouts
+      const response = await fetch('/api/students?approval_status=pending&page=1&limit=1000')
       
       // Check if response is ok before parsing
       if (!response.ok) {
         console.error('Failed to fetch filter options:', response.status, response.statusText)
+        // Fallback: use current students data if available
+        if (students.length > 0) {
+          const colleges = [...new Set(students.map(student => student.college_school_name).filter(Boolean))]
+          setAllUniqueColleges(colleges.sort())
+          const branches = [...new Set(students.map(student => student.branch_field).filter(Boolean))]
+          setAllUniqueBranches(branches.sort())
+        }
+        setFilterOptionsLoaded(true)
         return
       }
       
@@ -318,6 +325,7 @@ export default function ApprovalsPage({ currentUser }) {
       const text = await response.text()
       if (!text) {
         console.log('Empty response from students API')
+        setFilterOptionsLoaded(true)
         return
       }
       
@@ -338,6 +346,13 @@ export default function ApprovalsPage({ currentUser }) {
       }
     } catch (error) {
       console.error('Failed to fetch filter options:', error)
+      // Fallback: use current students data if available
+      if (students.length > 0) {
+        const colleges = [...new Set(students.map(student => student.college_school_name).filter(Boolean))]
+        setAllUniqueColleges(colleges.sort())
+        const branches = [...new Set(students.map(student => student.branch_field).filter(Boolean))]
+        setAllUniqueBranches(branches.sort())
+      }
       // Set as loaded even on error to prevent infinite retries
       setFilterOptionsLoaded(true)
     }
