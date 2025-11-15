@@ -772,12 +772,20 @@ export default function ApprovalsPage({ currentUser }) {
 
   // Get unique colleges/schools for filter dropdown
   const getUniqueColleges = () => {
+    // Use cached values if available, otherwise compute from current students
+    if (filterOptionsLoaded && allUniqueColleges.length > 0) {
+      return allUniqueColleges
+    }
     const collegeNames = [...new Set(students.map(student => student.college_school_name).filter(Boolean))]
     return collegeNames.sort()
   }
 
   // Get unique branches for filter dropdown
   const getUniqueBranches = () => {
+    // Use cached values if available, otherwise compute from current students
+    if (filterOptionsLoaded && allUniqueBranches.length > 0) {
+      return allUniqueBranches
+    }
     const branches = [...new Set(students.map(student => student.branch_field).filter(Boolean))]
     return branches.sort()
   }
