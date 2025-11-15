@@ -85,10 +85,10 @@ export default function ApprovalsPage({ currentUser }) {
     branch: 'all'
   })
 
-  // Cache for all unique filter options (independent of current filters)
+  // Cache for all unique filter options (accumulated as we load students)
   const [allUniqueColleges, setAllUniqueColleges] = useState([])
   const [allUniqueBranches, setAllUniqueBranches] = useState([])
-  const [filterOptionsLoaded, setFilterOptionsLoaded] = useState(false)
+  const [allUniqueStates, setAllUniqueStates] = useState([])
 
   // Sort states for each tab (loaded from localStorage)
   const [universitySort, setUniversitySort] = useState(() => {
