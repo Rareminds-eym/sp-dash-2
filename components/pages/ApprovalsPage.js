@@ -200,7 +200,7 @@ export default function ApprovalsPage({ currentUser }) {
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && pagination[activeTab].hasMore && !pagination[activeTab].loadingMore && !loading) {
+        if (entries[0].isIntersecting && pagination[activeTab].hasMore && !pagination[activeTab].loadingMore && !loading[activeTab]) {
           loadMoreEntities()
         }
       },
