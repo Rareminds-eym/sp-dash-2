@@ -27,10 +27,12 @@ export default function EntityCard({ entity, entityType, onViewDetails, onApprov
   const isStudent = entityType === 'student'
   
   const entityName = isStudent 
-    ? (entity.profile?.name || entity.users?.metadata?.name || 'Unknown Student') 
+    ? (entity.name || entity.profile?.name || entity.users?.metadata?.name || 'Unknown Student') 
     : entity.name
   
-  const entityEmail = isStudent ? entity.users?.email : entity.email
+  const entityEmail = isStudent 
+    ? (entity.users?.email || entity.email) 
+    : entity.email
   
   return (
     <Card className="hover:shadow-lg transition-all duration-300 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50">
