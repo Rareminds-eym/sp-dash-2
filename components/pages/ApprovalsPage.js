@@ -301,6 +301,32 @@ export default function ApprovalsPage({ currentUser }) {
     }
   }
 
+  // Fetch all unique colleges and branches for filter dropdowns
+  const fetchStudentFilterOptions = async () => {
+    try {
+      // Fetch all pending students to get unique values
+      // We use a large limit to get all unique values
+      const response = await fetch('/api/students?approval_status=pending&page=1&limit=10000')
+      const data = await response.json()
+      
+      if (response.ok && data.data) {
+        const allStudents = data.data
+        
+        // Extract unique colleges
+        const colleges = [...new Set(allStudents.map(student => student.college_school_name).filter(Boolean))]
+        setAllUniqueColleges(colleges.sort())
+        
+        // Extract unique branches
+        const branches = [...new Set(allStudents.map(student => student.branch_field).filter(Boolean))]
+        setAllUniqueBranches(branches.sort())
+        
+        setFilterOptionsLoaded(true)
+      }
+    } catch (error) {
+      console.error('Failed to fetch filter options:', error)
+    }
+  }
+
   const fetchTabData = async (tabName, isInitialLoad = false, forceRefresh = false, isFiltering = false) => {
     if (isInitialLoad) {
       setLoading(prev => ({ ...prev, [tabName]: true }))
