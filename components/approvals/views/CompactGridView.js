@@ -28,14 +28,14 @@ export default function CompactGridView({ entities, entityType, onViewDetails, o
   
   const getEntityName = (entity) => {
     if (entityType === 'student') {
-      return entity.profile?.name || entity.users?.metadata?.name || 'Unknown Student'
+      return entity.name || entity.profile?.name || entity.users?.metadata?.name || 'Unknown Student'
     }
     return entity.name
   }
   
   const getEntityEmail = (entity) => {
     if (entityType === 'student') {
-      return entity.users?.email
+      return entity.users?.email || entity.email
     }
     return entity.email
   }
