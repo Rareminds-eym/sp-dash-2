@@ -301,61 +301,24 @@ export default function ApprovalsPage({ currentUser }) {
     }
   }
 
-  // Fetch all unique colleges and branches for filter dropdowns
-  const fetchStudentFilterOptions = async () => {
-    try {
-      // Use a reasonable limit to avoid timeouts
-      const response = await fetch('/api/students?approval_status=pending&page=1&limit=1000')
-      
-      // Check if response is ok before parsing
-      if (!response.ok) {
-        console.error('Failed to fetch filter options:', response.status, response.statusText)
-        // Fallback: use current students data if available
-        if (students.length > 0) {
-          const colleges = [...new Set(students.map(student => student.college_school_name).filter(Boolean))]
-          setAllUniqueColleges(colleges.sort())
-          const branches = [...new Set(students.map(student => student.branch_field).filter(Boolean))]
-          setAllUniqueBranches(branches.sort())
-        }
-        setFilterOptionsLoaded(true)
-        return
-      }
-      
-      // Get response text first to check if it's valid
-      const text = await response.text()
-      if (!text) {
-        console.log('Empty response from students API')
-        setFilterOptionsLoaded(true)
-        return
-      }
-      
-      const data = JSON.parse(text)
-      
-      if (data.data && Array.isArray(data.data)) {
-        const allStudents = data.data
-        
-        // Extract unique colleges
-        const colleges = [...new Set(allStudents.map(student => student.college_school_name).filter(Boolean))]
-        setAllUniqueColleges(colleges.sort())
-        
-        // Extract unique branches
-        const branches = [...new Set(allStudents.map(student => student.branch_field).filter(Boolean))]
-        setAllUniqueBranches(branches.sort())
-        
-        setFilterOptionsLoaded(true)
-      }
-    } catch (error) {
-      console.error('Failed to fetch filter options:', error)
-      // Fallback: use current students data if available
-      if (students.length > 0) {
-        const colleges = [...new Set(students.map(student => student.college_school_name).filter(Boolean))]
-        setAllUniqueColleges(colleges.sort())
-        const branches = [...new Set(students.map(student => student.branch_field).filter(Boolean))]
-        setAllUniqueBranches(branches.sort())
-      }
-      // Set as loaded even on error to prevent infinite retries
-      setFilterOptionsLoaded(true)
-    }
+  // Update accumulated unique values whenever students data changes
+  const updateStudentFilterOptions = (newStudents) => {
+    if (!newStudents || newStudents.length === 0) return
+    
+    // Accumulate unique values
+    const existingColleges = new Set(allUniqueColleges)
+    const existingBranches = new Set(allUniqueBranches)
+    const existingStates = new Set(allUniqueStates)
+    
+    newStudents.forEach(student => {
+      if (student.college_school_name) existingColleges.add(student.college_school_name)
+      if (student.branch_field) existingBranches.add(student.branch_field)
+      if (student.state) existingStates.add(student.state)
+    })
+    
+    setAllUniqueColleges(Array.from(existingColleges).sort())
+    setAllUniqueBranches(Array.from(existingBranches).sort())
+    setAllUniqueStates(Array.from(existingStates).sort())
   }
 
   const fetchTabData = async (tabName, isInitialLoad = false, forceRefresh = false, isFiltering = false) => {
