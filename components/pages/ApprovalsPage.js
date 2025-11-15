@@ -400,8 +400,9 @@ export default function ApprovalsPage({ currentUser }) {
         const totalPages = paginationInfo.totalPages || 1
         const totalItems = paginationInfo.total || 0
         
-        // hasMore is true if current page < total pages AND there are items left to load
-        const hasMoreItems = currentPage < totalPages || (newData.length === limit && totalItems > newData.length)
+        // hasMore is true only if current page < total pages
+        // This ensures when we're on the last page, hasMore becomes false
+        const hasMoreItems = currentPage < totalPages
         
         // Update pagination info
         setPagination(prev => ({
