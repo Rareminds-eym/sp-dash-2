@@ -44,7 +44,7 @@ export default function ListView({ entities, entityType, onViewDetails, onApprov
     if (isStudent) {
       return entity.users?.email || entity.email
     }
-    return entity.email
+    return entity.email || entity.deanEmail
   }
   
   return (
