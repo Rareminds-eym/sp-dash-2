@@ -59,7 +59,7 @@ export default function ApprovalsPage({ currentUser }) {
   const [activeTab, setActiveTab] = useState('universities')
   
   // View type from context
-  const { viewType } = useApprovalView()
+  const { viewType, isHydrated } = useApprovalView()
   
   // Separate search and filter states for each tab
   const [universitySearch, setUniversitySearch] = useState('')
