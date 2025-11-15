@@ -37,7 +37,7 @@ export default function CompactGridView({ entities, entityType, onViewDetails, o
     if (entityType === 'student') {
       return entity.users?.email || entity.email
     }
-    return entity.email
+    return entity.email || entity.deanEmail
   }
   
   return (
