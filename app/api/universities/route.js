@@ -71,32 +71,11 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Failed to fetch universities' }, { status: 500 });
     }
 
-    // Fetch admin users for these universities
-    const universityIds = (universities || []).map(u => u.id);
-    let adminUsers = [];
-    
-    if (universityIds.length > 0) {
-      const { data: users } = await supabaseAdmin
-        .from('users')
-        .select('id, email, organizationId')
-        .eq('entity_type', 'university')
-        .in('organizationId', universityIds);
-      
-      adminUsers = users || [];
-    }
-
-    // Normalize field names to match frontend expectations and add admin email
-    const normalizedUniversities = (universities || []).map(university => {
-      // Find the admin user for this university
-      const adminUser = adminUsers.find(user => user.organizationId === university.id);
-      
-      return {
-        ...university,
-        created_at: university.createdat,
-        // Add admin email if university.email is null
-        email: university.email || adminUser?.email || null,
-      };
-    });
+    // Normalize field names to match frontend expectations
+    const normalizedUniversities = (universities || []).map(university => ({
+      ...university,
+      created_at: university.createdat,
+    }));
 
     const response = NextResponse.json({
       data: normalizedUniversities || [],
