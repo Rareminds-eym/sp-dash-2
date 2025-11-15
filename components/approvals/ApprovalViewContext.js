@@ -5,21 +5,28 @@ import { createContext, useContext, useState, useEffect } from 'react'
 const ApprovalViewContext = createContext()
 
 export function ApprovalViewProvider({ children }) {
-  const [viewType, setViewType] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('approvalViewType') || 'card'
-    }
-    return 'card'
-  })
+  // Always start with 'card' to match SSR
+  const [viewType, setViewType] = useState('card')
+  const [isHydrated, setIsHydrated] = useState(false)
 
+  // Load from localStorage after hydration
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    const savedView = localStorage.getItem('approvalViewType')
+    if (savedView) {
+      setViewType(savedView)
+    }
+    setIsHydrated(true)
+  }, [])
+
+  // Save to localStorage when viewType changes
+  useEffect(() => {
+    if (isHydrated) {
       localStorage.setItem('approvalViewType', viewType)
     }
-  }, [viewType])
+  }, [viewType, isHydrated])
 
   return (
-    <ApprovalViewContext.Provider value={{ viewType, setViewType }}>
+    <ApprovalViewContext.Provider value={{ viewType, setViewType, isHydrated }}>
       {children}
     </ApprovalViewContext.Provider>
   )
