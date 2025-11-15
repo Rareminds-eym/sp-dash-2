@@ -49,7 +49,12 @@ export default function ApprovalsPage({ currentUser }) {
   const [recruiters, setRecruiters] = useState([])
   const [colleges, setColleges] = useState([])
   const [students, setStudents] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState({
+    universities: false,
+    recruiters: false,
+    colleges: false,
+    students: false
+  })
   const [filtering, setFiltering] = useState(false)
   const [activeTab, setActiveTab] = useState('universities')
   
