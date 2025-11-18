@@ -22,7 +22,7 @@ export function ThemeToggle() {
 
   const handleThemeToggle = async (toggled) => {
     const newTheme = toggled ? 'dark' : 'light'
-    
+
     // Get button position for circular animation origin
     const rect = buttonRef.current?.getBoundingClientRect()
     const x = rect ? rect.left + rect.width / 2 : window.innerWidth / 2
@@ -30,6 +30,9 @@ export function ThemeToggle() {
 
     // Check if View Transitions API is supported
     if (document.startViewTransition) {
+      // Set transition direction data attribute
+      document.documentElement.setAttribute('data-theme-transition', toggled ? 'to-dark' : 'to-light')
+
       // Manually disable all transitions before theme change
       const css = document.createElement('style')
       css.appendChild(
@@ -44,29 +47,30 @@ export function ThemeToggle() {
         )
       )
       document.head.appendChild(css)
-      
+
       const transition = document.startViewTransition(() => {
         setTheme(newTheme)
         setIsToggled(toggled)
       })
-      
+
       // Apply circular reveal animation
       await transition.ready
-      
+
       // Calculate the maximum distance from click point to corners
       const maxDistance = Math.hypot(
         Math.max(x, window.innerWidth - x),
         Math.max(y, window.innerHeight - y)
       )
-      
+
       // Add custom animation
       document.documentElement.style.setProperty('--x', `${x}px`)
       document.documentElement.style.setProperty('--y', `${y}px`)
       document.documentElement.style.setProperty('--r', `${maxDistance}px`)
-      
+
       // Re-enable transitions after animation completes
       transition.finished.finally(() => {
         document.head.removeChild(css)
+        document.documentElement.removeAttribute('data-theme-transition')
       })
     } else {
       // Fallback for browsers without View Transitions API
@@ -88,7 +92,7 @@ export function ThemeToggle() {
       <Expand
         toggled={isToggled}
         toggle={handleThemeToggle}
-        duration={750}
+        duration={1200}
         className="text-current hover:scale-110 transition-transform cursor-pointer"
         style={{ fontSize: '1.25rem' }}
       />

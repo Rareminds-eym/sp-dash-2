@@ -190,21 +190,46 @@ code {
   mix-blend-mode: normal;
 }
 
+/* Default z-index setup */
 ::view-transition-old(root) {
   z-index: 1;
 }
 
 ::view-transition-new(root) {
   z-index: 9999;
-  animation: reveal 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-@keyframes reveal {
+/* Dark mode: new layer (dark) expands over old layer (light) */
+[data-theme-transition="to-dark"]::view-transition-new(root) {
+  animation: reveal-expand 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  z-index: 9999;
+}
+
+/* Light mode: old layer (dark) contracts to reveal new layer (light) underneath */
+[data-theme-transition="to-light"]::view-transition-old(root) {
+  animation: reveal-contract 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  z-index: 9999;
+}
+
+[data-theme-transition="to-light"]::view-transition-new(root) {
+  z-index: 1;
+}
+
+@keyframes reveal-expand {
   from {
     clip-path: circle(0% at var(--x, 50%) var(--y, 50%));
   }
   to {
     clip-path: circle(150% at var(--x, 50%) var(--y, 50%));
+  }
+}
+
+@keyframes reveal-contract {
+  from {
+    clip-path: circle(150% at var(--x, 50%) var(--y, 50%));
+  }
+  to {
+    clip-path: circle(0% at var(--x, 50%) var(--y, 50%));
   }
 }
 
