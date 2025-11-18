@@ -99,15 +99,15 @@ export default function ReportsPage() {
   })
 
   useEffect(() => {
-    // Fetch data progressively - start with first tab
-    fetchTabData('universities')
-    
+    // Fetch data for the current active tab
+    fetchTabData(activeTab)
+
     // Listen for refresh events from the layout
     const handleRefreshEvent = () => {
       fetchTabData(activeTab)
     }
     window.addEventListener('refreshPage', handleRefreshEvent)
-    
+
     return () => {
       window.removeEventListener('refreshPage', handleRefreshEvent)
     }
@@ -426,20 +426,33 @@ export default function ReportsPage() {
           </div>
 
           {/* Metrics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <Card className="neu-card">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-                    <Search className="h-5 w-5 text-blue-600" />
+          {loading.recruiter ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <Card key={index} className="neu-card">
+                  <CardContent className="p-6">
+                    <div className="relative overflow-hidden rounded-lg bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 h-20">
+                      <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/30 dark:via-white/10 to-transparent"></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              <Card className="neu-card">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                      <Search className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold">{analyticsData.recruiterMetrics.totalSearches || 0}</div>
+                      <div className="text-xs text-muted-foreground">Total Searches</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-2xl font-bold">{analyticsData.recruiterMetrics.totalSearches || 0}</div>
-                    <div className="text-xs text-muted-foreground">Total Searches</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
             <Card className="neu-card">
               <CardContent className="p-6">
@@ -496,15 +509,29 @@ export default function ReportsPage() {
                 </div>
               </CardContent>
             </Card>
-          </div>
+            </div>
+          )}
 
           {/* Trends Chart */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="neu-card">
-              <CardHeader>
-                <CardTitle>Monthly Engagement Trends</CardTitle>
-              </CardHeader>
-              <CardContent>
+          {loading.recruiter ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {Array.from({ length: 2 }).map((_, index) => (
+                <Card key={index} className="neu-card">
+                  <CardContent className="p-6">
+                    <div className="relative overflow-hidden rounded-lg bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 h-[300px]">
+                      <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/30 dark:via-white/10 to-transparent"></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="neu-card">
+                <CardHeader>
+                  <CardTitle>Monthly Engagement Trends</CardTitle>
+                </CardHeader>
+                <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={analyticsData.recruiterMetrics.searchTrends || []}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
@@ -556,7 +583,8 @@ export default function ReportsPage() {
                 </ResponsiveContainer>
               </CardContent>
             </Card>
-          </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -581,9 +609,22 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Conversion Funnel */}
-            <Card className="neu-card">
+          {loading.placement ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {Array.from({ length: 2 }).map((_, index) => (
+                <Card key={index} className="neu-card">
+                  <CardContent className="p-6">
+                    <div className="relative overflow-hidden rounded-lg bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 h-[300px]">
+                      <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/30 dark:via-white/10 to-transparent"></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Conversion Funnel */}
+              <Card className="neu-card">
               <CardHeader>
                 <CardTitle>Placement Conversion Funnel</CardTitle>
                 <p className="text-sm text-muted-foreground">From verified profile to successful placement</p>
@@ -646,7 +687,8 @@ export default function ReportsPage() {
                 </ResponsiveContainer>
               </CardContent>
             </Card>
-          </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -686,8 +728,21 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          <div className="grid gap-4">
-            {analyticsData.stateHeatmap
+          {loading.heatmap ? (
+            <div className="grid gap-4">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <Card key={index} className="neu-card">
+                  <CardContent className="p-6">
+                    <div className="relative overflow-hidden rounded-lg bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 h-32">
+                      <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/30 dark:via-white/10 to-transparent"></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {analyticsData.stateHeatmap
               .filter(state => filters.stateSelection === 'all' || state.state === filters.stateSelection)
               .map((state) => (
               <Card key={state.state} className="neu-card">
@@ -740,7 +795,8 @@ export default function ReportsPage() {
                 </CardContent>
               </Card>
             ))}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -765,8 +821,22 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          {/* Emerging Skills */}
-          <Card className="neu-card">
+          {loading.insights ? (
+            <div className="space-y-6">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <Card key={index} className="neu-card">
+                  <CardContent className="p-6">
+                    <div className="relative overflow-hidden rounded-lg bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 h-48">
+                      <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/30 dark:via-white/10 to-transparent"></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <>
+              {/* Emerging Skills */}
+              <Card className="neu-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Rocket className="h-5 w-5 text-purple-600" />
@@ -861,6 +931,8 @@ export default function ReportsPage() {
               </div>
             </CardContent>
           </Card>
+            </>
+          )}
         </div>
       )}
     </div>
