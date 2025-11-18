@@ -20,7 +20,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -31,9 +30,11 @@ import {
   RefreshCw,
   School,
   User,
+  Users,
   XCircle
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { CardGridLoader } from '@/components/ui/page-loader'
 
 // Import modular components
@@ -45,6 +46,13 @@ import CompactGridView from '@/components/approvals/views/CompactGridView'
 import { useApprovalView } from '@/components/approvals/ApprovalViewContext'
 
 export default function ApprovalsPage({ currentUser }) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { toast } = useToast()
+
+  // Get active tab from URL, default to 'universities'
+  const activeTab = searchParams.get('tab') || 'universities'
+
   const [universities, setUniversities] = useState([])
   const [recruiters, setRecruiters] = useState([])
   const [colleges, setColleges] = useState([])
@@ -56,8 +64,7 @@ export default function ApprovalsPage({ currentUser }) {
     students: false
   })
   const [filtering, setFiltering] = useState(false)
-  const [activeTab, setActiveTab] = useState('universities')
-  
+
   // View type from context
   const { viewType, isHydrated } = useApprovalView()
   
@@ -171,10 +178,9 @@ export default function ApprovalsPage({ currentUser }) {
     open: false, 
     entity: null, 
     entityType: null,
-    loading: false 
+    loading: false
   })
-  const { toast } = useToast()
-  
+
   // Ref for infinite scroll observer
   const loadMoreRef = useRef(null)
   
@@ -782,31 +788,40 @@ export default function ApprovalsPage({ currentUser }) {
     return branches.sort()
   }
 
+  // Get tab info
+  const getTabInfo = () => {
+    const tabsInfo = {
+      universities: { name: 'Universities', icon: Building2, count: pagination.universities.total },
+      recruiters: { name: 'Recruiters', icon: Briefcase, count: pagination.recruiters.total },
+      colleges: { name: 'Colleges', icon: School, count: pagination.colleges.total },
+      students: { name: 'Students', icon: Users, count: pagination.students.total }
+    }
+    return tabsInfo[activeTab] || tabsInfo.universities
+  }
+
+  const currentTabInfo = getTabInfo()
+  const TabIcon = currentTabInfo.icon
+
   return (
     <div className="space-y-6">
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border border-white/20 dark:border-slate-700/50">
-          <TabsTrigger value="universities" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
-            <Building2 className="h-4 w-4 mr-2" />
-            Universities ({pagination.universities.total})
-          </TabsTrigger>
-          <TabsTrigger value="recruiters" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
-            <Briefcase className="h-4 w-4 mr-2" />
-            Recruiters ({pagination.recruiters.total})
-          </TabsTrigger>
-          <TabsTrigger value="colleges" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
-            <School className="h-4 w-4 mr-2" />
-            Colleges ({pagination.colleges.total})
-          </TabsTrigger>
-          <TabsTrigger value="students" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
-            <User className="h-4 w-4 mr-2" />
-            Students ({pagination.students.total})
-          </TabsTrigger>
-        </TabsList>
+      {/* Page Title */}
+      <div className="flex items-center gap-4 pb-4 border-b border-white/20 dark:border-slate-700/50">
+        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/25">
+          <TabIcon className="h-6 w-6 text-white" />
+        </div>
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            {currentTabInfo.name}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {currentTabInfo.count} {currentTabInfo.count === 1 ? 'item' : 'items'} pending approval
+          </p>
+        </div>
+      </div>
 
-        {/* Universities Tab */}
-        <TabsContent value="universities" className="mt-6">
+      {/* Universities Content */}
+      {activeTab === 'universities' && (
+        <div className="space-y-6">
           {/* Search and Filters for Universities */}
           <Card className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50 mb-6">
             <CardContent className="pt-6">
@@ -898,10 +913,12 @@ export default function ApprovalsPage({ currentUser }) {
               )}
             </div>
           )}
-        </TabsContent>
+        </div>
+      )}
 
-        {/* Recruiters Tab */}
-        <TabsContent value="recruiters" className="mt-6">
+      {/* Recruiters Content */}
+      {activeTab === 'recruiters' && (
+        <div className="space-y-6">
           {/* Search and Filters for Recruiters */}
           <Card className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50 mb-6">
             <CardContent className="pt-6">
@@ -993,10 +1010,12 @@ export default function ApprovalsPage({ currentUser }) {
               )}
             </div>
           )}
-        </TabsContent>
+        </div>
+      )}
 
-        {/* Colleges Tab */}
-        <TabsContent value="colleges" className="mt-6">
+      {/* Colleges Content */}
+      {activeTab === 'colleges' && (
+        <div className="space-y-6">
           {/* Search and Filters for Colleges */}
           <Card className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50 mb-6">
             <CardContent className="pt-6">
@@ -1088,10 +1107,12 @@ export default function ApprovalsPage({ currentUser }) {
               )}
             </div>
           )}
-        </TabsContent>
+        </div>
+      )}
 
-        {/* Students Tab */}
-        <TabsContent value="students" className="mt-6">
+      {/* Students Content */}
+      {activeTab === 'students' && (
+        <div className="space-y-6">
           {/* Search and Filters for Students */}
           <Card className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50 mb-6">
             <CardContent className="pt-6">
@@ -1185,8 +1206,8 @@ export default function ApprovalsPage({ currentUser }) {
               )}
             </div>
           )}
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
 
       {/* Action Confirmation Dialog */}
       <AlertDialog open={actionDialog.open} onOpenChange={(open) => !open && setActionDialog({ open: false, entity: null, entityType: null, action: null, reason: '' })}>
