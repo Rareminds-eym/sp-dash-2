@@ -1,10 +1,9 @@
 import DashboardOptimized from '@/components/pages/DashboardOptimized'
 import { getSession } from '@/lib/supabase-rls'
 import { createRLSClient } from '@/lib/supabase-rls'
-import { getDashboardMetrics } from '@/lib/services/metricsService'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
-export const runtime = 'nodejs'
+export const runtime = 'edge'
 
 async function getDashboardData() {
   // Temporary delay to demonstrate loader
