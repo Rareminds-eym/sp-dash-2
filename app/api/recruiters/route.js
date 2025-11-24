@@ -11,22 +11,22 @@ export const runtime = 'edge';
 export async function GET(request) {
   try {
     const url = new URL(request.url);
-    
+
     // Pagination parameters
     const page = parseInt(url.searchParams.get('page') || '1');
     const limit = parseInt(url.searchParams.get('limit') || '20');
     const offset = (page - 1) * limit;
-    
+
     // Filter parameters
     const approvalStatus = url.searchParams.get('approval_status');
     const accountStatus = url.searchParams.get('account_status');
     const searchTerm = url.searchParams.get('search');
     const state = url.searchParams.get('state');
     const sortBy = url.searchParams.get('sort') || 'date-newest';
-    
+
     // Build query for recruiters
     let query = supabaseAdmin.from('recruiters').select('*', { count: 'exact' });
-    
+
     // Apply filters
     if (approvalStatus) {
       query = query.eq('approval_status', approvalStatus);
@@ -41,9 +41,9 @@ export async function GET(request) {
       // Search in recruiter name, email, phone
       query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,state.ilike.%${searchTerm}%`);
     }
-    
+
     // Apply sorting
-    switch(sortBy) {
+    switch (sortBy) {
       case 'name-asc':
         query = query.order('name', { ascending: true });
         break;
@@ -61,10 +61,10 @@ export async function GET(request) {
         query = query.order('createdat', { ascending: false });
         break;
     }
-    
+
     // Apply pagination
     query = query.range(offset, offset + limit - 1);
-    
+
     const { data: recruiters, error, count } = await query;
 
     if (error) {
@@ -89,7 +89,7 @@ export async function GET(request) {
         totalPages: Math.ceil((count || 0) / limit)
       }
     });
-    
+
     return addCacheHeaders(response, 'static');
   } catch (error) {
     return handleError(error, 'Recruiters');

@@ -24,17 +24,32 @@ const RecentVerifications = lazy(() =>
   }))
 );
 
-export default function DashboardOptimized({ user }) {
-  const [metrics, setMetrics] = useState(null);
-  const [trends, setTrends] = useState([]);
-  const [stateData, setStateData] = useState([]);
+export default function DashboardOptimized({ user, initialData }) {
+  const [metrics, setMetrics] = useState(initialData?.metrics || null);
+  const [trends, setTrends] = useState(initialData?.trends || []);
+  const [stateData, setStateData] = useState(initialData?.stateData || []);
   const [recentVerifications, setRecentVerifications] = useState([]);
-  const [placementData, setPlacementData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [placementData, setPlacementData] = useState(initialData?.placementData || null);
+  const [loading, setLoading] = useState(!initialData);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    if (!initialData) {
+      fetchDashboardData();
+    } else {
+      // Background updates if needed
+      fetchRecentVerifications();
+    }
+  }, [initialData]);
+
+  const fetchRecentVerifications = () => {
+    fetch("/api/verifications")
+      .then(res => res.ok ? res.json() : [])
+      .then(data => setRecentVerifications(Array.isArray(data) ? data.slice(0, 10) : []))
+      .catch(err => {
+        console.error("Error fetching verifications:", err);
+        setRecentVerifications([]);
+      });
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -52,44 +67,14 @@ export default function DashboardOptimized({ user }) {
       const stateDataRes = stateRes.ok ? await stateRes.json() : [];
       const placementDataRes = placementRes.ok ? await placementRes.json() : null;
 
-      // Log any errors
-      if (!metricsRes.ok) console.error('Metrics API error:', metricsRes.status);
-      if (!trendsRes.ok) console.error('Trends API error:', trendsRes.status);
-      if (!stateRes.ok) console.error('State API error:', stateRes.status);
-      if (!placementRes.ok) console.error('Placement API error:', placementRes.status);
-
-      console.log('Dashboard data loaded:', {
-        metrics: metricsData,
-        trends: trendsData?.length,
-        states: stateDataRes?.length,
-        placement: placementDataRes
-      });
-
       setMetrics(metricsData);
       setTrends(trendsData || []);
       setStateData(stateDataRes || []);
       setPlacementData(placementDataRes);
       setLoading(false);
 
-      // Check if we need to update the snapshot in background
-      const today = new Date().toISOString().split('T')[0];
-      const shouldUpdate = 
-        metricsData.source === 'dynamic' || 
-        (metricsData.snapshotDate && metricsData.snapshotDate !== today);
+      fetchRecentVerifications();
 
-      if (shouldUpdate) {
-        fetch("/api/metrics/update", { method: "POST" })
-          .catch(err => console.error('Error updating metrics:', err));
-      }
-
-      // Load verifications in background after page is interactive
-      fetch("/api/verifications")
-        .then(res => res.ok ? res.json() : [])
-        .then(data => setRecentVerifications(Array.isArray(data) ? data.slice(0, 10) : []))
-        .catch(err => {
-          console.error("Error fetching verifications:", err);
-          setRecentVerifications([]);
-        });
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
       setLoading(false);

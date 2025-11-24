@@ -4,10 +4,10 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Sparkles, LayoutDashboard } from 'lucide-react'
 
 // Shimmer effect component
-function ShimmerEffect({ className = "" }) {
+export function ShimmerEffect({ className = "" }) {
   return (
-    <div className={`relative overflow-hidden ${className}`}>
-      <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 dark:via-white/10 to-transparent"></div>
+    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
+      <div className="absolute inset-0 animate-[shimmer-slide_2s_infinite] bg-gradient-to-r from-transparent via-white/60 dark:via-white/10 to-transparent"></div>
     </div>
   )
 }
@@ -87,7 +87,7 @@ export function DashboardSkeleton() {
                     className="relative w-full rounded-t-lg overflow-hidden"
                     style={{ height: `${height}%` }}
                   >
-                    <div 
+                    <div
                       className="absolute inset-0 bg-gradient-to-t from-blue-300 to-purple-300 dark:from-blue-700 dark:to-purple-700 animate-pulse"
                       style={{ animationDelay: `${idx * 150}ms` }}
                     ></div>
@@ -389,6 +389,136 @@ export function SettingsSkeleton() {
           </div>
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+export function LoginSkeleton() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 transition-colors duration-300 animate-in fade-in duration-300">
+      <Card className="w-full max-w-md mx-4 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-white/20 dark:border-slate-700/50 shadow-2xl shadow-slate-200/50 dark:shadow-slate-900/50 relative overflow-hidden">
+        <ShimmerEffect className="absolute inset-0 opacity-40" />
+        <CardHeader className="space-y-1 text-center relative z-10">
+          <div className="flex justify-center mb-6">
+            <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-purple-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-blue-500/25 relative overflow-hidden">
+              <ShimmerEffect />
+              <span className="text-white text-2xl font-bold relative z-10">RM</span>
+            </div>
+          </div>
+          <div className="h-9 w-64 mx-auto bg-gray-200 dark:bg-gray-700 rounded-lg relative overflow-hidden mb-2">
+            <ShimmerEffect />
+          </div>
+          <div className="h-6 w-48 mx-auto bg-gray-100 dark:bg-gray-800 rounded-lg relative overflow-hidden">
+            <ShimmerEffect />
+          </div>
+        </CardHeader>
+        <CardContent className="p-8 relative z-10">
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded relative overflow-hidden">
+                <ShimmerEffect />
+              </div>
+              <div className="h-12 w-full bg-white/50 dark:bg-slate-800/50 rounded-xl border border-white/20 dark:border-slate-700/50 relative overflow-hidden">
+                <ShimmerEffect />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded relative overflow-hidden">
+                <ShimmerEffect />
+              </div>
+              <div className="h-12 w-full bg-white/50 dark:bg-slate-800/50 rounded-xl border border-white/20 dark:border-slate-700/50 relative overflow-hidden">
+                <ShimmerEffect />
+              </div>
+            </div>
+
+            <div className="h-12 w-full bg-gradient-to-r from-blue-400 to-purple-400 dark:from-blue-600 dark:to-purple-600 rounded-2xl relative overflow-hidden">
+              <ShimmerEffect />
+            </div>
+
+            <div className="mt-8 p-4 bg-white/30 dark:bg-slate-800/30 backdrop-blur-sm rounded-2xl border border-white/20 dark:border-slate-700/50 relative overflow-hidden">
+              <ShimmerEffect className="absolute inset-0 opacity-30" />
+              <div className="h-5 w-32 mx-auto bg-gray-200 dark:bg-gray-700 rounded relative overflow-hidden mb-3">
+                <ShimmerEffect />
+              </div>
+              <div className="space-y-2">
+                <div className="h-4 w-3/4 mx-auto bg-gray-100 dark:bg-gray-800 rounded relative overflow-hidden">
+                  <ShimmerEffect />
+                </div>
+                <div className="h-4 w-2/3 mx-auto bg-gray-100 dark:bg-gray-800 rounded relative overflow-hidden">
+                  <ShimmerEffect />
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+export function ReportsSkeleton() {
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      {/* Header Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i} className="neu-card relative overflow-hidden">
+            <ShimmerEffect className="absolute inset-0 opacity-50" />
+            <CardContent className="p-6 relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="relative w-12 h-12 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 rounded-xl overflow-hidden">
+                  <ShimmerEffect />
+                </div>
+                <div className="relative w-16 h-6 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <ShimmerEffect />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="relative h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
+                  <ShimmerEffect />
+                </div>
+                <div className="relative h-8 w-16 bg-gray-300 dark:bg-gray-600 rounded overflow-hidden">
+                  <ShimmerEffect />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Charts Area */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Card className="neu-card relative overflow-hidden">
+          <ShimmerEffect className="absolute inset-0 opacity-30" />
+          <CardHeader className="relative z-10">
+            <div className="relative h-6 w-48 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
+              <ShimmerEffect />
+            </div>
+          </CardHeader>
+          <CardContent className="relative z-10">
+            <div className="h-80 w-full bg-gray-100 dark:bg-gray-800/50 rounded-xl relative overflow-hidden">
+              <ShimmerEffect />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="neu-card relative overflow-hidden">
+          <ShimmerEffect className="absolute inset-0 opacity-30" />
+          <CardHeader className="relative z-10">
+            <div className="relative h-6 w-48 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
+              <ShimmerEffect />
+            </div>
+          </CardHeader>
+          <CardContent className="relative z-10">
+            <div className="h-80 w-full bg-gray-100 dark:bg-gray-800/50 rounded-xl relative overflow-hidden flex items-center justify-center">
+              <div className="w-48 h-48 rounded-full border-8 border-gray-200 dark:border-gray-700 relative overflow-hidden">
+                <ShimmerEffect />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
