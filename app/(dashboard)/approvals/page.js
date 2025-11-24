@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/supabase-rls'
 import ApprovalsPage from '@/components/pages/ApprovalsPage'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 export const metadata = {
   title: 'Approval Center - Rareminds Admin',

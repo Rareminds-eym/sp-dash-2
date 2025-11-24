@@ -4,7 +4,7 @@ import { createRLSClient } from '@/lib/supabase-rls'
 import { getDashboardMetrics } from '@/lib/services/metricsService'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 async function getDashboardData() {
   // Temporary delay to demonstrate loader
