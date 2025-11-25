@@ -16,6 +16,7 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
+    AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import {
     DropdownMenu,
@@ -25,8 +26,9 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
-import { GraduationCap, Loader2, Plus, RotateCcw, Search, Filter, BookOpen, MoreVertical, Eye, Edit, Trash2 } from 'lucide-react'
+import { GraduationCap, Loader2, Plus, RotateCcw, Search, BookOpen, MoreVertical, Eye, Edit, Trash2, Download, Copy, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 
@@ -41,9 +43,14 @@ export default function CourseManagementPage({ currentUser }) {
     const [filterUniversity, setFilterUniversity] = useState('all')
     const [filterCategory, setFilterCategory] = useState('all')
     const [filterStatus, setFilterStatus] = useState('all')
+    const [sortBy, setSortBy] = useState('date-newest')
     const [page, setPage] = useState(1)
     const [totalCourses, setTotalCourses] = useState(0)
     const [hasMore, setHasMore] = useState(false)
+
+    // Phase 2: Bulk operations
+    const [selectedCourses, setSelectedCourses] = useState(new Set())
+    const [bulkDeleting, setBulkDeleting] = useState(false)
 
     // Dialog state
     const [dialogOpen, setDialogOpen] = useState(false)
@@ -70,6 +77,140 @@ export default function CourseManagementPage({ currentUser }) {
     })
 
     const [errors, setErrors] = useState({})
+
+    // === PHASE 2: Helper Functions ===
+
+    // Export to CSV
+    const handleExportCSV = () => {
+        try {
+            // Create CSV header
+            const headers = ['Course Name', 'Course Code', 'University', 'Category', 'Status', 'Duration', 'Credits', 'Created Date', 'Description']
+
+            // Create CSV rows
+            const rows = courses.map(course => [
+                course.name || '',
+                course.course_code || '',
+                course.university || '',
+                course.category || '',
+                course.approval_status || '',
+                course.duration || '',
+                course.credits || '',
+                course.created_at ? new Date(course.created_at).toLocaleDateString() : '',
+                (course.description || '').replace(/"/g, '""') // Escape quotes
+            ])
+
+            // Combine header and rows
+            const csvContent = [
+                headers.map(h => `"${h}"`).join(','),
+                ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+            ].join('\n')
+
+            // Create blob and download
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+            const link = document.createElement('a')
+            link.href = URL.createObjectURL(blob)
+            link.download = `courses_export_${new Date().toISOString().split('T')[0]}.csv`
+            link.click()
+
+            toast({
+                title: 'Success!',
+                description: `Exported ${courses.length} courses to CSV`,
+            })
+        } catch (error) {
+            console.error('Export error:', error)
+            toast({
+                title: 'Error',
+                description: 'Failed to export courses',
+                variant: 'destructive'
+            })
+        }
+    }
+
+    // Bulk selection
+    const handleSelectCourse = (courseId) => {
+        setSelectedCourses(prev => {
+            const newSet = new Set(prev)
+            if (newSet.has(courseId)) {
+                newSet.delete(courseId)
+            } else {
+                newSet.add(courseId)
+            }
+            return newSet
+        })
+    }
+
+    const handleSelectAll = () => {
+        if (selectedCourses.size === courses.length) {
+            setSelectedCourses(new Set())
+        } else {
+            setSelectedCourses(new Set(courses.map(c => c.id)))
+        }
+    }
+
+    // Bulk delete
+    const handleBulkDelete = async () => {
+        if (selectedCourses.size === 0) return
+
+        try {
+            setBulkDeleting(true)
+            const deletePromises = Array.from(selectedCourses).map(courseId =>
+                fetch(`/api/courses/${courseId}`, { method: 'DELETE' })
+                    .then(response => ({ courseId, ok: response.ok, response }))
+            )
+
+            const results = await Promise.all(deletePromises)
+            const successful = results.filter(r => r.ok).length
+            const failed = results.filter(r => !r.ok).length
+
+            if (successful > 0) {
+                toast({
+                    title: 'Success!',
+                    description: failed > 0
+                        ? `Deleted ${successful} course(s). ${failed} failed.`
+                        : `Deleted ${successful} course(s) successfully`,
+                })
+            } else {
+                toast({
+                    title: 'Error',
+                    description: 'Failed to delete courses',
+                    variant: 'destructive'
+                })
+            }
+
+            setSelectedCourses(new Set())
+            await fetchCourses(1, false)
+        } catch (error) {
+            console.error('Bulk delete error:', error)
+            toast({
+                title: 'Error',
+                description: 'Failed to delete some courses',
+                variant: 'destructive'
+            })
+        } finally {
+            setBulkDeleting(false)
+        }
+    }
+
+    // Course duplication
+    const handleDuplicate = (course) => {
+        setEditingCourse(null) // Not editing, creating new
+        setFormData({
+            name: `${course.name} - Copy`,
+            courseCode: `${course.course_code}-COPY`,
+            description: course.description,
+            university: course.university || '',
+            duration: course.duration || '',
+            credits: course.credits?.toString() || '',
+            category: course.category || '',
+            thumbnailUrl: course.thumbnail_url || '',
+            targetOutcomes: Array.isArray(course.target_outcomes) ? course.target_outcomes.join('\n') : course.target_outcomes || ''
+        })
+        setDialogOpen(true)
+        toast({
+            title: 'Course Duplicated',
+            description: 'Edit the details and create the new course',
+        })
+    }
 
     // Fetch approved universities on mount
     useEffect(() => {
@@ -101,7 +242,8 @@ export default function CourseManagementPage({ currentUser }) {
             const params = new URLSearchParams({
                 page: pageNum.toString(),
                 limit: '20',
-                sort: 'date-newest'
+                sort: sortBy,
+                t: Date.now().toString() // Prevent caching
             })
 
             if (searchQuery) params.append('search', searchQuery)
@@ -109,7 +251,13 @@ export default function CourseManagementPage({ currentUser }) {
             if (filterCategory !== 'all') params.append('category', filterCategory)
             if (filterStatus !== 'all') params.append('approval_status', filterStatus)
 
-            const response = await fetch(`/api/courses?${params.toString()}`)
+            const response = await fetch(`/api/courses?${params.toString()}`, {
+                cache: 'no-store',
+                headers: {
+                    'Pragma': 'no-cache',
+                    'Cache-Control': 'no-cache'
+                }
+            })
             const data = await response.json()
 
             if (response.ok && data.data) {
@@ -141,10 +289,11 @@ export default function CourseManagementPage({ currentUser }) {
         }
     }
 
-    // Fetch courses on mount and filter changes
+    // Fetch courses on mount and filter/sort changes
     useEffect(() => {
         fetchCourses(1, false)
-    }, [searchQuery, filterUniversity, filterCategory, filterStatus])
+        setSelectedCourses(new Set()) // Clear selection on filter change
+    }, [searchQuery, filterUniversity, filterCategory, filterStatus, sortBy])
 
     const loadMore = () => {
         if (hasMore && !loadingCourses) {
@@ -244,7 +393,6 @@ export default function CourseManagementPage({ currentUser }) {
                     description: data.message || 'Course deleted successfully',
                 })
                 setDeletingCourse(null)
-                // Refresh course list
                 fetchCourses(1, false)
             } else {
                 throw new Error(data.error || 'Failed to delete course')
@@ -309,7 +457,6 @@ export default function CourseManagementPage({ currentUser }) {
                 })
                 handleReset()
                 setDialogOpen(false)
-                // Refresh course list
                 fetchCourses(1, false)
             } else {
                 throw new Error(data.error || data.message || `Failed to ${editingCourse ? 'update' : 'create'} course`)
@@ -343,8 +490,65 @@ export default function CourseManagementPage({ currentUser }) {
 
     return (
         <div className="space-y-6">
+            {/* Bulk Action Bar */}
+            {selectedCourses.size > 0 && (
+                <div className="fixed top-0 left-0 right-0 z-50 bg-blue-600 text-white py-3 px-6 shadow-lg">
+                    <div className="max-w-7xl mx-auto flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <span className="font-semibold">{selectedCourses.size} course(s) selected</span>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSelectedCourses(new Set())}
+                                className="text-white hover:bg-blue-700"
+                            >
+                                <X className="h-4 w-4 mr-2" />
+                                Clear Selection
+                            </Button>
+                        </div>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button
+                                    variant="destructive"
+                                    disabled={bulkDeleting}
+                                >
+                                    {bulkDeleting ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                            Deleting...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Trash2 className="h-4 w-4 mr-2" />
+                                            Delete Selected
+                                        </>
+                                    )}
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete {selectedCourses.size} course(s)?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete the selected courses.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                        onClick={handleBulkDelete}
+                                        className="bg-red-600 hover:bg-red-700"
+                                    >
+                                        Delete {selectedCourses.size} Course(s)
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </div>
+                </div>
+            )}
+
             {/* Page Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-white/20 dark:border-slate-700/50">
+            <div className={`flex items-center justify-between pb-4 border-b border-white/20 dark:border-slate-700/50 ${selectedCourses.size > 0 ? 'mt-16' : ''}`}>
                 <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/25">
                         <GraduationCap className="h-6 w-6 text-white" />
@@ -359,279 +563,290 @@ export default function CourseManagementPage({ currentUser }) {
                     </div>
                 </div>
 
-                {/* Create Course Button */}
-                <Dialog open={dialogOpen} onOpenChange={(open) => {
-                    setDialogOpen(open)
-                    if (!open) {
-                        handleReset()
-                    }
-                }}>
-                    <DialogTrigger asChild>
-                        <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white">
-                            <Plus className="h-4 w-4 mr-2" />
-                            Create Course
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                        <DialogHeader>
-                            <DialogTitle className="flex items-center gap-2">
-                                {editingCourse ? <Edit className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
-                                {editingCourse ? 'Edit Course' : 'Create New Course'}
-                            </DialogTitle>
-                            <DialogDescription>
-                                {editingCourse ? 'Update the course details below.' : 'Fill in the details below to create a new course. All fields are required.'}
-                            </DialogDescription>
-                        </DialogHeader>
+                {/* Action Buttons */}
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={handleExportCSV}
+                        disabled={courses.length === 0}
+                    >
+                        <Download className="h-4 w-4 mr-2" />
+                        Export CSV
+                    </Button>
 
-                        <form onSubmit={handleSubmit} className="space-y-6">
-                            {/* Basic Information */}
-                            <div className="space-y-4">
-                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white border-b pb-2">
-                                    Basic Information
-                                </h3>
+                    <Dialog open={dialogOpen} onOpenChange={(open) => {
+                        setDialogOpen(open)
+                        if (!open) {
+                            handleReset()
+                        }
+                    }}>
+                        <DialogTrigger asChild>
+                            <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white">
+                                <Plus className="h-4 w-4 mr-2" />
+                                Create Course
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                            <DialogHeader>
+                                <DialogTitle className="flex items-center gap-2">
+                                    {editingCourse ? <Edit className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
+                                    {editingCourse ? 'Edit Course' : 'Create New Course'}
+                                </DialogTitle>
+                                <DialogDescription>
+                                    {editingCourse ? 'Update the course details below.' : 'Fill in the details below to create a new course. All fields are required.'}
+                                </DialogDescription>
+                            </DialogHeader>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {/* Course Name */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="name">
-                                            Course Name <span className="text-red-500">*</span>
-                                        </Label>
-                                        <Input
-                                            id="name"
-                                            name="name"
-                                            value={formData.name}
-                                            onChange={handleChange}
-                                            placeholder="e.g., Introduction to Data Science"
-                                            className={errors.name ? 'border-red-500' : ''}
-                                        />
-                                        {errors.name && (
-                                            <p className="text-sm text-red-500">{errors.name}</p>
-                                        )}
-                                    </div>
+                            <form onSubmit={handleSubmit} className="space-y-6">
+                                {/* Basic Information */}
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white border-b pb-2">
+                                        Basic Information
+                                    </h3>
 
-                                    {/* Course Code */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="courseCode">
-                                            Course Code <span className="text-red-500">*</span>
-                                        </Label>
-                                        <Input
-                                            id="courseCode"
-                                            name="courseCode"
-                                            value={formData.courseCode}
-                                            onChange={handleChange}
-                                            placeholder="e.g., CS101"
-                                            className={errors.courseCode ? 'border-red-500' : ''}
-                                        />
-                                        {errors.courseCode && (
-                                            <p className="text-sm text-red-500">{errors.courseCode}</p>
-                                        )}
-                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {/* Course Name */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="name">
+                                                Course Name <span className="text-red-500">*</span>
+                                            </Label>
+                                            <Input
+                                                id="name"
+                                                name="name"
+                                                value={formData.name}
+                                                onChange={handleChange}
+                                                placeholder="e.g., Introduction to Data Science"
+                                                className={errors.name ? 'border-red-500' : ''}
+                                            />
+                                            {errors.name && (
+                                                <p className="text-sm text-red-500">{errors.name}</p>
+                                            )}
+                                        </div>
 
-                                    {/* University */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="university">
-                                            University/Institution <span className="text-red-500">*</span>
-                                        </Label>
-                                        <Select
-                                            value={formData.university}
-                                            onValueChange={(value) => {
-                                                setFormData(prev => ({ ...prev, university: value }))
-                                                if (errors.university) {
-                                                    setErrors(prev => {
-                                                        const newErrors = { ...prev }
-                                                        delete newErrors.university
-                                                        return newErrors
-                                                    })
-                                                }
-                                            }}
-                                            disabled={loadingUniversities}
-                                        >
-                                            <SelectTrigger className={errors.university ? 'border-red-500' : ''}>
-                                                <SelectValue placeholder={loadingUniversities ? "Loading universities..." : "Select a university"} />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {universities.length > 0 ? (
-                                                    universities.map(uni => (
-                                                        <SelectItem key={uni.id} value={uni.name}>
-                                                            {uni.name}
+                                        {/* Course Code */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="courseCode">
+                                                Course Code <span className="text-red-500">*</span>
+                                            </Label>
+                                            <Input
+                                                id="courseCode"
+                                                name="courseCode"
+                                                value={formData.courseCode}
+                                                onChange={handleChange}
+                                                placeholder="e.g., CS101"
+                                                className={errors.courseCode ? 'border-red-500' : ''}
+                                            />
+                                            {errors.courseCode && (
+                                                <p className="text-sm text-red-500">{errors.courseCode}</p>
+                                            )}
+                                        </div>
+
+                                        {/* University */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="university">
+                                                University/Institution <span className="text-red-500">*</span>
+                                            </Label>
+                                            <Select
+                                                value={formData.university}
+                                                onValueChange={(value) => {
+                                                    setFormData(prev => ({ ...prev, university: value }))
+                                                    if (errors.university) {
+                                                        setErrors(prev => {
+                                                            const newErrors = { ...prev }
+                                                            delete newErrors.university
+                                                            return newErrors
+                                                        })
+                                                    }
+                                                }}
+                                                disabled={loadingUniversities}
+                                            >
+                                                <SelectTrigger className={errors.university ? 'border-red-500' : ''}>
+                                                    <SelectValue placeholder={loadingUniversities ? "Loading universities..." : "Select a university"} />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {universities.length > 0 ? (
+                                                        universities.map(uni => (
+                                                            <SelectItem key={uni.id} value={uni.name}>
+                                                                {uni.name}
+                                                            </SelectItem>
+                                                        ))
+                                                    ) : (
+                                                        <SelectItem value="none" disabled>
+                                                            {loadingUniversities ? 'Loading...' : 'No universities available'}
                                                         </SelectItem>
-                                                    ))
-                                                ) : (
-                                                    <SelectItem value="none" disabled>
-                                                        {loadingUniversities ? 'Loading...' : 'No universities available'}
-                                                    </SelectItem>
-                                                )}
-                                            </SelectContent>
-                                        </Select>
-                                        {errors.university && (
-                                            <p className="text-sm text-red-500">{errors.university}</p>
-                                        )}
+                                                    )}
+                                                </SelectContent>
+                                            </Select>
+                                            {errors.university && (
+                                                <p className="text-sm text-red-500">{errors.university}</p>
+                                            )}
+                                        </div>
+
+                                        {/* Category */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="category">
+                                                Category/Department <span className="text-red-500">*</span>
+                                            </Label>
+                                            <Input
+                                                id="category"
+                                                name="category"
+                                                value={formData.category}
+                                                onChange={handleChange}
+                                                placeholder="e.g., Computer Science"
+                                                className={errors.category ? 'border-red-500' : ''}
+                                            />
+                                            {errors.category && (
+                                                <p className="text-sm text-red-500">{errors.category}</p>
+                                            )}
+                                        </div>
+
+                                        {/* Duration */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="duration">
+                                                Duration <span className="text-red-500">*</span>
+                                            </Label>
+                                            <Input
+                                                id="duration"
+                                                name="duration"
+                                                value={formData.duration}
+                                                onChange={handleChange}
+                                                placeholder="e.g., 8 weeks, 3 months"
+                                                className={errors.duration ? 'border-red-500' : ''}
+                                            />
+                                            {errors.duration && (
+                                                <p className="text-sm text-red-500">{errors.duration}</p>
+                                            )}
+                                        </div>
+
+                                        {/* Credits */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="credits">
+                                                Credits <span className="text-red-500">*</span>
+                                            </Label>
+                                            <Input
+                                                id="credits"
+                                                name="credits"
+                                                type="number"
+                                                min="0"
+                                                step="0.5"
+                                                value={formData.credits}
+                                                onChange={handleChange}
+                                                placeholder="e.g., 3"
+                                                className={errors.credits ? 'border-red-500' : ''}
+                                            />
+                                            {errors.credits && (
+                                                <p className="text-sm text-red-500">{errors.credits}</p>
+                                            )}
+                                        </div>
                                     </div>
 
-                                    {/* Category */}
+                                    {/* Thumbnail URL */}
                                     <div className="space-y-2">
-                                        <Label htmlFor="category">
-                                            Category/Department <span className="text-red-500">*</span>
+                                        <Label htmlFor="thumbnailUrl">
+                                            Thumbnail URL <span className="text-red-500">*</span>
                                         </Label>
                                         <Input
-                                            id="category"
-                                            name="category"
-                                            value={formData.category}
+                                            id="thumbnailUrl"
+                                            name="thumbnailUrl"
+                                            type="url"
+                                            value={formData.thumbnailUrl}
                                             onChange={handleChange}
-                                            placeholder="e.g., Computer Science"
-                                            className={errors.category ? 'border-red-500' : ''}
+                                            placeholder="https://example.com/image.jpg"
+                                            className={errors.thumbnailUrl ? 'border-red-500' : ''}
                                         />
-                                        {errors.category && (
-                                            <p className="text-sm text-red-500">{errors.category}</p>
+                                        {errors.thumbnailUrl && (
+                                            <p className="text-sm text-red-500">{errors.thumbnailUrl}</p>
                                         )}
                                     </div>
+                                </div>
 
-                                    {/* Duration */}
+                                {/* Course Details */}
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white border-b pb-2">
+                                        Course Details
+                                    </h3>
+
+                                    {/* Description */}
                                     <div className="space-y-2">
-                                        <Label htmlFor="duration">
-                                            Duration <span className="text-red-500">*</span>
+                                        <Label htmlFor="description">
+                                            Description <span className="text-red-500">*</span>
                                         </Label>
-                                        <Input
-                                            id="duration"
-                                            name="duration"
-                                            value={formData.duration}
+                                        <Textarea
+                                            id="description"
+                                            name="description"
+                                            value={formData.description}
                                             onChange={handleChange}
-                                            placeholder="e.g., 8 weeks, 3 months"
-                                            className={errors.duration ? 'border-red-500' : ''}
+                                            placeholder="Provide a detailed description of the course..."
+                                            rows={5}
+                                            className={errors.description ? 'border-red-500' : ''}
                                         />
-                                        {errors.duration && (
-                                            <p className="text-sm text-red-500">{errors.duration}</p>
+                                        {errors.description && (
+                                            <p className="text-sm text-red-500">{errors.description}</p>
                                         )}
                                     </div>
 
-                                    {/* Credits */}
+                                    {/* Target Outcomes */}
                                     <div className="space-y-2">
-                                        <Label htmlFor="credits">
-                                            Credits <span className="text-red-500">*</span>
+                                        <Label htmlFor="targetOutcomes">
+                                            Target Outcomes <span className="text-red-500">*</span>
                                         </Label>
-                                        <Input
-                                            id="credits"
-                                            name="credits"
-                                            type="number"
-                                            min="0"
-                                            step="0.5"
-                                            value={formData.credits}
+                                        <Textarea
+                                            id="targetOutcomes"
+                                            name="targetOutcomes"
+                                            value={formData.targetOutcomes}
                                             onChange={handleChange}
-                                            placeholder="e.g., 3"
-                                            className={errors.credits ? 'border-red-500' : ''}
+                                            placeholder="List the learning outcomes and goals for students completing this course..."
+                                            rows={5}
+                                            className={errors.targetOutcomes ? 'border-red-500' : ''}
                                         />
-                                        {errors.credits && (
-                                            <p className="text-sm text-red-500">{errors.credits}</p>
+                                        {errors.targetOutcomes && (
+                                            <p className="text-sm text-red-500">{errors.targetOutcomes}</p>
                                         )}
+                                        <p className="text-sm text-muted-foreground">
+                                            Tip: List each outcome on a new line for better readability
+                                        </p>
                                     </div>
                                 </div>
 
-                                {/* Thumbnail URL */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="thumbnailUrl">
-                                        Thumbnail URL <span className="text-red-500">*</span>
-                                    </Label>
-                                    <Input
-                                        id="thumbnailUrl"
-                                        name="thumbnailUrl"
-                                        type="url"
-                                        value={formData.thumbnailUrl}
-                                        onChange={handleChange}
-                                        placeholder="https://example.com/image.jpg"
-                                        className={errors.thumbnailUrl ? 'border-red-500' : ''}
-                                    />
-                                    {errors.thumbnailUrl && (
-                                        <p className="text-sm text-red-500">{errors.thumbnailUrl}</p>
-                                    )}
+                                {/* Form Actions */}
+                                <div className="flex gap-4 pt-4 border-t">
+                                    <Button
+                                        type="submit"
+                                        disabled={loading}
+                                        className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
+                                    >
+                                        {loading ? (
+                                            <>
+                                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                {editingCourse ? 'Updating...' : 'Creating...'}
+                                            </>
+                                        ) : (
+                                            <>
+                                                {editingCourse ? <Edit className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                                                {editingCourse ? 'Update Course' : 'Create Course'}
+                                            </>
+                                        )}
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={handleReset}
+                                        disabled={loading}
+                                    >
+                                        <RotateCcw className="h-4 w-4 mr-2" />
+                                        Reset
+                                    </Button>
                                 </div>
-                            </div>
-
-                            {/* Course Details */}
-                            <div className="space-y-4">
-                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white border-b pb-2">
-                                    Course Details
-                                </h3>
-
-                                {/* Description */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="description">
-                                        Description <span className="text-red-500">*</span>
-                                    </Label>
-                                    <Textarea
-                                        id="description"
-                                        name="description"
-                                        value={formData.description}
-                                        onChange={handleChange}
-                                        placeholder="Provide a detailed description of the course..."
-                                        rows={5}
-                                        className={errors.description ? 'border-red-500' : ''}
-                                    />
-                                    {errors.description && (
-                                        <p className="text-sm text-red-500">{errors.description}</p>
-                                    )}
-                                </div>
-
-                                {/* Target Outcomes */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="targetOutcomes">
-                                        Target Outcomes <span className="text-red-500">*</span>
-                                    </Label>
-                                    <Textarea
-                                        id="targetOutcomes"
-                                        name="targetOutcomes"
-                                        value={formData.targetOutcomes}
-                                        onChange={handleChange}
-                                        placeholder="List the learning outcomes and goals for students completing this course..."
-                                        rows={5}
-                                        className={errors.targetOutcomes ? 'border-red-500' : ''}
-                                    />
-                                    {errors.targetOutcomes && (
-                                        <p className="text-sm text-red-500">{errors.targetOutcomes}</p>
-                                    )}
-                                    <p className="text-sm text-muted-foreground">
-                                        Tip: List each outcome on a new line for better readability
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Form Actions */}
-                            <div className="flex gap-4 pt-4 border-t">
-                                <Button
-                                    type="submit"
-                                    disabled={loading}
-                                    className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
-                                >
-                                    {loading ? (
-                                        <>
-                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                            {editingCourse ? 'Updating...' : 'Creating...'}
-                                        </>
-                                    ) : (
-                                        <>
-                                            {editingCourse ? <Edit className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-                                            {editingCourse ? 'Update Course' : 'Create Course'}
-                                        </>
-                                    )}
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={handleReset}
-                                    disabled={loading}
-                                >
-                                    <RotateCcw className="h-4 w-4 mr-2" />
-                                    Reset
-                                </Button>
-                            </div>
-                        </form>
-                    </DialogContent>
-                </Dialog>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </div>
 
             {/* Search and Filters */}
             <Card className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50">
                 <CardContent className="pt-6">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                         {/* Search */}
                         <div className="space-y-2">
                             <Label htmlFor="search">Search</Label>
@@ -698,6 +913,24 @@ export default function CourseManagementPage({ currentUser }) {
                                 </SelectContent>
                             </Select>
                         </div>
+
+                        {/* Sort Options */}
+                        <div className="space-y-2">
+                            <Label>Sort By</Label>
+                            <Select value={sortBy} onValueChange={setSortBy}>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="date-newest">Newest First</SelectItem>
+                                    <SelectItem value="date-oldest">Oldest First</SelectItem>
+                                    <SelectItem value="name-asc">Name (A-Z)</SelectItem>
+                                    <SelectItem value="name-desc">Name (Z-A)</SelectItem>
+                                    <SelectItem value="university-asc">University (A-Z)</SelectItem>
+                                    <SelectItem value="credits-desc">Most Credits</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
@@ -726,7 +959,16 @@ export default function CourseManagementPage({ currentUser }) {
                 <>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {courses.map(course => (
-                            <Card key={course.id} className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50 hover:shadow-lg transition-shadow relative">
+                            <Card key={course.id} className={`bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm hover:shadow-lg transition-all relative ${selectedCourses.has(course.id) ? 'ring-2 ring-blue-500 border-blue-500' : 'border-white/20 dark:border-slate-700/50'}`}>
+                                {/* Selection Checkbox */}
+                                <div className="absolute top-4 left-4 z-10">
+                                    <Checkbox
+                                        checked={selectedCourses.has(course.id)}
+                                        onCheckedChange={() => handleSelectCourse(course.id)}
+                                        className="bg-white border-2"
+                                    />
+                                </div>
+
                                 {/* Action Menu */}
                                 <div className="absolute top-4 right-4 z-10">
                                     <DropdownMenu>
@@ -743,6 +985,10 @@ export default function CourseManagementPage({ currentUser }) {
                                             <DropdownMenuItem onClick={() => handleEdit(course)}>
                                                 <Edit className="h-4 w-4 mr-2" />
                                                 Edit Course
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleDuplicate(course)}>
+                                                <Copy className="h-4 w-4 mr-2" />
+                                                Duplicate
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem
@@ -769,11 +1015,11 @@ export default function CourseManagementPage({ currentUser }) {
                                             />
                                         </div>
                                     )}
-                                    <div className="flex items-start justify-between gap-2 pr-8">
+                                    <div className="flex items-start justify-between gap-2 pr-8 pl-8">
                                         <CardTitle className="text-lg line-clamp-2">{course.name}</CardTitle>
                                         {getStatusBadge(course.approval_status)}
                                     </div>
-                                    <CardDescription className="font-mono text-xs">
+                                    <CardDescription className="font-mono text-xs pl-8">
                                         {course.course_code}
                                     </CardDescription>
                                 </CardHeader>

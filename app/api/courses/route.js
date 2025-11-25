@@ -24,25 +24,46 @@ export async function GET(request) {
         const sortBy = url.searchParams.get('sort') || 'date-newest';
 
         // Build query using supabaseAdmin (bypass RLS)
-        let query = supabaseAdmin.from('courses').select('course_id, title, code, description, thumbnail, status, duration, created_at', { count: 'exact' });
+        let query = supabaseAdmin
+            .from('courses')
+            .select('course_id, title, code, description, thumbnail, status, duration, university, category, credits, target_outcomes, educator_name, created_at, updated_at', { count: 'exact' })
+            .is('deleted_at', null); // Exclude soft-deleted courses
 
         // Apply filters (using existing column names)
         if (statusFilter) {
-            // Map legacy 'pending' to 'Draft' status used in schema
-            const mappedStatus = statusFilter === 'pending' ? 'Draft' : statusFilter;
+            // Map frontend status to database status
+            const mappedStatus = statusFilter === 'pending' ? 'Draft' : statusFilter === 'approved' ? 'Active' : statusFilter;
             query = query.eq('status', mappedStatus);
         }
+
+        // Additional filters
+        const universityFilter = url.searchParams.get('university');
+        const categoryFilter = url.searchParams.get('category');
+
+        if (universityFilter && universityFilter !== 'all') {
+            query = query.eq('university', universityFilter);
+        }
+        if (categoryFilter && categoryFilter !== 'all') {
+            query = query.eq('category', categoryFilter);
+        }
+
         if (searchTerm) {
             query = query.or(`title.ilike.%${searchTerm}%,code.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
         }
 
         // Apply sorting using existing columns
         switch (sortBy) {
-            case 'title-asc':
+            case 'name-asc':
                 query = query.order('title', { ascending: true });
                 break;
-            case 'title-desc':
+            case 'name-desc':
                 query = query.order('title', { ascending: false });
+                break;
+            case 'university-asc':
+                query = query.order('university', { ascending: true, nullsFirst: false });
+                break;
+            case 'credits-desc':
+                query = query.order('credits', { ascending: false, nullsFirst: false });
                 break;
             case 'date-oldest':
                 query = query.order('created_at', { ascending: true });
@@ -69,14 +90,16 @@ export async function GET(request) {
             name: c.title,
             course_code: c.code,
             description: c.description,
-            university: null, // not present in schema
+            university: c.university,
             duration: c.duration,
-            credits: null,
-            category: null,
+            credits: c.credits,
+            category: c.category,
             thumbnail_url: c.thumbnail,
-            target_outcomes: [],
-            approval_status: c.status,
-            created_at: c.created_at
+            target_outcomes: c.target_outcomes,
+            approval_status: c.status === 'Draft' ? 'pending' : c.status === 'Active' ? 'approved' : c.status,
+            educator_name: c.educator_name,
+            created_at: c.created_at,
+            updated_at: c.updated_at
         }));
 
         const response = NextResponse.json({
