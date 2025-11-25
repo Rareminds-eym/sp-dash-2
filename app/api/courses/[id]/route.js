@@ -174,19 +174,19 @@ export async function DELETE(request, { params }) {
         const { supabase: rlsClient, user, error: authError } = await createRLSClient(request);
 
         if (!user || authError) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return unauthorizedError();
         }
 
         const userContext = await getUserContext(rlsClient, user);
 
         if (!userContext) {
-            return NextResponse.json({ error: 'User context not found' }, { status: 403 });
+            return forbiddenError('User context not found');
         }
 
-        const { id } = params;
+        const { id } = await params;
 
-        if (!id) {
-            return NextResponse.json({ error: 'Course ID is required' }, { status: 400 });
+        if (!id || typeof id !== 'string' || id.trim().length === 0) {
+            return validationError(['Course ID is required and must be valid']);
         }
 
         // Soft delete course
@@ -201,35 +201,32 @@ export async function DELETE(request, { params }) {
             .single();
 
         if (deleteError) {
-            console.error('Error deleting course:', deleteError);
-            return NextResponse.json(
-                { error: deleteError.message },
-                { status: 500 }
-            );
+            if (deleteError.code === 'PGRST116') {
+                return notFoundError('Course');
+            }
+            const appError = parseSupabaseError(deleteError);
+            return handleError(appError, 'DELETE /api/courses/[id]', { courseId: id, userId: user.id });
         }
 
         if (!data) {
-            return NextResponse.json(
-                { error: 'Course not found or already deleted' },
-                { status: 404 }
-            );
+            return notFoundError('Course');
         }
 
-        // Log audit
-        await logAudit(user.id, 'delete_course', id, {
-            course_name: data.title,
-            deleted_by: user?.metadata?.name || user?.email
-        });
+        // Log audit (non-blocking, errors logged but not thrown)
+        try {
+            await logAudit(user.id, 'delete_course', id, {
+                course_name: data.title,
+                deleted_by: user?.metadata?.name || user?.email
+            });
+        } catch (auditError) {
+            console.error('Audit log failed:', auditError);
+        }
 
         return NextResponse.json({
             success: true,
             message: `Course "${data.title}" has been deleted`
         });
     } catch (error) {
-        console.error('API Error:', error);
-        return NextResponse.json(
-            { error: 'Internal server error', details: error.message },
-            { status: 500 }
-        );
+        return handleError(error, 'DELETE /api/courses/[id]');
     }
 }
