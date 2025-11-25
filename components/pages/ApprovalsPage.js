@@ -23,6 +23,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import {
+  BookOpen,
   Briefcase,
   Building2,
   CheckCircle2,
@@ -57,39 +58,46 @@ export default function ApprovalsPage({ currentUser }) {
   const [recruiters, setRecruiters] = useState([])
   const [colleges, setColleges] = useState([])
   const [students, setStudents] = useState([])
+  const [courses, setCourses] = useState([])
   const [loading, setLoading] = useState({
     universities: false,
     recruiters: false,
     colleges: false,
-    students: false
+    students: false,
+    courses: false
   })
   const [filtering, setFiltering] = useState(false)
 
   // View type from context
   const { viewType, isHydrated } = useApprovalView()
-  
+
   // Separate search and filter states for each tab
   const [universitySearch, setUniversitySearch] = useState('')
   const [recruiterSearch, setRecruiterSearch] = useState('')
   const [collegeSearch, setCollegeSearch] = useState('')
   const [studentSearch, setStudentSearch] = useState('')
-  
+  const [courseSearch, setCourseSearch] = useState('')
+
   const [universityFilters, setUniversityFilters] = useState({
     state: 'all'
   })
-  
+
   const [recruiterFilters, setRecruiterFilters] = useState({
     state: 'all'
   })
-  
+
   const [collegeFilters, setCollegeFilters] = useState({
     state: 'all'
   })
-  
+
   const [studentFilters, setStudentFilters] = useState({
     state: 'all',
     college: 'all',
     branch: 'all'
+  })
+
+  const [courseFilters, setCourseFilters] = useState({
+    state: 'all'
   })
 
   // Cache for all unique filter options (accumulated as we load students)
@@ -104,24 +112,31 @@ export default function ApprovalsPage({ currentUser }) {
     }
     return 'date-newest'
   })
-  
+
   const [recruiterSort, setRecruiterSort] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('approvalSort_recruiters') || 'date-newest'
     }
     return 'date-newest'
   })
-  
+
   const [collegeSort, setCollegeSort] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('approvalSort_colleges') || 'date-newest'
     }
     return 'date-newest'
   })
-  
+
   const [studentSort, setStudentSort] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('approvalSort_students') || 'date-newest'
+    }
+    return 'date-newest'
+  })
+
+  const [courseSort, setCourseSort] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('approvalSort_courses') || 'date-newest'
     }
     return 'date-newest'
   })
@@ -150,40 +165,48 @@ export default function ApprovalsPage({ currentUser }) {
       localStorage.setItem('approvalSort_students', studentSort)
     }
   }, [studentSort])
-  
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('approvalSort_courses', courseSort)
+    }
+  }, [courseSort])
+
   // Lazy loading state
   const [loadedTabs, setLoadedTabs] = useState({
     universities: false,
     recruiters: false,
     colleges: false,
-    students: false
+    students: false,
+    courses: false
   })
-  
+
   // Infinite scroll state per tab
   const [pagination, setPagination] = useState({
     universities: { page: 1, hasMore: true, loadingMore: false, total: 0 },
     recruiters: { page: 1, hasMore: true, loadingMore: false, total: 0 },
     colleges: { page: 1, hasMore: true, loadingMore: false, total: 0 },
-    students: { page: 1, hasMore: true, loadingMore: false, total: 0 }
+    students: { page: 1, hasMore: true, loadingMore: false, total: 0 },
+    courses: { page: 1, hasMore: true, loadingMore: false, total: 0 }
   })
-  
-  const [actionDialog, setActionDialog] = useState({ 
-    open: false, 
-    entity: null, 
-    entityType: null, 
+
+  const [actionDialog, setActionDialog] = useState({
+    open: false,
+    entity: null,
+    entityType: null,
     action: null,
     reason: ''
   })
-  const [detailsDialog, setDetailsDialog] = useState({ 
-    open: false, 
-    entity: null, 
+  const [detailsDialog, setDetailsDialog] = useState({
+    open: false,
+    entity: null,
     entityType: null,
     loading: false
   })
 
   // Ref for infinite scroll observer
   const loadMoreRef = useRef(null)
-  
+
   // Fetch counts for all tabs on initial load
   useEffect(() => {
     fetchAllCounts()
@@ -194,14 +217,14 @@ export default function ApprovalsPage({ currentUser }) {
     if (!loadedTabs[activeTab]) {
       fetchTabData(activeTab, true)
     }
-    
+
     // Listen for refresh events
     const handleRefresh = () => {
       fetchTabData(activeTab, true, true) // Force refresh
       fetchAllCounts() // Also refresh counts
     }
     window.addEventListener('refreshPage', handleRefresh)
-    
+
     return () => {
       window.removeEventListener('refreshPage', handleRefresh)
     }
@@ -273,6 +296,17 @@ export default function ApprovalsPage({ currentUser }) {
     }
   }, [studentSearch, studentFilters, studentSort])
 
+  // Refetch when course filters/search/sort change
+  useEffect(() => {
+    if (loadedTabs.courses) {
+      setPagination(prev => ({
+        ...prev,
+        courses: { ...prev.courses, page: 1, hasMore: true }
+      }))
+      fetchTabData('courses', false, true, true)
+    }
+  }, [courseSearch, courseFilters, courseSort])
+
   // Fetch counts for all entity types on initial load
   const fetchAllCounts = async () => {
     try {
@@ -280,11 +314,12 @@ export default function ApprovalsPage({ currentUser }) {
         { type: 'universities', url: '/api/universities?approval_status=pending&page=1&limit=1' },
         { type: 'recruiters', url: '/api/recruiters?approval_status=pending&page=1&limit=1' },
         { type: 'colleges', url: '/api/colleges?approval_status=pending&page=1&limit=1' },
-        { type: 'students', url: '/api/students?approval_status=pending&page=1&limit=1' }
+        { type: 'students', url: '/api/students?approval_status=pending&page=1&limit=1' },
+        { type: 'courses', url: '/api/courses?approval_status=pending&page=1&limit=1' }
       ]
 
       const responses = await Promise.all(
-        endpoints.map(endpoint => 
+        endpoints.map(endpoint =>
           fetch(endpoint.url).then(res => res.json()).catch(() => ({ pagination: { total: 0 } }))
         )
       )
@@ -300,7 +335,7 @@ export default function ApprovalsPage({ currentUser }) {
           }
         }
       })
-      
+
       setPagination(newPagination)
     } catch (error) {
       console.error('Failed to fetch counts:', error)
@@ -310,18 +345,18 @@ export default function ApprovalsPage({ currentUser }) {
   // Update accumulated unique values whenever students data changes
   const updateStudentFilterOptions = (newStudents) => {
     if (!newStudents || newStudents.length === 0) return
-    
+
     // Accumulate unique values
     const existingColleges = new Set(allUniqueColleges)
     const existingBranches = new Set(allUniqueBranches)
     const existingStates = new Set(allUniqueStates)
-    
+
     newStudents.forEach(student => {
       if (student.college_school_name) existingColleges.add(student.college_school_name)
       if (student.branch_field) existingBranches.add(student.branch_field)
       if (student.state) existingStates.add(student.state)
     })
-    
+
     setAllUniqueColleges(Array.from(existingColleges).sort())
     setAllUniqueBranches(Array.from(existingBranches).sort())
     setAllUniqueStates(Array.from(existingStates).sort())
@@ -333,14 +368,14 @@ export default function ApprovalsPage({ currentUser }) {
     } else if (isFiltering) {
       setFiltering(true)
     }
-    
+
     const limit = 20 // Items per page
     const page = forceRefresh ? 1 : pagination[tabName].page
-    
+
     try {
       let endpoint = ''
       let response, data
-      
+
       // Build endpoint with filters
       const buildEndpoint = (base, filters, search, sort) => {
         const params = new URLSearchParams({
@@ -349,7 +384,7 @@ export default function ApprovalsPage({ currentUser }) {
           limit: limit.toString(),
           sort: sort
         })
-        
+
         if (search) {
           params.append('search', search)
         }
@@ -362,11 +397,11 @@ export default function ApprovalsPage({ currentUser }) {
         if (filters.branch && filters.branch !== 'all') {
           params.append('branch_field', filters.branch)
         }
-        
+
         return `${base}?${params.toString()}`
       }
-      
-      switch(tabName) {
+
+      switch (tabName) {
         case 'universities':
           endpoint = buildEndpoint('/api/universities', universityFilters, universitySearch, universitySort)
           break
@@ -379,19 +414,22 @@ export default function ApprovalsPage({ currentUser }) {
         case 'students':
           endpoint = buildEndpoint('/api/students', studentFilters, studentSearch, studentSort)
           break
+        case 'courses':
+          endpoint = buildEndpoint('/api/courses', courseFilters, courseSearch, courseSort)
+          break
       }
-      
+
       response = await fetch(endpoint)
       data = await response.json()
-      
+
       if (response.ok) {
         const newData = data.data || []
         const paginationInfo = data.pagination || {}
-        
+
         // Update entity data based on tab
         if (forceRefresh) {
           // Replace data on refresh
-          switch(tabName) {
+          switch (tabName) {
             case 'universities':
               setUniversities(newData)
               break
@@ -404,11 +442,14 @@ export default function ApprovalsPage({ currentUser }) {
             case 'students':
               setStudents(newData)
               updateStudentFilterOptions(newData)
+              break
+            case 'courses':
+              setCourses(newData)
               break
           }
         } else {
           // Set initial data
-          switch(tabName) {
+          switch (tabName) {
             case 'universities':
               setUniversities(newData)
               break
@@ -422,21 +463,24 @@ export default function ApprovalsPage({ currentUser }) {
               setStudents(newData)
               updateStudentFilterOptions(newData)
               break
+            case 'courses':
+              setCourses(newData)
+              break
           }
         }
-        
+
         // Mark tab as loaded
         setLoadedTabs(prev => ({ ...prev, [tabName]: true }))
-        
+
         // Calculate hasMore properly
         const currentPage = paginationInfo.page || 1
         const totalPages = paginationInfo.totalPages || 1
         const totalItems = paginationInfo.total || 0
-        
+
         // hasMore is true only if current page < total pages
         // This ensures when we're on the last page, hasMore becomes false
         const hasMoreItems = currentPage < totalPages
-        
+
         // Update pagination info
         setPagination(prev => ({
           ...prev,
@@ -468,23 +512,23 @@ export default function ApprovalsPage({ currentUser }) {
   const loadMoreEntities = async () => {
     const currentTab = activeTab
     const currentPagination = pagination[currentTab]
-    
+
     if (!currentPagination.hasMore || currentPagination.loadingMore) {
       return
     }
-    
+
     // Set loading more state
     setPagination(prev => ({
       ...prev,
       [currentTab]: { ...prev[currentTab], loadingMore: true }
     }))
-    
+
     const nextPage = currentPagination.page + 1
     const limit = 20
-    
+
     try {
       let endpoint = ''
-      
+
       // Build endpoint with filters
       const buildEndpoint = (base, filters, search, sort) => {
         const params = new URLSearchParams({
@@ -493,7 +537,7 @@ export default function ApprovalsPage({ currentUser }) {
           limit: limit.toString(),
           sort: sort
         })
-        
+
         if (search) {
           params.append('search', search)
         }
@@ -506,11 +550,11 @@ export default function ApprovalsPage({ currentUser }) {
         if (filters.branch && filters.branch !== 'all') {
           params.append('branch_field', filters.branch)
         }
-        
+
         return `${base}?${params.toString()}`
       }
-      
-      switch(currentTab) {
+
+      switch (currentTab) {
         case 'universities':
           endpoint = buildEndpoint('/api/universities', universityFilters, universitySearch, universitySort)
           break
@@ -523,17 +567,20 @@ export default function ApprovalsPage({ currentUser }) {
         case 'students':
           endpoint = buildEndpoint('/api/students', studentFilters, studentSearch, studentSort)
           break
+        case 'courses':
+          endpoint = buildEndpoint('/api/courses', courseFilters, courseSearch, courseSort)
+          break
       }
-      
+
       const response = await fetch(endpoint)
       const data = await response.json()
-      
+
       if (response.ok) {
         const newData = data.data || []
         const paginationInfo = data.pagination || {}
-        
+
         // Append new data to existing data
-        switch(currentTab) {
+        switch (currentTab) {
           case 'universities':
             setUniversities(prev => [...prev, ...newData])
             break
@@ -547,15 +594,18 @@ export default function ApprovalsPage({ currentUser }) {
             setStudents(prev => [...prev, ...newData])
             updateStudentFilterOptions(newData)
             break
+          case 'courses':
+            setCourses(prev => [...prev, ...newData])
+            break
         }
-        
+
         // Calculate hasMore properly
         const totalPages = paginationInfo.totalPages || 1
         const totalItems = paginationInfo.total || 0
-        
+
         // hasMore is true only if next page < total pages
         const hasMoreItems = nextPage < totalPages
-        
+
         // Update pagination info
         setPagination(prev => ({
           ...prev,
@@ -574,7 +624,7 @@ export default function ApprovalsPage({ currentUser }) {
         description: `Failed to load more ${currentTab}. Please try again.`,
         variant: 'destructive'
       })
-      
+
       // Reset loading more state on error
       setPagination(prev => ({
         ...prev,
@@ -591,8 +641,8 @@ export default function ApprovalsPage({ currentUser }) {
   const handleApprove = async (entityType, entityId) => {
     try {
       let endpoint, bodyKey;
-      
-      switch(entityType) {
+
+      switch (entityType) {
         case 'university':
           endpoint = '/api/universities/approve'
           bodyKey = 'universityId'
@@ -609,14 +659,18 @@ export default function ApprovalsPage({ currentUser }) {
           endpoint = '/api/students/approve'
           bodyKey = 'studentId'
           break
+        case 'course':
+          endpoint = '/api/courses/approve'
+          bodyKey = 'courseId'
+          break
         default:
           throw new Error('Unsupported entity type')
       }
-      
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           [bodyKey]: entityId,
           userId: currentUser?.user?.id,
           notes: `Approved by ${currentUser?.user?.name || currentUser?.user?.email}`
@@ -657,8 +711,8 @@ export default function ApprovalsPage({ currentUser }) {
 
     try {
       let endpoint, bodyKey;
-      
-      switch(entityType) {
+
+      switch (entityType) {
         case 'university':
           endpoint = '/api/universities/reject'
           bodyKey = 'universityId'
@@ -675,14 +729,18 @@ export default function ApprovalsPage({ currentUser }) {
           endpoint = '/api/students/reject'
           bodyKey = 'studentId'
           break
+        case 'course':
+          endpoint = '/api/courses/reject'
+          bodyKey = 'courseId'
+          break
         default:
           throw new Error('Unsupported entity type')
       }
-      
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           [bodyKey]: entityId,
           userId: currentUser?.user?.id,
           reason: reason,
@@ -733,7 +791,7 @@ export default function ApprovalsPage({ currentUser }) {
 
   // No client-side filtering/sorting needed - all done in database queries
 
-  const totalPending = pagination.universities.total + pagination.recruiters.total + pagination.colleges.total + pagination.students.total
+  const totalPending = pagination.universities.total + pagination.recruiters.total + pagination.colleges.total + pagination.students.total + pagination.courses.total
 
   // Render view based on selected view type
   const renderView = (entities, entityType) => {
@@ -744,11 +802,11 @@ export default function ApprovalsPage({ currentUser }) {
       onApprove: (entity, type) => openActionDialog(entity, type, 'approve'),
       onReject: (entity, type) => openActionDialog(entity, type, 'reject')
     }
-    
+
     // Use 'card' view until hydrated to prevent hydration mismatch
     const effectiveViewType = isHydrated ? viewType : 'card'
-    
-    switch(effectiveViewType) {
+
+    switch (effectiveViewType) {
       case 'card':
         return <CardView {...commonProps} />
       case 'table':
@@ -794,7 +852,8 @@ export default function ApprovalsPage({ currentUser }) {
       universities: { name: 'Universities', icon: Building2, count: pagination.universities.total },
       recruiters: { name: 'Recruiters', icon: Briefcase, count: pagination.recruiters.total },
       colleges: { name: 'Colleges', icon: School, count: pagination.colleges.total },
-      students: { name: 'Students', icon: Users, count: pagination.students.total }
+      students: { name: 'Students', icon: Users, count: pagination.students.total },
+      courses: { name: 'Courses', icon: BookOpen, count: pagination.courses.total }
     }
     return tabsInfo[activeTab] || tabsInfo.universities
   }
@@ -839,7 +898,7 @@ export default function ApprovalsPage({ currentUser }) {
               />
             </CardContent>
           </Card>
-          
+
           {loading.universities ? (
             <CardGridLoader count={6} columns={3} />
           ) : universities.length === 0 ? (
@@ -851,9 +910,9 @@ export default function ApprovalsPage({ currentUser }) {
                   {universitySearch || universityFilters.state !== 'all' ? 'No universities match your search criteria' : 'No pending university approvals at the moment'}
                 </p>
                 {!universitySearch && universityFilters.state === 'all' && (
-                  <Button 
-                    variant="outline" 
-                    className="mt-4" 
+                  <Button
+                    variant="outline"
+                    className="mt-4"
                     onClick={fetchPendingEntities}
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />
@@ -873,15 +932,15 @@ export default function ApprovalsPage({ currentUser }) {
                   </div>
                 </div>
               )}
-              
+
               {renderView(universities, 'university')}
-              
+
               {/* Infinite scroll trigger and Load More button */}
               {pagination.universities.hasMore && (
                 <div className="mt-6 flex flex-col items-center gap-4">
                   {/* Intersection observer target */}
                   <div ref={loadMoreRef} className="h-4" />
-                  
+
                   {/* Manual Load More button */}
                   <Button
                     variant="outline"
@@ -905,7 +964,7 @@ export default function ApprovalsPage({ currentUser }) {
                   </Button>
                 </div>
               )}
-              
+
               {!pagination.universities.hasMore && universities.length > 0 && (
                 <div className="mt-6 text-center text-sm text-muted-foreground">
                   All {pagination.universities.total} universities loaded
@@ -936,7 +995,7 @@ export default function ApprovalsPage({ currentUser }) {
               />
             </CardContent>
           </Card>
-          
+
           {loading.recruiters ? (
             <CardGridLoader count={6} columns={3} />
           ) : recruiters.length === 0 ? (
@@ -948,9 +1007,9 @@ export default function ApprovalsPage({ currentUser }) {
                   {recruiterSearch || recruiterFilters.state !== 'all' ? 'No recruiters match your search criteria' : 'No pending recruiter approvals at the moment'}
                 </p>
                 {!recruiterSearch && recruiterFilters.state === 'all' && (
-                  <Button 
-                    variant="outline" 
-                    className="mt-4" 
+                  <Button
+                    variant="outline"
+                    className="mt-4"
                     onClick={fetchPendingEntities}
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />
@@ -970,15 +1029,15 @@ export default function ApprovalsPage({ currentUser }) {
                   </div>
                 </div>
               )}
-              
+
               {renderView(recruiters, 'recruiter')}
-              
+
               {/* Infinite scroll trigger and Load More button */}
               {pagination.recruiters.hasMore && (
                 <div className="mt-6 flex flex-col items-center gap-4">
                   {/* Intersection observer target */}
                   <div ref={loadMoreRef} className="h-4" />
-                  
+
                   {/* Manual Load More button */}
                   <Button
                     variant="outline"
@@ -1002,7 +1061,7 @@ export default function ApprovalsPage({ currentUser }) {
                   </Button>
                 </div>
               )}
-              
+
               {!pagination.recruiters.hasMore && recruiters.length > 0 && (
                 <div className="mt-6 text-center text-sm text-muted-foreground">
                   All {pagination.recruiters.total} recruiters loaded
@@ -1033,7 +1092,7 @@ export default function ApprovalsPage({ currentUser }) {
               />
             </CardContent>
           </Card>
-          
+
           {loading.colleges ? (
             <CardGridLoader count={6} columns={3} />
           ) : colleges.length === 0 ? (
@@ -1045,9 +1104,9 @@ export default function ApprovalsPage({ currentUser }) {
                   {collegeSearch || collegeFilters.state !== 'all' ? 'No colleges match your search criteria' : 'No pending college approvals at the moment'}
                 </p>
                 {!collegeSearch && collegeFilters.state === 'all' && (
-                  <Button 
-                    variant="outline" 
-                    className="mt-4" 
+                  <Button
+                    variant="outline"
+                    className="mt-4"
                     onClick={fetchPendingEntities}
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />
@@ -1067,15 +1126,15 @@ export default function ApprovalsPage({ currentUser }) {
                   </div>
                 </div>
               )}
-              
+
               {renderView(colleges, 'college')}
-              
+
               {/* Infinite scroll trigger and Load More button */}
               {pagination.colleges.hasMore && (
                 <div className="mt-6 flex flex-col items-center gap-4">
                   {/* Intersection observer target */}
                   <div ref={loadMoreRef} className="h-4" />
-                  
+
                   {/* Manual Load More button */}
                   <Button
                     variant="outline"
@@ -1099,7 +1158,7 @@ export default function ApprovalsPage({ currentUser }) {
                   </Button>
                 </div>
               )}
-              
+
               {!pagination.colleges.hasMore && colleges.length > 0 && (
                 <div className="mt-6 text-center text-sm text-muted-foreground">
                   All {pagination.colleges.total} colleges loaded
@@ -1132,7 +1191,7 @@ export default function ApprovalsPage({ currentUser }) {
               />
             </CardContent>
           </Card>
-          
+
           {loading.students ? (
             <CardGridLoader count={6} columns={3} />
           ) : students.length === 0 ? (
@@ -1144,9 +1203,9 @@ export default function ApprovalsPage({ currentUser }) {
                   {studentSearch || studentFilters.state !== 'all' || studentFilters.college !== 'all' || studentFilters.branch !== 'all' ? 'No students match your search criteria' : 'No pending student approvals at the moment'}
                 </p>
                 {!studentSearch && studentFilters.state === 'all' && studentFilters.college === 'all' && studentFilters.branch === 'all' && (
-                  <Button 
-                    variant="outline" 
-                    className="mt-4" 
+                  <Button
+                    variant="outline"
+                    className="mt-4"
                     onClick={fetchPendingEntities}
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />
@@ -1166,15 +1225,15 @@ export default function ApprovalsPage({ currentUser }) {
                   </div>
                 </div>
               )}
-              
+
               {renderView(students, 'student')}
-              
+
               {/* Infinite scroll trigger and Load More button */}
               {pagination.students.hasMore && (
                 <div className="mt-6 flex flex-col items-center gap-4">
                   {/* Intersection observer target */}
                   <div ref={loadMoreRef} className="h-4" />
-                  
+
                   {/* Manual Load More button */}
                   <Button
                     variant="outline"
@@ -1198,10 +1257,107 @@ export default function ApprovalsPage({ currentUser }) {
                   </Button>
                 </div>
               )}
-              
+
               {!pagination.students.hasMore && students.length > 0 && (
                 <div className="mt-6 text-center text-sm text-muted-foreground">
                   All {pagination.students.total} students loaded
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Courses Content */}
+      {activeTab === 'courses' && (
+        <div className="space-y-6">
+          {/* Search and Filters for Courses */}
+          <Card className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50 mb-6">
+            <CardContent className="pt-6">
+              <ApprovalSearchFilter
+                searchValue={courseSearch}
+                onSearchChange={setCourseSearch}
+                filters={courseFilters}
+                onFilterChange={setCourseFilters}
+                sortValue={courseSort}
+                onSortChange={setCourseSort}
+                uniqueStates={getUniqueStates(courses)}
+                entityType="course"
+                placeholder="Search courses by name, code, or university..."
+                showViewSwitcher={true}
+              />
+            </CardContent>
+          </Card>
+
+          {loading.courses ? (
+            <CardGridLoader count={6} columns={3} />
+          ) : courses.length === 0 ? (
+            <Card className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50">
+              <CardContent className="text-center py-12">
+                <CheckCircle2 className="h-16 w-16 mx-auto text-green-500 mb-4" />
+                <h3 className="text-xl font-semibold mb-2">All Clear!</h3>
+                <p className="text-muted-foreground">
+                  {courseSearch || courseFilters.state !== 'all' ? 'No courses match your search criteria' : 'No pending course approvals at the moment'}
+                </p>
+                {!courseSearch && courseFilters.state === 'all' && (
+                  <Button
+                    variant="outline"
+                    className="mt-4"
+                    onClick={fetchPendingEntities}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh Data
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="relative">
+              {/* Filtering overlay */}
+              {filtering && (
+                <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
+                  <div className="flex items-center gap-2 text-muted-foreground bg-white dark:bg-slate-800 px-4 py-2 rounded-lg shadow-lg">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Filtering...</span>
+                  </div>
+                </div>
+              )}
+
+              {renderView(courses, 'course')}
+
+              {/* Infinite scroll trigger and Load More button */}
+              {pagination.courses.hasMore && (
+                <div className="mt-6 flex flex-col items-center gap-4">
+                  {/* Intersection observer target */}
+                  <div ref={loadMoreRef} className="h-4" />
+
+                  {/* Manual Load More button */}
+                  <Button
+                    variant="outline"
+                    onClick={loadMoreEntities}
+                    disabled={pagination.courses.loadingMore}
+                    className="w-full max-w-md"
+                  >
+                    {pagination.courses.loadingMore ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        Load More Courses
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          ({courses.length} of {pagination.courses.total})
+                        </span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+
+              {!pagination.courses.hasMore && courses.length > 0 && (
+                <div className="mt-6 text-center text-sm text-muted-foreground">
+                  All {pagination.courses.total} courses loaded
                 </div>
               )}
             </div>
@@ -1214,7 +1370,7 @@ export default function ApprovalsPage({ currentUser }) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {actionDialog.action === 'approve' ? 'Approve' : 'Reject'} {actionDialog.entityType === 'university' ? 'University' : actionDialog.entityType === 'recruiter' ? 'Recruiter' : actionDialog.entityType === 'college' ? 'College' : 'Student'}
+              {actionDialog.action === 'approve' ? 'Approve' : 'Reject'} {actionDialog.entityType === 'university' ? 'University' : actionDialog.entityType === 'recruiter' ? 'Recruiter' : actionDialog.entityType === 'college' ? 'College' : actionDialog.entityType === 'course' ? 'Course' : 'Student'}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {actionDialog.action === 'approve' ? (
@@ -1270,6 +1426,8 @@ export default function ApprovalsPage({ currentUser }) {
                 <Briefcase className="h-5 w-5 text-purple-500" />
               ) : detailsDialog.entityType === 'college' ? (
                 <School className="h-5 w-5 text-green-500" />
+              ) : detailsDialog.entityType === 'course' ? (
+                <BookOpen className="h-5 w-5 text-indigo-500" />
               ) : (
                 <User className="h-5 w-5 text-orange-500" />
               )}
@@ -1279,7 +1437,7 @@ export default function ApprovalsPage({ currentUser }) {
               Detailed information about this {detailsDialog.entityType}
             </DialogDescription>
           </DialogHeader>
-          
+
           {detailsDialog.entity && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -1350,7 +1508,7 @@ export default function ApprovalsPage({ currentUser }) {
                   </Badge>
                 </div>
               </div>
-              
+
               <div className="flex gap-2 pt-4 border-t">
                 <Button
                   onClick={() => {

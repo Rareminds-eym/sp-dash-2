@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils'
 import {
   ArrowLeft,
   BarChart3,
+  BookOpen,
   Brain,
   Briefcase,
   Building2,
@@ -29,6 +30,7 @@ import {
   ChevronRight,
   Download,
   FileText,
+  GraduationCap,
   History,
   LayoutDashboard,
   LogOut,
@@ -53,6 +55,7 @@ import { ApprovalViewProvider } from '@/components/approvals/ApprovalViewContext
 const navigation = [
   { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
   { name: 'Admin Management', icon: Shield, href: '/users' },
+  { name: 'Course Management', icon: GraduationCap, href: '/course-management' },
   { name: 'Verification Center', icon: FileText, href: '/passports' },
   {
     name: 'Approval Center',
@@ -63,6 +66,7 @@ const navigation = [
       { name: 'Recruiters', href: '/approvals?tab=recruiters', icon: Briefcase },
       { name: 'Colleges', href: '/approvals?tab=colleges', icon: School },
       { name: 'Students', href: '/approvals?tab=students', icon: Users },
+      { name: 'Courses', href: '/approvals?tab=courses', icon: BookOpen },
     ]
   },
   {

@@ -8,17 +8,17 @@ export const runtime = 'edge';
 export async function POST(request) {
   try {
     const { supabase: rlsClient, user, error: authError } = await createRLSClient(request);
-    
+
     if (!user || authError) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     const userContext = await getUserContext(rlsClient, user);
-    
+
     if (!userContext) {
       return NextResponse.json({ error: 'User context not found' }, { status: 403 });
     }
-    
+
     const body = await request.json();
     const { universityId, notes, userId } = body;
 
@@ -30,7 +30,7 @@ export async function POST(request) {
     }
 
     // Update university status
-    const { data, error: updateError } = await supabase
+    const { data, error: updateError } = await supabaseAdmin
       .from('universities')
       .update({
         approval_status: 'approved',
