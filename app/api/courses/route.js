@@ -88,8 +88,8 @@ export async function GET(request) {
         const { data: courses, error, count } = await query;
 
         if (error) {
-            console.error('Error fetching courses:', error);
-            return NextResponse.json({ error: 'Failed to fetch courses' }, { status: 500 });
+            const appError = parseSupabaseError(error);
+            return handleError(appError, 'GET /api/courses', { page, limit, filters: { statusFilter, searchTerm, sortBy } });
         }
 
         // Map database columns to frontend expected fields
