@@ -191,27 +191,6 @@ export default function CourseManagementPage({ currentUser }) {
         }
     }
 
-    // Course duplication
-    const handleDuplicate = (course) => {
-        setEditingCourse(null) // Not editing, creating new
-        setFormData({
-            name: `${course.name} - Copy`,
-            courseCode: `${course.course_code}-COPY`,
-            description: course.description,
-            university: course.university || '',
-            duration: course.duration || '',
-            credits: course.credits?.toString() || '',
-            category: course.category || '',
-            thumbnailUrl: course.thumbnail_url || '',
-            targetOutcomes: Array.isArray(course.target_outcomes) ? course.target_outcomes.join('\n') : course.target_outcomes || ''
-        })
-        setDialogOpen(true)
-        toast({
-            title: 'Course Duplicated',
-            description: 'Edit the details and create the new course',
-        })
-    }
-
     // Fetch approved universities on mount
     useEffect(() => {
         const fetchUniversities = async () => {
@@ -986,10 +965,7 @@ export default function CourseManagementPage({ currentUser }) {
                                                 <Edit className="h-4 w-4 mr-2" />
                                                 Edit Course
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleDuplicate(course)}>
-                                                <Copy className="h-4 w-4 mr-2" />
-                                                Duplicate
-                                            </DropdownMenuItem>
+
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem
                                                 onClick={() => setDeletingCourse(course)}
