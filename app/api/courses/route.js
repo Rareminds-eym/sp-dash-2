@@ -134,65 +134,49 @@ export async function POST(request) {
         const { supabase: rlsClient, user, error: authError } = await createRLSClient(request);
 
         if (!user || authError) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return unauthorizedError();
         }
 
         const userContext = await getUserContext(rlsClient, user);
 
         if (!userContext) {
-            return NextResponse.json({ error: 'User context not found' }, { status: 403 });
+            return forbiddenError('User context not found');
         }
 
-        const body = await request.json();
-        const {
-            name,
-            course_code,
-            description,
-            university,
-            duration,
-            credits,
-            category,
-            thumbnail_url,
-            target_outcomes,
-            // optional fields that don't exist in schema are ignored
-        } = body;
-
-        // Validate required fields
-        if (!name || !course_code || !description || !university || !duration || !credits || !category || !thumbnail_url || !target_outcomes) {
-            return NextResponse.json(
-                { error: 'Missing required fields' },
-                { status: 400 }
-            );
+        // Parse and validate JSON body
+        let body;
+        try {
+            body = await request.json();
+        } catch (e) {
+            return handleError(e, 'POST /api/courses - JSON parsing');
         }
+
+        // Validate course data
+        const validation = validateCourseData(body, false);
+        if (!validation.valid) {
+            return validationError(validation.errors);
+        }
+
+        // Sanitize course data
+        const sanitizedData = sanitizeCourseData(body);
 
         // Insert course
         const { data, error: insertError } = await supabaseAdmin
             .from('courses')
             .insert([
                 {
-                    title: name,
-                    code: course_code,
-                    description,
-                    university,
-                    duration,
-                    credits,
-                    category,
-                    thumbnail: thumbnail_url,
-                    target_outcomes,
+                    ...sanitizedData,
                     status: 'Draft', // default status for new courses
                     educator_id: user.id,
-                    educator_name: user?.metadata?.name || ''
+                    educator_name: user?.metadata?.name || user?.email || ''
                 }
             ])
             .select('course_id, title, code, description, university, duration, credits, category, thumbnail, target_outcomes, status, created_at')
             .single();
 
         if (insertError) {
-            console.error('Error creating course:', insertError);
-            return NextResponse.json(
-                { error: insertError.message },
-                { status: 500 }
-            );
+            const appError = parseSupabaseError(insertError);
+            return handleError(appError, 'POST /api/courses', { userId: user.id });
         }
 
         // Map inserted row to frontend shape
@@ -210,12 +194,8 @@ export async function POST(request) {
             approval_status: data.status,
             created_at: data.created_at
         };
-        return NextResponse.json({ success: true, data: mapped });
+        return NextResponse.json({ success: true, data: mapped }, { status: 201 });
     } catch (error) {
-        console.error('API Error:', error);
-        return NextResponse.json(
-            { error: 'Internal server error', details: error.message },
-            { status: 500 }
-        );
+        return handleError(error, 'POST /api/courses');
     }
 }
