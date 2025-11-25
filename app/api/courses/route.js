@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { addCacheHeaders } from '@/lib/services/cacheService';
-import { handleError, validationError, parseSupabaseError } from '@/lib/middleware/errorHandler';
+import { handleError, validationError, parseSupabaseError, unauthorizedError, forbiddenError } from '@/lib/middleware/errorHandler';
 import { createRLSClient, getUserContext } from '@/lib/supabase-rls';
-import { validatePagination } from '@/lib/validators/courseValidator';
+import { validatePagination, validateCourseData, sanitizeCourseData } from '@/lib/validators/courseValidator';
 
 export const runtime = 'edge';
 
