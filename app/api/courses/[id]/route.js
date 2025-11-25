@@ -124,8 +124,7 @@ export async function PUT(request, { params }) {
                 category,
                 thumbnail: thumbnail_url,
                 target_outcomes,
-                updated_at: new Date().toISOString(),
-                updated_by: user.id
+                updated_at: new Date().toISOString()
             })
             .eq('course_id', id)
             .is('deleted_at', null) // Only update non-deleted courses
@@ -207,8 +206,7 @@ export async function DELETE(request, { params }) {
         const { data, error: deleteError } = await supabaseAdmin
             .from('courses')
             .update({
-                deleted_at: new Date().toISOString(),
-                updated_by: user.id
+                deleted_at: new Date().toISOString()
             })
             .eq('course_id', id)
             .is('deleted_at', null) // Only delete if not already deleted
