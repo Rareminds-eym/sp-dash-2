@@ -2,6 +2,8 @@ import { logAudit } from '@/lib/services/auditService';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createRLSClient, getUserContext } from '@/lib/supabase-rls';
 import { NextResponse } from 'next/server';
+import { handleError, unauthorizedError, forbiddenError, validationError, parseSupabaseError, notFoundError } from '@/lib/middleware/errorHandler';
+import { validateCourseData, sanitizeCourseData } from '@/lib/validators/courseValidator';
 
 export const runtime = 'edge';
 
@@ -13,13 +15,13 @@ export async function GET(request, { params }) {
         const { supabase: rlsClient, user, error: authError } = await createRLSClient(request);
 
         if (!user || authError) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return unauthorizedError();
         }
 
-        const { id } = params;
+        const { id } = await params;
 
-        if (!id) {
-            return NextResponse.json({ error: 'Course ID is required' }, { status: 400 });
+        if (!id || typeof id !== 'string' || id.trim().length === 0) {
+            return validationError(['Course ID is required and must be valid']);
         }
 
         // Fetch course from database
@@ -30,12 +32,16 @@ export async function GET(request, { params }) {
             .is('deleted_at', null) // Exclude deleted courses
             .single();
 
-        if (error || !data) {
-            console.error('Error fetching course:', error);
-            return NextResponse.json(
-                { error: 'Course not found' },
-                { status: 404 }
-            );
+        if (error) {
+            if (error.code === 'PGRST116') {
+                return notFoundError('Course');
+            }
+            const appError = parseSupabaseError(error);
+            return handleError(appError, 'GET /api/courses/[id]', { courseId: id });
+        }
+
+        if (!data) {
+            return notFoundError('Course');
         }
 
         // Map database schema to frontend format
@@ -59,11 +65,7 @@ export async function GET(request, { params }) {
 
         return NextResponse.json({ success: true, data: mapped });
     } catch (error) {
-        console.error('API Error:', error);
-        return NextResponse.json(
-            { error: 'Internal server error', details: error.message },
-            { status: 500 }
-        );
+        return handleError(error, 'GET /api/courses/[id]');
     }
 }
 
