@@ -77,55 +77,43 @@ export async function PUT(request, { params }) {
         const { supabase: rlsClient, user, error: authError } = await createRLSClient(request);
 
         if (!user || authError) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return unauthorizedError();
         }
 
         const userContext = await getUserContext(rlsClient, user);
 
         if (!userContext) {
-            return NextResponse.json({ error: 'User context not found' }, { status: 403 });
+            return forbiddenError('User context not found');
         }
 
-        const { id } = params;
-        const body = await request.json();
+        const { id } = await params;
 
-        if (!id) {
-            return NextResponse.json({ error: 'Course ID is required' }, { status: 400 });
+        if (!id || typeof id !== 'string' || id.trim().length === 0) {
+            return validationError(['Course ID is required and must be valid']);
         }
 
-        const {
-            name,
-            course_code,
-            description,
-            university,
-            duration,
-            credits,
-            category,
-            thumbnail_url,
-            target_outcomes
-        } = body;
-
-        // Validate required fields
-        if (!name || !course_code || !description || !university || !duration || !credits || !category || !thumbnail_url || !target_outcomes) {
-            return NextResponse.json(
-                { error: 'Missing required fields' },
-                { status: 400 }
-            );
+        // Parse and validate JSON body
+        let body;
+        try {
+            body = await request.json();
+        } catch (e) {
+            return handleError(e, 'PUT /api/courses/[id] - JSON parsing');
         }
+
+        // Validate course data for update
+        const validation = validateCourseData(body, true);
+        if (!validation.valid) {
+            return validationError(validation.errors);
+        }
+
+        // Sanitize course data
+        const sanitizedData = sanitizeCourseData(body);
 
         // Update course
         const { data, error: updateError } = await supabaseAdmin
             .from('courses')
             .update({
-                title: name,
-                code: course_code,
-                description,
-                university,
-                duration,
-                credits: Number(credits),
-                category,
-                thumbnail: thumbnail_url,
-                target_outcomes,
+                ...sanitizedData,
                 updated_at: new Date().toISOString()
             })
             .eq('course_id', id)
@@ -134,25 +122,26 @@ export async function PUT(request, { params }) {
             .single();
 
         if (updateError) {
-            console.error('Error updating course:', updateError);
-            return NextResponse.json(
-                { error: updateError.message },
-                { status: 500 }
-            );
+            if (updateError.code === 'PGRST116') {
+                return notFoundError('Course');
+            }
+            const appError = parseSupabaseError(updateError);
+            return handleError(appError, 'PUT /api/courses/[id]', { courseId: id, userId: user.id });
         }
 
         if (!data) {
-            return NextResponse.json(
-                { error: 'Course not found or already deleted' },
-                { status: 404 }
-            );
+            return notFoundError('Course');
         }
 
-        // Log audit
-        await logAudit(user.id, 'update_course', id, {
-            changes: body,
-            updated_by: user?.metadata?.name || user?.email
-        });
+        // Log audit (non-blocking, errors logged but not thrown)
+        try {
+            await logAudit(user.id, 'update_course', id, {
+                changes: body,
+                updated_by: user?.metadata?.name || user?.email
+            });
+        } catch (auditError) {
+            console.error('Audit log failed:', auditError);
+        }
 
         // Map response
         const mapped = {
@@ -173,11 +162,7 @@ export async function PUT(request, { params }) {
 
         return NextResponse.json({ success: true, data: mapped });
     } catch (error) {
-        console.error('API Error:', error);
-        return NextResponse.json(
-            { error: 'Internal server error', details: error.message },
-            { status: 500 }
-        );
+        return handleError(error, 'PUT /api/courses/[id]');
     }
 }
 
