@@ -7,9 +7,26 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
-import { GraduationCap, Loader2, Plus, RotateCcw, Search, Filter, BookOpen } from 'lucide-react'
+import { GraduationCap, Loader2, Plus, RotateCcw, Search, Filter, BookOpen, MoreVertical, Eye, Edit, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 
@@ -33,6 +50,12 @@ export default function CourseManagementPage({ currentUser }) {
     const [loading, setLoading] = useState(false)
     const [universities, setUniversities] = useState([])
     const [loadingUniversities, setLoadingUniversities] = useState(true)
+
+    // Edit/Delete/View state
+    const [editingCourse, setEditingCourse] = useState(null)
+    const [deletingCourse, setDeletingCourse] = useState(null)
+    const [viewingCourse, setViewingCourse] = useState(null)
+    const [detailsOpen, setDetailsOpen] = useState(false)
 
     const [formData, setFormData] = useState({
         name: '',
@@ -186,6 +209,59 @@ export default function CourseManagementPage({ currentUser }) {
             targetOutcomes: ''
         })
         setErrors({})
+        setEditingCourse(null)
+    }
+
+    const handleEdit = (course) => {
+        setEditingCourse(course)
+        setFormData({
+            name: course.name,
+            courseCode: course.course_code,
+            description: course.description,
+            university: course.university || '',
+            duration: course.duration || '',
+            credits: course.credits?.toString() || '',
+            category: course.category || '',
+            thumbnailUrl: course.thumbnail_url || '',
+            targetOutcomes: Array.isArray(course.target_outcomes) ? course.target_outcomes.join('\n') : course.target_outcomes || ''
+        })
+        setDialogOpen(true)
+    }
+
+    const handleDelete = async () => {
+        if (!deletingCourse) return
+
+        try {
+            const response = await fetch(`/api/courses/${deletingCourse.id}`, {
+                method: 'DELETE'
+            })
+
+            const data = await response.json()
+
+            if (response.ok && data.success) {
+                toast({
+                    title: 'Success!',
+                    description: data.message || 'Course deleted successfully',
+                })
+                setDeletingCourse(null)
+                // Refresh course list
+                fetchCourses(1, false)
+            } else {
+                throw new Error(data.error || 'Failed to delete course')
+            }
+        } catch (error) {
+            console.error('Delete error:', error)
+            toast({
+                title: 'Error',
+                description: error.message || 'Failed to delete course. Please try again.',
+                variant: 'destructive'
+            })
+        }
+    }
+
+    const handleViewDetails = (course) => {
+        setViewingCourse(course)
+        setDetailsOpen(true)
     }
 
     const handleSubmit = async (e) => {
@@ -203,8 +279,11 @@ export default function CourseManagementPage({ currentUser }) {
         setLoading(true)
 
         try {
-            const response = await fetch('/api/courses', {
-                method: 'POST',
+            const endpoint = editingCourse ? `/api/courses/${editingCourse.id}` : '/api/courses'
+            const method = editingCourse ? 'PUT' : 'POST'
+
+            const response = await fetch(endpoint, {
+                method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     name: formData.name,
@@ -226,20 +305,20 @@ export default function CourseManagementPage({ currentUser }) {
             if (response.ok && data.success) {
                 toast({
                     title: 'Success!',
-                    description: 'Course created successfully.',
+                    description: editingCourse ? 'Course updated successfully.' : 'Course created successfully.',
                 })
                 handleReset()
                 setDialogOpen(false)
                 // Refresh course list
                 fetchCourses(1, false)
             } else {
-                throw new Error(data.error || data.message || 'Failed to create course')
+                throw new Error(data.error || data.message || `Failed to ${editingCourse ? 'update' : 'create'} course`)
             }
         } catch (error) {
-            console.error('Course creation error:', error)
+            console.error('Course operation error:', error)
             toast({
                 title: 'Error',
-                description: error.message || 'Failed to create course. Please try again.',
+                description: error.message || `Failed to ${editingCourse ? 'update' : 'create'} course. Please try again.`,
                 variant: 'destructive'
             })
         } finally {
@@ -250,7 +329,9 @@ export default function CourseManagementPage({ currentUser }) {
     const getStatusBadge = (status) => {
         const statusMap = {
             'Draft': 'secondary',
+            'pending': 'secondary',
             'Active': 'default',
+            'approved': 'default',
             'rejected': 'destructive'
         }
         return (
@@ -279,7 +360,12 @@ export default function CourseManagementPage({ currentUser }) {
                 </div>
 
                 {/* Create Course Button */}
-                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <Dialog open={dialogOpen} onOpenChange={(open) => {
+                    setDialogOpen(open)
+                    if (!open) {
+                        handleReset()
+                    }
+                }}>
                     <DialogTrigger asChild>
                         <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white">
                             <Plus className="h-4 w-4 mr-2" />
@@ -289,11 +375,11 @@ export default function CourseManagementPage({ currentUser }) {
                     <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle className="flex items-center gap-2">
-                                <Plus className="h-5 w-5" />
-                                Create New Course
+                                {editingCourse ? <Edit className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
+                                {editingCourse ? 'Edit Course' : 'Create New Course'}
                             </DialogTitle>
                             <DialogDescription>
-                                Fill in the details below to create a new course. All fields are required.
+                                {editingCourse ? 'Update the course details below.' : 'Fill in the details below to create a new course. All fields are required.'}
                             </DialogDescription>
                         </DialogHeader>
 
@@ -518,12 +604,12 @@ export default function CourseManagementPage({ currentUser }) {
                                     {loading ? (
                                         <>
                                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                            Creating Course...
+                                            {editingCourse ? 'Updating...' : 'Creating...'}
                                         </>
                                     ) : (
                                         <>
-                                            <Plus className="h-4 w-4 mr-2" />
-                                            Create Course
+                                            {editingCourse ? <Edit className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                                            {editingCourse ? 'Update Course' : 'Create Course'}
                                         </>
                                     )}
                                 </Button>
@@ -534,7 +620,7 @@ export default function CourseManagementPage({ currentUser }) {
                                     disabled={loading}
                                 >
                                     <RotateCcw className="h-4 w-4 mr-2" />
-                                    Reset Form
+                                    Reset
                                 </Button>
                             </div>
                         </form>
@@ -640,7 +726,36 @@ export default function CourseManagementPage({ currentUser }) {
                 <>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {courses.map(course => (
-                            <Card key={course.id} className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50 hover:shadow-lg transition-shadow">
+                            <Card key={course.id} className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/20 dark:border-slate-700/50 hover:shadow-lg transition-shadow relative">
+                                {/* Action Menu */}
+                                <div className="absolute top-4 right-4 z-10">
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                <MoreVertical className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => handleViewDetails(course)}>
+                                                <Eye className="h-4 w-4 mr-2" />
+                                                View Details
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleEdit(course)}>
+                                                <Edit className="h-4 w-4 mr-2" />
+                                                Edit Course
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem
+                                                onClick={() => setDeletingCourse(course)}
+                                                className="text-red-600 focus:text-red-600"
+                                            >
+                                                <Trash2 className="h-4 w-4 mr-2" />
+                                                Delete Course
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
+
                                 <CardHeader className="space-y-0 pb-2">
                                     {course.thumbnail_url && (
                                         <div className="w-full h-40 mb-4 rounded-lg overflow-hidden bg-gradient-to-br from-blue-500/10 to-purple-600/10">
@@ -654,7 +769,7 @@ export default function CourseManagementPage({ currentUser }) {
                                             />
                                         </div>
                                     )}
-                                    <div className="flex items-start justify-between gap-2">
+                                    <div className="flex items-start justify-between gap-2 pr-8">
                                         <CardTitle className="text-lg line-clamp-2">{course.name}</CardTitle>
                                         {getStatusBadge(course.approval_status)}
                                     </div>
@@ -710,6 +825,144 @@ export default function CourseManagementPage({ currentUser }) {
                     )}
                 </>
             )}
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={!!deletingCourse} onOpenChange={() => setDeletingCourse(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete <strong>{deletingCourse?.name}</strong>? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDelete}
+                            className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                        >
+                            Delete Course
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Course Details Dialog */}
+            <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                    {viewingCourse && (
+                        <>
+                            <DialogHeader>
+                                <div className="flex items-start justify-between gap-4">
+                                    <div className="flex-1">
+                                        <DialogTitle className="text-2xl mb-2">{viewingCourse.name}</DialogTitle>
+                                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                                            <span className="font-mono font-semibold">{viewingCourse.course_code}</span>
+                                            {getStatusBadge(viewingCourse.approval_status)}
+                                        </div>
+                                    </div>
+                                    {viewingCourse.thumbnail_url && (
+                                        <img
+                                            src={viewingCourse.thumbnail_url}
+                                            alt={viewingCourse.name}
+                                            className="w-32 h-32 rounded-lg object-cover"
+                                            onError={(e) => {
+                                                e.target.style.display = 'none'
+                                            }}
+                                        />
+                                    )}
+                                </div>
+                            </DialogHeader>
+
+                            <div className="space-y-6 mt-6">
+                                {/* Metadata Grid */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                                    {viewingCourse.university && (
+                                        <div>
+                                            <p className="text-xs text-muted-foreground">University</p>
+                                            <p className="font-medium">{viewingCourse.university}</p>
+                                        </div>
+                                    )}
+                                    {viewingCourse.category && (
+                                        <div>
+                                            <p className="text-xs text-muted-foreground">Category</p>
+                                            <p className="font-medium">{viewingCourse.category}</p>
+                                        </div>
+                                    )}
+                                    {viewingCourse.duration && (
+                                        <div>
+                                            <p className="text-xs text-muted-foreground">Duration</p>
+                                            <p className="font-medium">{viewingCourse.duration}</p>
+                                        </div>
+                                    )}
+                                    {viewingCourse.credits && (
+                                        <div>
+                                            <p className="text-xs text-muted-foreground">Credits</p>
+                                            <p className="font-medium">{viewingCourse.credits}</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Description */}
+                                <div>
+                                    <h3 className="font-semibold mb-2">Description</h3>
+                                    <p className="text-muted-foreground whitespace-pre-wrap">{viewingCourse.description}</p>
+                                </div>
+
+                                {/* Target Outcomes */}
+                                {viewingCourse.target_outcomes && (
+                                    <div>
+                                        <h3 className="font-semibold mb-2">Target Outcomes</h3>
+                                        <div className="text-muted-foreground">
+                                            {Array.isArray(viewingCourse.target_outcomes) ? (
+                                                <ul className="list-disc list-inside space-y-1">
+                                                    {viewingCourse.target_outcomes.map((outcome, index) => (
+                                                        <li key={index}>{outcome}</li>
+                                                    ))}
+                                                </ul>
+                                            ) : (
+                                                <p className="whitespace-pre-wrap">{viewingCourse.target_outcomes}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Created/Updated Info */}
+                                <div className="text-xs text-muted-foreground pt-4 border-t">
+                                    {viewingCourse.educator_name && (
+                                        <p>Created by: {viewingCourse.educator_name}</p>
+                                    )}
+                                    {viewingCourse.created_at && (
+                                        <p>Created: {new Date(viewingCourse.created_at).toLocaleDateString()}</p>
+                                    )}
+                                    {viewingCourse.updated_at && (
+                                        <p>Last updated: {new Date(viewingCourse.updated_at).toLocaleDateString()}</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 mt-6">
+                                <Button
+                                    onClick={() => {
+                                        setDetailsOpen(false)
+                                        handleEdit(viewingCourse)
+                                    }}
+                                    className="flex-1"
+                                >
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit Course
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setDetailsOpen(false)}
+                                >
+                                    Close
+                                </Button>
+                            </div>
+                        </>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
