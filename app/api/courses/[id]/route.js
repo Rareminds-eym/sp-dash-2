@@ -16,7 +16,7 @@ export async function GET(request, { params }) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { id } = params;
+        const { id } = await params;
 
         if (!id) {
             return NextResponse.json({ error: 'Course ID is required' }, { status: 400 });
@@ -84,7 +84,7 @@ export async function PUT(request, { params }) {
             return NextResponse.json({ error: 'User context not found' }, { status: 403 });
         }
 
-        const { id } = params;
+        const { id } = await params;
         const body = await request.json();
 
         if (!id) {
@@ -196,7 +196,7 @@ export async function DELETE(request, { params }) {
             return NextResponse.json({ error: 'User context not found' }, { status: 403 });
         }
 
-        const { id } = params;
+        const { id } = await params;
 
         if (!id) {
             return NextResponse.json({ error: 'Course ID is required' }, { status: 400 });
