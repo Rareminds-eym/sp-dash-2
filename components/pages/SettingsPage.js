@@ -60,7 +60,7 @@ export default function SettingsPage({ user }) {
   const handleUpdateMetrics = async () => {
     setIsUpdating(true)
     try {
-      const response = await fetch('/api/update-metrics', {
+      const response = await fetch('/api/metrics/update', {
         method: 'POST',
       })
 
