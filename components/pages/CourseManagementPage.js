@@ -15,6 +15,8 @@ import { CourseFormDialog } from './course-management/CourseFormDialog'
 import { DeleteConfirmationDialog } from './course-management/DeleteConfirmationDialog'
 import { CourseDetailsDialog } from './course-management/CourseDetailsDialog'
 
+import { useDebounce } from '@/hooks/use-debounce'
+
 export default function CourseManagementPage({ currentUser }) {
     const router = useRouter()
     const { toast } = useToast()
@@ -23,6 +25,7 @@ export default function CourseManagementPage({ currentUser }) {
     const [courses, setCourses] = useState([])
     const [loadingCourses, setLoadingCourses] = useState(true)
     const [searchQuery, setSearchQuery] = useState('')
+    const debouncedSearchQuery = useDebounce(searchQuery, 500)
     const [filterUniversity, setFilterUniversity] = useState('all')
     const [filterCategory, setFilterCategory] = useState('all')
     const [filterStatus, setFilterStatus] = useState('all')
@@ -30,6 +33,17 @@ export default function CourseManagementPage({ currentUser }) {
     const [page, setPage] = useState(1)
     const [totalCourses, setTotalCourses] = useState(0)
     const [hasMore, setHasMore] = useState(false)
+    const [viewMode, setViewMode] = useState('grid')
+
+    // Persist view mode
+    useEffect(() => {
+        const savedMode = localStorage.getItem('courseViewMode')
+        if (savedMode) setViewMode(savedMode)
+    }, [])
+
+    useEffect(() => {
+        localStorage.setItem('courseViewMode', viewMode)
+    }, [viewMode])
 
     // Phase 2: Bulk operations
     const [selectedCourses, setSelectedCourses] = useState(new Set())
@@ -193,6 +207,10 @@ export default function CourseManagementPage({ currentUser }) {
         try {
             setLoadingCourses(true)
 
+            if (!append) {
+                setCourses([])
+            }
+
             const params = new URLSearchParams({
                 page: pageNum.toString(),
                 limit: '20',
@@ -200,7 +218,7 @@ export default function CourseManagementPage({ currentUser }) {
                 t: Date.now().toString() // Prevent caching
             })
 
-            if (searchQuery) params.append('search', searchQuery)
+            if (debouncedSearchQuery) params.append('search', debouncedSearchQuery)
             if (filterUniversity !== 'all') params.append('university', filterUniversity)
             if (filterCategory !== 'all') params.append('category', filterCategory)
             if (filterStatus !== 'all') params.append('approval_status', filterStatus)
@@ -247,7 +265,7 @@ export default function CourseManagementPage({ currentUser }) {
     useEffect(() => {
         fetchCourses(1, false)
         setSelectedCourses(new Set()) // Clear selection on filter change
-    }, [searchQuery, filterUniversity, filterCategory, filterStatus, sortBy])
+    }, [debouncedSearchQuery, filterUniversity, filterCategory, filterStatus, sortBy])
 
     const loadMore = () => {
         if (hasMore && !loadingCourses) {
@@ -442,6 +460,8 @@ export default function CourseManagementPage({ currentUser }) {
         )
     }
 
+    const isSearching = searchQuery !== debouncedSearchQuery || (loadingCourses && courses.length > 0)
+
     return (
         <div className="space-y-6">
             {/* Bulk Action Bar */}
@@ -506,6 +526,9 @@ export default function CourseManagementPage({ currentUser }) {
                 setSortBy={setSortBy}
                 universities={universities}
                 loadingUniversities={loadingUniversities}
+                viewMode={viewMode}
+                setViewMode={setViewMode}
+                isSearching={isSearching}
             />
 
             {/* Course List */}
@@ -520,6 +543,7 @@ export default function CourseManagementPage({ currentUser }) {
                 hasMore={hasMore}
                 loadMore={loadMore}
                 getStatusBadge={getStatusBadge}
+                viewMode={viewMode}
             />
 
             {/* Dialogs */}
