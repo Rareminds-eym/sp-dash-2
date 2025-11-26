@@ -136,6 +136,12 @@ export default function CourseManagementPage({ currentUser }) {
         })
     }
 
+    // Select all courses
+    const handleSelectAll = () => {
+        const allCourseIds = new Set(courses.map(course => course.id))
+        setSelectedCourses(allCourseIds)
+    }
+
     // Bulk delete
     const handleBulkDelete = async () => {
         if (selectedCourses.size === 0) return
@@ -470,6 +476,8 @@ export default function CourseManagementPage({ currentUser }) {
                 onClearSelection={() => setSelectedCourses(new Set())}
                 onDelete={handleBulkDelete}
                 isDeleting={bulkDeleting}
+                totalCourses={totalCourses}
+                onSelectAll={handleSelectAll}
             />
 
             {/* Page Header */}
