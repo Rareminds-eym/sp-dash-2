@@ -628,7 +628,7 @@ export default function DashboardLayout({ children }) {
                                   (() => {
                                     const totalCount = item.subItems.reduce((sum, sub) => sum + (sub.pendingCount || 0), 0);
                                     return totalCount > 0 ? (
-                                      <span className="bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                                      <span className="bg-red-500 text-white text-xs rounded-full h-5 min-w-[1.25rem] px-1.5 flex items-center justify-center font-semibold">
                                         {totalCount}
                                       </span>
                                     ) : null;
@@ -803,7 +803,7 @@ export default function DashboardLayout({ children }) {
                                   {subItem.name}
                                   {/* Badge showing pending count */}
                                   {subItem.pendingCount > 0 && (
-                                    <span className="bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                                    <span className="bg-red-500 text-white text-xs rounded-full h-5 min-w-[1.25rem] px-1.5 flex items-center justify-center font-semibold">
                                       {subItem.pendingCount}
                                     </span>
                                   )}
