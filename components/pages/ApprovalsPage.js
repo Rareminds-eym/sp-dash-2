@@ -210,6 +210,8 @@ export default function ApprovalsPage({ currentUser }) {
   // Fetch counts for all tabs on initial load
   useEffect(() => {
     fetchAllCounts()
+    // Also dispatch a refresh event to update sidebar counts
+    window.dispatchEvent(new CustomEvent('refreshPage'))
   }, [])
 
   // Lazy loading: Fetch data only when tab is first opened
@@ -636,6 +638,10 @@ export default function ApprovalsPage({ currentUser }) {
   const fetchPendingEntities = () => {
     // Reset and refresh current tab
     fetchTabData(activeTab, true, true)
+    // Also refresh counts
+    fetchAllCounts()
+    // Dispatch refresh event to update sidebar counts
+    window.dispatchEvent(new CustomEvent('refreshPage'))
   }
 
   const handleApprove = async (entityType, entityId) => {

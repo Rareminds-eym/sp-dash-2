@@ -52,7 +52,8 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ApprovalViewProvider } from '@/components/approvals/ApprovalViewContext'
 
-const navigation = [
+// Initial navigation structure without counts
+const initialNavigation = [
   { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
   { name: 'Admin Management', icon: Shield, href: '/users' },
   { name: 'Course Management', icon: GraduationCap, href: '/course-management' },
@@ -62,11 +63,11 @@ const navigation = [
     icon: CheckCircle,
     href: '/approvals',
     subItems: [
-      { name: 'Universities', href: '/approvals?tab=universities', icon: Building2 },
-      { name: 'Recruiters', href: '/approvals?tab=recruiters', icon: Briefcase },
-      { name: 'Colleges', href: '/approvals?tab=colleges', icon: School },
-      { name: 'Students', href: '/approvals?tab=students', icon: Users },
-      { name: 'Courses', href: '/approvals?tab=courses', icon: BookOpen },
+      { name: 'Universities', href: '/approvals?tab=universities', icon: Building2, pendingCount: 0 },
+      { name: 'Recruiters', href: '/approvals?tab=recruiters', icon: Briefcase, pendingCount: 0 },
+      { name: 'Colleges', href: '/approvals?tab=colleges', icon: School, pendingCount: 0 },
+      { name: 'Students', href: '/approvals?tab=students', icon: Users, pendingCount: 0 },
+      { name: 'Courses', href: '/approvals?tab=courses', icon: BookOpen, pendingCount: 0 },
     ]
   },
   {
@@ -212,6 +213,9 @@ export default function DashboardLayout({ children }) {
   const searchParams = useSearchParams()
   const { toast } = useToast()
 
+  // Navigation state with counts
+  const [navigation, setNavigation] = useState(initialNavigation)
+
   // Get current URL with search params for active state detection
   const [currentUrl, setCurrentUrl] = useState('')
 
@@ -236,6 +240,116 @@ export default function DashboardLayout({ children }) {
       // clearInterval(intervalId)
     }
   }, [pathname, searchParams])
+
+  // Fetch approval counts when on approvals page or when expandedNav is Approval Center
+  useEffect(() => {
+    let isMounted = true;
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    const fetchApprovalCounts = async () => {
+      try {
+        if (isMounted) {
+          const endpoints = [
+            { type: 'universities', url: '/api/universities?approval_status=pending&page=1&limit=1' },
+            { type: 'recruiters', url: '/api/recruiters?approval_status=pending&page=1&limit=1' },
+            { type: 'colleges', url: '/api/colleges?approval_status=pending&page=1&limit=1' },
+            { type: 'students', url: '/api/students?approval_status=pending&page=1&limit=1' },
+            { type: 'courses', url: '/api/courses?approval_status=pending&page=1&limit=1' }
+          ]
+
+          const responses = await Promise.all(
+            endpoints.map(endpoint =>
+              fetch(endpoint.url).then(res => {
+                if (!res.ok) {
+                  throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                }
+                return res.json();
+              }).catch(error => {
+                console.warn(`Failed to fetch ${endpoint.type}:`, error);
+                return { pagination: { total: 0 } };
+              })
+            )
+          )
+
+          // Update navigation with counts only if component is still mounted
+          if (isMounted) {
+            // Debug logging
+            console.log('Updating navigation with counts:', responses.map((res, index) => ({
+              type: ['universities', 'recruiters', 'colleges', 'students', 'courses'][index],
+              count: res.pagination?.total || 0
+            })));
+
+            setNavigation(prevNav => {
+              // Always update the navigation with new counts, don't check for changes here
+              // The React reconciliation will handle efficient updates
+              return prevNav.map(navItem => {
+                if (navItem.name === 'Approval Center' && navItem.subItems) {
+                  const updatedSubItems = navItem.subItems.map((subItem, index) => {
+                    const count = responses[index]?.pagination?.total || 0
+                    return {
+                      ...subItem,
+                      pendingCount: count
+                    }
+                  })
+                  return {
+                    ...navItem,
+                    subItems: updatedSubItems
+                  }
+                }
+                return navItem
+              })
+            })
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch approval counts:', error)
+        // Retry logic
+        if (retryCount < maxRetries && isMounted) {
+          retryCount++;
+          console.log(`Retrying fetch (attempt ${retryCount}/${maxRetries})...`)
+          setTimeout(() => {
+            if (isMounted) {
+              fetchApprovalCounts();
+            }
+          }, 1000 * retryCount); // Exponential backoff
+        }
+      }
+    }
+
+    // Fetch immediately on mount
+    // Add a small delay to ensure DOM is ready
+    const timerId = setTimeout(() => {
+      if (isMounted) {
+        fetchApprovalCounts()
+      }
+    }, 100)
+
+    // Set up interval to refresh counts every 30 seconds
+    const intervalId = setInterval(() => {
+      if (isMounted) {
+        fetchApprovalCounts()
+      }
+    }, 30000)
+
+    // Listen for refresh events from the approvals page
+    const handleRefresh = () => {
+      if (isMounted) {
+        retryCount = 0; // Reset retry count on manual refresh
+        fetchApprovalCounts()
+      }
+    }
+
+    window.addEventListener('refreshPage', handleRefresh)
+
+    // Single cleanup function
+    return () => {
+      isMounted = false
+      clearTimeout(timerId)
+      clearInterval(intervalId)
+      window.removeEventListener('refreshPage', handleRefresh)
+    }
+  }, []) // Run once on mount
 
   // Check if desktop on mount and window resize
   useEffect(() => {
@@ -263,9 +377,23 @@ export default function DashboardLayout({ children }) {
         if (parentItem && expandedNav?.href !== parentItem.href) {
           setExpandedNav(parentItem)
         }
+      } else if (pathname === '/approvals') {
+        // If we're on the main approvals page, expand the Approval Center menu
+        const approvalCenterItem = navigation.find(item => item.name === 'Approval Center')
+        if (approvalCenterItem && expandedNav?.href !== approvalCenterItem.href) {
+          setExpandedNav(approvalCenterItem)
+        }
       }
     }
-  }, [pathname, currentUrl])
+  }, [pathname, currentUrl, navigation])
+
+  // Fallback effect to ensure counts are fetched when navigating to approvals
+  useEffect(() => {
+    if (pathname === '/approvals' && expandedNav && expandedNav.name === 'Approval Center') {
+      // Dispatch a refresh event to trigger count fetching
+      window.dispatchEvent(new CustomEvent('refreshPage'))
+    }
+  }, [pathname, expandedNav])
 
   useEffect(() => {
     // Fetch current user session
@@ -493,7 +621,20 @@ export default function DashboardLayout({ children }) {
                               >
                                 <Icon className="h-5 w-5" />
                               </motion.div>
-                              {item.name}
+                              <span className="flex items-center gap-2">
+                                {item.name}
+                                {/* Show total pending count for Approval Center */}
+                                {item.name === 'Approval Center' && item.subItems && (
+                                  (() => {
+                                    const totalCount = item.subItems.reduce((sum, sub) => sum + (sub.pendingCount || 0), 0);
+                                    return totalCount > 0 ? (
+                                      <span className="bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                                        {totalCount}
+                                      </span>
+                                    ) : null;
+                                  })()
+                                )}
+                              </span>
                               <motion.div
                                 className="ml-auto"
                                 animate={{ x: [0, 5, 0] }}
@@ -608,7 +749,7 @@ export default function DashboardLayout({ children }) {
                       animate="visible"
                       className="space-y-1"
                     >
-                      {expandedNav.subItems.map((subItem, index) => {
+                      {expandedNav.subItems && expandedNav.subItems.map((subItem, index) => {
                         const SubIcon = subItem.icon
 
                         // Robust active state detection
@@ -658,7 +799,15 @@ export default function DashboardLayout({ children }) {
                                 >
                                   <SubIcon className="h-5 w-5" />
                                 </motion.div>
-                                {subItem.name}
+                                <span className="flex items-center gap-2">
+                                  {subItem.name}
+                                  {/* Badge showing pending count */}
+                                  {subItem.pendingCount > 0 && (
+                                    <span className="bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                                      {subItem.pendingCount}
+                                    </span>
+                                  )}
+                                </span>
                                 {isActive && (
                                   <motion.div
                                     initial={{ scale: 0, rotate: -180 }}
