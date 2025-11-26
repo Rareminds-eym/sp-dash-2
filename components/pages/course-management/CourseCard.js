@@ -34,8 +34,10 @@ export function CourseCard({ course, selected, onSelect, onEdit, onDelete, onVie
                             View Details
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={onEdit}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit Course
+                            <span className="pointer-events-none flex items-center gap-2">
+                                <Edit className="h-4 w-4" />
+                                Edit Course
+                            </span>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
