@@ -84,8 +84,8 @@ export async function GET(request) {
     // Check if user exists in admin_users table
     const { data: adminUser, error: adminError } = await supabase
       .from('admin_users')
-      .select('id, user_id, admin_role')
-      .eq('user_id', userData.id)
+      .select('id, admin_role')
+      .eq('id', userData.id)
       .maybeSingle()
 
     if (adminError) {
