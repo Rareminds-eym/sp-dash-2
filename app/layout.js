@@ -1,3 +1,4 @@
+import React, { Suspense } from 'react'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
 import { Toaster } from '@/components/ui/toaster'
 import './globals.css'
@@ -15,9 +16,11 @@ export default function RootLayout({ children }) {
           attribute="class"
           defaultTheme="light"
           enableSystem
-          disableTransitionOnChange={false}
+          disableTransitionOnChange={true}
         >
-          {children}
+          <Suspense fallback={<div className="p-6">Loading application...</div>}>
+            {children}
+          </Suspense>
           <Toaster />
         </ThemeProvider>
       </body>

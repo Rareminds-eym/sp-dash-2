@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 import {
   Activity,
@@ -32,6 +31,7 @@ import {
   Users
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   Area,
   AreaChart,
@@ -70,6 +70,13 @@ const CustomTooltip = ({ active, payload, label }) => {
 }
 
 export default function ReportsPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { toast } = useToast()
+
+  // Get active tab from URL, default to 'universities'
+  const activeTab = searchParams.get('tab') || 'universities'
+
   const [loading, setLoading] = useState({
     university: true,
     recruiter: true,
@@ -84,8 +91,6 @@ export default function ReportsPage() {
     stateHeatmap: [],
     aiInsights: {}
   })
-  const [activeTab, setActiveTab] = useState('universities')
-  const { toast } = useToast()
   
   // Filters for each section
   const [filters, setFilters] = useState({
@@ -94,15 +99,15 @@ export default function ReportsPage() {
   })
 
   useEffect(() => {
-    // Fetch data progressively - start with first tab
-    fetchTabData('universities')
-    
+    // Fetch data for the current active tab
+    fetchTabData(activeTab)
+
     // Listen for refresh events from the layout
     const handleRefreshEvent = () => {
       fetchTabData(activeTab)
     }
     window.addEventListener('refreshPage', handleRefreshEvent)
-    
+
     return () => {
       window.removeEventListener('refreshPage', handleRefreshEvent)
     }
@@ -175,9 +180,7 @@ export default function ReportsPage() {
   }
 
   const handleTabChange = (value) => {
-    setActiveTab(value)
-    // Prefetch data for the selected tab
-    fetchTabData(value)
+    router.push(`/reports?tab=${value}`)
   }
 
   const handleExport = async (type, section) => {
@@ -272,35 +275,41 @@ export default function ReportsPage() {
     fetchTabData(activeTab)
   }
 
+  // Get tab info
+  const getTabInfo = () => {
+    const tabsInfo = {
+      universities: { name: 'Universities', icon: Building2, description: 'Analytics and reports for universities' },
+      recruiters: { name: 'Recruiters', icon: Briefcase, description: 'Recruiter metrics and performance' },
+      placements: { name: 'Placements', icon: Target, description: 'Placement conversion and statistics' },
+      heatmap: { name: 'Heat Map', icon: MapPin, description: 'Geographic distribution analysis' },
+      insights: { name: 'AI Insights', icon: Sparkles, description: 'AI-powered analytics and recommendations' }
+    }
+    return tabsInfo[activeTab] || tabsInfo.universities
+  }
+
+  const currentTabInfo = getTabInfo()
+  const TabIcon = currentTabInfo.icon
+
   return (
     <div className="space-y-6">
+      {/* Page Title */}
+      <div className="flex items-center gap-4 pb-4 border-b border-white/20 dark:border-slate-700/50">
+        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/25">
+          <TabIcon className="h-6 w-6 text-white" />
+        </div>
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            {currentTabInfo.name}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {currentTabInfo.description}
+          </p>
+        </div>
+      </div>
 
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="universities" className="flex items-center gap-2">
-            <Building2 className="h-4 w-4" />
-            Universities
-          </TabsTrigger>
-          <TabsTrigger value="recruiters" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Recruiters
-          </TabsTrigger>
-          <TabsTrigger value="placements" className="flex items-center gap-2">
-            <Target className="h-4 w-4" />
-            Placements
-          </TabsTrigger>
-          <TabsTrigger value="heatmap" className="flex items-center gap-2">
-            <MapPin className="h-4 w-4" />
-            Heat Map
-          </TabsTrigger>
-          <TabsTrigger value="insights" className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4" />
-            AI Insights
-          </TabsTrigger>
-        </TabsList>
-
-        {/* University Reports Tab */}
-        <TabsContent value="universities" className="space-y-6">
+      {/* University Reports Content */}
+      {activeTab === 'universities' && (
+        <div className="space-y-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-medium flex items-center gap-2 text-muted-foreground">
               <BarChart3 className="h-4 w-4" />
@@ -392,10 +401,12 @@ export default function ReportsPage() {
               ))
             )}
           </div>
-        </TabsContent>
+        </div>
+      )}
 
-        {/* Recruiter Metrics Tab */}
-        <TabsContent value="recruiters" className="space-y-6">
+      {/* Recruiter Metrics Content */}
+      {activeTab === 'recruiters' && (
+        <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-base font-medium flex items-center gap-2 text-muted-foreground">
               <Activity className="h-4 w-4" />
@@ -415,20 +426,33 @@ export default function ReportsPage() {
           </div>
 
           {/* Metrics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <Card className="neu-card">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-                    <Search className="h-5 w-5 text-blue-600" />
+          {loading.recruiter ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <Card key={index} className="neu-card">
+                  <CardContent className="p-6">
+                    <div className="relative overflow-hidden rounded-lg bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 h-20">
+                      <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/30 dark:via-white/10 to-transparent"></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              <Card className="neu-card">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                      <Search className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold">{analyticsData.recruiterMetrics.totalSearches || 0}</div>
+                      <div className="text-xs text-muted-foreground">Total Searches</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-2xl font-bold">{analyticsData.recruiterMetrics.totalSearches || 0}</div>
-                    <div className="text-xs text-muted-foreground">Total Searches</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
             <Card className="neu-card">
               <CardContent className="p-6">
@@ -485,15 +509,29 @@ export default function ReportsPage() {
                 </div>
               </CardContent>
             </Card>
-          </div>
+            </div>
+          )}
 
           {/* Trends Chart */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="neu-card">
-              <CardHeader>
-                <CardTitle>Monthly Engagement Trends</CardTitle>
-              </CardHeader>
-              <CardContent>
+          {loading.recruiter ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {Array.from({ length: 2 }).map((_, index) => (
+                <Card key={index} className="neu-card">
+                  <CardContent className="p-6">
+                    <div className="relative overflow-hidden rounded-lg bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 h-[300px]">
+                      <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/30 dark:via-white/10 to-transparent"></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="neu-card">
+                <CardHeader>
+                  <CardTitle>Monthly Engagement Trends</CardTitle>
+                </CardHeader>
+                <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={analyticsData.recruiterMetrics.searchTrends || []}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
@@ -545,11 +583,14 @@ export default function ReportsPage() {
                 </ResponsiveContainer>
               </CardContent>
             </Card>
-          </div>
-        </TabsContent>
+            </div>
+          )}
+        </div>
+      )}
 
-        {/* Placement Conversion Tab */}
-        <TabsContent value="placements" className="space-y-6">
+      {/* Placement Conversion Content */}
+      {activeTab === 'placements' && (
+        <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-base font-medium flex items-center gap-2 text-muted-foreground">
               <Target className="h-4 w-4" />
@@ -568,9 +609,22 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Conversion Funnel */}
-            <Card className="neu-card">
+          {loading.placement ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {Array.from({ length: 2 }).map((_, index) => (
+                <Card key={index} className="neu-card">
+                  <CardContent className="p-6">
+                    <div className="relative overflow-hidden rounded-lg bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 h-[300px]">
+                      <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/30 dark:via-white/10 to-transparent"></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Conversion Funnel */}
+              <Card className="neu-card">
               <CardHeader>
                 <CardTitle>Placement Conversion Funnel</CardTitle>
                 <p className="text-sm text-muted-foreground">From verified profile to successful placement</p>
@@ -633,11 +687,14 @@ export default function ReportsPage() {
                 </ResponsiveContainer>
               </CardContent>
             </Card>
-          </div>
-        </TabsContent>
+            </div>
+          )}
+        </div>
+      )}
 
-        {/* State Heat Map Tab */}
-        <TabsContent value="heatmap" className="space-y-6">
+      {/* State Heat Map Content */}
+      {activeTab === 'heatmap' && (
+        <div className="space-y-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-medium flex items-center gap-2 text-muted-foreground">
               <Globe className="h-4 w-4" />
@@ -671,8 +728,21 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          <div className="grid gap-4">
-            {analyticsData.stateHeatmap
+          {loading.heatmap ? (
+            <div className="grid gap-4">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <Card key={index} className="neu-card">
+                  <CardContent className="p-6">
+                    <div className="relative overflow-hidden rounded-lg bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 h-32">
+                      <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/30 dark:via-white/10 to-transparent"></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {analyticsData.stateHeatmap
               .filter(state => filters.stateSelection === 'all' || state.state === filters.stateSelection)
               .map((state) => (
               <Card key={state.state} className="neu-card">
@@ -725,11 +795,14 @@ export default function ReportsPage() {
                 </CardContent>
               </Card>
             ))}
-          </div>
-        </TabsContent>
+            </div>
+          )}
+        </div>
+      )}
 
-        {/* AI Insights Tab */}
-        <TabsContent value="insights" className="space-y-6">
+      {/* AI Insights Content */}
+      {activeTab === 'insights' && (
+        <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-base font-medium flex items-center gap-2 text-muted-foreground">
               <Brain className="h-4 w-4" />
@@ -748,8 +821,22 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          {/* Emerging Skills */}
-          <Card className="neu-card">
+          {loading.insights ? (
+            <div className="space-y-6">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <Card key={index} className="neu-card">
+                  <CardContent className="p-6">
+                    <div className="relative overflow-hidden rounded-lg bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 h-48">
+                      <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/30 dark:via-white/10 to-transparent"></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <>
+              {/* Emerging Skills */}
+              <Card className="neu-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Rocket className="h-5 w-5 text-purple-600" />
@@ -844,8 +931,10 @@ export default function ReportsPage() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+            </>
+          )}
+        </div>
+      )}
     </div>
   )
 }

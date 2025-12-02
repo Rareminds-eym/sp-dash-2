@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
 import { getUserPermissions } from '@/lib/rbac'
+import { createClient } from '@/lib/supabase-server'
+import { NextResponse } from 'next/server'
 
 export const runtime = 'edge'
 
@@ -29,51 +29,82 @@ export async function GET(request) {
     // Fetch additional user data from users table (lookup by email since IDs may not match)
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('*')
+      .select('id, email, firstName, lastName, role, isActive, organizationId, createdAt, metadata')
       .eq('email', user.email)
       .maybeSingle()
     
-    // Fetch organization data from universities or recruiters tables
+    // Fetch organization data from universities, recruiters, or organizations tables
     let organizationData = null
     if (userData && userData.organizationId) {
-      // Try to fetch from universities first
-      const { data: univData } = await supabase
-        .from('universities')
-        .select('organizationid, name')
-        .eq('organizationid', userData.organizationId)
+      // Try to fetch from organizations first
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('id, name')
+        .eq('id', userData.organizationId)
         .maybeSingle()
       
-      if (univData) {
-        organizationData = { id: univData.organizationid, name: univData.name, type: 'university' }
+      if (orgData) {
+        organizationData = { id: orgData.id, name: orgData.name, type: 'organization' }
       } else {
-        // Try recruiters table
-        const { data: recData } = await supabase
-          .from('recruiters')
+        // Try to fetch from universities
+        const { data: univData } = await supabase
+          .from('universities')
           .select('organizationid, name')
           .eq('organizationid', userData.organizationId)
           .maybeSingle()
         
-        if (recData) {
-          organizationData = { id: recData.organizationid, name: recData.name, type: 'recruiter' }
+        if (univData) {
+          organizationData = { id: univData.organizationid, name: univData.name, type: 'university' }
+        } else {
+          // Try recruiters table
+          const { data: recData } = await supabase
+            .from('recruiters')
+            .select('organizationid, name')
+            .eq('organizationid', userData.organizationId)
+            .maybeSingle()
+          
+          if (recData) {
+            organizationData = { id: recData.organizationid, name: recData.name, type: 'recruiter' }
+          }
         }
       }
     }
 
-    if (userError) {
-      console.error('Error fetching user data:', userError)
-      // Return auth user data if custom user data fetch fails
-      return NextResponse.json({
-        success: true,
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.user_metadata?.name || user.email.split('@')[0],
-          role: user.user_metadata?.role || 'user',
-        },
-      })
+    if (userError || !userData) {
+      if (userError) {
+        console.error('Error fetching user data:', userError)
+      }
+      // User not found in users table - not authorized
+      return NextResponse.json(
+        { success: false, user: null, error: 'User not authorized' },
+        { status: 403 }
+      )
     }
 
-    const userName = userData?.metadata?.name || user.user_metadata?.name || user.email.split('@')[0]
+    // Check if user exists in admin_users table
+    const { data: adminUser, error: adminError } = await supabase
+      .from('admin_users')
+      .select('id, admin_role')
+      .eq('id', userData.id)
+      .maybeSingle()
+
+    if (adminError) {
+      console.error('Error checking admin_users:', adminError)
+    }
+
+    if (!adminUser) {
+      // User is not an admin - not authorized for this dashboard
+      return NextResponse.json(
+        { success: false, user: null, error: 'Access denied. Not an admin user.' },
+        { status: 403 }
+      )
+    }
+
+    const userName = userData.firstName && userData.lastName 
+      ? `${userData.firstName} ${userData.lastName}` 
+      : user.user_metadata?.firstName && user.user_metadata?.lastName
+      ? `${user.user_metadata.firstName} ${user.user_metadata.lastName}`
+      : user.email.split('@')[0]
 
     // Fetch user permissions based on role
     let permissions = []
@@ -89,6 +120,8 @@ export async function GET(request) {
       user: {
         id: userData.id,
         email: userData.email,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
         name: userName,
         role: userData.role,
         organizationId: userData.organizationId,

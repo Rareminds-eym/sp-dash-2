@@ -20,7 +20,7 @@ export async function PUT(request) {
     }
     
     const body = await request.json();
-    const { email, name, organizationName } = body;
+    const { email, firstName, lastName, organizationName } = body;
 
     if (!email) {
       return NextResponse.json(
@@ -32,7 +32,7 @@ export async function PUT(request) {
     // First, find the user by email using RLS client
     const { data: userData, error: userError } = await rlsClient
       .from('users')
-      .select('id, organizationId, metadata')
+      .select('id, organizationId, firstName, lastName')
       .eq('email', email)
       .single();
 
@@ -44,19 +44,16 @@ export async function PUT(request) {
       );
     }
 
-    console.log('User found:', { id: userData.id, organizationId: userData.organizationId, metadata: userData.metadata });
+    console.log('User found:', { id: userData.id, organizationId: userData.organizationId, firstName: userData.firstName, lastName: userData.lastName });
 
-    // Update user metadata with name
-    const updatedMetadata = {
-      ...(userData.metadata || {}),
-      name: name || userData.metadata?.name
-    };
+    // Update user firstName and lastName
+    const updateData = {};
+    if (firstName !== undefined) updateData.firstName = firstName;
+    if (lastName !== undefined) updateData.lastName = lastName;
 
     const { error: updateUserError } = await rlsClient
       .from('users')
-      .update({ 
-        metadata: updatedMetadata
-      })
+      .update(updateData)
       .eq('id', userData.id);
 
     if (updateUserError) {
@@ -64,19 +61,19 @@ export async function PUT(request) {
       throw updateUserError;
     }
 
-    console.log('User metadata updated successfully');
+    console.log('User profile updated successfully');
 
     // If organizationName is provided and user has an organizationId, update the organization
     // Validate UUID format (UUID v4 format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx)
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     
-    if (organizationName && user.organizationId && uuidRegex.test(user.organizationId)) {
-      console.log('Attempting to update organization:', user.organizationId, 'with name:', organizationName);
+    if (organizationName && userData.organizationId && uuidRegex.test(userData.organizationId)) {
+      console.log('Attempting to update organization:', userData.organizationId, 'with name:', organizationName);
       
-      const { data: orgData, error: updateOrgError } = await supabase
+      const { data: orgData, error: updateOrgError } = await supabaseAdmin
         .from('organizations')
         .update({ name: organizationName })
-        .eq('id', user.organizationId)
+        .eq('id', userData.organizationId)
         .select();
 
       if (updateOrgError) {
@@ -86,17 +83,18 @@ export async function PUT(request) {
         console.log('Organization updated successfully:', orgData);
       }
     } else {
-      console.log('Skipping organization update. organizationId:', user.organizationId, 'isValidUUID:', user.organizationId ? uuidRegex.test(user.organizationId) : false);
+      console.log('Skipping organization update. organizationId:', userData.organizationId, 'isValidUUID:', userData.organizationId ? uuidRegex.test(userData.organizationId) : false);
     }
 
     // Log audit
-    await logAudit(user.id, 'update_profile', user.id, { name, organizationName });
+    await logAudit(user.id, 'update_profile', user.id, { firstName, lastName, organizationName });
 
     return NextResponse.json({ 
       success: true, 
       message: 'Profile updated successfully',
       data: {
-        name,
+        firstName,
+        lastName,
         organizationName
       }
     });

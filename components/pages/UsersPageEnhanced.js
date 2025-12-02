@@ -503,8 +503,8 @@ export default function UsersPageEnhanced({ currentUser }) {
           ) : (
             <div className="space-y-4">
               {users.length > 0 ? (
-                users.map((user) => (
-                  <div key={user.id} className="group p-5 bg-gradient-to-r from-gray-50 to-white hover:from-gray-100 hover:to-gray-50 dark:from-gray-800/50 dark:to-gray-900/50 dark:hover:from-gray-800 dark:hover:to-gray-800/80 rounded-xl transition-all duration-200 border border-gray-200 dark:border-gray-700 hover:shadow-md">
+                users.map((user, index) => (
+                  <div key={user.id ? `${user.id}-${user.role}` : `user-${index}`} className="group p-5 bg-gradient-to-r from-gray-50 to-white hover:from-gray-100 hover:to-gray-50 dark:from-gray-800/50 dark:to-gray-900/50 dark:hover:from-gray-800 dark:hover:to-gray-800/80 rounded-xl transition-all duration-200 border border-gray-200 dark:border-gray-700 hover:shadow-md">
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-4 flex-1">
                         <div className={`w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 ${

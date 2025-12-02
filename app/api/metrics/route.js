@@ -11,9 +11,9 @@ export const runtime = 'edge';
  */
 export async function GET(request) {
   try {
-    const { rlsClient, error } = await authenticateRequest(request);
+    const { rlsClient, error } = await authenticateRequest(request, ['/api/metrics']);
     if (error) return error;
-    
+
     const metrics = await getDashboardMetrics(rlsClient);
     const response = NextResponse.json(metrics);
     return addCacheHeaders(response, 'dynamic');

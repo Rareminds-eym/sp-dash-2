@@ -1,5 +1,5 @@
-import LoginPageOptimized from '@/components/pages/LoginPageOptimized'
+import LoginPageRedesigned from '@/components/pages/LoginPageRedesigned'
 
 export default function LoginPage() {
-  return <LoginPageOptimized />
+  return <LoginPageRedesigned />
 }

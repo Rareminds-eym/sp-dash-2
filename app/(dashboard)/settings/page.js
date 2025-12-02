@@ -5,6 +5,6 @@ export const runtime = 'edge'
 
 export default async function Settings() {
   const session = await getSession()
-  
+
   return <SettingsPage user={session?.user} />
 }

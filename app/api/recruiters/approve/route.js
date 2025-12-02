@@ -2,7 +2,6 @@ import { logAudit } from '@/lib/services/auditService';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createRLSClient, getUserContext } from '@/lib/supabase-rls';
 import { NextResponse } from 'next/server';
-import { v4 as uuidv4 } from 'uuid';
 
 export const runtime = 'edge';
 
@@ -21,7 +20,7 @@ export async function POST(request) {
     }
     
     const body = await request.json();
-    const { recruiterId, userId, notes, note } = body;
+    const { recruiterId, notes, userId } = body;
 
     if (!recruiterId || !userId) {
       return NextResponse.json(
@@ -30,56 +29,41 @@ export async function POST(request) {
       );
     }
 
-    // Check if using new schema or old schema
-    const finalNote = notes || note || 'Recruiter approved';
-    
-    // Try to update with new schema first
-    let updateData = { 
-      approval_status: 'approved',
-      account_status: 'active',
-      approved_by: userId,
-      approved_at: new Date().toISOString()
-    };
-    
-    const { data, error: updateError } = await supabase
+    // Update recruiter status
+    const { data, error: updateError } = await supabaseAdmin
       .from('recruiters')
-      .update(updateData)
+      .update({
+        approval_status: 'approved',
+        account_status: 'active',
+        approved_by: userId,
+        approved_at: new Date().toISOString()
+      })
       .eq('id', recruiterId)
       .select()
       .single();
 
-    // If that fails, try old schema
     if (updateError) {
-      const { data: oldData, error: oldUpdateError } = await supabase
-        .from('recruiters')
-        .update({ 
-          verificationstatus: 'approved'
-        })
-        .eq('id', recruiterId)
-        .select()
-        .single();
-      
-      if (oldUpdateError) throw oldUpdateError;
+      console.error('Error approving recruiter:', updateError);
+      return NextResponse.json(
+        { error: updateError.message },
+        { status: 500 }
+      );
     }
 
-    // Log verification
-    const { error: verifyError } = await supabase
-      .from('verifications')
-      .insert({
-        id: uuidv4(),
-        targetTable: 'recruiters',
-        targetId: recruiterId,
-        action: 'approve',
-        performedBy: userId,
-        note: finalNote
-      });
-
-    if (verifyError) throw verifyError;
+    // Also update the associated user's account status
+    if (data?.user_id) {
+      await supabaseAdmin
+        .from('users')
+        .update({
+          account_status: 'active'
+        })
+        .eq('id', data.user_id);
+    }
 
     // Log audit
-    await logAudit(userId, 'approve_recruiter', recruiterId, { note: finalNote });
+    await logAudit(userId, 'approve_recruiter', recruiterId, { notes });
 
-    return NextResponse.json({ success: true, message: 'Recruiter approved successfully', data: data || oldData });
+    return NextResponse.json({ success: true, data });
   } catch (error) {
     console.error('API Error:', error);
     return NextResponse.json(

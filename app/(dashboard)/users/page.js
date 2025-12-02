@@ -5,6 +5,6 @@ export const runtime = 'edge'
 
 export default async function Users() {
   const session = await getSession()
-  
+
   return <UsersPageEnhanced currentUser={session?.user} />
 }

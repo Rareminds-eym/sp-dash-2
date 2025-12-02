@@ -2,7 +2,6 @@ import { logAudit } from '@/lib/services/auditService';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createRLSClient, getUserContext } from '@/lib/supabase-rls';
 import { NextResponse } from 'next/server';
-import { v4 as uuidv4 } from 'uuid';
 
 export const runtime = 'edge';
 
@@ -21,62 +20,51 @@ export async function POST(request) {
     }
     
     const body = await request.json();
-    const { recruiterId, userId, reason } = body;
+    const { recruiterId, reason, notes, userId } = body;
 
-    if (!recruiterId || !userId) {
+    if (!recruiterId || !userId || !reason) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    // Try new schema first
-    let updateData = {
-      approval_status: 'rejected',
-      account_status: 'inactive',
-      rejection_reason: reason
-    };
-    
-    const { data, error: updateError } = await supabase
+    // Update recruiter status
+    const { data, error: updateError } = await supabaseAdmin
       .from('recruiters')
-      .update(updateData)
+      .update({
+        approval_status: 'rejected',
+        account_status: 'inactive',
+        rejection_reason: reason,
+        rejected_by: userId,
+        rejected_at: new Date().toISOString()
+      })
       .eq('id', recruiterId)
       .select()
       .single();
 
-    // If that fails, try old schema
     if (updateError) {
-      const { data: oldData, error: oldUpdateError } = await supabase
-        .from('recruiters')
-        .update({ 
-          verificationstatus: 'rejected',
-          isactive: false
-        })
-        .eq('id', recruiterId)
-        .select()
-        .single();
-      
-      if (oldUpdateError) throw oldUpdateError;
+      console.error('Error rejecting recruiter:', updateError);
+      return NextResponse.json(
+        { error: updateError.message },
+        { status: 500 }
+      );
     }
 
-    // Log verification
-    const { error: verifyError } = await supabase
-      .from('verifications')
-      .insert({
-        id: uuidv4(),
-        targetTable: 'recruiters',
-        targetId: recruiterId,
-        action: 'reject',
-        performedBy: userId,
-        note: reason || 'Recruiter rejected'
-      });
-
-    if (verifyError) throw verifyError;
+    // Also update the associated user's account status
+    if (data?.user_id) {
+      await supabaseAdmin
+        .from('users')
+        .update({
+          account_status: 'inactive'
+        })
+        .eq('id', data.user_id);
+    }
 
     // Log audit
-    await logAudit(userId, 'reject_recruiter', recruiterId, { reason });
+    await logAudit(userId, 'reject_recruiter', recruiterId, { reason, notes });
 
-    return NextResponse.json({ success: true, message: 'Recruiter rejected successfully', data: data || oldData });
+    return NextResponse.json({ success: true, data });
   } catch (error) {
     console.error('API Error:', error);
     return NextResponse.json(

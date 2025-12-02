@@ -39,7 +39,7 @@ export default function PassportsPageEnhanced({ currentUser }) {
   const [loading, setLoading] = useState(true)
   const [actionDialog, setActionDialog] = useState({ open: false, passport: null, action: null })
   const { toast } = useToast()
-  
+
   // Overall stats (don't change with filters)
   const [overallStats, setOverallStats] = useState({
     total: 0,
@@ -47,7 +47,7 @@ export default function PassportsPageEnhanced({ currentUser }) {
     pending: 0,
     rejected: 0
   })
-  
+
   // Pagination state
   const [pagination, setPagination] = useState({
     page: 1,
@@ -55,7 +55,7 @@ export default function PassportsPageEnhanced({ currentUser }) {
     total: 0,
     totalPages: 0
   })
-  
+
   // Filter state
   const [filters, setFilters] = useState({
     search: '',
@@ -65,30 +65,30 @@ export default function PassportsPageEnhanced({ currentUser }) {
     sortBy: 'createdAt',
     sortOrder: 'desc'
   })
-  
+
   // Universities list for dropdown
   const [universities, setUniversities] = useState([])
-  
+
   // Debounce timer for search
   const searchDebounceRef = useRef(null)
 
   useEffect(() => {
     fetchUniversities()
     fetchOverallStats()
-    
+
     // Listen for refresh events from the layout
     const handleRefresh = () => {
       fetchPassports()
       fetchOverallStats()
     }
     window.addEventListener('refreshPage', handleRefresh)
-    
+
     // Listen for export events from the layout
     const handleExportEvent = () => {
       handleExport()
     }
     window.addEventListener('exportData', handleExportEvent)
-    
+
     return () => {
       window.removeEventListener('refreshPage', handleRefresh)
       window.removeEventListener('exportData', handleExportEvent)
@@ -118,7 +118,7 @@ export default function PassportsPageEnhanced({ currentUser }) {
       const response = await fetch('/api/passports?page=1&limit=10000')
       const data = await response.json()
       const allPassports = data.data || []
-      
+
       setOverallStats({
         total: data.pagination?.total || 0,
         verified: allPassports.filter(p => p.status === 'verified').length,
@@ -139,16 +139,16 @@ export default function PassportsPageEnhanced({ currentUser }) {
         sortBy: filters.sortBy,
         sortOrder: filters.sortOrder
       })
-      
+
       // Add filters
       if (filters.search) params.append('search', filters.search)
       if (filters.status && filters.status !== 'all') params.append('status', filters.status)
       if (filters.nsqfLevel && filters.nsqfLevel !== 'all') params.append('nsqfLevel', filters.nsqfLevel)
       if (filters.university && filters.university !== 'all') params.append('university', filters.university)
-      
+
       const response = await fetch(`/api/passports?${params}`)
       const data = await response.json()
-      
+
       setPassports(data.data || [])
       setPagination(prev => ({
         ...prev,
@@ -178,10 +178,10 @@ export default function PassportsPageEnhanced({ currentUser }) {
       let body = {}
 
       if (action === 'verify') {
-        endpoint = '/api/verify'
+        endpoint = '/api/passports/verify'
         body = { passportId: passport.id, userId: currentUser?.id, note: 'Passport verified by admin' }
       } else if (action === 'reject') {
-        endpoint = '/api/reject-passport'
+        endpoint = '/api/passports/reject'
         body = { passportId: passport.id, userId: currentUser?.id, reason: 'Failed verification criteria' }
       }
 
@@ -216,19 +216,19 @@ export default function PassportsPageEnhanced({ currentUser }) {
   const handleExport = async () => {
     try {
       const params = new URLSearchParams()
-      
+
       // Add filters
       if (filters.search) params.append('search', filters.search)
       if (filters.status && filters.status !== 'all') params.append('status', filters.status)
       if (filters.nsqfLevel && filters.nsqfLevel !== 'all') params.append('nsqfLevel', filters.nsqfLevel)
       if (filters.university && filters.university !== 'all') params.append('university', filters.university)
-      
+
       const response = await fetch(`/api/passports/export?${params}`)
-      
+
       if (!response.ok) {
         throw new Error('Export failed')
       }
-      
+
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -238,7 +238,7 @@ export default function PassportsPageEnhanced({ currentUser }) {
       a.click()
       a.remove()
       window.URL.revokeObjectURL(url)
-      
+
       toast({
         title: 'Success',
         description: 'Passports exported successfully'
@@ -255,12 +255,12 @@ export default function PassportsPageEnhanced({ currentUser }) {
   const handleSearchChange = (e) => {
     const value = e.target.value
     setFilters(prev => ({ ...prev, search: value }))
-    
+
     // Clear existing debounce timer
     if (searchDebounceRef.current) {
       clearTimeout(searchDebounceRef.current)
     }
-    
+
     // Set new debounce timer
     searchDebounceRef.current = setTimeout(() => {
       setPagination(prev => ({ ...prev, page: 1 }))
@@ -342,7 +342,7 @@ export default function PassportsPageEnhanced({ currentUser }) {
                   className="pl-10"
                 />
               </div>
-              
+
               <Select
                 value={filters.status}
                 onValueChange={(value) => {
@@ -360,7 +360,7 @@ export default function PassportsPageEnhanced({ currentUser }) {
                   <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
-              
+
               <Select
                 value={filters.nsqfLevel}
                 onValueChange={(value) => {
@@ -382,7 +382,7 @@ export default function PassportsPageEnhanced({ currentUser }) {
                   <SelectItem value="7">Level 7</SelectItem>
                 </SelectContent>
               </Select>
-              
+
               <Select
                 value={filters.university}
                 onValueChange={(value) => {
@@ -400,7 +400,7 @@ export default function PassportsPageEnhanced({ currentUser }) {
                   ))}
                 </SelectContent>
               </Select>
-              
+
               <Select
                 value={`${filters.sortBy}-${filters.sortOrder}`}
                 onValueChange={(value) => {
@@ -531,7 +531,7 @@ export default function PassportsPageEnhanced({ currentUser }) {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -542,7 +542,7 @@ export default function PassportsPageEnhanced({ currentUser }) {
                   <ChevronLeft className="h-4 w-4" />
                   Previous
                 </Button>
-                
+
                 <div className="flex items-center gap-1">
                   {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
                     let pageNum
@@ -555,7 +555,7 @@ export default function PassportsPageEnhanced({ currentUser }) {
                     } else {
                       pageNum = pagination.page - 2 + i
                     }
-                    
+
                     return (
                       <Button
                         key={pageNum}
@@ -568,7 +568,7 @@ export default function PassportsPageEnhanced({ currentUser }) {
                     )
                   })}
                 </div>
-                
+
                 <Button
                   variant="outline"
                   size="sm"

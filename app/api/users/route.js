@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/middleware/auth';
 import { handleError } from '@/lib/middleware/errorHandler';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { NextResponse } from 'next/server';
 
 export const runtime = 'edge';
 
@@ -51,7 +51,7 @@ export async function GET(request) {
     }
     
     // Fetch user details for all admin users using RLS client
-    const userIds = (adminUsers || []).map(a => a.user_id);
+    const userIds = (adminUsers || []).map(a => a.id);
     const grantedByIds = (adminUsers || []).map(a => a.granted_by).filter(Boolean);
     
     let usersMap = {};
@@ -60,7 +60,7 @@ export async function GET(request) {
     if (userIds.length > 0) {
       const { data: usersData } = await rlsClient
         .from('users')
-        .select('id, email, isActive, createdAt, metadata')
+        .select('id, email, isActive, createdAt, firstName, lastName, metadata')
         .in('id', userIds);
       
       usersData?.forEach(u => {
@@ -71,7 +71,7 @@ export async function GET(request) {
     if (grantedByIds.length > 0) {
       const { data: grantedByData } = await rlsClient
         .from('users')
-        .select('id, email, metadata')
+        .select('id, email, firstName, lastName, metadata')
         .in('id', grantedByIds);
       
       grantedByData?.forEach(u => {
@@ -81,19 +81,21 @@ export async function GET(request) {
     
     // Transform the data to match the frontend expectations
     let transformedUsers = (adminUsers || []).map(admin => {
-      const user = usersMap[admin.user_id] || {};
+      const user = usersMap[admin.id] || {};
       const grantedByUser = admin.granted_by ? grantedByMap[admin.granted_by] : null;
       
       return {
-        id: admin.user_id,
+        id: admin.id,
         email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
         isActive: user.isActive,
         role: admin.admin_role,
         createdAt: user.createdAt,
         metadata: user.metadata || {},
         grantedBy: admin.granted_by,
         grantedByEmail: grantedByUser?.email || null,
-        grantedByName: grantedByUser?.metadata?.name || null,
+        grantedByName: grantedByUser ? `${grantedByUser.firstName || ''} ${grantedByUser.lastName || ''}`.trim() : null,
         grantedAt: admin.granted_at
       };
     });
@@ -111,12 +113,16 @@ export async function GET(request) {
       transformedUsers = transformedUsers.filter(user => {
         const email = user.email?.toLowerCase() || '';
         const role = user.role?.toLowerCase() || '';
-        const name = user.metadata?.name?.toLowerCase() || '';
+        const firstName = user.firstName?.toLowerCase() || '';
+        const lastName = user.lastName?.toLowerCase() || '';
+        const fullName = `${firstName} ${lastName}`.trim();
         const grantedByEmail = user.grantedByEmail?.toLowerCase() || '';
         
         return email.includes(searchLower) || 
                role.includes(searchLower) || 
-               name.includes(searchLower) ||
+               firstName.includes(searchLower) ||
+               lastName.includes(searchLower) ||
+               fullName.includes(searchLower) ||
                grantedByEmail.includes(searchLower);
       });
     }
@@ -155,13 +161,13 @@ export async function POST(request) {
     
     // Parse request body
     const body = await request.json();
-    const { email, fullName, role } = body;
+    const { email, firstName, lastName, role } = body;
     
     // Validate required fields
-    if (!email || !fullName || !role) {
+    if (!email || !firstName || !lastName || !role) {
       return NextResponse.json({
         success: false,
-        error: 'Email, full name, and role are required'
+        error: 'Email, first name, last name, and role are required'
       }, { status: 400 });
     }
     
@@ -187,7 +193,8 @@ export async function POST(request) {
       email,
       email_confirm: false, // User needs to verify email
       user_metadata: {
-        name: fullName,
+        firstName: firstName,
+        lastName: lastName,
         role: 'admin'
       }
     });
@@ -205,16 +212,19 @@ export async function POST(request) {
     try {
       // Insert user record in users table using supabaseAdmin
       // Set isActive to false until they verify their email and set password
+      // Assign to Rareminds organization by default
       const { error: userInsertError } = await supabaseAdmin
         .from('users')
         .insert({
           id: newUserId,
           email: email,
+          firstName: firstName,
+          lastName: lastName,
           role: 'platform_admin', // Set role as platform_admin for admin users
           isActive: false,
+          organizationId: '3c5c2637-9f1e-4b68-83a3-bdc4d1a92f00', // Rareminds organization
           createdAt: new Date().toISOString(),
           metadata: {
-            name: fullName,
             emailVerificationPending: true
           }
         });
@@ -233,7 +243,7 @@ export async function POST(request) {
       const { error: adminInsertError } = await supabaseAdmin
         .from('admin_users')
         .insert({
-          user_id: newUserId,
+          id: newUserId,
           admin_role: role,
           granted_by: session?.user?.id || null,
           granted_at: new Date().toISOString()
@@ -265,7 +275,8 @@ export async function POST(request) {
             id: newUserId,
             email,
             role,
-            fullName
+            firstName,
+            lastName
           },
           emailError: resetError.message || 'Unknown error'
         });
@@ -278,7 +289,8 @@ export async function POST(request) {
           id: newUserId,
           email,
           role,
-          fullName
+          firstName,
+          lastName
         }
       });
       
