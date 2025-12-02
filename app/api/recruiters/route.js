@@ -78,8 +78,23 @@ export async function GET(request) {
     const { data: recruiters, error, count } = await query;
 
     if (error) {
+      // Handle range error gracefully
+      if (error.code === 'PGRST103' || error.message?.includes('range')) {
+        return NextResponse.json({
+          data: [],
+          pagination: { page, limit, total: 0, totalPages: 0 }
+        });
+      }
       console.error('Error fetching recruiters:', error);
       return NextResponse.json({ error: 'Failed to fetch recruiters' }, { status: 500 });
+    }
+
+    // If offset is beyond total count, return empty result
+    if (count !== null && offset >= count) {
+      return NextResponse.json({
+        data: [],
+        pagination: { page, limit, total: count, totalPages: Math.ceil(count / limit) }
+      });
     }
 
     // Normalize field names if needed (e.g. createdat -> created_at)

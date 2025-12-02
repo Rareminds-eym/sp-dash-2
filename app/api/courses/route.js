@@ -26,14 +26,12 @@ export async function GET(request) {
         // Build query using supabaseAdmin (bypass RLS)
         let query = supabaseAdmin
             .from('courses')
-            .select('course_id, title, code, description, thumbnail, status, duration, university, category, credits, target_outcomes, educator_name, created_at, updated_at', { count: 'exact' })
+            .select('course_id, title, code, description, thumbnail, status, approval_status, duration, university, category, credits, target_outcomes, educator_name, created_at, updated_at', { count: 'exact' })
             .is('deleted_at', null); // Exclude soft-deleted courses
 
-        // Apply filters (using existing column names)
+        // Apply filters using approval_status column
         if (statusFilter) {
-            // Map frontend status to database status
-            const mappedStatus = statusFilter === 'pending' ? 'Draft' : statusFilter === 'approved' ? 'Active' : statusFilter;
-            query = query.eq('status', mappedStatus);
+            query = query.eq('approval_status', statusFilter);
         }
 
         // Additional filters
@@ -80,8 +78,34 @@ export async function GET(request) {
         const { data: courses, error, count } = await query;
 
         if (error) {
+            // Handle range error (offset beyond data) gracefully
+            if (error.code === 'PGRST103' || error.message?.includes('range') || error.message?.includes('offset')) {
+                return NextResponse.json({
+                    data: [],
+                    pagination: {
+                        page,
+                        limit,
+                        total: 0,
+                        totalPages: 0
+                    }
+                });
+            }
             console.error('Error fetching courses:', error);
-            return NextResponse.json({ error: 'Failed to fetch courses' }, { status: 500 });
+            return NextResponse.json({ error: 'Failed to fetch courses', details: error.message }, { status: 500 });
+        }
+
+        // If offset is beyond total count, return empty result
+        if (count !== null && offset >= count) {
+            const response = NextResponse.json({
+                data: [],
+                pagination: {
+                    page,
+                    limit,
+                    total: count,
+                    totalPages: Math.ceil(count / limit)
+                }
+            });
+            return addCacheHeaders(response, 'static');
         }
 
         // Map database columns to frontend expected fields
@@ -96,7 +120,8 @@ export async function GET(request) {
             category: c.category,
             thumbnail_url: c.thumbnail,
             target_outcomes: c.target_outcomes,
-            approval_status: c.status === 'Draft' ? 'pending' : c.status === 'Active' ? 'approved' : c.status,
+            approval_status: c.approval_status || 'pending',
+            status: c.status,
             educator_name: c.educator_name,
             created_at: c.created_at,
             updated_at: c.updated_at
@@ -172,11 +197,12 @@ export async function POST(request) {
                     thumbnail: thumbnail_url,
                     target_outcomes,
                     status: 'Draft', // default status for new courses
+                    approval_status: 'pending', // default approval status
                     educator_id: user.id,
                     educator_name: user?.metadata?.name || ''
                 }
             ])
-            .select('course_id, title, code, description, university, duration, credits, category, thumbnail, target_outcomes, status, created_at')
+            .select('course_id, title, code, description, university, duration, credits, category, thumbnail, target_outcomes, status, approval_status, created_at')
             .single();
 
         if (insertError) {
@@ -199,7 +225,8 @@ export async function POST(request) {
             category: data.category,
             thumbnail_url: data.thumbnail,
             target_outcomes: data.target_outcomes,
-            approval_status: data.status,
+            approval_status: data.approval_status || 'pending',
+            status: data.status,
             created_at: data.created_at
         };
         return NextResponse.json({ success: true, data: mapped });

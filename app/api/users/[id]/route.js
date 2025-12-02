@@ -1,7 +1,6 @@
 import { logAudit } from '@/lib/services/auditService';
 import { createRLSClient, getUserContext } from '@/lib/supabase-rls';
 import { NextResponse } from 'next/server';
-import { v4 as uuidv4 } from 'uuid';
 
 export const runtime = 'edge';
 
@@ -35,7 +34,6 @@ export async function DELETE(request, { params }) {
     const { error: verifyError } = await rlsClient
       .from('verifications')
       .insert({
-        id: uuidv4(),
         targetTable: 'users',
         targetId: targetUserId,
         action: 'delete',
@@ -43,7 +41,10 @@ export async function DELETE(request, { params }) {
         note: reason || 'User deleted'
       });
 
-    if (verifyError) throw verifyError;
+    if (verifyError) {
+      console.error('Verification log error:', verifyError);
+      // Don't throw - deletion succeeded, just log failed
+    }
 
     // Log audit
     await logAudit(userContext.id, 'delete_user', targetUserId, { reason });

@@ -34,11 +34,12 @@ export async function POST(request) {
             .from('courses')
             .update({
                 status: 'Active',
+                approval_status: 'approved',
                 approved_by: userId,
                 approved_at: new Date().toISOString()
             })
             .eq('course_id', courseId)
-            .select('course_id, title, code, description, thumbnail, status, duration, created_at')
+            .select('course_id, title, code, description, thumbnail, status, approval_status, duration, created_at')
             .single();
 
         if (updateError) {

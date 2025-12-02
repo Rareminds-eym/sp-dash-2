@@ -51,7 +51,7 @@ export async function GET(request) {
     }
     
     // Fetch user details for all admin users using RLS client
-    const userIds = (adminUsers || []).map(a => a.user_id);
+    const userIds = (adminUsers || []).map(a => a.id);
     const grantedByIds = (adminUsers || []).map(a => a.granted_by).filter(Boolean);
     
     let usersMap = {};
@@ -81,11 +81,11 @@ export async function GET(request) {
     
     // Transform the data to match the frontend expectations
     let transformedUsers = (adminUsers || []).map(admin => {
-      const user = usersMap[admin.user_id] || {};
+      const user = usersMap[admin.id] || {};
       const grantedByUser = admin.granted_by ? grantedByMap[admin.granted_by] : null;
       
       return {
-        id: admin.user_id,
+        id: admin.id,
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
@@ -243,7 +243,7 @@ export async function POST(request) {
       const { error: adminInsertError } = await supabaseAdmin
         .from('admin_users')
         .insert({
-          user_id: newUserId,
+          id: newUserId,
           admin_role: role,
           granted_by: session?.user?.id || null,
           granted_at: new Date().toISOString()

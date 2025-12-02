@@ -204,8 +204,24 @@ export default function ApprovalsPage({ currentUser }) {
     loading: false
   })
 
-  // Ref for infinite scroll observer
-  const loadMoreRef = useRef(null)
+  // Refs for infinite scroll observer - one per tab
+  const universitiesLoadMoreRef = useRef(null)
+  const recruitersLoadMoreRef = useRef(null)
+  const collegesLoadMoreRef = useRef(null)
+  const studentsLoadMoreRef = useRef(null)
+  const coursesLoadMoreRef = useRef(null)
+
+  // Get the correct ref for the active tab
+  const getLoadMoreRef = (tab) => {
+    switch (tab) {
+      case 'universities': return universitiesLoadMoreRef
+      case 'recruiters': return recruitersLoadMoreRef
+      case 'colleges': return collegesLoadMoreRef
+      case 'students': return studentsLoadMoreRef
+      case 'courses': return coursesLoadMoreRef
+      default: return universitiesLoadMoreRef
+    }
+  }
 
   // Fetch counts for all tabs on initial load
   useEffect(() => {
@@ -232,27 +248,51 @@ export default function ApprovalsPage({ currentUser }) {
     }
   }, [activeTab])
 
+  // Use refs to track current pagination state for intersection observer
+  const paginationRef = useRef(pagination)
+  const loadingRef = useRef(loading)
+  const activeTabRef = useRef(activeTab)
+  
+  // Keep refs in sync with state
+  useEffect(() => {
+    paginationRef.current = pagination
+  }, [pagination])
+  
+  useEffect(() => {
+    loadingRef.current = loading
+  }, [loading])
+  
+  useEffect(() => {
+    activeTabRef.current = activeTab
+  }, [activeTab])
+
   // Intersection Observer for infinite scroll
   useEffect(() => {
+    const currentRef = getLoadMoreRef(activeTab)
+    
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && pagination[activeTab].hasMore && !pagination[activeTab].loadingMore && !loading[activeTab]) {
+        const tab = activeTabRef.current
+        const pag = paginationRef.current[tab]
+        const isLoading = loadingRef.current[tab]
+        
+        if (entries[0].isIntersecting && pag?.hasMore && !pag?.loadingMore && !isLoading) {
           loadMoreEntities()
         }
       },
       { threshold: 0.1 }
     )
 
-    if (loadMoreRef.current) {
-      observer.observe(loadMoreRef.current)
+    if (currentRef.current) {
+      observer.observe(currentRef.current)
     }
 
     return () => {
-      if (loadMoreRef.current) {
-        observer.unobserve(loadMoreRef.current)
+      if (currentRef.current) {
+        observer.unobserve(currentRef.current)
       }
     }
-  }, [activeTab, pagination, loading])
+  }, [activeTab]) // Only re-create observer when tab changes
 
   // Refetch when university filters/search/sort change
   useEffect(() => {
@@ -476,12 +516,15 @@ export default function ApprovalsPage({ currentUser }) {
 
         // Calculate hasMore properly
         const currentPage = paginationInfo.page || 1
-        const totalPages = paginationInfo.totalPages || 1
+        const totalPages = paginationInfo.totalPages || 0
         const totalItems = paginationInfo.total || 0
 
-        // hasMore is true only if current page < total pages
-        // This ensures when we're on the last page, hasMore becomes false
-        const hasMoreItems = currentPage < totalPages
+        // hasMore is false if:
+        // - No data returned (newData.length === 0)
+        // - We've loaded all items (newData.length >= totalItems)
+        // - We're on or past the last page (currentPage >= totalPages)
+        // - totalPages is 0 or 1 (only one page of data)
+        const hasMoreItems = newData.length > 0 && newData.length < totalItems && currentPage < totalPages
 
         // Update pagination info
         setPagination(prev => ({
@@ -515,7 +558,27 @@ export default function ApprovalsPage({ currentUser }) {
     const currentTab = activeTab
     const currentPagination = pagination[currentTab]
 
+    // Early exit if no more data to load
     if (!currentPagination.hasMore || currentPagination.loadingMore) {
+      return
+    }
+
+    // Get current loaded count for this tab
+    let currentLoadedCount = 0
+    switch (currentTab) {
+      case 'universities': currentLoadedCount = universities.length; break
+      case 'recruiters': currentLoadedCount = recruiters.length; break
+      case 'colleges': currentLoadedCount = colleges.length; break
+      case 'students': currentLoadedCount = students.length; break
+      case 'courses': currentLoadedCount = courses.length; break
+    }
+
+    // If we've already loaded all items, set hasMore to false and exit
+    if (currentPagination.total > 0 && currentLoadedCount >= currentPagination.total) {
+      setPagination(prev => ({
+        ...prev,
+        [currentTab]: { ...prev[currentTab], hasMore: false }
+      }))
       return
     }
 
@@ -602,11 +665,24 @@ export default function ApprovalsPage({ currentUser }) {
         }
 
         // Calculate hasMore properly
-        const totalPages = paginationInfo.totalPages || 1
+        const totalPages = paginationInfo.totalPages || 0
         const totalItems = paginationInfo.total || 0
 
-        // hasMore is true only if next page < total pages
-        const hasMoreItems = nextPage < totalPages
+        // Get updated loaded count after appending new data
+        let newLoadedCount = 0
+        switch (currentTab) {
+          case 'universities': newLoadedCount = universities.length + newData.length; break
+          case 'recruiters': newLoadedCount = recruiters.length + newData.length; break
+          case 'colleges': newLoadedCount = colleges.length + newData.length; break
+          case 'students': newLoadedCount = students.length + newData.length; break
+          case 'courses': newLoadedCount = courses.length + newData.length; break
+        }
+
+        // hasMore is false if:
+        // - No data returned (newData.length === 0)
+        // - We've loaded all items (newLoadedCount >= totalItems)
+        // - We're on or past the last page (nextPage >= totalPages)
+        const hasMoreItems = newData.length > 0 && newLoadedCount < totalItems && nextPage < totalPages
 
         // Update pagination info
         setPagination(prev => ({
@@ -945,7 +1021,7 @@ export default function ApprovalsPage({ currentUser }) {
               {pagination.universities.hasMore && (
                 <div className="mt-6 flex flex-col items-center gap-4">
                   {/* Intersection observer target */}
-                  <div ref={loadMoreRef} className="h-4" />
+                  <div ref={universitiesLoadMoreRef} className="h-4" />
 
                   {/* Manual Load More button */}
                   <Button
@@ -1042,7 +1118,7 @@ export default function ApprovalsPage({ currentUser }) {
               {pagination.recruiters.hasMore && (
                 <div className="mt-6 flex flex-col items-center gap-4">
                   {/* Intersection observer target */}
-                  <div ref={loadMoreRef} className="h-4" />
+                  <div ref={recruitersLoadMoreRef} className="h-4" />
 
                   {/* Manual Load More button */}
                   <Button
@@ -1139,7 +1215,7 @@ export default function ApprovalsPage({ currentUser }) {
               {pagination.colleges.hasMore && (
                 <div className="mt-6 flex flex-col items-center gap-4">
                   {/* Intersection observer target */}
-                  <div ref={loadMoreRef} className="h-4" />
+                  <div ref={collegesLoadMoreRef} className="h-4" />
 
                   {/* Manual Load More button */}
                   <Button
@@ -1238,7 +1314,7 @@ export default function ApprovalsPage({ currentUser }) {
               {pagination.students.hasMore && (
                 <div className="mt-6 flex flex-col items-center gap-4">
                   {/* Intersection observer target */}
-                  <div ref={loadMoreRef} className="h-4" />
+                  <div ref={studentsLoadMoreRef} className="h-4" />
 
                   {/* Manual Load More button */}
                   <Button
@@ -1335,7 +1411,7 @@ export default function ApprovalsPage({ currentUser }) {
               {pagination.courses.hasMore && (
                 <div className="mt-6 flex flex-col items-center gap-4">
                   {/* Intersection observer target */}
-                  <div ref={loadMoreRef} className="h-4" />
+                  <div ref={coursesLoadMoreRef} className="h-4" />
 
                   {/* Manual Load More button */}
                   <Button

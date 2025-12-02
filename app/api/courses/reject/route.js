@@ -38,7 +38,7 @@ export async function POST(request) {
                 rejected_by: userId,
                 rejected_at: new Date().toISOString()
             })
-            .eq('id', courseId)
+            .eq('course_id', courseId)
             .select()
             .single();
 
