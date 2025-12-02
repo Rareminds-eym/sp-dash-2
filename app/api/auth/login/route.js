@@ -93,6 +93,30 @@ export async function POST(request) {
       // Continue with auth user data if custom user data fetch fails
     }
 
+    // Check if user exists in admin_users table
+    const { data: adminUser, error: adminError } = await supabase
+      .from('admin_users')
+      .select('id, user_id, admin_role')
+      .eq('user_id', userData?.id)
+      .maybeSingle()
+
+    if (adminError) {
+      console.error('Error checking admin_users:', adminError)
+    }
+
+    if (!adminUser) {
+      // Sign out the user - they're not an admin
+      await supabase.auth.signOut()
+      
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Access denied. You are not authorized to access the admin dashboard.' 
+        },
+        { status: 403 }
+      )
+    }
+
     // Check user role - recruiters are not allowed to login to admin dashboard
     const userRole = userData?.role || authData.user.user_metadata?.role || 'user'
     if (userRole === 'recruiter') {

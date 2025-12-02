@@ -70,23 +70,37 @@ export async function GET(request) {
       }
     }
 
-    if (userError) {
-      console.error('Error fetching user data:', userError)
-      // Return auth user data if custom user data fetch fails
-      return NextResponse.json({
-        success: true,
-        user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.user_metadata?.firstName || '',
-          lastName: user.user_metadata?.lastName || '',
-          name: `${user.user_metadata?.firstName || ''} ${user.user_metadata?.lastName || ''}`.trim() || user.email.split('@')[0],
-          role: user.user_metadata?.role || 'user',
-        },
-      })
+    if (userError || !userData) {
+      if (userError) {
+        console.error('Error fetching user data:', userError)
+      }
+      // User not found in users table - not authorized
+      return NextResponse.json(
+        { success: false, user: null, error: 'User not authorized' },
+        { status: 403 }
+      )
     }
 
-    const userName = userData?.firstName && userData?.lastName 
+    // Check if user exists in admin_users table
+    const { data: adminUser, error: adminError } = await supabase
+      .from('admin_users')
+      .select('id, user_id, admin_role')
+      .eq('user_id', userData.id)
+      .maybeSingle()
+
+    if (adminError) {
+      console.error('Error checking admin_users:', adminError)
+    }
+
+    if (!adminUser) {
+      // User is not an admin - not authorized for this dashboard
+      return NextResponse.json(
+        { success: false, user: null, error: 'Access denied. Not an admin user.' },
+        { status: 403 }
+      )
+    }
+
+    const userName = userData.firstName && userData.lastName 
       ? `${userData.firstName} ${userData.lastName}` 
       : user.user_metadata?.firstName && user.user_metadata?.lastName
       ? `${user.user_metadata.firstName} ${user.user_metadata.lastName}`
