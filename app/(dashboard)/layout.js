@@ -58,6 +58,7 @@ const initialNavigation = [
   { name: 'Admin Management', icon: Shield, href: '/users' },
   { name: 'Course Management', icon: GraduationCap, href: '/course-management' },
   { name: 'Verification Center', icon: FileText, href: '/passports' },
+  { name: 'Recruiter Management', icon: Briefcase, href: '/recruiters' },
   {
     name: 'Approval Center',
     icon: CheckCircle,

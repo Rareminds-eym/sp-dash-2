@@ -19,12 +19,13 @@ export async function GET(request) {
 
     // Filter parameters
     const approvalStatus = url.searchParams.get('approval_status');
-    const accountStatus = url.searchParams.get('account_status');
+    const accountStatus = url.searchParams.get('account_status'); // active/inactive
+    const verificationStatus = url.searchParams.get('verification_status');
     const searchTerm = url.searchParams.get('search');
     const state = url.searchParams.get('state');
     const sortBy = url.searchParams.get('sort') || 'date-newest';
 
-    // Build query for recruiters
+    // Build query - using supabaseAdmin to bypass RLS for admin operations
     let query = supabaseAdmin.from('recruiters').select('*', { count: 'exact' });
 
     // Apply filters
@@ -32,14 +33,26 @@ export async function GET(request) {
       query = query.eq('approval_status', approvalStatus);
     }
     if (accountStatus) {
-      query = query.eq('account_status', accountStatus);
+      // Map 'active'/'inactive' to boolean isactive if needed, or check schema.
+      // Based on schema inspection: 'isactive' is boolean, 'account_status' is text (e.g. 'active').
+      // Let's support both or prioritize one. The schema showed 'account_status': 'active' and 'isactive': true.
+      // Let's use account_status column if provided, or isactive.
+      // The schema has both. Let's assume account_status is the main one for now or check usage.
+      // Inspect output showed: account_status: 'active', isactive: true.
+      // Let's filter by account_status if provided.
+      if (accountStatus === 'active' || accountStatus === 'inactive') {
+        query = query.eq('account_status', accountStatus);
+      }
     }
+    if (verificationStatus) {
+      query = query.eq('verificationstatus', verificationStatus);
+    }
+
     if (state && state !== 'all') {
       query = query.eq('state', state);
     }
     if (searchTerm) {
-      // Search in recruiter name, email, phone
-      query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,state.ilike.%${searchTerm}%`);
+      query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,website.ilike.%${searchTerm}%`);
     }
 
     // Apply sorting
@@ -52,9 +65,6 @@ export async function GET(request) {
         break;
       case 'date-oldest':
         query = query.order('createdat', { ascending: true });
-        break;
-      case 'state-asc':
-        query = query.order('state', { ascending: true });
         break;
       case 'date-newest':
       default:
@@ -72,13 +82,12 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Failed to fetch recruiters' }, { status: 500 });
     }
 
-    // Normalize data to match frontend expectations
-    const normalizedRecruiters = (recruiters || []).map(recruiter => {
-      return {
-        ...recruiter,
-        created_at: recruiter.createdat || recruiter.created_at,
-      };
-    });
+    // Normalize field names if needed (e.g. createdat -> created_at)
+    const normalizedRecruiters = (recruiters || []).map(recruiter => ({
+      ...recruiter,
+      created_at: recruiter.createdat,
+      updated_at: recruiter.updatedat,
+    }));
 
     const response = NextResponse.json({
       data: normalizedRecruiters || [],
@@ -95,3 +104,102 @@ export async function GET(request) {
     return handleError(error, 'Recruiters');
   }
 }
+
+/**
+ * POST /api/recruiters - Create a new recruiter
+ */
+export async function POST(request) {
+  try {
+    const body = await request.json();
+
+    // Basic validation
+    if (!body.name || !body.email) {
+      return NextResponse.json({ error: 'Name and Email are required' }, { status: 400 });
+    }
+
+    // 1. Create user in Supabase Auth
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: body.email,
+      email_confirm: true, // Auto-confirm for now to simplify, or false if we want verification flow
+      user_metadata: {
+        name: body.name,
+        role: 'recruiter'
+      }
+    });
+
+    if (authError) {
+      console.error('Error creating auth user:', authError);
+      return NextResponse.json({ error: 'Failed to create user account', details: authError.message }, { status: 500 });
+    }
+
+    const userId = authData.user.id;
+
+    // 2. Insert into users table (public profile)
+    // Split name into first and last name for users table
+    const nameParts = body.name.split(' ');
+    const firstName = nameParts[0];
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    const { error: userInsertError } = await supabaseAdmin
+      .from('users')
+      .insert({
+        id: userId,
+        email: body.email,
+        firstName: firstName,
+        lastName: lastName,
+        role: 'recruiter', // Assuming 'recruiter' is a valid role enum
+        isActive: true, // Auto-active for now
+        // organizationId: '...', // specific org or null
+        createdAt: new Date().toISOString(),
+        metadata: {
+          source: 'recruiter_management'
+        }
+      });
+
+    if (userInsertError) {
+      console.error('Error inserting user profile:', userInsertError);
+      await supabaseAdmin.auth.admin.deleteUser(userId);
+      return NextResponse.json({ error: 'Failed to create user profile', details: userInsertError.message }, { status: 500 });
+    }
+
+    // 3. Prepare data for insertion
+    const newRecruiter = {
+      name: body.name,
+      email: body.email,
+      phone: body.phone,
+      website: body.website,
+      state: body.state,
+      user_id: userId, // Link to auth user
+      // Defaults
+      isactive: true,
+      account_status: 'active',
+      verificationstatus: 'pending',
+      approval_status: 'approved',
+      createdat: new Date().toISOString(),
+      updatedat: new Date().toISOString()
+    };
+
+    // 4. Insert into recruiters table
+    const { data, error } = await supabaseAdmin
+      .from('recruiters')
+      .insert([newRecruiter])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating recruiter:', error);
+      // Rollback auth user and user profile
+      await supabaseAdmin.from('users').delete().eq('id', userId);
+      await supabaseAdmin.auth.admin.deleteUser(userId);
+      return NextResponse.json({ error: 'Failed to create recruiter profile', details: error.message, code: error.code }, { status: 500 });
+    }
+
+    // 4. Send password reset email (optional, but good practice)
+    // await supabaseAdmin.auth.resetPasswordForEmail(body.email, { ... });
+
+    return NextResponse.json({ success: true, data });
+  } catch (error) {
+    return handleError(error, 'Create Recruiter');
+  }
+}
+
