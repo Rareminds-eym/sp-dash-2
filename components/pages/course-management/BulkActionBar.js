@@ -16,7 +16,7 @@ export function BulkActionBar({ selectedCount, onClearSelection, onDelete, isDel
     if (selectedCount === 0) return null
 
     return (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-blue-600 text-white py-3 px-6 shadow-lg">
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-blue-600 text-white py-3 px-6 shadow-lg animate-in slide-in-from-bottom duration-300">
             <div className="max-w-7xl mx-auto flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <span className="font-semibold">{selectedCount} course(s) selected</span>

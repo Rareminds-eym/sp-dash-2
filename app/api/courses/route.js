@@ -108,8 +108,17 @@ export async function GET(request) {
             return addCacheHeaders(response, 'static');
         }
 
+        // Deduplicate courses by course_id
+        const uniqueCoursesMap = new Map();
+        (courses || []).forEach(c => {
+            if (!uniqueCoursesMap.has(c.course_id)) {
+                uniqueCoursesMap.set(c.course_id, c);
+            }
+        });
+        const uniqueCourses = Array.from(uniqueCoursesMap.values());
+
         // Map database columns to frontend expected fields
-        const mapped = (courses || []).map(c => ({
+        const mapped = uniqueCourses.map(c => ({
             id: c.course_id,
             name: c.title,
             course_code: c.code,

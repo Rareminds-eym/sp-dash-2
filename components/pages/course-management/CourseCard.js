@@ -10,12 +10,15 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { GraduationCap, MoreVertical, Eye, Edit, Trash2, Clock, Award, BookOpen } from 'lucide-react'
+import { useState } from 'react'
 
 export function CourseCard({ course, selected, onSelect, onEdit, onDelete, onViewDetails, getStatusBadge }) {
+    const [imageError, setImageError] = useState(false)
+
     return (
-        <Card className={`group relative overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/20 ${selected
-                ? 'ring-2 ring-blue-500 shadow-xl shadow-blue-500/30 scale-[1.02]'
-                : 'hover:scale-[1.02]'
+        <Card className={`group relative overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/20 focus-within:shadow-2xl focus-within:shadow-blue-500/20 ${selected
+            ? 'ring-2 ring-blue-500 shadow-xl shadow-blue-500/30 scale-[1.02]'
+            : 'hover:scale-[1.02] focus-within:scale-[1.02]'
             }`}>
             {/* Gradient Background Effect */}
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -30,29 +33,46 @@ export function CourseCard({ course, selected, onSelect, onEdit, onDelete, onVie
             </div>
 
             {/* Actions Menu - Glassmorphic */}
-            <div className="absolute top-3 right-3 z-20 opacity-0 group-hover:opacity-100 transition-all duration-300">
+            <div className="absolute top-3 right-3 z-20 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-all duration-300">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button
                             variant="ghost"
                             size="icon"
                             className="h-9 w-9 rounded-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-white/20 shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-200"
+                            aria-label="Course actions"
                         >
                             <MoreVertical className="h-4 w-4" />
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuItem onClick={onViewDetails} className="cursor-pointer">
+                        <DropdownMenuItem
+                            onClick={(e) => {
+                                e.preventDefault()
+                                // Small delay to ensure dropdown closes before dialog opens
+                                setTimeout(() => onViewDetails(), 0)
+                            }}
+                            className="cursor-pointer"
+                        >
                             <Eye className="h-4 w-4 mr-2" />
                             View Details
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={onEdit} className="cursor-pointer">
+                        <DropdownMenuItem
+                            onClick={(e) => {
+                                e.preventDefault()
+                                setTimeout(() => onEdit(), 0)
+                            }}
+                            className="cursor-pointer"
+                        >
                             <Edit className="h-4 w-4 mr-2" />
                             Edit Course
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                            onClick={onDelete}
+                            onClick={(e) => {
+                                e.preventDefault()
+                                setTimeout(() => onDelete(), 0)
+                            }}
                             className="text-red-600 focus:text-red-600 cursor-pointer"
                         >
                             <Trash2 className="h-4 w-4 mr-2" />
@@ -64,21 +84,19 @@ export function CourseCard({ course, selected, onSelect, onEdit, onDelete, onVie
 
             {/* Thumbnail Section with Overlay */}
             <div className="relative h-56 overflow-hidden bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600">
-                {course.thumbnail_url ? (
+                {course.thumbnail_url && !imageError ? (
                     <div className="relative h-full w-full">
                         <img
                             src={course.thumbnail_url}
                             alt={course.name}
                             className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
-                            onError={(e) => {
-                                e.target.style.display = 'none'
-                            }}
+                            onError={() => setImageError(true)}
                         />
                         {/* Gradient Overlay */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
                     </div>
                 ) : (
-                    // Fallback gradient with icon for courses without thumbnail
+                    // Fallback gradient with icon for courses without thumbnail or error
                     <div className="relative h-full w-full flex items-center justify-center">
                         <BookOpen className="h-20 w-20 text-white/30" strokeWidth={1.5} />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
@@ -167,7 +185,7 @@ export function CourseCard({ course, selected, onSelect, onEdit, onDelete, onVie
                 </div>
 
                 {/* Quick Actions Bar - Appears on Hover */}
-                <div className="flex items-center gap-2 pt-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+                <div className="flex items-center gap-2 pt-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 focus-within:translate-y-0">
                     <Button
                         onClick={onViewDetails}
                         variant="outline"

@@ -83,23 +83,30 @@ export default function CourseManagementPage({ currentUser }) {
             // Create CSV header
             const headers = ['Course Name', 'Course Code', 'University', 'Category', 'Status', 'Duration', 'Credits', 'Created Date', 'Description']
 
+            // Helper to escape CSV fields
+            const escapeCsv = (field) => {
+                if (field === null || field === undefined) return ''
+                const stringField = String(field)
+                return `"${stringField.replace(/"/g, '""')}"`
+            }
+
             // Create CSV rows
             const rows = courses.map(course => [
-                course.name || '',
-                course.course_code || '',
-                course.university || '',
-                course.category || '',
-                course.approval_status || '',
-                course.duration || '',
-                course.credits || '',
+                course.name,
+                course.course_code,
+                course.university,
+                course.category,
+                course.approval_status,
+                course.duration,
+                course.credits,
                 course.created_at ? new Date(course.created_at).toLocaleDateString() : '',
-                (course.description || '').replace(/"/g, '""') // Escape quotes
+                course.description
             ])
 
             // Combine header and rows
             const csvContent = [
                 headers.map(h => `"${h}"`).join(','),
-                ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+                ...rows.map(row => row.map(escapeCsv).join(','))
             ].join('\n')
 
             // Create blob and download
@@ -240,7 +247,11 @@ export default function CourseManagementPage({ currentUser }) {
 
             if (response.ok && data.data) {
                 if (append) {
-                    setCourses(prev => [...prev, ...data.data])
+                    setCourses(prev => {
+                        const existingIds = new Set(prev.map(c => c.id))
+                        const uniqueNewCourses = data.data.filter(c => !existingIds.has(c.id))
+                        return [...prev, ...uniqueNewCourses]
+                    })
                 } else {
                     setCourses(data.data)
                 }
@@ -554,7 +565,7 @@ export default function CourseManagementPage({ currentUser }) {
                 viewMode={viewMode}
             />
 
-            {/* Dialogs */}
+            {/* Dialogs - Always render, let open prop control visibility */}
             <CourseFormDialog
                 open={dialogOpen}
                 onOpenChange={(open) => {
@@ -583,7 +594,15 @@ export default function CourseManagementPage({ currentUser }) {
             <CourseDetailsDialog
                 course={viewingCourse}
                 open={detailsOpen}
-                onOpenChange={setDetailsOpen}
+                onOpenChange={(open) => {
+                    setDetailsOpen(open)
+                    if (!open) {
+                        // Delay clearing the course to allow close animation
+                        setTimeout(() => setViewingCourse(null), 200)
+                        // Ensure pointer-events are restored
+                        document.body.style.pointerEvents = ''
+                    }
+                }}
             />
         </div>
     )

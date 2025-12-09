@@ -97,8 +97,17 @@ export async function GET(request) {
       });
     }
 
+    // Deduplicate recruiters by ID to handle potential database duplicates
+    const uniqueRecruitersMap = new Map();
+    (recruiters || []).forEach(recruiter => {
+      if (!uniqueRecruitersMap.has(recruiter.id)) {
+        uniqueRecruitersMap.set(recruiter.id, recruiter);
+      }
+    });
+    const uniqueRecruiters = Array.from(uniqueRecruitersMap.values());
+
     // Normalize field names if needed (e.g. createdat -> created_at)
-    const normalizedRecruiters = (recruiters || []).map(recruiter => ({
+    const normalizedRecruiters = uniqueRecruiters.map(recruiter => ({
       ...recruiter,
       created_at: recruiter.createdat,
       updated_at: recruiter.updatedat,

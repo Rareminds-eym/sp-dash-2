@@ -1,8 +1,11 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { GraduationCap, Clock, BookOpen, Calendar, CheckCircle2 } from 'lucide-react'
+import { useState } from 'react'
 
 export function CourseDetailsDialog({ course, open, onOpenChange }) {
+    const [imageError, setImageError] = useState(false)
+
     if (!course) return null
 
     return (
@@ -32,15 +35,20 @@ export function CourseDetailsDialog({ course, open, onOpenChange }) {
 
                         <div className="space-y-6 mt-4">
                             {/* Thumbnail */}
-                            {course.thumbnail_url && (
-                                <div className="w-full h-64 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
+                            <div className="w-full h-64 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 relative">
+                                {course.thumbnail_url && !imageError ? (
                                     <img
                                         src={course.thumbnail_url}
                                         alt={course.name}
                                         className="w-full h-full object-cover"
+                                        onError={() => setImageError(true)}
                                     />
-                                </div>
-                            )}
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600">
+                                        <BookOpen className="h-16 w-16 text-white/30" />
+                                    </div>
+                                )}
+                            </div>
 
                             {/* Key Info Grid */}
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
