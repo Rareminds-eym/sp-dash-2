@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 import { GraduationCap, Plus, Download } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+
 import { useState, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 
@@ -11,14 +11,13 @@ import { Badge } from '@/components/ui/badge'
 import { BulkActionBar } from './course-management/BulkActionBar'
 import { CourseFilters } from './course-management/CourseFilters'
 import { CourseList } from './course-management/CourseList'
-import { CourseFormDialog } from './course-management/CourseFormDialog'
+import { CreateCourseModal } from './course-management/CreateCourseModal'
 import { DeleteConfirmationDialog } from './course-management/DeleteConfirmationDialog'
 import { CourseDetailsDialog } from './course-management/CourseDetailsDialog'
 
 import { useDebounce } from '@/hooks/use-debounce'
 
 export default function CourseManagementPage({ currentUser }) {
-    const router = useRouter()
     const { toast } = useToast()
 
     // Course list state
@@ -49,9 +48,7 @@ export default function CourseManagementPage({ currentUser }) {
     const [selectedCourses, setSelectedCourses] = useState(new Set())
     const [bulkDeleting, setBulkDeleting] = useState(false)
 
-    // Dialog state
-    const [dialogOpen, setDialogOpen] = useState(false)
-    const [loading, setLoading] = useState(false)
+    // Universities state
     const [universities, setUniversities] = useState([])
     const [loadingUniversities, setLoadingUniversities] = useState(true)
 
@@ -61,19 +58,8 @@ export default function CourseManagementPage({ currentUser }) {
     const [viewingCourse, setViewingCourse] = useState(null)
     const [detailsOpen, setDetailsOpen] = useState(false)
 
-    const [formData, setFormData] = useState({
-        name: '',
-        courseCode: '',
-        description: '',
-        university: '',
-        duration: '',
-        credits: '',
-        category: '',
-        thumbnailUrl: '',
-        targetOutcomes: ''
-    })
-
-    const [errors, setErrors] = useState({})
+    // Create course modal state
+    const [showCreateModal, setShowCreateModal] = useState(false)
 
     // === Helper Functions ===
 
@@ -290,80 +276,9 @@ export default function CourseManagementPage({ currentUser }) {
         }
     }
 
-    const validateForm = () => {
-        const newErrors = {}
-
-        if (!formData.name.trim()) newErrors.name = 'Course name is required'
-        if (!formData.courseCode.trim()) newErrors.courseCode = 'Course code is required'
-        if (!formData.description.trim()) newErrors.description = 'Description is required'
-        if (!formData.university.trim()) newErrors.university = 'University is required'
-        if (!formData.duration.trim()) newErrors.duration = 'Duration is required'
-        if (!formData.credits.trim()) newErrors.credits = 'Credits is required'
-        else if (isNaN(formData.credits) || Number(formData.credits) <= 0) {
-            newErrors.credits = 'Credits must be a positive number'
-        }
-        if (!formData.category.trim()) newErrors.category = 'Category is required'
-        if (!formData.thumbnailUrl.trim()) newErrors.thumbnailUrl = 'Thumbnail URL is required'
-        else if (!isValidUrl(formData.thumbnailUrl)) {
-            newErrors.thumbnailUrl = 'Please enter a valid URL'
-        }
-        if (!formData.targetOutcomes.trim()) newErrors.targetOutcomes = 'Target outcomes are required'
-
-        setErrors(newErrors)
-        return Object.keys(newErrors).length === 0
-    }
-
-    const isValidUrl = (string) => {
-        try {
-            new URL(string)
-            return true
-        } catch (_) {
-            return false
-        }
-    }
-
-    const handleChange = (e) => {
-        const { name, value } = e.target
-        setFormData(prev => ({ ...prev, [name]: value }))
-        if (errors[name]) {
-            setErrors(prev => {
-                const newErrors = { ...prev }
-                delete newErrors[name]
-                return newErrors
-            })
-        }
-    }
-
-    const handleReset = () => {
-        setFormData({
-            name: '',
-            courseCode: '',
-            description: '',
-            university: '',
-            duration: '',
-            credits: '',
-            category: '',
-            thumbnailUrl: '',
-            targetOutcomes: ''
-        })
-        setErrors({})
-        setEditingCourse(null)
-    }
-
     const handleEdit = (course) => {
         setEditingCourse(course)
-        setFormData({
-            name: course.name,
-            courseCode: course.course_code,
-            description: course.description,
-            university: course.university || '',
-            duration: course.duration || '',
-            credits: course.credits?.toString() || '',
-            category: course.category || '',
-            thumbnailUrl: course.thumbnail_url || '',
-            targetOutcomes: Array.isArray(course.target_outcomes) ? course.target_outcomes.join('\n') : course.target_outcomes || ''
-        })
-        setDialogOpen(true)
+        setShowCreateModal(true)
     }
 
     const handleDelete = async () => {
@@ -401,65 +316,13 @@ export default function CourseManagementPage({ currentUser }) {
         setDetailsOpen(true)
     }
 
-    const handleSubmit = async (e) => {
-        e.preventDefault()
-
-        if (!validateForm()) {
-            toast({
-                title: 'Validation Error',
-                description: 'Please fill in all required fields correctly.',
-                variant: 'destructive'
-            })
-            return
-        }
-
-        setLoading(true)
-
-        try {
-            const endpoint = editingCourse ? `/api/courses/${editingCourse.id}` : '/api/courses'
-            const method = editingCourse ? 'PUT' : 'POST'
-
-            const response = await fetch(endpoint, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: formData.name,
-                    course_code: formData.courseCode,
-                    description: formData.description,
-                    university: formData.university,
-                    duration: formData.duration,
-                    credits: Number(formData.credits),
-                    category: formData.category,
-                    thumbnail_url: formData.thumbnailUrl,
-                    target_outcomes: formData.targetOutcomes,
-                    approval_status: 'approved',
-                    created_by: currentUser?.user?.id
-                })
-            })
-
-            const data = await response.json()
-
-            if (response.ok && data.success) {
-                toast({
-                    title: 'Success!',
-                    description: editingCourse ? 'Course updated successfully.' : 'Course created successfully.',
-                })
-                handleReset()
-                setDialogOpen(false)
-                fetchCourses(1, false)
-            } else {
-                throw new Error(data.error || data.message || `Failed to ${editingCourse ? 'update' : 'create'} course`)
-            }
-        } catch (error) {
-            console.error('Course operation error:', error)
-            toast({
-                title: 'Error',
-                description: error.message || `Failed to ${editingCourse ? 'update' : 'create'} course. Please try again.`,
-                variant: 'destructive'
-            })
-        } finally {
-            setLoading(false)
-        }
+    const handleCourseSuccess = () => {
+        toast({
+            title: 'Success!',
+            description: editingCourse ? 'Course updated successfully.' : 'Course created successfully.',
+        })
+        setEditingCourse(null)
+        fetchCourses(1, false)
     }
 
     const getStatusBadge = (status) => {
@@ -520,8 +383,8 @@ export default function CourseManagementPage({ currentUser }) {
 
                     <Button
                         onClick={() => {
-                            handleReset()
-                            setDialogOpen(true)
+                            setEditingCourse(null)
+                            setShowCreateModal(true)
                         }}
                         className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
                     >
@@ -565,23 +428,17 @@ export default function CourseManagementPage({ currentUser }) {
                 viewMode={viewMode}
             />
 
-            {/* Dialogs - Always render, let open prop control visibility */}
-            <CourseFormDialog
-                open={dialogOpen}
+            {/* Create/Edit Course Modal */}
+            <CreateCourseModal
+                open={showCreateModal}
                 onOpenChange={(open) => {
-                    setDialogOpen(open)
-                    if (!open) handleReset()
+                    setShowCreateModal(open)
+                    if (!open) setEditingCourse(null)
                 }}
                 editingCourse={editingCourse}
-                formData={formData}
-                handleChange={handleChange}
-                handleSubmit={handleSubmit}
-                loading={loading}
-                errors={errors}
+                onSuccess={handleCourseSuccess}
+                currentUser={currentUser}
                 universities={universities}
-                loadingUniversities={loadingUniversities}
-                setFormData={setFormData}
-                setErrors={setErrors}
             />
 
             <DeleteConfirmationDialog
