@@ -623,16 +623,17 @@ export function CreateCourseModal({
 
         {/* Progress Steps */}
         <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center">
             {visibleSteps.map((step, index) => {
               const isActive = currentStep === step.id
               const isCompleted = currentStep > step.id
               const stepNumber = index + 1
+              const isLast = index === visibleSteps.length - 1
               
               return (
-                <div key={step.id} className="flex items-center flex-1 last:flex-none">
+                <div key={step.id} className={`flex items-center ${isLast ? '' : 'flex-1'}`}>
                   {/* Step indicator */}
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-2 shrink-0">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
                       isCompleted 
                         ? 'bg-indigo-600 text-white' 
@@ -650,8 +651,8 @@ export function CreateCourseModal({
                   </div>
                   
                   {/* Connector line */}
-                  {index < visibleSteps.length - 1 && (
-                    <div className={`flex-1 h-0.5 mx-4 ${
+                  {!isLast && (
+                    <div className={`flex-1 h-0.5 mx-3 min-w-[20px] ${
                       isCompleted ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
                     }`} />
                   )}
