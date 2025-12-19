@@ -246,7 +246,7 @@ export function CreateCourseModal({
                 linkedin: Linkedin,
                 skillshare: Palette,
                 google: Search,
-  i              youtube: Play,
+                youtube: Play,
                 other: Globe
               }[p.id] || Globe
               
