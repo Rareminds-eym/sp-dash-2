@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,7 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { 
   X, Plus, Check, ChevronLeft, ChevronRight, Upload, Image as ImageIcon,
   BookOpen, Loader2, Trash2, Target, Layers, GraduationCap, Clock, Hash, 
-  Building2, CheckCircle2, Play, Linkedin, Globe, Palette, Search, BookMarked
+  Building2, CheckCircle2, PlayCircle, Briefcase, Globe, Palette, Search, BookMarked
 } from 'lucide-react'
 import { 
   SKILL_CATEGORIES, 
@@ -239,16 +239,18 @@ export function CreateCourseModal({
           <Label className="text-sm font-medium">Select Platform</Label>
           <div className="grid grid-cols-4 gap-2">
             {THIRD_PARTY_PLATFORMS.map(p => {
-              const PlatformIcon = {
-                udemy: BookMarked,
-                coursera: GraduationCap,
-                edx: BookOpen,
-                linkedin: Linkedin,
-                skillshare: Palette,
-                google: Search,
-                youtube: Play,
-                other: Globe
-              }[p.id] || Globe
+              const platformConfig = {
+                udemy: { icon: BookMarked, bgColor: 'bg-purple-600' },
+                coursera: { icon: GraduationCap, bgColor: 'bg-blue-600' },
+                edx: { icon: BookOpen, bgColor: 'bg-red-600' },
+                linkedin: { icon: Briefcase, bgColor: 'bg-blue-700' },
+                skillshare: { icon: Palette, bgColor: 'bg-emerald-600' },
+                google: { icon: Search, bgColor: 'bg-red-500' },
+                youtube: { icon: PlayCircle, bgColor: 'bg-red-600' },
+                other: { icon: Globe, bgColor: 'bg-gray-600' }
+              }[p.id] || { icon: Globe, bgColor: 'bg-gray-600' }
+              
+              const PlatformIcon = platformConfig.icon
               
               return (
                 <button
@@ -258,7 +260,7 @@ export function CreateCourseModal({
                     importPlatform === p.id ? 'border-indigo-500 bg-white dark:bg-gray-800 shadow-sm' : 'border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800'
                   }`}
                 >
-                  <div className={`w-8 h-8 rounded-lg ${p.color} flex items-center justify-center`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${platformConfig.bgColor}`}>
                     <PlatformIcon className="h-4 w-4 text-white" />
                   </div>
                   <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{p.name}</span>
@@ -603,10 +605,13 @@ export function CreateCourseModal({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-4xl p-0 gap-0 overflow-hidden">
-        {/* Accessible title for screen readers */}
+        {/* Accessible title and description for screen readers */}
         <DialogTitle className="sr-only">
           {editingCourse ? 'Edit Course' : 'Create New Course'}
         </DialogTitle>
+        <DialogDescription className="sr-only">
+          Multi-step wizard to {editingCourse ? 'edit an existing' : 'create a new'} course. Currently on step {currentStep + 1}: {STEPS[currentStep]?.title}.
+        </DialogDescription>
         
         {/* Header */}
         <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
