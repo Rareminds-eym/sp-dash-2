@@ -24,9 +24,21 @@ export async function GET(request) {
         const sortBy = url.searchParams.get('sort') || 'date-newest';
 
         // Build query using supabaseAdmin (bypass RLS)
+        // Join with admin_users and users tables to get educator name
         let query = supabaseAdmin
             .from('courses')
-            .select('course_id, title, code, description, thumbnail, status, approval_status, duration, university, category, credits, target_outcomes, educator_name, created_at, updated_at', { count: 'exact' })
+            .select(`
+                course_id, title, code, description, thumbnail, status, approval_status, 
+                duration, university, category, credits, target_outcomes, educator_id, 
+                created_at, updated_at,
+                admin_users (
+                    id,
+                    users (
+                        firstName,
+                        lastName
+                    )
+                )
+            `, { count: 'exact' })
             .is('deleted_at', null); // Exclude soft-deleted courses
 
         // Apply filters using approval_status column
@@ -118,23 +130,33 @@ export async function GET(request) {
         const uniqueCourses = Array.from(uniqueCoursesMap.values());
 
         // Map database columns to frontend expected fields
-        const mapped = uniqueCourses.map(c => ({
-            id: c.course_id,
-            name: c.title,
-            course_code: c.code,
-            description: c.description,
-            university: c.university,
-            duration: c.duration,
-            credits: c.credits,
-            category: c.category,
-            thumbnail_url: c.thumbnail,
-            target_outcomes: c.target_outcomes,
-            approval_status: c.approval_status || 'pending',
-            status: c.status,
-            educator_name: c.educator_name,
-            created_at: c.created_at,
-            updated_at: c.updated_at
-        }));
+        const mapped = uniqueCourses.map(c => {
+            // Extract educator name from joined data
+            const adminUser = c.admin_users;
+            const user = adminUser?.users;
+            const educatorName = user 
+                ? [user.firstName, user.lastName].filter(Boolean).join(' ') 
+                : null;
+            
+            return {
+                id: c.course_id,
+                name: c.title,
+                course_code: c.code,
+                description: c.description,
+                university: c.university,
+                duration: c.duration,
+                credits: c.credits,
+                category: c.category,
+                thumbnail_url: c.thumbnail,
+                target_outcomes: c.target_outcomes,
+                approval_status: c.approval_status || 'pending',
+                status: c.status,
+                educator_id: c.educator_id,
+                educator_name: educatorName,
+                created_at: c.created_at,
+                updated_at: c.updated_at
+            };
+        });
 
         const response = NextResponse.json({
             data: mapped,
