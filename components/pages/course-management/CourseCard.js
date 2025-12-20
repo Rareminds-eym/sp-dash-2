@@ -14,6 +14,7 @@ import { useState } from 'react'
 
 export function CourseCard({ course, selected, onSelect, onEdit, onDelete, onViewDetails }) {
     const [imageError, setImageError] = useState(false)
+    const [menuOpen, setMenuOpen] = useState(false)
 
     const getStatusConfig = (status) => {
         const configs = {
@@ -28,8 +29,8 @@ export function CourseCard({ course, selected, onSelect, onEdit, onDelete, onVie
     const statusConfig = getStatusConfig(course.approval_status)
 
     const handleCardClick = (e) => {
-        // Don't trigger if clicking on checkbox, dropdown, or their children
-        if (e.target.closest('[data-no-card-click]') || e.target.closest('button') || e.target.closest('[role="checkbox"]')) {
+        // Don't trigger if menu is open or clicking on interactive elements
+        if (menuOpen || e.target.closest('[data-no-card-click]') || e.target.closest('button') || e.target.closest('[role="checkbox"]') || e.target.closest('[role="menuitem"]')) {
             return
         }
         onViewDetails()
@@ -54,7 +55,7 @@ export function CourseCard({ course, selected, onSelect, onEdit, onDelete, onVie
 
             {/* Actions Menu */}
             <div className="absolute top-3 right-3 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200" data-no-card-click>
-                <DropdownMenu>
+                <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
                     <DropdownMenuTrigger asChild>
                         <Button
                             variant="ghost"
@@ -66,16 +67,34 @@ export function CourseCard({ course, selected, onSelect, onEdit, onDelete, onVie
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-44">
-                        <DropdownMenuItem onClick={() => setTimeout(onViewDetails, 0)} className="cursor-pointer">
+                        <DropdownMenuItem 
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                onViewDetails()
+                            }} 
+                            className="cursor-pointer"
+                        >
                             <Eye className="h-4 w-4 mr-2" />
                             View Details
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setTimeout(onEdit, 0)} className="cursor-pointer">
+                        <DropdownMenuItem 
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                onEdit()
+                            }} 
+                            className="cursor-pointer"
+                        >
                             <Edit className="h-4 w-4 mr-2" />
                             Edit
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setTimeout(onDelete, 0)} className="text-red-600 focus:text-red-600 cursor-pointer">
+                        <DropdownMenuItem 
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                onDelete()
+                            }} 
+                            className="text-red-600 focus:text-red-600 cursor-pointer"
+                        >
                             <Trash2 className="h-4 w-4 mr-2" />
                             Delete
                         </DropdownMenuItem>

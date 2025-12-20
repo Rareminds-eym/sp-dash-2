@@ -1,4 +1,4 @@
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { 
@@ -75,6 +75,12 @@ export function CourseDetailsDialog({ course, open, onOpenChange }) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden p-0 gap-0 [&>button[class]]:absolute [&>button[class]]:right-4 [&>button[class]]:top-4 [&>button[class]]:z-50 [&>button[class]]:h-8 [&>button[class]]:w-8 [&>button[class]]:rounded-full [&>button[class]]:bg-black/50 [&>button[class]]:backdrop-blur-sm [&>button[class]]:text-white [&>button[class]]:opacity-100 [&>button[class]]:hover:bg-black/70 [&>button[class]]:flex [&>button[class]]:items-center [&>button[class]]:justify-center [&>button[class]]:transition-colors">
+                {/* Accessible title and description for screen readers */}
+                <DialogTitle className="sr-only">{course.name}</DialogTitle>
+                <DialogDescription className="sr-only">
+                    Course details for {course.name}. Code: {course.course_code}. {course.description?.slice(0, 100)}
+                </DialogDescription>
+
                 {/* Header with Thumbnail */}
                 <div className="relative">
                     {/* Thumbnail */}

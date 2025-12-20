@@ -12,11 +12,10 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { 
   X, Plus, Check, ChevronLeft, ChevronRight, Upload, Image as ImageIcon,
   BookOpen, Loader2, Trash2, Target, Layers, GraduationCap, Clock, Hash, 
-  Building2, CheckCircle2, PlayCircle, Briefcase, Globe, Palette, Search, BookMarked
+  CheckCircle2, PlayCircle, Briefcase, Globe, Palette, Search, BookMarked
 } from 'lucide-react'
 import { 
   SKILL_CATEGORIES, 
-  CLASSES, 
   THIRD_PARTY_PLATFORMS,
   uploadCourseImage,
   createCourse,
@@ -36,9 +35,7 @@ export function CreateCourseModal({
   onOpenChange,
   editingCourse = null,
   onSuccess,
-  currentUser,
-  universities = [],
-  schoolId = null
+  currentUser
 }) {
   const [currentStep, setCurrentStep] = useState(editingCourse ? 1 : 0)
   const [courseSource, setCourseSource] = useState(editingCourse ? 'create' : null)
@@ -46,9 +43,9 @@ export function CreateCourseModal({
   const [importUrl, setImportUrl] = useState('')
   
   const [courseData, setCourseData] = useState({
-    title: '', code: '', description: '', duration: '', thumbnail: '',
-    status: 'Draft', university: '', category: '', credits: '',
-    skillsCovered: [], targetOutcomes: [''], linkedClasses: [], modules: []
+    title: '', code: '', description: '', duration: '', durationUnit: 'weeks', thumbnail: '',
+    status: 'Active', credits: '',
+    skillsCovered: [], targetOutcomes: [''], modules: []
   })
 
   const [newModule, setNewModule] = useState({ title: '', description: '', skillTags: [] })
@@ -60,21 +57,25 @@ export function CreateCourseModal({
   // Initialize form when editing
   useEffect(() => {
     if (editingCourse && open) {
+      // Parse duration string to extract value and unit (e.g., "12 weeks" -> { duration: "12", durationUnit: "weeks" })
+      const durationStr = editingCourse.duration || ''
+      const durationMatch = durationStr.match(/^(\d+)\s*(hours?|days?|weeks?|months?)$/i)
+      const durationValue = durationMatch ? durationMatch[1] : durationStr
+      const durationUnit = durationMatch ? durationMatch[2].toLowerCase().replace(/s$/, '') + 's' : 'weeks'
+      
       setCourseData({
         title: editingCourse.name || '',
         code: editingCourse.course_code || '',
         description: editingCourse.description || '',
-        duration: editingCourse.duration || '',
+        duration: durationValue,
+        durationUnit: durationUnit,
         thumbnail: editingCourse.thumbnail_url || '',
-        status: editingCourse.status || 'Draft',
-        university: editingCourse.university || '',
-        category: editingCourse.category || '',
+        status: editingCourse.status || 'Active',
         credits: editingCourse.credits?.toString() || '',
         skillsCovered: [],
         targetOutcomes: editingCourse.target_outcomes 
           ? (Array.isArray(editingCourse.target_outcomes) ? editingCourse.target_outcomes : [editingCourse.target_outcomes])
           : [''],
-        linkedClasses: [],
         modules: []
       })
       setCurrentStep(1)
@@ -88,9 +89,9 @@ export function CreateCourseModal({
     setImportPlatform('')
     setImportUrl('')
     setCourseData({
-      title: '', code: '', description: '', duration: '', thumbnail: '',
-      status: 'Draft', university: '', category: '', credits: '',
-      skillsCovered: [], targetOutcomes: [''], linkedClasses: [], modules: []
+      title: '', code: '', description: '', duration: '', durationUnit: 'weeks', thumbnail: '',
+      status: 'Active', credits: '',
+      skillsCovered: [], targetOutcomes: [''], modules: []
     })
     setNewModule({ title: '', description: '', skillTags: [] })
     setErrors({})
@@ -134,11 +135,7 @@ export function CreateCourseModal({
       ? prev.skillsCovered.filter(s => s !== skill) : [...prev.skillsCovered, skill]
   }))
 
-  const toggleClass = (cls) => setCourseData(prev => ({
-    ...prev,
-    linkedClasses: prev.linkedClasses.includes(cls)
-      ? prev.linkedClasses.filter(c => c !== cls) : [...prev.linkedClasses, cls]
-  }))
+
 
   const addOutcome = () => setCourseData(prev => ({ ...prev, targetOutcomes: [...prev.targetOutcomes, ''] }))
   const updateOutcome = (i, v) => setCourseData(prev => ({ ...prev, targetOutcomes: prev.targetOutcomes.map((o, idx) => idx === i ? v : o) }))
@@ -159,11 +156,18 @@ export function CreateCourseModal({
     setLoading(true)
     try {
       const educatorId = currentUser?.user?.id
-      const educatorName = currentUser?.user?.user_metadata?.name || currentUser?.user?.email || ''
-      const payload = { ...courseData, targetOutcomes: courseData.targetOutcomes.filter(o => o.trim()), credits: courseData.credits ? Number(courseData.credits) : null }
+      const educatorName = 'Rareminds'
+      // Combine duration value and unit into a single string (e.g., "12 weeks")
+      const formattedDuration = courseData.duration ? `${courseData.duration} ${courseData.durationUnit}` : ''
+      const payload = { 
+        ...courseData, 
+        duration: formattedDuration,
+        targetOutcomes: courseData.targetOutcomes.filter(o => o.trim()), 
+        credits: courseData.credits ? Number(courseData.credits) : null 
+      }
       
       if (editingCourse) await updateCourse(editingCourse.id, payload, educatorId)
-      else await createCourse(payload, educatorId, educatorName, schoolId)
+      else await createCourse(payload, educatorId, educatorName, null) // Platform courses have no school_id
       
       onSuccess?.()
       handleClose()
@@ -313,40 +317,31 @@ export function CreateCourseModal({
           <Layers className="h-4 w-4 text-indigo-500" />
           <h3 className="font-semibold text-gray-900 dark:text-white">Course Settings</h3>
         </div>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label htmlFor="duration" className="text-sm">Duration <span className="text-red-500">*</span></Label>
-            <div className="relative">
-              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input id="duration" value={courseData.duration} onChange={(e) => setCourseData(prev => ({ ...prev, duration: e.target.value }))} placeholder="12 weeks" className="pl-9" />
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input id="duration" type="number" min="1" value={courseData.duration} onChange={(e) => setCourseData(prev => ({ ...prev, duration: e.target.value }))} placeholder="12" className="pl-9" />
+              </div>
+              <Select value={courseData.durationUnit} onValueChange={(v) => setCourseData(prev => ({ ...prev, durationUnit: v }))}>
+                <SelectTrigger className="w-28">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hours">Hours</SelectItem>
+                  <SelectItem value="days">Days</SelectItem>
+                  <SelectItem value="weeks">Weeks</SelectItem>
+                  <SelectItem value="months">Months</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-sm">Status</Label>
-            <Select value={courseData.status} onValueChange={(v) => setCourseData(prev => ({ ...prev, status: v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {['Draft', 'Active', 'Upcoming', 'Archived'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-sm">University</Label>
-            <Select value={courseData.university} onValueChange={(v) => setCourseData(prev => ({ ...prev, university: v }))}>
-              <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-              <SelectContent>
-                {universities.map(u => <SelectItem key={u.id} value={u.name}>{u.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="credits" className="text-sm">Credits</Label>
             <Input id="credits" type="number" min="0" step="0.5" value={courseData.credits} onChange={(e) => setCourseData(prev => ({ ...prev, credits: e.target.value }))} placeholder="3" />
           </div>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="category" className="text-sm">Category / Department</Label>
-          <Input id="category" value={courseData.category} onChange={(e) => setCourseData(prev => ({ ...prev, category: e.target.value }))} placeholder="e.g., Computer Science, Business" />
         </div>
       </div>
 
@@ -401,13 +396,28 @@ export function CreateCourseModal({
   // Step 2: Skill Mapping
   const renderSkillMappingStep = () => (
     <div className="p-6 space-y-6">
+      {/* Platform Course Notice */}
+      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center shrink-0">
+            <Globe className="h-4 w-4 text-white" />
+          </div>
+          <div>
+            <h4 className="font-medium text-blue-900 dark:text-blue-100">Platform Course</h4>
+            <p className="text-sm text-blue-700 dark:text-blue-300 mt-0.5">
+              This course will be available platform-wide and is not tied to any specific school or college.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="space-y-4">
         <div className="flex items-center gap-2 pb-2 border-b border-gray-200 dark:border-gray-700">
           <Target className="h-4 w-4 text-indigo-500" />
           <h3 className="font-semibold text-gray-900 dark:text-white">Skill Categories</h3>
           <span className="text-xs text-gray-500 ml-auto">{courseData.skillsCovered.length} selected</span>
         </div>
-        <p className="text-sm text-gray-500">Select the skills this course will help students develop</p>
+        <p className="text-sm text-gray-500">Select the skills this course will help learners develop</p>
         <div className="grid grid-cols-4 gap-2">
           {SKILL_CATEGORIES.map(skill => (
             <button
@@ -422,35 +432,6 @@ export function CreateCourseModal({
               {courseData.skillsCovered.includes(skill) && <Check className="h-3.5 w-3.5" />}
               {skill}
             </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 pb-2 border-b border-gray-200 dark:border-gray-700">
-          <Building2 className="h-4 w-4 text-emerald-500" />
-          <h3 className="font-semibold text-gray-900 dark:text-white">Assign to Classes</h3>
-          <span className="text-xs text-gray-500 ml-auto">{courseData.linkedClasses.length} selected</span>
-        </div>
-        <p className="text-sm text-gray-500">Choose which classes will have access to this course</p>
-        <div className="grid grid-cols-4 gap-2">
-          {CLASSES.map(cls => (
-            <label
-              key={cls}
-              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg border cursor-pointer transition-all ${
-                courseData.linkedClasses.includes(cls)
-                  ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 shadow-sm'
-                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
-              }`}
-            >
-              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
-                courseData.linkedClasses.includes(cls) ? 'border-emerald-500 bg-emerald-500' : 'border-gray-300 dark:border-gray-600'
-              }`}>
-                {courseData.linkedClasses.includes(cls) && <Check className="h-2.5 w-2.5 text-white" />}
-              </div>
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{cls}</span>
-              <input type="checkbox" checked={courseData.linkedClasses.includes(cls)} onChange={() => toggleClass(cls)} className="sr-only" />
-            </label>
           ))}
         </div>
       </div>
@@ -547,23 +528,19 @@ export function CreateCourseModal({
               {courseData.thumbnail && <img src={courseData.thumbnail} alt="" className="w-16 h-16 rounded-lg object-cover shrink-0" />}
               <div>
                 <h3 className="font-bold text-gray-900 dark:text-white">{courseData.title}</h3>
-                <p className="text-sm text-gray-500">{courseData.code} • {courseData.duration}</p>
-                <Badge variant={courseData.status === 'Active' ? 'default' : 'secondary'} className="mt-1">{courseData.status}</Badge>
+                <p className="text-sm text-gray-500">{courseData.code} • {courseData.duration} {courseData.durationUnit}</p>
+                <Badge variant="default" className="mt-1">Active</Badge>
               </div>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{courseData.description}</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          {courseData.credits && (
             <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-              <p className="text-xs text-gray-500 mb-1">University</p>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">{courseData.university || '—'}</p>
+              <p className="text-xs text-gray-500 mb-1">Credits</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">{courseData.credits}</p>
             </div>
-            <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-              <p className="text-xs text-gray-500 mb-1">Category</p>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">{courseData.category || '—'}</p>
-            </div>
-          </div>
+          )}
         </div>
 
         <div className="space-y-3">
@@ -573,13 +550,11 @@ export function CreateCourseModal({
               {courseData.skillsCovered.map(s => <Badge key={s} variant="outline" className="text-xs bg-white dark:bg-gray-800">{s}</Badge>)}
             </div>
           </div>
-          <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
-            <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium mb-2">Classes ({courseData.linkedClasses.length})</p>
-            <div className="flex flex-wrap gap-1">
-              {courseData.linkedClasses.length > 0 
-                ? courseData.linkedClasses.map(c => <Badge key={c} variant="secondary" className="text-xs">{c}</Badge>)
-                : <span className="text-xs text-gray-500">None assigned</span>
-              }
+          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1">Course Type</p>
+            <div className="flex items-center gap-2">
+              <Globe className="h-4 w-4 text-blue-500" />
+              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Platform Course</span>
             </div>
           </div>
           <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
@@ -604,7 +579,7 @@ export function CreateCourseModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl p-0 gap-0 overflow-hidden">
+      <DialogContent className="max-w-4xl p-0 gap-0 overflow-hidden [&>button[class]]:absolute [&>button[class]]:right-4 [&>button[class]]:top-4 [&>button[class]]:z-50 [&>button[class]]:h-8 [&>button[class]]:w-8 [&>button[class]]:rounded-full [&>button[class]]:bg-gray-100 [&>button[class]]:dark:bg-gray-800 [&>button[class]]:text-gray-500 [&>button[class]]:dark:text-gray-400 [&>button[class]]:opacity-100 [&>button[class]]:hover:bg-gray-200 [&>button[class]]:dark:hover:bg-gray-700 [&>button[class]]:flex [&>button[class]]:items-center [&>button[class]]:justify-center [&>button[class]]:transition-colors [&>button[class]]:border [&>button[class]]:border-gray-200 [&>button[class]]:dark:border-gray-700">
         {/* Accessible title and description for screen readers */}
         <DialogTitle className="sr-only">
           {editingCourse ? 'Edit Course' : 'Create New Course'}
