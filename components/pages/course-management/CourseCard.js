@@ -9,201 +9,175 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { GraduationCap, MoreVertical, Eye, Edit, Trash2, Clock, Award, BookOpen } from 'lucide-react'
+import { GraduationCap, MoreVertical, Eye, Edit, Trash2, Clock, Award, BookOpen, User, Calendar } from 'lucide-react'
 import { useState } from 'react'
 
-export function CourseCard({ course, selected, onSelect, onEdit, onDelete, onViewDetails, getStatusBadge }) {
+export function CourseCard({ course, selected, onSelect, onEdit, onDelete, onViewDetails }) {
     const [imageError, setImageError] = useState(false)
 
-    return (
-        <Card className={`group relative overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/20 focus-within:shadow-2xl focus-within:shadow-blue-500/20 ${selected
-            ? 'ring-2 ring-blue-500 shadow-xl shadow-blue-500/30 scale-[1.02]'
-            : 'hover:scale-[1.02] focus-within:scale-[1.02]'
-            }`}>
-            {/* Gradient Background Effect */}
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+    const getStatusConfig = (status) => {
+        const configs = {
+            'approved': { bg: 'bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-500/20' },
+            'pending': { bg: 'bg-amber-500/10', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-500/20' },
+            'rejected': { bg: 'bg-red-500/10', text: 'text-red-600 dark:text-red-400', border: 'border-red-500/20' },
+            'Draft': { bg: 'bg-slate-500/10', text: 'text-slate-600 dark:text-slate-400', border: 'border-slate-500/20' },
+        }
+        return configs[status] || configs['pending']
+    }
 
-            {/* Selection Checkbox - Modern Position */}
-            <div className="absolute top-3 left-3 z-20">
+    const statusConfig = getStatusConfig(course.approval_status)
+
+    const handleCardClick = (e) => {
+        // Don't trigger if clicking on checkbox, dropdown, or their children
+        if (e.target.closest('[data-no-card-click]') || e.target.closest('button') || e.target.closest('[role="checkbox"]')) {
+            return
+        }
+        onViewDetails()
+    }
+
+    return (
+        <Card 
+            onClick={handleCardClick}
+            className={`group relative overflow-hidden transition-all duration-300 hover:shadow-xl border-0 bg-white dark:bg-slate-900 cursor-pointer ${selected
+                ? 'ring-2 ring-blue-500 shadow-lg shadow-blue-500/20'
+                : 'shadow-sm hover:shadow-lg'
+            }`}
+        >
+            {/* Selection Checkbox */}
+            <div className="absolute top-3 left-3 z-20" data-no-card-click>
                 <Checkbox
                     checked={selected}
                     onCheckedChange={onSelect}
-                    className="h-5 w-5 rounded-md border-2 border-white/80 bg-white/90 backdrop-blur-sm shadow-lg data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-blue-500 data-[state=checked]:to-blue-600 data-[state=checked]:border-blue-600 transition-all duration-200"
+                    className="h-5 w-5 rounded-md border-2 border-white/90 bg-white/95 backdrop-blur-sm shadow-md data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500 transition-all"
                 />
             </div>
 
-            {/* Actions Menu - Glassmorphic */}
-            <div className="absolute top-3 right-3 z-20 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-all duration-300">
+            {/* Actions Menu */}
+            <div className="absolute top-3 right-3 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200" data-no-card-click>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="h-9 w-9 rounded-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-white/20 shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-200"
+                            className="h-8 w-8 rounded-lg bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm shadow-md hover:shadow-lg transition-all"
                             aria-label="Course actions"
                         >
                             <MoreVertical className="h-4 w-4" />
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuItem
-                            onClick={(e) => {
-                                e.preventDefault()
-                                // Small delay to ensure dropdown closes before dialog opens
-                                setTimeout(() => onViewDetails(), 0)
-                            }}
-                            className="cursor-pointer"
-                        >
+                    <DropdownMenuContent align="end" className="w-44">
+                        <DropdownMenuItem onClick={() => setTimeout(onViewDetails, 0)} className="cursor-pointer">
                             <Eye className="h-4 w-4 mr-2" />
                             View Details
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                            onClick={(e) => {
-                                e.preventDefault()
-                                setTimeout(() => onEdit(), 0)
-                            }}
-                            className="cursor-pointer"
-                        >
+                        <DropdownMenuItem onClick={() => setTimeout(onEdit, 0)} className="cursor-pointer">
                             <Edit className="h-4 w-4 mr-2" />
-                            Edit Course
+                            Edit
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                            onClick={(e) => {
-                                e.preventDefault()
-                                setTimeout(() => onDelete(), 0)
-                            }}
-                            className="text-red-600 focus:text-red-600 cursor-pointer"
-                        >
+                        <DropdownMenuItem onClick={() => setTimeout(onDelete, 0)} className="text-red-600 focus:text-red-600 cursor-pointer">
                             <Trash2 className="h-4 w-4 mr-2" />
-                            Delete Course
+                            Delete
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
 
-            {/* Thumbnail Section with Overlay */}
-            <div className="relative h-56 overflow-hidden bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600">
+            {/* Thumbnail */}
+            <div className="relative h-44 overflow-hidden">
                 {course.thumbnail_url && !imageError ? (
-                    <div className="relative h-full w-full">
+                    <>
                         <img
                             src={course.thumbnail_url}
                             alt={course.name}
-                            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                             onError={() => setImageError(true)}
                         />
-                        {/* Gradient Overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-                    </div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                    </>
                 ) : (
-                    // Fallback gradient with icon for courses without thumbnail or error
-                    <div className="relative h-full w-full flex items-center justify-center">
-                        <BookOpen className="h-20 w-20 text-white/30" strokeWidth={1.5} />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                    <div className="h-full w-full bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center">
+                        <BookOpen className="h-16 w-16 text-white/30" strokeWidth={1.5} />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                     </div>
                 )}
 
-                {/* Title Overlay on Thumbnail */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                        <h3 className="text-xl font-bold line-clamp-2 leading-tight drop-shadow-lg">
-                            {course.name}
-                        </h3>
-                    </div>
-                    <p className="text-xs font-mono text-white/90 font-semibold tracking-wide">
+                {/* Course Code Badge on Thumbnail */}
+                <div className="absolute bottom-3 left-3">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-sm text-white text-xs font-mono font-medium">
                         {course.course_code}
-                    </p>
-                </div>
-
-                {/* Status Badge - Top Right on Thumbnail */}
-                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-0 transition-opacity">
-                    {getStatusBadge(course.approval_status)}
+                    </span>
                 </div>
             </div>
 
-            {/* Card Content */}
-            <CardContent className="p-5 space-y-4">
-                {/* Status Badge - Visible when not hovering */}
-                <div className="flex items-center justify-between">
-                    {getStatusBadge(course.approval_status)}
+            {/* Content */}
+            <CardContent className="p-4 space-y-3">
+                {/* Header: Title + Status */}
+                <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                        <h3 className="text-base font-semibold text-gray-900 dark:text-white line-clamp-2 leading-snug flex-1">
+                            {course.name}
+                        </h3>
+                        <Badge 
+                            variant="outline" 
+                            className={`shrink-0 text-[10px] font-medium px-2 py-0.5 ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border}`}
+                        >
+                            {course.approval_status}
+                        </Badge>
+                    </div>
+                    
+                    {/* University */}
+                    {course.university && (
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <GraduationCap className="h-3.5 w-3.5" />
+                            <span className="truncate">{course.university}</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Description */}
-                <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 min-h-[3.75rem]">
+                <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
                     {course.description || 'No description available'}
                 </p>
 
-                {/* Metadata Grid - Modern Layout */}
-                <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border/50">
-                    {course.university && (
-                        <div className="flex items-center gap-2 text-xs">
-                            <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                                <GraduationCap className="h-4 w-4" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-xs text-muted-foreground">University</p>
-                                <p className="text-sm font-medium truncate">{course.university}</p>
-                            </div>
-                        </div>
-                    )}
-
+                {/* Metadata Pills */}
+                <div className="flex flex-wrap gap-2 pt-1">
                     {course.category && (
-                        <div className="flex items-center gap-2 text-xs">
-                            <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400">
-                                <BookOpen className="h-4 w-4" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-xs text-muted-foreground">Category</p>
-                                <p className="text-sm font-medium truncate">{course.category}</p>
-                            </div>
-                        </div>
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 text-xs font-medium">
+                            <BookOpen className="h-3 w-3" />
+                            {course.category}
+                        </span>
                     )}
-
                     {course.duration && (
-                        <div className="flex items-center gap-2 text-xs">
-                            <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-green-500/10 text-green-600 dark:text-green-400">
-                                <Clock className="h-4 w-4" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-xs text-muted-foreground">Duration</p>
-                                <p className="text-sm font-medium truncate">{course.duration}</p>
-                            </div>
-                        </div>
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-medium">
+                            <Clock className="h-3 w-3" />
+                            {course.duration}
+                        </span>
                     )}
-
                     {course.credits && (
-                        <div className="flex items-center gap-2 text-xs">
-                            <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-400">
-                                <Award className="h-4 w-4" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-xs text-muted-foreground">Credits</p>
-                                <p className="text-sm font-medium truncate">{course.credits}</p>
-                            </div>
-                        </div>
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-medium">
+                            <Award className="h-3 w-3" />
+                            {course.credits} Credits
+                        </span>
                     )}
                 </div>
 
-                {/* Quick Actions Bar - Appears on Hover */}
-                <div className="flex items-center gap-2 pt-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 focus-within:translate-y-0">
-                    <Button
-                        onClick={onViewDetails}
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 h-9 text-xs font-medium hover:bg-blue-500 hover:text-white hover:border-blue-500 transition-all duration-200"
-                    >
-                        <Eye className="h-3.5 w-3.5 mr-1.5" />
-                        View
-                    </Button>
-                    <Button
-                        onClick={onEdit}
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 h-9 text-xs font-medium hover:bg-purple-500 hover:text-white hover:border-purple-500 transition-all duration-200"
-                    >
-                        <Edit className="h-3.5 w-3.5 mr-1.5" />
-                        Edit
-                    </Button>
+                {/* Footer: Educator + Date */}
+                <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-slate-800">
+                    {course.educator_name ? (
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <User className="h-3.5 w-3.5" />
+                            <span className="truncate max-w-[120px]">{course.educator_name}</span>
+                        </div>
+                    ) : (
+                        <div />
+                    )}
+                    {course.created_at && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Calendar className="h-3 w-3" />
+                            <span>{new Date(course.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        </div>
+                    )}
                 </div>
             </CardContent>
         </Card>
