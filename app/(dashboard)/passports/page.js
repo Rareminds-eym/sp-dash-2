@@ -1,10 +1,10 @@
-import PassportsPage from '@/components/pages/PassportsPage'
-import { getSession } from '@/lib/supabase-server'
+import PassportsPageEnhanced from '@/components/pages/PassportsPageEnhanced'
+import { getSession } from '@/lib/supabase-rls'
 
 export const runtime = 'edge'
 
 export default async function Passports() {
   const session = await getSession()
-  
-  return <PassportsPage currentUser={session?.user} />
+
+  return <PassportsPageEnhanced currentUser={session?.user} />
 }

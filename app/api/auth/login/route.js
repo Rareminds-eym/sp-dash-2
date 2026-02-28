@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
+import { getUserPermissions } from '@/lib/rbac'
 
 export const runtime = 'edge'
 
@@ -36,20 +37,99 @@ export async function POST(request) {
       .eq('email', authData.user.email)
       .maybeSingle()
     
-    // Fetch organization data separately if organizationId exists
+    // Auto-activate user if they verified email and set password but account is still inactive
+    if (userData && !userData.isActive && userData.metadata?.emailVerificationPending && authData.user.email_confirmed_at) {
+      const { error: activateError } = await supabase
+        .from('users')
+        .update({
+          isActive: true,
+          metadata: {
+            ...userData.metadata,
+            emailVerificationPending: false,
+            activatedAt: new Date().toISOString()
+          }
+        })
+        .eq('id', userData.id)
+      
+      if (!activateError) {
+        // Update local userData object
+        userData.isActive = true
+        userData.metadata = {
+          ...userData.metadata,
+          emailVerificationPending: false,
+          activatedAt: new Date().toISOString()
+        }
+      }
+    }
+    
+    // Fetch organization data from universities or recruiters tables
     let organizationData = null
     if (userData && userData.organizationId) {
-      const { data: orgData } = await supabase
-        .from('organizations')
-        .select('id, name, type')
-        .eq('id', userData.organizationId)
+      // Try to fetch from universities first
+      const { data: univData } = await supabase
+        .from('universities')
+        .select('organizationid, name')
+        .eq('organizationid', userData.organizationId)
         .maybeSingle()
-      organizationData = orgData
+      
+      if (univData) {
+        organizationData = { id: univData.organizationid, name: univData.name, type: 'university' }
+      } else {
+        // Try recruiters table
+        const { data: recData } = await supabase
+          .from('recruiters')
+          .select('organizationid, name')
+          .eq('organizationid', userData.organizationId)
+          .maybeSingle()
+        
+        if (recData) {
+          organizationData = { id: recData.organizationid, name: recData.name, type: 'recruiter' }
+        }
+      }
     }
 
     if (userError) {
       console.error('Error fetching user data:', userError)
       // Continue with auth user data if custom user data fetch fails
+    }
+
+    // Check if user exists in admin_users table
+    const { data: adminUser, error: adminError } = await supabase
+      .from('admin_users')
+      .select('id, admin_role')
+      .eq('id', userData?.id)
+      .maybeSingle()
+
+    if (adminError) {
+      console.error('Error checking admin_users:', adminError)
+    }
+
+    if (!adminUser) {
+      // Sign out the user - they're not an admin
+      await supabase.auth.signOut()
+      
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Access denied. You are not authorized to access the admin dashboard.' 
+        },
+        { status: 403 }
+      )
+    }
+
+    // Check user role - recruiters are not allowed to login to admin dashboard
+    const userRole = userData?.role || authData.user.user_metadata?.role || 'user'
+    if (userRole === 'recruiter') {
+      // Sign out the user
+      await supabase.auth.signOut()
+      
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Access denied. Recruiters are not allowed to access the admin dashboard.' 
+        },
+        { status: 403 }
+      )
     }
 
     if (userError) {
@@ -69,6 +149,15 @@ export async function POST(request) {
 
     const userName = userData?.metadata?.name || authData.user.user_metadata?.name || authData.user.email.split('@')[0]
 
+    // Fetch user permissions based on role
+    let permissions = []
+    try {
+      permissions = await getUserPermissions(userData.id)
+    } catch (permError) {
+      console.error('Error fetching permissions:', permError)
+      // Continue without permissions if fetch fails
+    }
+
     return NextResponse.json({
       success: true,
       user: {
@@ -78,6 +167,7 @@ export async function POST(request) {
         role: userData.role,
         organizationId: userData.organizationId,
         organization: organizationData,
+        permissions: permissions,
       },
       session: authData.session,
     })
