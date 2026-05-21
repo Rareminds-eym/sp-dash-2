@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 
 export async function GET(request) {
   try {
-    const { rlsClient, error } = await authenticateRequest(request, ['/sales']);
+    const { error } = await authenticateRequest(request, ['/sales']);
     if (error) return error;
 
     // Get query parameters
@@ -22,17 +22,13 @@ export async function GET(request) {
 
     console.log('Export API called with filters:', { clientType, planType, status, startDate, endDate, search, format });
 
-    // FIXED APPROACH: Fetch users and subscriptions separately, then join in code
-    // This avoids issues with Supabase !inner join syntax
-    
-    // Step 1: Fetch users with filters
+    // Build base query - fetch users
     let usersQuery = supabaseAdmin
       .from('users')
       .select('*')
       .eq('isActive', true);
     
     // Exclude tempmail and rareminds domain emails
-    // Common tempmail domains and internal rareminds emails
     const excludedDomains = [
       '%@tempmail.%',
       '%@temp-mail.%',
@@ -49,7 +45,6 @@ export async function GET(request) {
       '%@rareminds.in%'
     ];
     
-    // Apply email domain exclusions
     excludedDomains.forEach(domain => {
       usersQuery = usersQuery.not('email', 'ilike', domain);
     });
@@ -66,7 +61,7 @@ export async function GET(request) {
       usersQuery = usersQuery.or(`"firstName".ilike.%${search}%,"lastName".ilike.%${search}%,email.ilike.%${search}%`);
     }
 
-    // Apply date range filter to user registration date (createdAt)
+    // Apply date range filter
     if (startDate) {
       usersQuery = usersQuery.gte('createdAt', startDate);
     }
@@ -75,6 +70,7 @@ export async function GET(request) {
       usersQuery = usersQuery.lte('createdAt', endDate);
     }
 
+    // Fetch users
     const { data: users, error: usersError } = await usersQuery;
     
     if (usersError) {
@@ -82,15 +78,17 @@ export async function GET(request) {
       throw new Error(usersError.message);
     }
 
-    console.log(`Found ${users.length} users for export`);
+    console.log(`Found ${users?.length || 0} users for export`);
 
-    // Step 2: Get subscriptions for these users
-    const userEmails = users.map(u => u.email);
     let clients = [];
-    
-    if (userEmails.length === 0) {
-      console.log('No users found, returning empty export');
+
+    if (!users || users.length === 0) {
+      console.log('No users found for export');
     } else {
+      // Get user emails for subscription lookup
+      const userEmails = users.map(u => u.email);
+
+      // Build subscription query
       let subsQuery = supabaseAdmin
         .from('subscriptions')
         .select('*')
@@ -112,18 +110,18 @@ export async function GET(request) {
         throw new Error(subsError.message);
       }
 
-      console.log(`Found ${subscriptions.length} subscriptions for export`);
+      console.log(`Found ${subscriptions?.length || 0} subscriptions for export`);
 
-      // Step 3: Join in code
+      // Create a map of subscriptions by email
       const subscriptionsByEmail = {};
-      subscriptions.forEach(sub => {
+      (subscriptions || []).forEach(sub => {
         if (!subscriptionsByEmail[sub.email]) {
           subscriptionsByEmail[sub.email] = [];
         }
         subscriptionsByEmail[sub.email].push(sub);
       });
 
-      // Create combined results (only users with subscriptions)
+      // Combine users with their subscriptions
       clients = users
         .filter(user => subscriptionsByEmail[user.email])
         .map(user => {
