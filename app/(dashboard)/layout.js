@@ -28,6 +28,7 @@ import {
   CheckCircle,
   ChevronDown,
   ChevronRight,
+  DollarSign,
   Download,
   FileText,
   GraduationCap,
@@ -83,6 +84,7 @@ const initialNavigation = [
       { name: 'Insights', href: '/reports?tab=insights', icon: Brain },
     ]
   },
+  { name: 'Sales Dashboard', icon: DollarSign, href: '/sales-dashboard' },
   { name: 'Audit Logs', icon: History, href: '/audit-logs' },
   { name: 'Integrations', icon: Plug, href: '/integrations' },
   { name: 'Settings', icon: Settings, href: '/settings' },

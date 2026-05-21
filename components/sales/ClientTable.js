@@ -1,0 +1,208 @@
+'use client';
+
+import { useState } from 'react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Mail, User, Building, CreditCard, Calendar } from 'lucide-react';
+
+const COLUMNS = [
+  { key: 'fullName', label: 'Client Name' },
+  { key: 'email', label: 'Email' },
+  { key: 'phone', label: 'Phone' },
+  { key: 'role', label: 'Type' },
+  { key: 'planType', label: 'Plan' },
+  { key: 'planAmount', label: 'Amount' },
+  { key: 'billingCycle', label: 'Billing Cycle' },
+  { key: 'subscriptionStatus', label: 'Status' },
+  { key: 'startDate', label: 'Start Date' },
+  { key: 'endDate', label: 'End Date' },
+];
+
+function ClientCard({ client }) {
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'active':
+        return 'bg-green-100 text-green-800';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      case 'expired':
+        return 'bg-gray-100 text-gray-800';
+      case 'paused':
+        return 'bg-blue-100 text-blue-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  return (
+    <Card className="mb-4">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <CardTitle className="text-lg">{client.fullName}</CardTitle>
+          {client.subscriptionStatus && (
+            <Badge className={getStatusColor(client.subscriptionStatus)}>
+              {client.subscriptionStatus}
+            </Badge>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex items-center gap-2 text-sm">
+          <Mail className="w-4 h-4 text-gray-500" />
+          <span className="text-gray-700">{client.email}</span>
+        </div>
+        <div className="flex items-center gap-2 text-sm">
+          <User className="w-4 h-4 text-gray-500" />
+          <span className="text-gray-700">{client.role}</span>
+        </div>
+        {client.phone && (
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-gray-500">📞</span>
+            <span className="text-gray-700">{client.phone}</span>
+          </div>
+        )}
+        {client.planType && (
+          <div className="flex items-center gap-2 text-sm">
+            <CreditCard className="w-4 h-4 text-gray-500" />
+            <span className="text-gray-700">{client.planType} - ${client.planAmount || 0} / {client.billingCycle || 'N/A'}</span>
+          </div>
+        )}
+        {(client.startDate || client.endDate) && (
+          <div className="flex items-center gap-2 text-sm">
+            <Calendar className="w-4 h-4 text-gray-500" />
+            <span className="text-gray-700">
+              {client.startDate ? new Date(client.startDate).toLocaleDateString() : '-'} to {client.endDate ? new Date(client.endDate).toLocaleDateString() : '-'}
+            </span>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function ClientTable({ data, pagination, isLoading, onPageChange }) {
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    onPageChange(page);
+  };
+
+  const handleKeyboardNavigation = (e, page) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handlePageChange(page);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2" role="status" aria-live="polite" aria-label="Loading clients">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="space-y-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="text-center py-12" role="status">
+        <p className="text-gray-500">No clients found</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Mobile Card View - visible on screens < 640px */}
+      <div className="block sm:hidden" role="list" aria-label="Client list">
+        {data.map((client) => (
+          <ClientCard key={client.id} client={client} />
+        ))}
+      </div>
+
+      {/* Desktop/Tablet Table View - visible on screens >= 640px */}
+      <div className="hidden sm:block border rounded-lg overflow-x-auto">
+        <Table role="table" aria-label="Clients table">
+          <TableHeader>
+            <TableRow>
+              {COLUMNS.map((column) => (
+                <TableHead key={column.key}>{column.label}</TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {data.map((client) => (
+              <TableRow key={client.id} tabIndex={0}>
+                <TableCell>{client.fullName}</TableCell>
+                <TableCell>{client.email}</TableCell>
+                <TableCell>{client.phone || '-'}</TableCell>
+                <TableCell>{client.role}</TableCell>
+                <TableCell>{client.planType || '-'}</TableCell>
+                <TableCell>${client.planAmount || 0}</TableCell>
+                <TableCell>{client.billingCycle || '-'}</TableCell>
+                <TableCell>
+                  <Badge className={
+                    client.subscriptionStatus === 'active' ? 'bg-green-100 text-green-800' :
+                    client.subscriptionStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                    client.subscriptionStatus === 'cancelled' ? 'bg-red-100 text-red-800' :
+                    client.subscriptionStatus === 'expired' ? 'bg-gray-100 text-gray-800' :
+                    client.subscriptionStatus === 'paused' ? 'bg-blue-100 text-blue-800' :
+                    'bg-gray-100 text-gray-800'
+                  }>
+                    {client.subscriptionStatus || '-'}
+                  </Badge>
+                </TableCell>
+                <TableCell>{client.startDate ? new Date(client.startDate).toLocaleDateString() : '-'}</TableCell>
+                <TableCell>{client.endDate ? new Date(client.endDate).toLocaleDateString() : '-'}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Pagination */}
+      <Pagination role="navigation" aria-label="Pagination navigation">
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious
+              onClick={() => handlePageChange(currentPage - 1)}
+              onKeyDown={(e) => handleKeyboardNavigation(e, currentPage - 1)}
+              disabled={currentPage === 1}
+              aria-label="Go to previous page"
+              tabIndex={currentPage === 1 ? -1 : 0}
+            />
+          </PaginationItem>
+          <PaginationItem>
+            <PaginationLink 
+              isActive
+              aria-label={`Current page, page ${currentPage}`}
+              aria-current="page"
+            >
+              {currentPage}
+            </PaginationLink>
+          </PaginationItem>
+          <PaginationItem>
+            <PaginationNext
+              onClick={() => handlePageChange(currentPage + 1)}
+              onKeyDown={(e) => handleKeyboardNavigation(e, currentPage + 1)}
+              disabled={currentPage === pagination.totalPages}
+              aria-label="Go to next page"
+              tabIndex={currentPage === pagination.totalPages ? -1 : 0}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    </div>
+  );
+}
