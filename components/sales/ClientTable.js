@@ -26,17 +26,17 @@ function ClientCard({ client }) {
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
       case 'active':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300';
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300';
       case 'cancelled':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300';
       case 'expired':
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300';
       case 'paused':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300';
     }
   };
 
@@ -54,29 +54,29 @@ function ClientCard({ client }) {
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex items-center gap-2 text-sm">
-          <Mail className="w-4 h-4 text-gray-500" />
-          <span className="text-gray-700">{client.email}</span>
+          <Mail className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+          <span className="text-gray-700 dark:text-gray-300">{client.email}</span>
         </div>
         <div className="flex items-center gap-2 text-sm">
-          <User className="w-4 h-4 text-gray-500" />
-          <span className="text-gray-700">{client.role}</span>
+          <User className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+          <span className="text-gray-700 dark:text-gray-300">{client.role}</span>
         </div>
         {client.phone && (
           <div className="flex items-center gap-2 text-sm">
-            <span className="text-gray-500">📞</span>
-            <span className="text-gray-700">{client.phone}</span>
+            <span className="text-gray-500 dark:text-gray-400">📞</span>
+            <span className="text-gray-700 dark:text-gray-300">{client.phone}</span>
           </div>
         )}
         {client.planType && (
           <div className="flex items-center gap-2 text-sm">
-            <CreditCard className="w-4 h-4 text-gray-500" />
-            <span className="text-gray-700">{client.planType} - ${client.planAmount || 0} / {client.billingCycle || 'N/A'}</span>
+            <CreditCard className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+            <span className="text-gray-700 dark:text-gray-300">{client.planType} - ${client.planAmount || 0} / {client.billingCycle || 'N/A'}</span>
           </div>
         )}
         {(client.startDate || client.endDate) && (
           <div className="flex items-center gap-2 text-sm">
-            <Calendar className="w-4 h-4 text-gray-500" />
-            <span className="text-gray-700">
+            <Calendar className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+            <span className="text-gray-700 dark:text-gray-300">
               {client.startDate ? new Date(client.startDate).toLocaleDateString() : '-'} to {client.endDate ? new Date(client.endDate).toLocaleDateString() : '-'}
             </span>
           </div>
@@ -117,7 +117,7 @@ export function ClientTable({ data, pagination, isLoading, onPageChange }) {
   if (!data || data.length === 0) {
     return (
       <div className="text-center py-12" role="status">
-        <p className="text-gray-500">No clients found</p>
+        <p className="text-gray-500 dark:text-gray-400">No clients found</p>
       </div>
     );
   }
@@ -132,7 +132,7 @@ export function ClientTable({ data, pagination, isLoading, onPageChange }) {
       </div>
 
       {/* Desktop/Tablet Table View - visible on screens >= 640px */}
-      <div className="hidden sm:block border rounded-lg overflow-x-auto">
+      <div className="hidden sm:block border dark:border-gray-700 rounded-lg overflow-x-auto">
         <Table role="table" aria-label="Clients table">
           <TableHeader>
             <TableRow>
@@ -153,12 +153,12 @@ export function ClientTable({ data, pagination, isLoading, onPageChange }) {
                 <TableCell>{client.billingCycle || '-'}</TableCell>
                 <TableCell>
                   <Badge className={
-                    client.subscriptionStatus === 'active' ? 'bg-green-100 text-green-800' :
-                    client.subscriptionStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                    client.subscriptionStatus === 'cancelled' ? 'bg-red-100 text-red-800' :
-                    client.subscriptionStatus === 'expired' ? 'bg-gray-100 text-gray-800' :
-                    client.subscriptionStatus === 'paused' ? 'bg-blue-100 text-blue-800' :
-                    'bg-gray-100 text-gray-800'
+                    client.subscriptionStatus === 'active' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' :
+                    client.subscriptionStatus === 'pending' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' :
+                    client.subscriptionStatus === 'cancelled' ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' :
+                    client.subscriptionStatus === 'expired' ? 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300' :
+                    client.subscriptionStatus === 'paused' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' :
+                    'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
                   }>
                     {client.subscriptionStatus || '-'}
                   </Badge>

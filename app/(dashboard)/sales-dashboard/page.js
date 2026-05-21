@@ -156,7 +156,7 @@ export default function SalesDashboardPage() {
 
       {error && (
         <div 
-          className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md" 
+          className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 px-4 py-3 rounded-md" 
           role="alert"
           aria-live="assertive"
         >
@@ -166,7 +166,7 @@ export default function SalesDashboardPage() {
       )}
 
       {/* Compact filter bar */}
-      <div className="bg-white border rounded-lg p-4">
+      <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-4">
         <FilterPanel
           filters={filters}
           onFilterChange={handleFilterChange}
@@ -176,14 +176,14 @@ export default function SalesDashboardPage() {
 
       {/* Export and count */}
       <div className="flex items-center justify-between">
-        <div className="text-sm text-gray-500" role="status" aria-live="polite">
+        <div className="text-sm text-gray-500 dark:text-gray-400" role="status" aria-live="polite">
           Showing {data.length} of {pagination.total} clients
         </div>
         <ExportControls onExport={handleExport} isLoading={isLoading} />
       </div>
 
       {/* Data table */}
-      <div className="bg-white border rounded-lg">
+      <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg">
         <ClientTable
           data={data}
           pagination={pagination}
