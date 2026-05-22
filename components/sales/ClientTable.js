@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -87,10 +86,9 @@ function ClientCard({ client }) {
 }
 
 export function ClientTable({ data, pagination, isLoading, onPageChange }) {
-  const [currentPage, setCurrentPage] = useState(1);
+  const currentPage = pagination?.page || 1;
 
   const handlePageChange = (page) => {
-    setCurrentPage(page);
     onPageChange(page);
   };
 
@@ -171,9 +169,9 @@ export function ClientTable({ data, pagination, isLoading, onPageChange }) {
             <PaginationPrevious
               onClick={() => handlePageChange(currentPage - 1)}
               onKeyDown={(e) => handleKeyboardNavigation(e, currentPage - 1)}
-              disabled={currentPage === 1}
+              disabled={!pagination || currentPage <= 1}
               aria-label="Go to previous page"
-              tabIndex={currentPage === 1 ? -1 : 0}
+              tabIndex={!pagination || currentPage <= 1 ? -1 : 0}
             />
           </PaginationItem>
           <PaginationItem>
@@ -189,9 +187,9 @@ export function ClientTable({ data, pagination, isLoading, onPageChange }) {
             <PaginationNext
               onClick={() => handlePageChange(currentPage + 1)}
               onKeyDown={(e) => handleKeyboardNavigation(e, currentPage + 1)}
-              disabled={!pagination || currentPage === pagination.totalPages}
+              disabled={!pagination || currentPage >= pagination.totalPages}
               aria-label="Go to next page"
-              tabIndex={!pagination || currentPage === pagination.totalPages ? -1 : 0}
+              tabIndex={!pagination || currentPage >= pagination.totalPages ? -1 : 0}
             />
           </PaginationItem>
         </PaginationContent>
