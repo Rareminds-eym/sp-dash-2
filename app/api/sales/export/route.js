@@ -284,7 +284,9 @@ export async function GET(request) {
       // Generate Excel file buffer
       const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
       
-      const timestamp = new Date().toISOString().split('T')[0];
+      // Generate timestamp: YYYY-MM-DD_HH-MM-SS format for uniqueness
+      const now = new Date();
+      const timestamp = now.toISOString().replace(/T/, '_').replace(/\..+/, '').replace(/:/g, '-');
       const filename = `clients_${timestamp}.xlsx`;
 
       return new Response(excelBuffer, {
@@ -334,7 +336,9 @@ export async function GET(request) {
 
       const csvContent = csvRows.join('\n');
       
-      const timestamp = new Date().toISOString().split('T')[0];
+      // Generate timestamp: YYYY-MM-DD_HH-MM-SS format for uniqueness
+      const now = new Date();
+      const timestamp = now.toISOString().replace(/T/, '_').replace(/\..+/, '').replace(/:/g, '-');
       const filename = `clients_${timestamp}.csv`;
 
       return new Response(csvContent, {

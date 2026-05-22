@@ -13,12 +13,16 @@ const formatDate = (dateString) => {
   try {
     const date = new Date(dateString);
     if (Number.isNaN(date.getTime())) {
-      console.warn('Invalid date format:', dateString);
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Invalid date format:', dateString);
+      }
       return '-';
     }
     return date.toLocaleDateString();
   } catch (error) {
-    console.warn('Date formatting error:', dateString, error);
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Date formatting error:', dateString, error);
+    }
     return '-';
   }
 };
