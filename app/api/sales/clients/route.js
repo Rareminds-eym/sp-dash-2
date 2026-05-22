@@ -1,6 +1,9 @@
 import { authenticateRequest } from '@/lib/middleware/auth';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
+import Logger from '@/lib/logger';
+
+const logger = new Logger('SalesClientsAPI');
 
 export const runtime = 'nodejs';
 
@@ -77,11 +80,11 @@ export async function GET(request) {
     const { data: users, error: usersError, count: totalUsers } = await usersQuery;
     
     if (usersError) {
-      console.error('Users query error:', usersError);
+      logger.error('Users query failed', { error: usersError.message });
       throw new Error(usersError.message);
     }
 
-    console.log(`Found ${users?.length || 0} users (total: ${totalUsers})`);
+    logger.debug('Users fetched', { count: users?.length || 0, total: totalUsers });
 
     if (!users || users.length === 0) {
       return NextResponse.json({
@@ -111,11 +114,11 @@ export async function GET(request) {
     const { data: subscriptions, error: subsError } = await subsQuery;
     
     if (subsError) {
-      console.error('Subscriptions query error:', subsError);
+      logger.error('Subscriptions query failed', { error: subsError.message });
       throw new Error(subsError.message);
     }
 
-    console.log(`Found ${subscriptions?.length || 0} subscriptions`);
+    logger.debug('Subscriptions fetched', { count: subscriptions?.length || 0 });
 
     // Create a map of subscriptions by email
     const subscriptionsByEmail = {};
@@ -150,7 +153,7 @@ export async function GET(request) {
         };
       });
 
-    console.log(`Combined: ${allClients.length} clients with subscriptions`);
+    logger.debug('Clients combined', { count: allClients.length });
 
     // Apply pagination to combined results
     const total = allClients.length;
@@ -166,7 +169,7 @@ export async function GET(request) {
       },
     });
   } catch (error) {
-    console.error('Error fetching sales clients:', error);
+    logger.error('Error fetching sales clients', { error: error.message, stack: error.stack });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

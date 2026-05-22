@@ -2,6 +2,9 @@ import { authenticateRequest } from '@/lib/middleware/auth';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
+import Logger from '@/lib/logger';
+
+const logger = new Logger('SalesExportAPI');
 
 export const runtime = 'nodejs';
 
@@ -97,16 +100,16 @@ export async function GET(request) {
     const { data: users, error: usersError } = await usersQuery;
     
     if (usersError) {
-      console.error('Users query error:', usersError);
+      logger.error('Users query failed', { error: usersError.message });
       throw new Error(usersError.message);
     }
 
-    console.log(`Found ${users?.length || 0} users for export`);
+    logger.debug('Users fetched for export', { count: users?.length || 0 });
 
     let clients = [];
 
     if (!users || users.length === 0) {
-      console.log('No users found for export');
+      logger.info('No users found for export');
     } else {
       // Get user emails for subscription lookup
       const userEmails = users.map(u => u.email);
@@ -129,11 +132,11 @@ export async function GET(request) {
       const { data: subscriptions, error: subsError } = await subsQuery;
       
       if (subsError) {
-        console.error('Subscriptions query error:', subsError);
+        logger.error('Subscriptions query failed', { error: subsError.message });
         throw new Error(subsError.message);
       }
 
-      console.log(`Found ${subscriptions?.length || 0} subscriptions for export`);
+      logger.debug('Subscriptions fetched for export', { count: subscriptions?.length || 0 });
 
       // Create a map of subscriptions by email
       const subscriptionsByEmail = {};
@@ -168,8 +171,10 @@ export async function GET(request) {
           };
         });
 
-      console.log(`Combined: ${clients.length} clients with subscriptions for export`);
+      logger.debug('Clients combined for export', { count: clients.length });
     }
+
+    logger.info('Export generated', { format, clientCount: clients.length });
 
     // Generate export based on format
     if (format === 'excel') {
@@ -291,7 +296,7 @@ export async function GET(request) {
       });
     }
   } catch (error) {
-    console.error('Error exporting sales clients:', error);
+    logger.error('Error exporting sales clients', { error: error.message, stack: error.stack });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
