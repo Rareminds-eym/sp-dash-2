@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { X, Search } from 'lucide-react';
+import { X } from 'lucide-react';
 import { ClientTypeFilter } from './ClientTypeFilter';
 import { PlanTypeFilter } from './PlanTypeFilter';
 import { StatusFilter } from './StatusFilter';

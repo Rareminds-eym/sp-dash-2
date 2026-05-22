@@ -272,7 +272,7 @@ export default function DashboardLayout({ children }) {
                 }
                 return res.json();
               }).catch(error => {
-                logger.warn(`Failed to fetch ${endpoint.type}`, { error: getErrorMessage(error) });
+                logger.warn(`Failed to fetch ${endpoint.type}`, { error: getErrorMessage(error), endpoint: endpoint.url });
                 return { pagination: { total: 0 } };
               })
             )

@@ -1,6 +1,12 @@
 import { authenticateRequest } from '@/lib/middleware/auth';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
+// SECURITY NOTE: xlsx library has known vulnerabilities (XXE, path traversal)
+// - Using version ^0.18.5 from npm registry (not CDN) for integrity verification
+// - Only generating files from server-controlled data (no user file uploads)
+// - All cell values sanitized via sanitizeCell() to prevent formula injection
+// - No XML parsing of user-provided files (write-only usage)
+// Mitigation: Strict input validation applied, no user file parsing
 import * as XLSX from 'xlsx';
 import Logger from '@/lib/logger';
 import { addSearchFilter, sanitizeSearchTerm } from '@/lib/supabase-utils';
@@ -193,6 +199,9 @@ export async function GET(request) {
         });
 
       logger.debug('Clients combined for export', { count: clients.length });
+      
+      // NOTE: Export only includes users with subscriptions
+      // This matches the API endpoint behavior but may differ from total user count
     }
 
     logger.info('Export generated', { format, clientCount: clients.length });

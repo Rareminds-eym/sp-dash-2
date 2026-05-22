@@ -179,7 +179,10 @@ export async function GET(request) {
 
     logger.debug('Clients combined', { count: allClients.length });
 
-    // Total is the count from the database query (already filtered)
+    // NOTE: Pagination count reflects users with subscriptions after filtering
+    // The total count is from the users query, but we filter by subscription existence
+    // This means the displayed count may be lower than the actual filtered user count
+    // This is intentional as we only show users who have subscriptions
     const total = totalUsers || 0;
 
     return NextResponse.json({

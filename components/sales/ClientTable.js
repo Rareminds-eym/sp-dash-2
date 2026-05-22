@@ -7,6 +7,18 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { Skeleton } from '@/components/ui/skeleton';
 import { Mail, User, CreditCard, Calendar } from 'lucide-react';
 
+// Safe date formatter with error handling
+const formatDate = (dateString) => {
+  if (!dateString) return '-';
+  try {
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleDateString();
+  } catch {
+    return '-';
+  }
+};
+
 const COLUMNS = [
   { key: 'fullName', label: 'Client Name' },
   { key: 'email', label: 'Email' },
@@ -38,7 +50,6 @@ const getStatusColor = (status) => {
 };
 
 function ClientCard({ client }) {
-
   return (
     <Card className="mb-4">
       <CardHeader className="pb-3">
@@ -76,7 +87,7 @@ function ClientCard({ client }) {
           <div className="flex items-center gap-2 text-sm">
             <Calendar className="w-4 h-4 text-gray-500 dark:text-gray-400" />
             <span className="text-gray-700 dark:text-gray-300">
-              {client.startDate ? new Date(client.startDate).toLocaleDateString() : '-'} to {client.endDate ? new Date(client.endDate).toLocaleDateString() : '-'}
+              {formatDate(client.startDate)} to {formatDate(client.endDate)}
             </span>
           </div>
         )}
@@ -159,8 +170,8 @@ export function ClientTable({ data, pagination, isLoading, onPageChange }) {
                     {client.subscriptionStatus || '-'}
                   </Badge>
                 </TableCell>
-                <TableCell>{client.startDate ? new Date(client.startDate).toLocaleDateString() : '-'}</TableCell>
-                <TableCell>{client.endDate ? new Date(client.endDate).toLocaleDateString() : '-'}</TableCell>
+                <TableCell>{formatDate(client.startDate)}</TableCell>
+                <TableCell>{formatDate(client.endDate)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

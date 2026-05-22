@@ -1,5 +1,6 @@
 'use client';
 
+import PropTypes from 'prop-types';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 
@@ -19,3 +20,12 @@ export function SearchFilter({ value, onChange }) {
     </div>
   );
 }
+
+SearchFilter.propTypes = {
+  value: PropTypes.string,
+  onChange: PropTypes.func.isRequired,
+};
+
+SearchFilter.defaultProps = {
+  value: '',
+};

@@ -1,5 +1,6 @@
 'use client';
 
+import PropTypes from 'prop-types';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -35,3 +36,12 @@ export function ExportControls({ onExport, isLoading }) {
     </DropdownMenu>
   );
 }
+
+ExportControls.propTypes = {
+  onExport: PropTypes.func.isRequired,
+  isLoading: PropTypes.bool,
+};
+
+ExportControls.defaultProps = {
+  isLoading: false,
+};
