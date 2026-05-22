@@ -89,6 +89,11 @@ export function ClientTable({ data, pagination, isLoading, onPageChange }) {
   const currentPage = pagination?.page || 1;
 
   const handlePageChange = (page) => {
+    // Guard pagination boundaries
+    if (!pagination) return;
+    if (page < 1) return;
+    if (page > pagination.totalPages) return;
+    
     onPageChange(page);
   };
 

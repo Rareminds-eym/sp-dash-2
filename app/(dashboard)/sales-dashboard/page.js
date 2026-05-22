@@ -44,7 +44,7 @@ export default function SalesDashboardPage() {
       clientType: clientType ? clientType.split(',').filter(Boolean) : [],
       planType: planType ?? '',
       status: status ?? '',
-      dateRange: [startDate, endDate].filter(Boolean),
+      dateRange: [startDate || null, endDate || null], // Preserve tuple positions
       search: search ?? '',
     });
   }, [searchParams]);

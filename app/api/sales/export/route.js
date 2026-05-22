@@ -151,11 +151,28 @@ export async function GET(request) {
         subscriptionsByEmail[sub.email].push(sub);
       });
 
+      // Helper function to select subscription deterministically
+      const selectSubscription = (subs) => {
+        if (!subs || subs.length === 0) return null;
+        
+        // Sort by: 1) active status first, 2) most recent created_at
+        const sorted = subs.sort((a, b) => {
+          // Active subscriptions first
+          if (a.status === 'active' && b.status !== 'active') return -1;
+          if (a.status !== 'active' && b.status === 'active') return 1;
+          
+          // Then by most recent created_at
+          return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+        });
+        
+        return sorted[0];
+      };
+
       // Combine users with their subscriptions
       clients = users
         .filter(user => subscriptionsByEmail[user.email])
         .map(user => {
-          const subscription = subscriptionsByEmail[user.email][0];
+          const subscription = selectSubscription(subscriptionsByEmail[user.email]);
           const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
           
           return {
@@ -300,7 +317,13 @@ export async function GET(request) {
       });
     }
   } catch (error) {
-    logger.error('Error exporting sales clients', { error: error.message, stack: error.stack });
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    logger.error('Error exporting sales clients', { 
+      error: error.message, 
+      stack: error.stack 
+    });
+    return NextResponse.json(
+      { error: 'Internal server error' }, 
+      { status: 500 }
+    );
   }
 }
