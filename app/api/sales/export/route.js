@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import Logger from '@/lib/logger';
+import { addSearchFilter, sanitizeSearchTerm } from '@/lib/supabase-utils';
 
 const logger = new Logger('SalesExportAPI');
 
@@ -84,7 +85,10 @@ export async function GET(request) {
     }
 
     if (search) {
-      usersQuery = usersQuery.or(`"firstName".ilike.%${search}%,"lastName".ilike.%${search}%,email.ilike.%${search}%`);
+      const sanitizedSearch = sanitizeSearchTerm(search);
+      if (sanitizedSearch) {
+        usersQuery = addSearchFilter(usersQuery, ['firstName', 'lastName', 'email'], sanitizedSearch);
+      }
     }
 
     // Apply date range filter

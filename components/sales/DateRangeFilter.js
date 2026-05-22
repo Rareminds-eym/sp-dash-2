@@ -5,7 +5,20 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { CalendarIcon } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
+
+/**
+ * Safely formats a date, returning fallback if invalid
+ */
+function safeFormatDate(date, formatStr, fallback = 'Invalid Date') {
+  try {
+    const dateObj = date instanceof Date ? date : new Date(date);
+    if (!isValid(dateObj)) return fallback;
+    return format(dateObj, formatStr);
+  } catch {
+    return fallback;
+  }
+}
 
 export function DateRangeFilter({ value, onChange }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -25,9 +38,9 @@ export function DateRangeFilter({ value, onChange }) {
   };
 
   const displayText = startDate && endDate
-    ? `${format(new Date(startDate), 'MMM d')} - ${format(new Date(endDate), 'MMM d')}`
+    ? `${safeFormatDate(startDate, 'MMM d')} - ${safeFormatDate(endDate, 'MMM d')}`
     : startDate
-    ? format(new Date(startDate), 'MMM d, yyyy')
+    ? safeFormatDate(startDate, 'MMM d, yyyy')
     : 'Date Range';
 
   return (

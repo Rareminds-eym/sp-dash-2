@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { FilterPanel } from '@/components/sales/FilterPanel';
 import { ExportControls } from '@/components/sales/ExportControls';
@@ -49,14 +49,8 @@ export default function SalesDashboardPage() {
     });
   }, [searchParams]);
 
-  // Fetch data when filters change
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchData(controller.signal);
-    return () => controller.abort();
-  }, [filters, pagination.page]);
-
-  const fetchData = async (signal) => {
+  // Fetch data when filters change - memoized to avoid recreating on every render
+  const fetchData = useCallback(async (signal) => {
     setIsLoading(true);
     setError(null);
 
@@ -106,7 +100,13 @@ export default function SalesDashboardPage() {
         setIsLoading(false);
       }
     }
-  };
+  }, [filters, pagination.page, pagination.limit]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchData(controller.signal);
+    return () => controller.abort();
+  }, [fetchData]);
 
   const handleFilterChange = (newFilters) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));

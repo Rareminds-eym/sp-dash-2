@@ -52,7 +52,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ApprovalViewProvider } from '@/components/approvals/ApprovalViewContext'
-import Logger from '@/lib/logger'
+import Logger, { getErrorMessage } from '@/lib/logger'
 
 const logger = new Logger('DashboardLayout');
 
@@ -272,7 +272,7 @@ export default function DashboardLayout({ children }) {
                 }
                 return res.json();
               }).catch(error => {
-                logger.warn(`Failed to fetch ${endpoint.type}`, { error: error.message });
+                logger.warn(`Failed to fetch ${endpoint.type}`, { error: getErrorMessage(error) });
                 return { pagination: { total: 0 } };
               })
             )
@@ -303,7 +303,7 @@ export default function DashboardLayout({ children }) {
           }
         }
       } catch (error) {
-        logger.error('Failed to fetch approval counts', { error: error.message });
+        logger.error('Failed to fetch approval counts', { error: getErrorMessage(error) });
         // Retry logic
         if (retryCount < maxRetries && isMounted) {
           retryCount++;
@@ -410,7 +410,7 @@ export default function DashboardLayout({ children }) {
         }
       })
       .catch(err => {
-        logger.error('Failed to fetch session', { error: err.message });
+        logger.error('Failed to fetch session', { error: getErrorMessage(err) });
         // If session fetch fails, user might not be authenticated
         // Don't redirect here, let middleware handle it
       })
@@ -446,7 +446,7 @@ export default function DashboardLayout({ children }) {
         window.location.href = '/login'
       }
     } catch (err) {
-      logger.error('Logout error', { error: err.message });
+      logger.error('Logout error', { error: getErrorMessage(err) });
       // On error, still redirect to login page
       window.location.href = '/login'
     }
