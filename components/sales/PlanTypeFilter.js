@@ -1,5 +1,6 @@
 'use client';
 
+import PropTypes from 'prop-types';
 import {
   Select,
   SelectContent,
@@ -36,3 +37,12 @@ export function PlanTypeFilter({ value, onChange }) {
     </Select>
   );
 }
+
+PlanTypeFilter.propTypes = {
+  value: PropTypes.string,
+  onChange: PropTypes.func.isRequired,
+};
+
+PlanTypeFilter.defaultProps = {
+  value: '',
+};

@@ -1,5 +1,6 @@
 'use client';
 
+import PropTypes from 'prop-types';
 import {
   Select,
   SelectContent,
@@ -37,3 +38,12 @@ export function StatusFilter({ value, onChange }) {
     </Select>
   );
 }
+
+StatusFilter.propTypes = {
+  value: PropTypes.string,
+  onChange: PropTypes.func.isRequired,
+};
+
+StatusFilter.defaultProps = {
+  value: '',
+};

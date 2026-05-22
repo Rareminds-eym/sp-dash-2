@@ -157,7 +157,7 @@ export function ClientTable({ data, pagination, isLoading, onPageChange }) {
           </TableHeader>
           <TableBody>
             {data.map((client) => (
-              <TableRow key={client.id} tabIndex={0}>
+              <TableRow key={client.id}>
                 <TableCell>{client.fullName}</TableCell>
                 <TableCell>{client.email}</TableCell>
                 <TableCell>{client.phone || '-'}</TableCell>

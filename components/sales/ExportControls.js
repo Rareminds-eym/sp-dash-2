@@ -10,6 +10,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Download, FileSpreadsheet, FileText } from 'lucide-react';
 
+/**
+ * ExportControls component for exporting client data
+ * @param {Object} props
+ * @param {function(string): void} props.onExport - Callback function that receives format ('csv' or 'excel')
+ * @param {boolean} [props.isLoading=false] - Loading state to disable the button
+ */
 export function ExportControls({ onExport, isLoading }) {
   return (
     <DropdownMenu>

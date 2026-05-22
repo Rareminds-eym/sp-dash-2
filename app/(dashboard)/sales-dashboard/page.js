@@ -106,7 +106,7 @@ export default function SalesDashboardPage() {
     const controller = new AbortController();
     fetchData(controller.signal);
     return () => controller.abort();
-  }, [filters, pagination.page, pagination.limit]);
+v  }, [fetchData]);
 
   const handleFilterChange = (newFilters) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));

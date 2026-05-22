@@ -1,12 +1,17 @@
 import { authenticateRequest } from '@/lib/middleware/auth';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
-// SECURITY NOTE: xlsx library has known vulnerabilities (XXE, path traversal)
+// SECURITY NOTE: xlsx library has known vulnerabilities
+// - CVE-2023-30533: Prototype pollution vulnerability (fixed in 0.18.5+)
+// - CVE-2021-32012: XXE (XML External Entity) injection risk
+// - Path traversal vulnerabilities in older versions
+// Mitigations applied:
 // - Using version ^0.18.5 from npm registry (not CDN) for integrity verification
 // - Only generating files from server-controlled data (no user file uploads)
-// - All cell values sanitized via sanitizeCell() to prevent formula injection
+// - All cell values sanitized via sanitizeCell() to prevent formula injection (CSV injection)
 // - No XML parsing of user-provided files (write-only usage)
-// Mitigation: Strict input validation applied, no user file parsing
+// - Strict input validation applied, no user file parsing
+// References: https://github.com/advisories/GHSA-4r6h-8v6p-xvw6
 import * as XLSX from 'xlsx';
 import Logger from '@/lib/logger';
 import { addSearchFilter, sanitizeSearchTerm } from '@/lib/supabase-utils';

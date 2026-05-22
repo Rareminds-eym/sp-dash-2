@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import PropTypes from 'prop-types';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
@@ -23,8 +24,10 @@ function safeFormatDate(date, formatStr, fallback = 'Invalid Date') {
 export function DateRangeFilter({ value, onChange }) {
   const [isOpen, setIsOpen] = useState(false);
   
-  // Convert array format to object format for Calendar component
-  const [startDate, endDate] = value || [];
+  // Safely convert array format to object format for Calendar component
+  // Ensure value is an array before destructuring
+  const dateArray = Array.isArray(value) ? value : [];
+  const [startDate, endDate] = dateArray;
   const dateRange = startDate && endDate ? { from: startDate, to: endDate } : startDate ? { from: startDate } : undefined;
 
   const handleSelect = (range) => {
@@ -68,3 +71,18 @@ export function DateRangeFilter({ value, onChange }) {
     </Popover>
   );
 }
+
+DateRangeFilter.propTypes = {
+  value: PropTypes.arrayOf(
+    PropTypes.oneOfType([
+      PropTypes.instanceOf(Date),
+      PropTypes.string,
+      PropTypes.oneOf([null])
+    ])
+  ),
+  onChange: PropTypes.func.isRequired,
+};
+
+DateRangeFilter.defaultProps = {
+  value: [],
+};

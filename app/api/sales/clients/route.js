@@ -29,11 +29,45 @@ export async function GET(request) {
     // Calculate offset for pagination
     const offset = (page - 1) * limit;
     
-    // Build base query - fetch users with subscriptions
+    // First, get all subscriptions with filters applied
+    let subsQuery = supabaseAdmin
+      .from('subscriptions')
+      .select('email, id, plan_type, plan_amount, billing_cycle, status, subscription_start_date, subscription_end_date, phone, created_at', { count: 'exact' });
+
+    // Apply subscription filters
+    if (planType) {
+      subsQuery = subsQuery.eq('plan_type', planType);
+    }
+
+    if (status) {
+      subsQuery = subsQuery.eq('status', status);
+    }
+
+    const { data: allSubscriptions, error: subsError, count: totalSubs } = await subsQuery;
+    
+    if (subsError) {
+      logger.error('Subscriptions query failed', { error: subsError.message });
+      throw new Error(subsError.message);
+    }
+
+    logger.debug('Subscriptions fetched', { count: allSubscriptions?.length || 0, total: totalSubs });
+
+    if (!allSubscriptions || allSubscriptions.length === 0) {
+      return NextResponse.json({
+        data: [],
+        pagination: { page, limit, total: 0, totalPages: 0 },
+      });
+    }
+
+    // Get unique emails from subscriptions
+    const subscriptionEmails = [...new Set(allSubscriptions.map(s => s.email))];
+
+    // Build user query with subscription emails
     let usersQuery = supabaseAdmin
       .from('users')
-      .select('*', { count: 'exact' })
-      .eq('isActive', true);
+      .select('*')
+      .eq('isActive', true)
+      .in('email', subscriptionEmails);
     
     // Exclude tempmail and rareminds domain emails
     const excludedDomains = [
@@ -80,18 +114,15 @@ export async function GET(request) {
       usersQuery = usersQuery.lte('createdAt', endDate);
     }
 
-    // Apply server-side pagination
-    usersQuery = usersQuery.range(offset, offset + limit - 1);
-
-    // Fetch users with pagination applied at database level
-    const { data: users, error: usersError, count: totalUsers } = await usersQuery;
+    // Fetch all matching users (we'll paginate in memory)
+    const { data: users, error: usersError } = await usersQuery;
     
     if (usersError) {
       logger.error('Users query failed', { error: usersError.message });
       throw new Error(usersError.message);
     }
 
-    logger.debug('Users fetched', { count: users?.length || 0, total: totalUsers });
+    logger.debug('Users fetched', { count: users?.length || 0 });
 
     if (!users || users.length === 0) {
       return NextResponse.json({
@@ -100,36 +131,9 @@ export async function GET(request) {
       });
     }
 
-    // Get user emails for subscription lookup
-    const userEmails = users.map(u => u.email);
-
-    // Build subscription query
-    let subsQuery = supabaseAdmin
-      .from('subscriptions')
-      .select('*')
-      .in('email', userEmails);
-
-    // Apply subscription filters
-    if (planType) {
-      subsQuery = subsQuery.eq('plan_type', planType);
-    }
-
-    if (status) {
-      subsQuery = subsQuery.eq('status', status);
-    }
-
-    const { data: subscriptions, error: subsError } = await subsQuery;
-    
-    if (subsError) {
-      logger.error('Subscriptions query failed', { error: subsError.message });
-      throw new Error(subsError.message);
-    }
-
-    logger.debug('Subscriptions fetched', { count: subscriptions?.length || 0 });
-
     // Create a map of subscriptions by email
     const subscriptionsByEmail = {};
-    (subscriptions || []).forEach(sub => {
+    allSubscriptions.forEach(sub => {
       if (!subscriptionsByEmail[sub.email]) {
         subscriptionsByEmail[sub.email] = [];
       }
@@ -179,14 +183,12 @@ export async function GET(request) {
 
     logger.debug('Clients combined', { count: allClients.length });
 
-    // NOTE: Pagination count reflects users with subscriptions after filtering
-    // The total count is from the users query, but we filter by subscription existence
-    // This means the displayed count may be lower than the actual filtered user count
-    // This is intentional as we only show users who have subscriptions
-    const total = totalUsers || 0;
+    // Apply pagination in memory
+    const total = allClients.length;
+    const paginatedClients = allClients.slice(offset, offset + limit);
 
     return NextResponse.json({
-      data: allClients,
+      data: paginatedClients,
       pagination: {
         page,
         limit,

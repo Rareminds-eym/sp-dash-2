@@ -441,7 +441,7 @@ export default function DashboardLayout({ children }) {
         // Force a full page reload to clear all cached state
         window.location.href = '/login'
       } else {
-        logger.error('Logout failed', { error: data.error });
+        logger.error('Logout failed', { error: getErrorMessage(data.error) });
         // Even if server-side logout fails, redirect to login
         window.location.href = '/login'
       }
