@@ -27,33 +27,36 @@ export default function SalesDashboardPage() {
 
   // Initialize filters from URL params
   useEffect(() => {
-    if (searchParams) {
-      const clientType = searchParams.get('clientType');
-      const planType = searchParams.get('planType');
-      const status = searchParams.get('status');
-      const search = searchParams.get('search');
+    const parseDate = (value) => {
+      if (!value) return null;
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? null : date;
+    };
 
-      if (clientType) {
-        setFilters((prev) => ({ ...prev, clientType: clientType.split(',') }));
-      }
-      if (planType) {
-        setFilters((prev) => ({ ...prev, planType }));
-      }
-      if (status) {
-        setFilters((prev) => ({ ...prev, status }));
-      }
-      if (search) {
-        setFilters((prev) => ({ ...prev, search }));
-      }
-    }
+    const clientType = searchParams.get('clientType');
+    const planType = searchParams.get('planType');
+    const status = searchParams.get('status');
+    const search = searchParams.get('search');
+    const startDate = parseDate(searchParams.get('startDate'));
+    const endDate = parseDate(searchParams.get('endDate'));
+
+    setFilters({
+      clientType: clientType ? clientType.split(',').filter(Boolean) : [],
+      planType: planType ?? '',
+      status: status ?? '',
+      dateRange: [startDate, endDate].filter(Boolean),
+      search: search ?? '',
+    });
   }, [searchParams]);
 
   // Fetch data when filters change
   useEffect(() => {
-    fetchData();
+    const controller = new AbortController();
+    fetchData(controller.signal);
+    return () => controller.abort();
   }, [filters, pagination.page]);
 
-  const fetchData = async () => {
+  const fetchData = async (signal) => {
     setIsLoading(true);
     setError(null);
 
@@ -85,7 +88,7 @@ export default function SalesDashboardPage() {
         }
       }
 
-      const response = await fetch(`/api/sales/clients?${params.toString()}`);
+      const response = await fetch(`/api/sales/clients?${params.toString()}`, { signal });
       const result = await response.json();
 
       if (!response.ok) {
@@ -95,14 +98,19 @@ export default function SalesDashboardPage() {
       setData(result.data);
       setPagination(result.pagination);
     } catch (err) {
-      setError(err.message);
+      if (err.name !== 'AbortError') {
+        setError(err.message);
+      }
     } finally {
-      setIsLoading(false);
+      if (!signal.aborted) {
+        setIsLoading(false);
+      }
     }
   };
 
   const handleFilterChange = (newFilters) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
+    setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
   const handleResetFilters = () => {
@@ -113,6 +121,7 @@ export default function SalesDashboardPage() {
       dateRange: [],
       search: '',
     });
+    setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
   const handleExport = async (format) => {

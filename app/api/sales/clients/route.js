@@ -11,16 +11,16 @@ export async function GET(request) {
 
     // Get query parameters
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const rawPage = Number(searchParams.get('page') ?? '1');
+    const rawLimit = Number(searchParams.get('limit') ?? '20');
+    const page = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1;
+    const limit = Number.isInteger(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 100) : 20;
     const clientType = searchParams.get('clientType');
     const planType = searchParams.get('planType');
     const status = searchParams.get('status');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const search = searchParams.get('search');
-
-    console.log('API called with filters:', { clientType, planType, status, startDate, endDate, search });
 
     // Calculate offset for pagination
     const offset = (page - 1) * limit;
@@ -162,7 +162,7 @@ export async function GET(request) {
         page,
         limit,
         total,
-        totalPages: Math.ceil(total / limit),
+        totalPages: total === 0 ? 0 : Math.ceil(total / limit),
       },
     });
   } catch (error) {

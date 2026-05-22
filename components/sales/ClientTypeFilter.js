@@ -54,8 +54,7 @@ export function ClientTypeFilter({ value, onChange }) {
           {CLIENT_TYPES.map((type) => (
             <div
               key={type.value}
-              className="flex items-center space-x-2 px-2 py-1.5 hover:bg-gray-100 rounded cursor-pointer"
-              onClick={() => handleToggle(type.value)}
+              className="flex items-center space-x-2 px-2 py-1.5 hover:bg-gray-100 rounded"
             >
               <Checkbox
                 checked={value.includes(type.value)}

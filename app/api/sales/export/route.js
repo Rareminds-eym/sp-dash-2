@@ -5,6 +5,31 @@ import * as XLSX from 'xlsx';
 
 export const runtime = 'nodejs';
 
+// Sanitize cell values to prevent CSV/Excel injection
+const sanitizeCell = (value) => {
+  if (value === null || value === undefined) return '';
+  const str = String(value).trim();
+  
+  // Prevent formula injection by prefixing dangerous characters
+  if (/^[=+\-@]/.test(str)) {
+    return `'${str}`;
+  }
+  
+  return str;
+};
+
+// Convert to CSV cell with proper escaping
+const toCsvCell = (value) => {
+  const safe = sanitizeCell(value);
+  // Escape double quotes by doubling them
+  const escaped = safe.replace(/"/g, '""');
+  // Wrap in quotes if contains comma, quote, or newline
+  if (/[,"\n\r]/.test(escaped)) {
+    return `"${escaped}"`;
+  }
+  return escaped;
+};
+
 export async function GET(request) {
   try {
     const { error } = await authenticateRequest(request, ['/sales']);
@@ -19,8 +44,6 @@ export async function GET(request) {
     const endDate = searchParams.get('endDate');
     const search = searchParams.get('search');
     const format = searchParams.get('format') || 'csv';
-
-    console.log('Export API called with filters:', { clientType, planType, status, startDate, endDate, search, format });
 
     // Build base query - fetch users
     let usersQuery = supabaseAdmin
@@ -170,19 +193,19 @@ export async function GET(request) {
         ],
         // Data rows
         ...clients.map(client => [
-          client.id,
-          client.email,
-          client.fullName,
-          client.phone,
-          client.role,
-          client.organizationId || '',
-          client.subscriptionId || '',
-          client.planType || '',
-          client.planAmount || '',
-          client.billingCycle || '',
-          client.subscriptionStatus || '',
-          client.startDate || '',
-          client.endDate || '',
+          sanitizeCell(client.id),
+          sanitizeCell(client.email),
+          sanitizeCell(client.fullName),
+          sanitizeCell(client.phone),
+          sanitizeCell(client.role),
+          sanitizeCell(client.organizationId || ''),
+          sanitizeCell(client.subscriptionId || ''),
+          sanitizeCell(client.planType || ''),
+          sanitizeCell(client.planAmount || ''),
+          sanitizeCell(client.billingCycle || ''),
+          sanitizeCell(client.subscriptionStatus || ''),
+          sanitizeCell(client.startDate || ''),
+          sanitizeCell(client.endDate || ''),
         ]),
       ];
 
@@ -241,19 +264,19 @@ export async function GET(request) {
         headers.join(','),
         ...clients.map(client => {
           return [
-            client.id,
-            `"${client.email}"`,
-            `"${client.fullName}"`,
-            `"${client.phone}"`,
-            client.role,
-            client.organizationId || '',
-            client.subscriptionId || '',
-            client.planType || '',
-            client.planAmount || '',
-            client.billingCycle || '',
-            client.subscriptionStatus || '',
-            client.startDate || '',
-            client.endDate || '',
+            toCsvCell(client.id),
+            toCsvCell(client.email),
+            toCsvCell(client.fullName),
+            toCsvCell(client.phone),
+            toCsvCell(client.role),
+            toCsvCell(client.organizationId || ''),
+            toCsvCell(client.subscriptionId || ''),
+            toCsvCell(client.planType || ''),
+            toCsvCell(client.planAmount || ''),
+            toCsvCell(client.billingCycle || ''),
+            toCsvCell(client.subscriptionStatus || ''),
+            toCsvCell(client.startDate || ''),
+            toCsvCell(client.endDate || ''),
           ].join(',');
         }),
       ];

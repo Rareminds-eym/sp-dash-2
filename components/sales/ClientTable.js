@@ -2,12 +2,11 @@
 
 import { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Mail, User, Building, CreditCard, Calendar } from 'lucide-react';
+import { Mail, User, CreditCard, Calendar } from 'lucide-react';
 
 const COLUMNS = [
   { key: 'fullName', label: 'Client Name' },
@@ -22,23 +21,24 @@ const COLUMNS = [
   { key: 'endDate', label: 'End Date' },
 ];
 
+const getStatusColor = (status) => {
+  switch (status?.toLowerCase()) {
+    case 'active':
+      return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300';
+    case 'pending':
+      return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300';
+    case 'cancelled':
+      return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300';
+    case 'expired':
+      return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300';
+    case 'paused':
+      return 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300';
+    default:
+      return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300';
+  }
+};
+
 function ClientCard({ client }) {
-  const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'active':
-        return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300';
-      case 'pending':
-        return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300';
-      case 'cancelled':
-        return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300';
-      case 'expired':
-        return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300';
-      case 'paused':
-        return 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300';
-      default:
-        return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300';
-    }
-  };
 
   return (
     <Card className="mb-4">
@@ -152,14 +152,7 @@ export function ClientTable({ data, pagination, isLoading, onPageChange }) {
                 <TableCell>${client.planAmount || 0}</TableCell>
                 <TableCell>{client.billingCycle || '-'}</TableCell>
                 <TableCell>
-                  <Badge className={
-                    client.subscriptionStatus === 'active' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' :
-                    client.subscriptionStatus === 'pending' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' :
-                    client.subscriptionStatus === 'cancelled' ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' :
-                    client.subscriptionStatus === 'expired' ? 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300' :
-                    client.subscriptionStatus === 'paused' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' :
-                    'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
-                  }>
+                  <Badge className={getStatusColor(client.subscriptionStatus)}>
                     {client.subscriptionStatus || '-'}
                   </Badge>
                 </TableCell>
@@ -196,9 +189,9 @@ export function ClientTable({ data, pagination, isLoading, onPageChange }) {
             <PaginationNext
               onClick={() => handlePageChange(currentPage + 1)}
               onKeyDown={(e) => handleKeyboardNavigation(e, currentPage + 1)}
-              disabled={currentPage === pagination.totalPages}
+              disabled={!pagination || currentPage === pagination.totalPages}
               aria-label="Go to next page"
-              tabIndex={currentPage === pagination.totalPages ? -1 : 0}
+              tabIndex={!pagination || currentPage === pagination.totalPages ? -1 : 0}
             />
           </PaginationItem>
         </PaginationContent>
