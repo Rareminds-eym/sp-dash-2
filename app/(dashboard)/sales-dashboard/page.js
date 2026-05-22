@@ -72,7 +72,7 @@ export default function SalesDashboardPage() {
         params.set('search', filters.search);
       }
       // Add date range filters
-      if (filters.dateRange && filters.dateRange.length > 0) {
+      if (filters.dateRange && filters.dateRange.length >= 2) {
         const [startDate, endDate] = filters.dateRange;
         if (startDate) {
           params.set('startDate', startDate.toISOString());
@@ -142,7 +142,7 @@ export default function SalesDashboardPage() {
       params.set('search', filters.search);
     }
     // Add date range filters
-    if (filters.dateRange && filters.dateRange.length > 0) {
+    if (filters.dateRange && filters.dateRange.length >= 2) {
       const [startDate, endDate] = filters.dateRange;
       if (startDate) {
         params.set('startDate', startDate.toISOString());

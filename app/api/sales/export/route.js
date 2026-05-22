@@ -45,6 +45,11 @@ const toCsvCell = (value) => {
   return escaped;
 };
 
+/**
+ * GET handler for exporting sales clients data as CSV or Excel
+ * @param {Request} request - The incoming request object
+ * @returns {Promise<Response>} File download response (CSV or Excel)
+ */
 export async function GET(request) {
   try {
     const { error } = await authenticateRequest(request, ['/sales']);

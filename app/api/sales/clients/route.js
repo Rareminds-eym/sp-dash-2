@@ -8,6 +8,11 @@ const logger = new Logger('SalesClientsAPI');
 
 export const runtime = 'nodejs';
 
+/**
+ * GET handler for fetching sales clients with pagination and filters
+ * @param {Request} request - The incoming request object
+ * @returns {Promise<Response>} JSON response with clients data and pagination
+ */
 export async function GET(request) {
   try {
     const { error } = await authenticateRequest(request, ['/sales']);
