@@ -26,7 +26,7 @@ export function DateRangeFilter({ value, onChange }) {
   
   // Safely convert array format to object format for Calendar component
   // Ensure value is an array before destructuring
-  const dateArray = Array.isArray(value) ? value : [];
+  const dateArray = Array.isArray(value) && value.length >= 2 ? value : [null, null];
   const [startDate, endDate] = dateArray;
   const dateRange = startDate && endDate ? { from: startDate, to: endDate } : startDate ? { from: startDate } : undefined;
 

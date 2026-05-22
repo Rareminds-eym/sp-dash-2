@@ -59,6 +59,14 @@ export async function GET(request) {
     const endDate = searchParams.get('endDate');
     const search = searchParams.get('search');
     const format = searchParams.get('format') || 'csv';
+    
+    // Validate format parameter
+    if (!['csv', 'excel'].includes(format)) {
+      return NextResponse.json(
+        { error: 'Invalid format. Must be "csv" or "excel"' },
+        { status: 400 }
+      );
+    }
 
     // Build base query - fetch users
     let usersQuery = supabaseAdmin
@@ -275,11 +283,14 @@ export async function GET(request) {
 
       // Generate Excel file buffer
       const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      
+      const timestamp = new Date().toISOString().split('T')[0];
+      const filename = `clients_${timestamp}.xlsx`;
 
       return new Response(excelBuffer, {
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          'Content-Disposition': 'attachment; filename="clients.xlsx"',
+          'Content-Disposition': `attachment; filename="${filename}"`,
         },
       });
     } else {
@@ -322,11 +333,14 @@ export async function GET(request) {
       ];
 
       const csvContent = csvRows.join('\n');
+      
+      const timestamp = new Date().toISOString().split('T')[0];
+      const filename = `clients_${timestamp}.csv`;
 
       return new Response(csvContent, {
         headers: {
           'Content-Type': 'text/csv',
-          'Content-Disposition': 'attachment; filename="clients.csv"',
+          'Content-Disposition': `attachment; filename="${filename}"`,
         },
       });
     }

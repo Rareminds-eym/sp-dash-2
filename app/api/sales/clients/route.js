@@ -29,45 +29,11 @@ export async function GET(request) {
     // Calculate offset for pagination
     const offset = (page - 1) * limit;
     
-    // First, get all subscriptions with filters applied
-    let subsQuery = supabaseAdmin
-      .from('subscriptions')
-      .select('email, id, plan_type, plan_amount, billing_cycle, status, subscription_start_date, subscription_end_date, phone, created_at', { count: 'exact' });
-
-    // Apply subscription filters
-    if (planType) {
-      subsQuery = subsQuery.eq('plan_type', planType);
-    }
-
-    if (status) {
-      subsQuery = subsQuery.eq('status', status);
-    }
-
-    const { data: allSubscriptions, error: subsError, count: totalSubs } = await subsQuery;
-    
-    if (subsError) {
-      logger.error('Subscriptions query failed', { error: subsError.message });
-      throw new Error(subsError.message);
-    }
-
-    logger.debug('Subscriptions fetched', { count: allSubscriptions?.length || 0, total: totalSubs });
-
-    if (!allSubscriptions || allSubscriptions.length === 0) {
-      return NextResponse.json({
-        data: [],
-        pagination: { page, limit, total: 0, totalPages: 0 },
-      });
-    }
-
-    // Get unique emails from subscriptions
-    const subscriptionEmails = [...new Set(allSubscriptions.map(s => s.email))];
-
-    // Build user query with subscription emails
-    let usersQuery = supabaseAdmin
+    // Step 1: Build base users query with filters
+    let usersCountQuery = supabaseAdmin
       .from('users')
-      .select('*')
-      .eq('isActive', true)
-      .in('email', subscriptionEmails);
+      .select('id', { count: 'exact', head: true })
+      .eq('isActive', true);
     
     // Exclude tempmail and rareminds domain emails
     const excludedDomains = [
@@ -87,10 +53,93 @@ export async function GET(request) {
     ];
     
     excludedDomains.forEach(domain => {
+      usersCountQuery = usersCountQuery.not('email', 'ilike', domain);
+    });
+
+    // Apply user filters to count query
+    if (clientType) {
+      const clientTypes = clientType.split(',').filter(Boolean);
+      if (clientTypes.length > 0) {
+        usersCountQuery = usersCountQuery.in('role', clientTypes);
+      }
+    }
+
+    if (search) {
+      const sanitizedSearch = sanitizeSearchTerm(search);
+      if (sanitizedSearch) {
+        usersCountQuery = addSearchFilter(usersCountQuery, ['firstName', 'lastName', 'email'], sanitizedSearch);
+      }
+    }
+
+    if (startDate) {
+      usersCountQuery = usersCountQuery.gte('createdAt', startDate);
+    }
+
+    if (endDate) {
+      usersCountQuery = usersCountQuery.lte('createdAt', endDate);
+    }
+
+    // Step 2: Get users with subscriptions (using EXISTS-like filter)
+    // First get all subscription emails that match our filters
+    let subsEmailQuery = supabaseAdmin
+      .from('subscriptions')
+      .select('email');
+
+    if (planType) {
+      subsEmailQuery = subsEmailQuery.eq('plan_type', planType);
+    }
+
+    if (status) {
+      subsEmailQuery = subsEmailQuery.eq('status', status);
+    }
+
+    const { data: subsEmails, error: subsEmailError } = await subsEmailQuery;
+    
+    if (subsEmailError) {
+      logger.error('Subscription emails query failed', { error: subsEmailError.message });
+      throw new Error(subsEmailError.message);
+    }
+
+    if (!subsEmails || subsEmails.length === 0) {
+      return NextResponse.json({
+        data: [],
+        pagination: { page, limit, total: 0, totalPages: 0 },
+      });
+    }
+
+    const subscriptionEmails = [...new Set(subsEmails.map(s => s.email))];
+    
+    // Add subscription email filter to count query
+    usersCountQuery = usersCountQuery.in('email', subscriptionEmails);
+
+    // Get total count
+    const { count: totalCount, error: countError } = await usersCountQuery;
+    
+    if (countError) {
+      logger.error('Count query failed', { error: countError.message });
+      throw new Error(countError.message);
+    }
+
+    const total = totalCount || 0;
+
+    if (total === 0) {
+      return NextResponse.json({
+        data: [],
+        pagination: { page, limit, total: 0, totalPages: 0 },
+      });
+    }
+
+    // Step 3: Fetch paginated users
+    let usersQuery = supabaseAdmin
+      .from('users')
+      .select('*')
+      .eq('isActive', true)
+      .in('email', subscriptionEmails);
+    
+    excludedDomains.forEach(domain => {
       usersQuery = usersQuery.not('email', 'ilike', domain);
     });
 
-    // Apply user filters
     if (clientType) {
       const clientTypes = clientType.split(',').filter(Boolean);
       if (clientTypes.length > 0) {
@@ -105,7 +154,6 @@ export async function GET(request) {
       }
     }
 
-    // Apply date range filter
     if (startDate) {
       usersQuery = usersQuery.gte('createdAt', startDate);
     }
@@ -114,7 +162,9 @@ export async function GET(request) {
       usersQuery = usersQuery.lte('createdAt', endDate);
     }
 
-    // Fetch all matching users (we'll paginate in memory)
+    // Apply database-level pagination
+    usersQuery = usersQuery.range(offset, offset + limit - 1);
+
     const { data: users, error: usersError } = await usersQuery;
     
     if (usersError) {
@@ -122,18 +172,43 @@ export async function GET(request) {
       throw new Error(usersError.message);
     }
 
-    logger.debug('Users fetched', { count: users?.length || 0 });
+    logger.debug('Users fetched', { count: users?.length || 0, total });
 
     if (!users || users.length === 0) {
       return NextResponse.json({
         data: [],
-        pagination: { page, limit, total: 0, totalPages: 0 },
+        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
       });
     }
 
+    // Step 4: Fetch subscriptions for paginated users only
+    const userEmails = users.map(u => u.email);
+    
+    let subsQuery = supabaseAdmin
+      .from('subscriptions')
+      .select('email, id, plan_type, plan_amount, billing_cycle, status, subscription_start_date, subscription_end_date, phone, created_at')
+      .in('email', userEmails);
+
+    if (planType) {
+      subsQuery = subsQuery.eq('plan_type', planType);
+    }
+
+    if (status) {
+      subsQuery = subsQuery.eq('status', status);
+    }
+
+    const { data: subscriptions, error: subsError } = await subsQuery;
+    
+    if (subsError) {
+      logger.error('Subscriptions query failed', { error: subsError.message });
+      throw new Error(subsError.message);
+    }
+
+    logger.debug('Subscriptions fetched', { count: subscriptions?.length || 0 });
+
     // Create a map of subscriptions by email
     const subscriptionsByEmail = {};
-    allSubscriptions.forEach(sub => {
+    (subscriptions || []).forEach(sub => {
       if (!subscriptionsByEmail[sub.email]) {
         subscriptionsByEmail[sub.email] = [];
       }
@@ -158,7 +233,7 @@ export async function GET(request) {
     };
 
     // Combine users with their subscriptions
-    const allClients = users
+    const paginatedClients = users
       .filter(user => subscriptionsByEmail[user.email])
       .map(user => {
         const subscription = selectSubscription(subscriptionsByEmail[user.email]);
@@ -181,11 +256,7 @@ export async function GET(request) {
         };
       });
 
-    logger.debug('Clients combined', { count: allClients.length });
-
-    // Apply pagination in memory
-    const total = allClients.length;
-    const paginatedClients = allClients.slice(offset, offset + limit);
+    logger.debug('Clients combined', { count: paginatedClients.length });
 
     return NextResponse.json({
       data: paginatedClients,
@@ -193,7 +264,7 @@ export async function GET(request) {
         page,
         limit,
         total,
-        totalPages: total === 0 ? 0 : Math.ceil(total / limit),
+        totalPages: Math.ceil(total / limit),
       },
     });
   } catch (error) {

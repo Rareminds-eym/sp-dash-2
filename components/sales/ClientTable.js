@@ -12,9 +12,13 @@ const formatDate = (dateString) => {
   if (!dateString) return '-';
   try {
     const date = new Date(dateString);
-    if (Number.isNaN(date.getTime())) return '-';
+    if (Number.isNaN(date.getTime())) {
+      console.warn('Invalid date format:', dateString);
+      return '-';
+    }
     return date.toLocaleDateString();
-  } catch {
+  } catch (error) {
+    console.warn('Date formatting error:', dateString, error);
     return '-';
   }
 };

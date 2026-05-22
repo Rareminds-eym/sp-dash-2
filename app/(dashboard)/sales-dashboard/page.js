@@ -83,11 +83,13 @@ export default function SalesDashboardPage() {
       }
 
       const response = await fetch(`/api/sales/clients?${params.toString()}`, { signal });
-      const result = await response.json();
-
+      
       if (!response.ok) {
+        const result = await response.json().catch(() => ({ error: 'Failed to fetch clients' }));
         throw new Error(result.error || 'Failed to fetch clients');
       }
+
+      const result = await response.json();
 
       setData(result.data);
       setPagination(result.pagination);
@@ -106,7 +108,7 @@ export default function SalesDashboardPage() {
     const controller = new AbortController();
     fetchData(controller.signal);
     return () => controller.abort();
-v  }, [fetchData]);
+    }, [fetchData]);
 
   const handleFilterChange = (newFilters) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
