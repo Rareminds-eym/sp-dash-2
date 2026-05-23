@@ -4,9 +4,9 @@ import { NextResponse } from 'next/server';
 import Logger from '@/lib/logger';
 import { addSearchFilter, sanitizeSearchTerm } from '@/lib/supabase-utils';
 
-const logger = new Logger('SalesClientsAPI');
+export const runtime = 'edge';
 
-export const runtime = 'nodejs';
+const logger = new Logger('SalesClientsAPI');
 
 /**
  * GET handler for fetching sales clients with pagination and filters
