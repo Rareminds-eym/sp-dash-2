@@ -50,6 +50,7 @@
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
     "embla-carousel-react": "^8.6.0",
+    "exceljs": "^4.4.0",
     "framer-motion": "^12.23.24",
     "input-otp": "^1.4.2",
     "jose": "^6.1.0",
@@ -68,7 +69,6 @@
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^9.0.1",
     "vaul": "^1.1.2",
-    "xlsx": "^0.18.5",
     "zod": "^3.25.67"
   },
   "devDependencies": {

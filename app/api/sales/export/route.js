@@ -1,18 +1,12 @@
 import { authenticateRequest } from '@/lib/middleware/auth';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
-// SECURITY NOTE: xlsx library has known vulnerabilities
-// - CVE-2023-30533: Prototype pollution vulnerability (fixed in 0.18.5+)
-// - CVE-2021-32012: XXE (XML External Entity) injection risk
-// - Path traversal vulnerabilities in older versions
-// Mitigations applied:
-// - Using version ^0.18.5 from npm registry (not CDN) for integrity verification
+// SECURITY NOTE: Using exceljs instead of xlsx for better security
+// - exceljs is actively maintained with better security practices
+// - No known CVEs for formula injection or XXE attacks
+// - All cell values sanitized via sanitizeCell() to prevent formula injection
 // - Only generating files from server-controlled data (no user file uploads)
-// - All cell values sanitized via sanitizeCell() to prevent formula injection (CSV injection)
-// - No XML parsing of user-provided files (write-only usage)
-// - Strict input validation applied, no user file parsing
-// References: https://github.com/advisories/GHSA-4r6h-8v6p-xvw6
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import Logger from '@/lib/logger';
 import { addSearchFilter, sanitizeSearchTerm } from '@/lib/supabase-utils';
 
@@ -226,68 +220,56 @@ export async function GET(request) {
 
     // Generate export based on format
     if (format === 'excel') {
-      // Generate Excel file using xlsx
-      const worksheetData = [
-        // Headers
-        [
-          'ID',
-          'Email',
-          'Full Name',
-          'Phone',
-          'Role',
-          'Organization ID',
-          'Subscription ID',
-          'Plan Type',
-          'Plan Amount',
-          'Billing Cycle',
-          'Subscription Status',
-          'Start Date',
-          'End Date',
-        ],
-        // Data rows
-        ...clients.map(client => [
-          sanitizeCell(client.id),
-          sanitizeCell(client.email),
-          sanitizeCell(client.fullName),
-          sanitizeCell(client.phone),
-          sanitizeCell(client.role),
-          sanitizeCell(client.organizationId || ''),
-          sanitizeCell(client.subscriptionId || ''),
-          sanitizeCell(client.planType || ''),
-          sanitizeCell(client.planAmount || ''),
-          sanitizeCell(client.billingCycle || ''),
-          sanitizeCell(client.subscriptionStatus || ''),
-          sanitizeCell(client.startDate || ''),
-          sanitizeCell(client.endDate || ''),
-        ]),
+      // Generate Excel file using exceljs
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Clients');
+
+      // Define columns with headers and widths
+      worksheet.columns = [
+        { header: 'ID', key: 'id', width: 36 },
+        { header: 'Email', key: 'email', width: 30 },
+        { header: 'Full Name', key: 'fullName', width: 25 },
+        { header: 'Phone', key: 'phone', width: 15 },
+        { header: 'Role', key: 'role', width: 20 },
+        { header: 'Organization ID', key: 'organizationId', width: 36 },
+        { header: 'Subscription ID', key: 'subscriptionId', width: 36 },
+        { header: 'Plan Type', key: 'planType', width: 15 },
+        { header: 'Plan Amount', key: 'planAmount', width: 12 },
+        { header: 'Billing Cycle', key: 'billingCycle', width: 15 },
+        { header: 'Subscription Status', key: 'subscriptionStatus', width: 18 },
+        { header: 'Start Date', key: 'startDate', width: 20 },
+        { header: 'End Date', key: 'endDate', width: 20 },
       ];
 
-      // Create workbook and worksheet
-      const workbook = XLSX.utils.book_new();
-      const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+      // Style the header row
+      worksheet.getRow(1).font = { bold: true };
+      worksheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
+      };
 
-      // Set column widths for better readability
-      worksheet['!cols'] = [
-        { wch: 36 }, // ID
-        { wch: 30 }, // Email
-        { wch: 25 }, // Full Name
-        { wch: 15 }, // Phone
-        { wch: 20 }, // Role
-        { wch: 36 }, // Organization ID
-        { wch: 36 }, // Subscription ID
-        { wch: 15 }, // Plan Type
-        { wch: 12 }, // Plan Amount
-        { wch: 15 }, // Billing Cycle
-        { wch: 18 }, // Subscription Status
-        { wch: 20 }, // Start Date
-        { wch: 20 }, // End Date
-      ];
-
-      // Add worksheet to workbook
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Clients');
+      // Add data rows with sanitized values
+      clients.forEach(client => {
+        worksheet.addRow({
+          id: sanitizeCell(client.id),
+          email: sanitizeCell(client.email),
+          fullName: sanitizeCell(client.fullName),
+          phone: sanitizeCell(client.phone),
+          role: sanitizeCell(client.role),
+          organizationId: sanitizeCell(client.organizationId || ''),
+          subscriptionId: sanitizeCell(client.subscriptionId || ''),
+          planType: sanitizeCell(client.planType || ''),
+          planAmount: sanitizeCell(client.planAmount || ''),
+          billingCycle: sanitizeCell(client.billingCycle || ''),
+          subscriptionStatus: sanitizeCell(client.subscriptionStatus || ''),
+          startDate: sanitizeCell(client.startDate || ''),
+          endDate: sanitizeCell(client.endDate || ''),
+        });
+      });
 
       // Generate Excel file buffer
-      const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      const excelBuffer = await workbook.xlsx.writeBuffer();
       
       // Generate timestamp: YYYY-MM-DD_HH-MM-SS format for uniqueness
       const now = new Date();
