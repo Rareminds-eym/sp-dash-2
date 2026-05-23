@@ -28,6 +28,7 @@ import {
   CheckCircle,
   ChevronDown,
   ChevronRight,
+  DollarSign,
   Download,
   FileText,
   GraduationCap,
@@ -51,6 +52,9 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ApprovalViewProvider } from '@/components/approvals/ApprovalViewContext'
+import Logger, { getErrorMessage } from '@/lib/logger'
+
+const logger = new Logger('DashboardLayout');
 
 // Initial navigation structure without counts
 const initialNavigation = [
@@ -83,6 +87,7 @@ const initialNavigation = [
       { name: 'Insights', href: '/reports?tab=insights', icon: Brain },
     ]
   },
+  { name: 'Sales Dashboard', icon: DollarSign, href: '/sales-dashboard' },
   { name: 'Audit Logs', icon: History, href: '/audit-logs' },
   { name: 'Integrations', icon: Plug, href: '/integrations' },
   { name: 'Settings', icon: Settings, href: '/settings' },
@@ -267,7 +272,7 @@ export default function DashboardLayout({ children }) {
                 }
                 return res.json();
               }).catch(error => {
-                console.warn(`Failed to fetch ${endpoint.type}:`, error);
+                logger.warn(`Failed to fetch ${endpoint.type}`, { error: getErrorMessage(error), endpoint: endpoint.url });
                 return { pagination: { total: 0 } };
               })
             )
@@ -275,12 +280,6 @@ export default function DashboardLayout({ children }) {
 
           // Update navigation with counts only if component is still mounted
           if (isMounted) {
-            // Debug logging
-            console.log('Updating navigation with counts:', responses.map((res, index) => ({
-              type: ['universities', 'recruiters', 'colleges', 'students', 'courses'][index],
-              count: res.pagination?.total || 0
-            })));
-
             setNavigation(prevNav => {
               // Always update the navigation with new counts, don't check for changes here
               // The React reconciliation will handle efficient updates
@@ -304,11 +303,11 @@ export default function DashboardLayout({ children }) {
           }
         }
       } catch (error) {
-        console.error('Failed to fetch approval counts:', error)
+        logger.error('Failed to fetch approval counts', { error: getErrorMessage(error) });
         // Retry logic
         if (retryCount < maxRetries && isMounted) {
           retryCount++;
-          console.log(`Retrying fetch (attempt ${retryCount}/${maxRetries})...`)
+          logger.debug('Retrying approval counts fetch', { attempt: retryCount, maxRetries });
           setTimeout(() => {
             if (isMounted) {
               fetchApprovalCounts();
@@ -411,7 +410,7 @@ export default function DashboardLayout({ children }) {
         }
       })
       .catch(err => {
-        console.error('Failed to fetch session:', err)
+        logger.error('Failed to fetch session', { error: getErrorMessage(err) });
         // If session fetch fails, user might not be authenticated
         // Don't redirect here, let middleware handle it
       })
@@ -442,12 +441,12 @@ export default function DashboardLayout({ children }) {
         // Force a full page reload to clear all cached state
         window.location.href = '/login'
       } else {
-        console.error('Logout failed:', data.error)
+        logger.error('Logout failed', { error: getErrorMessage(data.error) });
         // Even if server-side logout fails, redirect to login
         window.location.href = '/login'
       }
     } catch (err) {
-      console.error('Logout error:', err)
+      logger.error('Logout error', { error: getErrorMessage(err) });
       // On error, still redirect to login page
       window.location.href = '/login'
     }

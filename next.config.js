@@ -1,5 +1,5 @@
 const nextConfig = {
-  output: 'standalone',
+  // Configured for Cloudflare Pages deployment with Edge Runtime
   images: {
     unoptimized: false,
     formats: ['image/webp', 'image/avif'],
