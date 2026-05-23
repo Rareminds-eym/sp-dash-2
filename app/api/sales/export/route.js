@@ -8,9 +8,9 @@ import { NextResponse } from 'next/server';
 import Logger from '@/lib/logger';
 import { addSearchFilter, sanitizeSearchTerm } from '@/lib/supabase-utils';
 
-const logger = new Logger('SalesExportAPI');
-
 export const runtime = 'edge';
+
+const logger = new Logger('SalesExportAPI');
 
 // Sanitize cell values to prevent CSV/Excel injection
 const sanitizeCell = (value) => {
