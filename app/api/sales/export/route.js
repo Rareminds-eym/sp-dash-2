@@ -1,18 +1,16 @@
 import { authenticateRequest } from '@/lib/middleware/auth';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
-// SECURITY NOTE: Using exceljs instead of xlsx for better security
-// - exceljs is actively maintained with better security practices
-// - No known CVEs for formula injection or XXE attacks
+// SECURITY NOTE: CSV export with proper sanitization
 // - All cell values sanitized via sanitizeCell() to prevent formula injection
 // - Only generating files from server-controlled data (no user file uploads)
-import ExcelJS from 'exceljs';
+// - Edge Runtime compatible (no Node.js dependencies)
 import Logger from '@/lib/logger';
 import { addSearchFilter, sanitizeSearchTerm } from '@/lib/supabase-utils';
 
 const logger = new Logger('SalesExportAPI');
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 // Sanitize cell values to prevent CSV/Excel injection
 const sanitizeCell = (value) => {
@@ -59,10 +57,10 @@ export async function GET(request) {
     const search = searchParams.get('search');
     const format = searchParams.get('format') || 'csv';
     
-    // Validate format parameter
-    if (!['csv', 'excel'].includes(format)) {
+    // Validate format parameter - only CSV supported in Edge Runtime
+    if (format !== 'csv') {
       return NextResponse.json(
-        { error: 'Invalid format. Must be "csv" or "excel"' },
+        { error: 'Only CSV format is supported. Excel export requires Node.js runtime.' },
         { status: 400 }
       );
     }
@@ -216,125 +214,59 @@ export async function GET(request) {
       // This matches the API endpoint behavior but may differ from total user count
     }
 
-    logger.info('Export generated', { format, clientCount: clients.length });
+    logger.info('Export generated', { format: 'csv', clientCount: clients.length });
 
-    // Generate export based on format
-    if (format === 'excel') {
-      // Generate Excel file using exceljs
-      const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet('Clients');
+    // Generate CSV export
+    const headers = [
+      'ID',
+      'Email',
+      'Full Name',
+      'Phone',
+      'Role',
+      'Organization ID',
+      'Subscription ID',
+      'Plan Type',
+      'Plan Amount',
+      'Billing Cycle',
+      'Subscription Status',
+      'Start Date',
+      'End Date',
+    ];
 
-      // Define columns with headers and widths
-      worksheet.columns = [
-        { header: 'ID', key: 'id', width: 36 },
-        { header: 'Email', key: 'email', width: 30 },
-        { header: 'Full Name', key: 'fullName', width: 25 },
-        { header: 'Phone', key: 'phone', width: 15 },
-        { header: 'Role', key: 'role', width: 20 },
-        { header: 'Organization ID', key: 'organizationId', width: 36 },
-        { header: 'Subscription ID', key: 'subscriptionId', width: 36 },
-        { header: 'Plan Type', key: 'planType', width: 15 },
-        { header: 'Plan Amount', key: 'planAmount', width: 12 },
-        { header: 'Billing Cycle', key: 'billingCycle', width: 15 },
-        { header: 'Subscription Status', key: 'subscriptionStatus', width: 18 },
-        { header: 'Start Date', key: 'startDate', width: 20 },
-        { header: 'End Date', key: 'endDate', width: 20 },
-      ];
+    const csvRows = [
+      headers.join(','),
+      ...clients.map(client => {
+        return [
+          toCsvCell(client.id),
+          toCsvCell(client.email),
+          toCsvCell(client.fullName),
+          toCsvCell(client.phone),
+          toCsvCell(client.role),
+          toCsvCell(client.organizationId || ''),
+          toCsvCell(client.subscriptionId || ''),
+          toCsvCell(client.planType || ''),
+          toCsvCell(client.planAmount || ''),
+          toCsvCell(client.billingCycle || ''),
+          toCsvCell(client.subscriptionStatus || ''),
+          toCsvCell(client.startDate || ''),
+          toCsvCell(client.endDate || ''),
+        ].join(',');
+      }),
+    ];
 
-      // Style the header row
-      worksheet.getRow(1).font = { bold: true };
-      worksheet.getRow(1).fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FFE0E0E0' }
-      };
+    const csvContent = csvRows.join('\n');
+    
+    // Generate timestamp: YYYY-MM-DD_HH-MM-SS format for uniqueness
+    const now = new Date();
+    const timestamp = now.toISOString().replace(/T/, '_').replace(/\..+/, '').replace(/:/g, '-');
+    const filename = `clients_${timestamp}.csv`;
 
-      // Add data rows with sanitized values
-      clients.forEach(client => {
-        worksheet.addRow({
-          id: sanitizeCell(client.id),
-          email: sanitizeCell(client.email),
-          fullName: sanitizeCell(client.fullName),
-          phone: sanitizeCell(client.phone),
-          role: sanitizeCell(client.role),
-          organizationId: sanitizeCell(client.organizationId || ''),
-          subscriptionId: sanitizeCell(client.subscriptionId || ''),
-          planType: sanitizeCell(client.planType || ''),
-          planAmount: sanitizeCell(client.planAmount || ''),
-          billingCycle: sanitizeCell(client.billingCycle || ''),
-          subscriptionStatus: sanitizeCell(client.subscriptionStatus || ''),
-          startDate: sanitizeCell(client.startDate || ''),
-          endDate: sanitizeCell(client.endDate || ''),
-        });
-      });
-
-      // Generate Excel file buffer
-      const excelBuffer = await workbook.xlsx.writeBuffer();
-      
-      // Generate timestamp: YYYY-MM-DD_HH-MM-SS format for uniqueness
-      const now = new Date();
-      const timestamp = now.toISOString().replace(/T/, '_').replace(/\..+/, '').replace(/:/g, '-');
-      const filename = `clients_${timestamp}.xlsx`;
-
-      return new Response(excelBuffer, {
-        headers: {
-          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          'Content-Disposition': `attachment; filename="${filename}"`,
-        },
-      });
-    } else {
-      // Generate CSV
-      const headers = [
-        'ID',
-        'Email',
-        'Full Name',
-        'Phone',
-        'Role',
-        'Organization ID',
-        'Subscription ID',
-        'Plan Type',
-        'Plan Amount',
-        'Billing Cycle',
-        'Subscription Status',
-        'Start Date',
-        'End Date',
-      ];
-
-      const csvRows = [
-        headers.join(','),
-        ...clients.map(client => {
-          return [
-            toCsvCell(client.id),
-            toCsvCell(client.email),
-            toCsvCell(client.fullName),
-            toCsvCell(client.phone),
-            toCsvCell(client.role),
-            toCsvCell(client.organizationId || ''),
-            toCsvCell(client.subscriptionId || ''),
-            toCsvCell(client.planType || ''),
-            toCsvCell(client.planAmount || ''),
-            toCsvCell(client.billingCycle || ''),
-            toCsvCell(client.subscriptionStatus || ''),
-            toCsvCell(client.startDate || ''),
-            toCsvCell(client.endDate || ''),
-          ].join(',');
-        }),
-      ];
-
-      const csvContent = csvRows.join('\n');
-      
-      // Generate timestamp: YYYY-MM-DD_HH-MM-SS format for uniqueness
-      const now = new Date();
-      const timestamp = now.toISOString().replace(/T/, '_').replace(/\..+/, '').replace(/:/g, '-');
-      const filename = `clients_${timestamp}.csv`;
-
-      return new Response(csvContent, {
-        headers: {
-          'Content-Type': 'text/csv',
-          'Content-Disposition': `attachment; filename="${filename}"`,
-        },
-      });
-    }
+    return new Response(csvContent, {
+      headers: {
+        'Content-Type': 'text/csv',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+      },
+    });
   } catch (error) {
     logger.error('Error exporting sales clients', { 
       error: error.message, 

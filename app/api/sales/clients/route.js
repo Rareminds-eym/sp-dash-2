@@ -6,7 +6,7 @@ import { addSearchFilter, sanitizeSearchTerm } from '@/lib/supabase-utils';
 
 const logger = new Logger('SalesClientsAPI');
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 /**
  * GET handler for fetching sales clients with pagination and filters

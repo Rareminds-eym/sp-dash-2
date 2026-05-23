@@ -1,5 +1,6 @@
 const nextConfig = {
-  output: 'standalone',
+  // For Cloudflare Pages, we need to use 'export' or configure properly
+  // Note: Some routes require Node.js runtime (e.g., /api/sales/export with exceljs)
   images: {
     unoptimized: false,
     formats: ['image/webp', 'image/avif'],
@@ -29,7 +30,7 @@ const nextConfig = {
           { key: "Content-Security-Policy", value: "frame-ancestors *;" },
           { key: "Access-Control-Allow-Origin", value: process.env.CORS_ORIGINS || "*" },
           { key: "Access-Control-Allow-Methods", value: "GET, POST, PUT, DELETE, OPTIONS" },
-          { key: "Access-Control-Allow-Headers", value: "*" },
+          { key: "Access-Control-Allow-Headers", value: "* " },
         ],
       },
     ];
