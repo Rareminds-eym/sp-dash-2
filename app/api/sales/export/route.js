@@ -1,4 +1,4 @@
-import { authenticateRequest } from '@/lib/middleware/auth';
+import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 // SECURITY NOTE: CSV export with proper sanitization
@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 import Logger from '@/lib/logger';
 import { addSearchFilter, sanitizeSearchTerm } from '@/lib/supabase-utils';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs'; // Changed from 'edge' to support cookies()
 
 const logger = new Logger('SalesExportAPI');
 
@@ -44,7 +44,8 @@ const toCsvCell = (value) => {
  */
 export async function GET(request) {
   try {
-    const { error } = await authenticateRequest(request, ['/sales']);
+    // Authenticate using SSO - allow super_admin, admin roles
+    const { error, user } = await authenticateSSORequest(request, ['super_admin', 'admin']);
     if (error) return error;
 
     // Get query parameters

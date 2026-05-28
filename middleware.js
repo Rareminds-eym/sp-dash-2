@@ -1,4 +1,3 @@
-import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 
 const protectedRoutes = ['/dashboard', '/users', '/passports', '/recruiters', '/reports', '/audit-logs', '/integrations', '/settings']
@@ -14,48 +13,27 @@ export async function middleware(req) {
     return NextResponse.next()
   }
 
-  let supabaseResponse = NextResponse.next({
-    request: req,
-  })
+  // Check for SSO session cookies
+  const ssoAccessToken = req.cookies.get('sso_access_token')?.value
+  const ssoUser = req.cookies.get('sso_user')?.value
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
-      cookies: {
-        getAll() {
-          return req.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            req.cookies.set(name, value)
-            supabaseResponse.cookies.set(name, value, options)
-          })
-        },
-      },
-    }
-  )
+  const hasValidSession = !!(ssoAccessToken && ssoUser)
 
-  // Use getUser() instead of getSession() for better security and JWT validation
-  const { data: { user }, error } = await supabase.auth.getUser()
-
-  // Redirect to /login if accessing protected route without valid user
-  if (isProtectedRoute && (!user || error)) {
-    // Handle JWT expiration gracefully
-    if (error?.message?.includes('JWT') || error?.message?.includes('expired')) {
-      console.warn('JWT expired in middleware, redirecting to login')
-    }
+  // Redirect to /login if accessing protected route without valid session
+  if (isProtectedRoute && !hasValidSession) {
+    console.log('[Middleware] No valid SSO session, redirecting to login')
     const redirectUrl = new URL('/login', req.url)
     return NextResponse.redirect(redirectUrl)
   }
 
-  // Redirect to /dashboard if accessing login with valid user
-  if (isPublicRoute && user && !error) {
+  // Redirect to /dashboard if accessing login with valid session
+  if (isPublicRoute && hasValidSession) {
+    console.log('[Middleware] Valid SSO session found, redirecting to dashboard')
     const redirectUrl = new URL('/dashboard', req.url)
     return NextResponse.redirect(redirectUrl)
   }
 
-  return supabaseResponse
+  return NextResponse.next()
 }
 
 export const config = {

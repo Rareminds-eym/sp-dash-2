@@ -1,18 +1,19 @@
 import { NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/middleware/auth';
+import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { handleError } from '@/lib/middleware/errorHandler';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 /**
  * GET /api/verifications - List recent verifications
  */
 export async function GET(request) {
   try {
-    const { rlsClient, error } = await authenticateRequest(request, ['/verifications']);
+    const { error, user } = await authenticateSSORequest(request, ['super_admin', 'admin']);
     if (error) return error;
     
-    const { data: verifications, error: queryError } = await rlsClient
+    const { data: verifications, error: queryError } = await supabaseAdmin
       .from('verifications')
       .select('*')
       .order('createdAt', { ascending: false })
@@ -28,7 +29,7 @@ export async function GET(request) {
       const userIds = verifications.map(v => v.performedBy).filter(Boolean);
       
       if (userIds.length > 0) {
-        const { data: users } = await rlsClient
+        const { data: users } = await supabaseAdmin
           .from('users')
           .select('id, email')
           .in('id', userIds);

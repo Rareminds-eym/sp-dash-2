@@ -88,7 +88,7 @@ function ClientCard({ client }) {
         {client.planType && (
           <div className="flex items-center gap-2 text-sm">
             <CreditCard className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-            <span className="text-gray-700 dark:text-gray-300">{client.planType} - ${client.planAmount || 0} / {client.billingCycle || 'N/A'}</span>
+            <span className="text-gray-700 dark:text-gray-300">{client.planType} - ₹{client.planAmount || 0} / {client.billingCycle || 'N/A'}</span>
           </div>
         )}
         {(client.startDate || client.endDate) && (
@@ -171,7 +171,7 @@ export function ClientTable({ data, pagination, isLoading, onPageChange }) {
                 <TableCell>{client.phone || '-'}</TableCell>
                 <TableCell>{client.role}</TableCell>
                 <TableCell>{client.planType || '-'}</TableCell>
-                <TableCell>${client.planAmount || 0}</TableCell>
+                <TableCell>₹{client.planAmount || 0}</TableCell>
                 <TableCell>{client.billingCycle || '-'}</TableCell>
                 <TableCell>
                   <Badge className={getStatusColor(client.subscriptionStatus)}>

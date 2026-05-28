@@ -1,136 +1,63 @@
-import { getUserPermissions } from '@/lib/rbac'
-import { createClient } from '@/lib/supabase-server'
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
+/**
+ * SSO Session Route
+ * Returns the current user session from SSO cookies
+ */
 export async function GET(request) {
   try {
-    const supabase = await createClient()
-    
-    // Use getUser() instead of getSession() for better security and JWT validation
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
-      // Handle JWT expiration and other auth errors gracefully
-      if (authError?.message?.includes('JWT') || authError?.message?.includes('expired')) {
-        console.warn('JWT expired in session API:', authError.message)
-        return NextResponse.json(
-          { success: false, user: null, error: 'JWT expired' },
-          { status: 401 }
-        )
-      }
+    const cookieStore = await cookies()
+    const ssoAccessToken = cookieStore.get('sso_access_token')?.value
+    const ssoUserCookie = cookieStore.get('sso_user')?.value
+
+    if (!ssoAccessToken || !ssoUserCookie) {
       return NextResponse.json(
-        { success: false, user: null, error: authError?.message || 'Authentication failed' },
+        { success: false, user: null, error: 'No active session' },
         { status: 401 }
       )
     }
 
-    // Fetch additional user data from users table (lookup by email since IDs may not match)
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('id, email, firstName, lastName, role, isActive, organizationId, createdAt, metadata')
-      .eq('email', user.email)
-      .maybeSingle()
-    
-    // Fetch organization data from universities, recruiters, or organizations tables
-    let organizationData = null
-    if (userData && userData.organizationId) {
-      // Try to fetch from organizations first
-      const { data: orgData } = await supabase
-        .from('organizations')
-        .select('id, name')
-        .eq('id', userData.organizationId)
-        .maybeSingle()
-      
-      if (orgData) {
-        organizationData = { id: orgData.id, name: orgData.name, type: 'organization' }
-      } else {
-        // Try to fetch from universities
-        const { data: univData } = await supabase
-          .from('universities')
-          .select('organizationid, name')
-          .eq('organizationid', userData.organizationId)
-          .maybeSingle()
-        
-        if (univData) {
-          organizationData = { id: univData.organizationid, name: univData.name, type: 'university' }
-        } else {
-          // Try recruiters table
-          const { data: recData } = await supabase
-            .from('recruiters')
-            .select('organizationid, name')
-            .eq('organizationid', userData.organizationId)
-            .maybeSingle()
-          
-          if (recData) {
-            organizationData = { id: recData.organizationid, name: recData.name, type: 'recruiter' }
-          }
-        }
-      }
-    }
-
-    if (userError || !userData) {
-      if (userError) {
-        console.error('Error fetching user data:', userError)
-      }
-      // User not found in users table - not authorized
-      return NextResponse.json(
-        { success: false, user: null, error: 'User not authorized' },
-        { status: 403 }
-      )
-    }
-
-    // Check if user exists in admin_users table
-    const { data: adminUser, error: adminError } = await supabase
-      .from('admin_users')
-      .select('id, admin_role')
-      .eq('id', userData.id)
-      .maybeSingle()
-
-    if (adminError) {
-      console.error('Error checking admin_users:', adminError)
-    }
-
-    if (!adminUser) {
-      // User is not an admin - not authorized for this dashboard
-      return NextResponse.json(
-        { success: false, user: null, error: 'Access denied. Not an admin user.' },
-        { status: 403 }
-      )
-    }
-
-    const userName = userData.firstName && userData.lastName 
-      ? `${userData.firstName} ${userData.lastName}` 
-      : user.user_metadata?.firstName && user.user_metadata?.lastName
-      ? `${user.user_metadata.firstName} ${user.user_metadata.lastName}`
-      : user.email.split('@')[0]
-
-    // Fetch user permissions based on role
-    let permissions = []
+    // Parse user data from cookie
+    let user
     try {
-      permissions = await getUserPermissions(userData.id)
-    } catch (permError) {
-      console.error('Error fetching permissions:', permError)
-      // Continue without permissions if fetch fails
+      user = JSON.parse(ssoUserCookie)
+    } catch (e) {
+      return NextResponse.json(
+        { success: false, user: null, error: 'Invalid session data' },
+        { status: 401 }
+      )
+    }
+
+    // Decode JWT to get additional claims
+    try {
+      const payloadBase64 = ssoAccessToken.split('.')[1]
+      const payload = JSON.parse(Buffer.from(payloadBase64, 'base64').toString())
+      
+      // Add JWT claims to user object
+      user.orgId = payload.org_id
+      user.isEmailVerified = payload.is_email_verified
+      user.membershipStatus = payload.membership_status
+    } catch (err) {
+      console.error('[Session] Failed to decode JWT:', err)
     }
 
     return NextResponse.json({
       success: true,
       user: {
-        id: userData.id,
-        email: userData.email,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        name: userName,
-        role: userData.role,
-        organizationId: userData.organizationId,
-        organization: organizationData,
-        permissions: permissions,
+        id: user.id,
+        email: user.email,
+        role: user.roles?.[0] || 'member', // Use first role for compatibility
+        roles: user.roles || [],
+        orgId: user.orgId,
+        isEmailVerified: user.isEmailVerified,
+        membershipStatus: user.membershipStatus,
       },
     })
   } catch (error) {
-    console.error('Session error:', error)
+    console.error('[Session] Error:', error)
     return NextResponse.json(
       { success: false, user: null, error: error.message },
       { status: 500 }

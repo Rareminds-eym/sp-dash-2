@@ -1,16 +1,16 @@
-import { authenticateRequest } from '@/lib/middleware/auth';
+import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { handleError } from '@/lib/middleware/errorHandler';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 /**
  * GET /api/users - List admin users from admin_users table with pagination, search, and filters
  */
 export async function GET(request) {
   try {
-    const { rlsClient, error } = await authenticateRequest(request, ['/users']);
+    const { error, user } = await authenticateSSORequest(request, ['super_admin', 'admin']);
     if (error) return error;
     
     // Get parameters from query string
@@ -156,7 +156,7 @@ export async function GET(request) {
  */
 export async function POST(request) {
   try {
-    const { rlsClient, session, error } = await authenticateRequest(request, ['/users']);
+    const { error, user } = await authenticateSSORequest(request, ['super_admin', 'admin']);
     if (error) return error;
     
     // Parse request body

@@ -1,16 +1,17 @@
 import { NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/middleware/auth';
+import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { filterAndRankResults } from '@/lib/search-utils';
 import { handleError } from '@/lib/middleware/errorHandler';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 /**
  * GET /api/audit-logs - List audit logs with pagination, filtering, and search
  */
 export async function GET(request) {
   try {
-    const { rlsClient, error } = await authenticateRequest(request, ['/audit-logs']);
+    const { error, user } = await authenticateSSORequest(request, ['super_admin', 'admin']);
     if (error) return error;
     
     const { searchParams } = new URL(request.url);
@@ -32,7 +33,7 @@ export async function GET(request) {
     const sortOrder = searchParams.get('sortOrder') || 'desc';
     
     // Build query using RLS client
-    let query = rlsClient
+    let query = supabaseAdmin
       .from('audit_logs')
       .select('*', { count: 'exact' });
     
@@ -76,7 +77,7 @@ export async function GET(request) {
       const userIds = enrichedLogs.map(l => l.actorId).filter(Boolean);
       
       if (userIds.length > 0) {
-        const { data: users } = await rlsClient
+        const { data: users } = await supabaseAdmin
           .from('users')
           .select('id, email, metadata')
           .in('id', userIds);

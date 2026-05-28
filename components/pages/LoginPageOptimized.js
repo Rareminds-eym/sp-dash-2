@@ -21,7 +21,8 @@ export default function LoginPageOptimized() {
 
     startTransition(async () => {
       try {
-        const response = await fetch('/api/auth/login', {
+        // Use SSO worker login endpoint
+        const response = await fetch('/api/auth/sso-login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password })
@@ -114,13 +115,12 @@ export default function LoginPageOptimized() {
             </Button>
           </form>
           <div className="mt-8 p-4 bg-white/30 dark:bg-slate-800/30 backdrop-blur-sm rounded-2xl border border-white/20 dark:border-slate-700/50">
-            <p className="font-semibold text-center text-slate-700 dark:text-slate-300 mb-3">Test Credentials:</p>
+            <p className="font-semibold text-center text-slate-700 dark:text-slate-300 mb-3">Admin Credentials:</p>
             <div className="space-y-1 text-sm text-center text-slate-600 dark:text-slate-400">
-              <p>Super Admin: <code className="bg-white/50 dark:bg-slate-700/50 px-2 py-1 rounded font-mono text-xs">superadmin@rareminds.in</code></p>
-              <p>Admin: <code className="bg-white/50 dark:bg-slate-700/50 px-2 py-1 rounded font-mono text-xs">admin@rareminds.in</code></p>
-              <p>Manager: <code className="bg-white/50 dark:bg-slate-700/50 px-2 py-1 rounded font-mono text-xs">manager@rareminds.in</code></p>
+              <p>Email: <code className="bg-white/50 dark:bg-slate-700/50 px-2 py-1 rounded font-mono text-xs">admin@rareminds.in</code></p>
+              <p>Password: <code className="bg-white/50 dark:bg-slate-700/50 px-2 py-1 rounded font-mono text-xs">Admin@123456</code></p>
             </div>
-            <p className="mt-3 text-xs text-center text-slate-500 dark:text-slate-500">Password: <code className="bg-white/50 dark:bg-slate-700/50 px-2 py-1 rounded font-mono">password123</code></p>
+            <p className="mt-3 text-xs text-center text-slate-500 dark:text-slate-500">⚠️ Change password after first login</p>
           </div>
         </CardContent>
       </Card>
