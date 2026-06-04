@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { verifyJWT, extractUserFromJWT } from '@/lib/jwt-utils'
+import { loginWithSSO } from '@/lib/middleware/sso-auth'
 
 export const runtime = 'nodejs'
 
 /**
- * SSO Worker Login Route
+ * Enhanced SSO Worker Login Route with Service Binding Support
  * 
- * This route handles authentication through the SSO worker.
- * It calls the SSO worker's /auth/login endpoint and manages the session.
+ * This route handles authentication through the SSO worker with improved
+ * JWT verification, service binding support, and better error handling.
  */
 export async function POST(request) {
   try {
@@ -20,110 +22,128 @@ export async function POST(request) {
       )
     }
 
-    const ssoWorkerUrl = process.env.SSO_WORKER_URL || 'http://localhost:8788'
-    
-    console.log('[SSO Login] Calling SSO worker at:', ssoWorkerUrl)
-    
-    // Call SSO worker login endpoint
-    const loginResponse = await fetch(`${ssoWorkerUrl}/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Origin': process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000',
-      },
-      body: JSON.stringify({ email, password }),
-      credentials: 'include',
+    // Use enhanced SSO login with service binding support
+    const loginResult = await loginWithSSO(email, password, {
+      SSO_SERVICE: process.env.SSO_SERVICE, // Cloudflare service binding
+      SSO_WORKER_URL: process.env.SSO_WORKER_URL,
+      NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL
     })
-    
-    console.log('[SSO Login] SSO worker response status:', loginResponse.status)
 
-    if (!loginResponse.ok) {
-      const errorData = await loginResponse.json().catch(() => ({}))
-      console.log('[SSO Login] Error from SSO worker:', errorData)
+    if (!loginResult.success) {
+      // Enhanced error handling
+      let errorMessage = loginResult.error || 'Invalid email or password'
+      let statusCode = 401
+      
+      if (loginResult.error?.includes('Too many')) {
+        statusCode = 429
+        errorMessage = 'Too many login attempts. Please try again later.'
+      } else if (loginResult.error?.includes('disabled') || loginResult.error?.includes('verification')) {
+        statusCode = 403
+        errorMessage = 'Account is disabled or requires verification.'
+      }
+      
       return NextResponse.json(
-        { 
-          success: false, 
-          error: errorData.error || 'Invalid email or password' 
-        },
-        { status: loginResponse.status }
+        { success: false, error: errorMessage },
+        { status: statusCode }
       )
     }
 
-    const loginData = await loginResponse.json()
-    console.log('[SSO Login] Login successful, user:', loginData.user?.email)
+    const { data: loginData, headers: loginHeaders } = loginResult
 
-    // Extract tokens from response
-    const accessToken = loginResponse.headers.get('X-Access-Token') || loginData.access_token
-    const setCookieHeader = loginResponse.headers.get('Set-Cookie')
-
-    if (!loginData.user) {
+    // Extract tokens from response - SSO worker returns access_token in body
+    const accessToken = loginHeaders.accessToken || loginData.access_token
+    
+    if (!loginData.user || !accessToken) {
+      console.error('[SSO Login] Missing data:', { 
+        hasUser: !!loginData.user, 
+        hasAccessToken: !!accessToken,
+        loginData: loginData,
+        loginHeaders: loginHeaders
+      })
       return NextResponse.json(
-        { success: false, error: 'Login failed - no user data returned' },
+        { success: false, error: 'Login failed - incomplete response from SSO worker' },
         { status: 500 }
       )
     }
 
-    // Decode JWT to get roles (JWT format: header.payload.signature)
-    let userRoles = []
-    try {
-      if (accessToken) {
-        const payloadBase64 = accessToken.split('.')[1]
-        const payload = JSON.parse(Buffer.from(payloadBase64, 'base64').toString())
-        userRoles = payload.roles || []
-        console.log('[SSO Login] User roles from JWT:', userRoles)
-      }
-    } catch (err) {
-      console.error('[SSO Login] Failed to decode JWT:', err)
+    // Verify the JWT token we received
+    const verificationResult = await verifyJWT(accessToken)
+    
+    if (!verificationResult.valid) {
+      console.error('[SSO Login] JWT verification failed:', verificationResult.error)
+      return NextResponse.json(
+        { success: false, error: 'Login failed - invalid token received' },
+        { status: 500 }
+      )
+    }
+
+    // Extract user data from verified JWT payload
+    const user = extractUserFromJWT(accessToken)
+    
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Login failed - invalid token payload' },
+        { status: 500 }
+      )
     }
 
     // Check if user has admin role (super_admin, admin, or manager)
     const allowedRoles = ['super_admin', 'admin', 'manager']
-    const hasAdminRole = userRoles.some(role => allowedRoles.includes(role))
-    
-    console.log('[SSO Login] Has admin role:', hasAdminRole, 'Roles:', userRoles)
+    const hasAdminRole = user.roles.some(role => allowedRoles.includes(role))
     
     if (!hasAdminRole) {
       return NextResponse.json(
         { 
           success: false, 
-          error: 'Access denied. You are not authorized to access the admin dashboard.' 
+          error: 'Access denied. You are not authorized to access the admin dashboard.',
+          userRoles: user.roles,
+          requiredRoles: allowedRoles
         },
         { status: 403 }
       )
+    }
+
+    // Check email verification
+    if (!user.isEmailVerified) {
+      console.warn('[SSO Login] User email not verified:', user.email)
+      // Note: You can enforce email verification here if needed
+      // return NextResponse.json({ success: false, error: 'Email verification required' }, { status: 403 })
     }
 
     // Create response with user data
     const response = NextResponse.json({
       success: true,
       user: {
-        id: loginData.user.id,
-        email: loginData.user.email,
-        roles: userRoles,
-        orgId: loginData.active_org_id,
-        isEmailVerified: false, // Will be in JWT payload
+        id: user.id,
+        email: user.email,
+        roles: user.roles,
+        orgId: user.orgId,
+        isEmailVerified: user.isEmailVerified,
       },
       accessToken,
+      expiresAt: user.expiresAt * 1000, // Convert to milliseconds
     })
 
     // Set cookies for session management
     const cookieStore = await cookies()
     
-    // Set access token cookie
-    if (accessToken) {
-      cookieStore.set('sso_access_token', accessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 60 * 15, // 15 minutes
-        path: '/',
-      })
-    }
+    // Set access token cookie with proper expiry
+    const tokenExpirySeconds = user.expiresAt - Math.floor(Date.now() / 1000)
+    cookieStore.set('sso_access_token', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: Math.max(tokenExpirySeconds, 60), // At least 1 minute
+      path: '/',
+    })
 
     // Parse and set refresh token cookie from SSO worker
-    if (setCookieHeader) {
-      const refreshTokenMatch = setCookieHeader.match(/refresh_token=([^;]+)/)
+    let refreshToken = null
+    if (loginHeaders.setCookie) {
+      const refreshTokenMatch = loginHeaders.setCookie.match(/refresh_token=([^;]+)/)
       if (refreshTokenMatch) {
-        cookieStore.set('sso_refresh_token', refreshTokenMatch[1], {
+        refreshToken = refreshTokenMatch[1]
+        cookieStore.set('sso_refresh_token', refreshToken, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
@@ -135,9 +155,11 @@ export async function POST(request) {
 
     // Store user info in cookie for middleware access
     cookieStore.set('sso_user', JSON.stringify({
-      id: loginData.user.id,
-      email: loginData.user.email,
-      roles: userRoles,
+      id: user.id,
+      email: user.email,
+      roles: user.roles,
+      orgId: user.orgId,
+      isEmailVerified: user.isEmailVerified,
     }), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -146,15 +168,23 @@ export async function POST(request) {
       path: '/',
     })
 
-    console.log('[SSO Login] Login complete, cookies set')
+    // Log successful login (without sensitive data)
+    console.log('[SSO Login] Successful login:', {
+      userId: user.id,
+      email: user.email,
+      roles: user.roles,
+      hasRefreshToken: !!refreshToken,
+      tokenExpiry: new Date(user.expiresAt * 1000).toISOString(),
+      method: loginResult.usedServiceBinding ? 'service-binding' : 'http-fallback'
+    })
 
     return response
   } catch (error) {
-    console.error('SSO login error:', error)
+    console.error('[SSO Login] Error:', error)
     return NextResponse.json(
       { 
         success: false, 
-        error: error.message || 'An error occurred during login' 
+        error: 'An internal error occurred during login. Please try again.' 
       },
       { status: 500 }
     )

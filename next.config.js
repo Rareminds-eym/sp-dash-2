@@ -7,7 +7,8 @@ const nextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
   experimental: {
-    // Remove if not using Server Components
+    // Enable service bindings for Cloudflare Workers
+    serverComponentsExternalPackages: ['jose'],
   },
   webpack(config, { dev }) {
     if (dev) {

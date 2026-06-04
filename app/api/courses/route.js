@@ -2,15 +2,18 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { addCacheHeaders } from '@/lib/services/cacheService';
 import { handleError } from '@/lib/middleware/errorHandler';
-import { createRLSClient, getUserContext } from '@/lib/supabase-rls';
+import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 /**
  * GET /api/courses - List all courses with pagination, search, and filters
  */
 export async function GET(request) {
     try {
+        const { error: authError } = await authenticateSSORequest(request, ['super_admin', 'admin']);
+        if (authError) return authError;
+
         const url = new URL(request.url);
 
         // Pagination parameters
@@ -179,17 +182,8 @@ export async function GET(request) {
  */
 export async function POST(request) {
     try {
-        const { supabase: rlsClient, user, error: authError } = await createRLSClient(request);
-
-        if (!user || authError) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const userContext = await getUserContext(rlsClient, user);
-
-        if (!userContext) {
-            return NextResponse.json({ error: 'User context not found' }, { status: 403 });
-        }
+        const { error: authError, user } = await authenticateSSORequest(request, ['super_admin', 'admin']);
+        if (authError) return authError;
 
         const body = await request.json();
         const {
@@ -229,8 +223,7 @@ export async function POST(request) {
                     target_outcomes,
                     status: 'Draft', // default status for new courses
                     approval_status: 'pending', // default approval status
-                    educator_id: user.id,
-                    educator_name: user?.metadata?.name || ''
+                    educator_id: user.id
                 }
             ])
             .select('course_id, title, code, description, university, duration, credits, category, thumbnail, target_outcomes, status, approval_status, created_at')

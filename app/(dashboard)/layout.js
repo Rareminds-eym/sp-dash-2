@@ -64,6 +64,15 @@ const initialNavigation = [
   { name: 'Verification Center', icon: FileText, href: '/passports' },
   { name: 'Recruiter Management', icon: Briefcase, href: '/recruiters' },
   {
+    name: 'Student Dashboard',
+    icon: Users,
+    href: '/student-dashboard',
+    subItems: [
+      { name: 'Courses', href: '/student-dashboard/courses', icon: BookOpen },
+      { name: 'Certificates', href: '/student-dashboard/certificates', icon: Trophy },
+    ]
+  },
+  {
     name: 'Approval Center',
     icon: CheckCircle,
     href: '/approvals',

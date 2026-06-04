@@ -11,7 +11,7 @@ export const runtime = 'nodejs';
  */
 export async function GET(request) {
   try {
-    const { error, user } = await authenticateSSORequest(request, ['super_admin', 'admin']);
+    const { error } = await authenticateSSORequest(request, ['super_admin', 'admin']);
     if (error) return error;
     
     const { searchParams } = new URL(request.url);

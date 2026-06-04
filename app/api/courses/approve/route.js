@@ -1,28 +1,19 @@
 import { logAudit } from '@/lib/services/auditService';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { createRLSClient, getUserContext } from '@/lib/supabase-rls';
+import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { NextResponse } from 'next/server';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 export async function POST(request) {
     try {
-        const { supabase: rlsClient, user, error: authError } = await createRLSClient(request);
-
-        if (!user || authError) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const userContext = await getUserContext(rlsClient, user);
-
-        if (!userContext) {
-            return NextResponse.json({ error: 'User context not found' }, { status: 403 });
-        }
+        const { error: authError, user } = await authenticateSSORequest(request, ['super_admin', 'admin']);
+        if (authError) return authError;
 
         const body = await request.json();
-        const { courseId, notes, userId } = body;
+        const { courseId, notes } = body;
 
-        if (!courseId || !userId) {
+        if (!courseId) {
             return NextResponse.json(
                 { error: 'Missing required fields' },
                 { status: 400 }
@@ -35,7 +26,7 @@ export async function POST(request) {
             .update({
                 status: 'Active',
                 approval_status: 'approved',
-                approved_by: userId,
+                approved_by: user.id,
                 approved_at: new Date().toISOString()
             })
             .eq('course_id', courseId)
@@ -51,7 +42,7 @@ export async function POST(request) {
         }
 
         // Log audit
-        await logAudit(userId, 'approve_course', courseId, { notes });
+        await logAudit(user.id, 'approve_course', courseId, { notes });
 
         return NextResponse.json({ success: true, data });
     } catch (error) {

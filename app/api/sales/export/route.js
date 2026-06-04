@@ -1,5 +1,5 @@
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseAdmin, ssoAuthAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 // SECURITY NOTE: CSV export with proper sanitization
 // - All cell values sanitized via sanitizeCell() to prevent formula injection
@@ -45,8 +45,17 @@ const toCsvCell = (value) => {
 export async function GET(request) {
   try {
     // Authenticate using SSO - allow super_admin, admin roles
-    const { error, user } = await authenticateSSORequest(request, ['super_admin', 'admin']);
+    const { error } = await authenticateSSORequest(request, ['super_admin', 'admin']);
     if (error) return error;
+
+    // Check if SSO Auth database client is available
+    if (!ssoAuthAdmin) {
+      logger.error('SSO Auth database client not available');
+      return NextResponse.json(
+        { error: 'SSO Auth database not configured' }, 
+        { status: 500 }
+      );
+    }
 
     // Get query parameters
     const { searchParams } = new URL(request.url);
@@ -67,7 +76,7 @@ export async function GET(request) {
     }
 
     // Build base query - fetch users
-    let usersQuery = supabaseAdmin
+    let usersQuery = ssoAuthAdmin
       .from('users')
       .select('*')
       .eq('isActive', true);
@@ -136,7 +145,7 @@ export async function GET(request) {
       const userEmails = users.map(u => u.email);
 
       // Build subscription query
-      let subsQuery = supabaseAdmin
+      let subsQuery = ssoAuthAdmin
         .from('subscriptions')
         .select('*')
         .in('email', userEmails);

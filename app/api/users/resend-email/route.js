@@ -10,7 +10,7 @@ export const runtime = 'nodejs';
  */
 export async function POST(request) {
   try {
-    const { error, user } = await authenticateSSORequest(request, ['super_admin', 'admin']);
+    const { error } = await authenticateSSORequest(request, ['super_admin', 'admin']);
     if (error) return error;
     
     // Parse request body

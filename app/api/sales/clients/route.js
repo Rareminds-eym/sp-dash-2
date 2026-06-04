@@ -1,5 +1,5 @@
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseAdmin, ssoAuthAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 import Logger from '@/lib/logger';
 import { addSearchFilter, sanitizeSearchTerm } from '@/lib/supabase-utils';
@@ -16,8 +16,17 @@ const logger = new Logger('SalesClientsAPI');
 export async function GET(request) {
   try {
     // Authenticate using SSO - allow super_admin, admin roles
-    const { error, user } = await authenticateSSORequest(request, ['super_admin', 'admin']);
+    const { error } = await authenticateSSORequest(request, ['super_admin', 'admin']);
     if (error) return error;
+
+    // Check if SSO Auth database client is available
+    if (!ssoAuthAdmin) {
+      logger.error('SSO Auth database client not available');
+      return NextResponse.json(
+        { error: 'SSO Auth database not configured' }, 
+        { status: 500 }
+      );
+    }
 
     // Get query parameters
     const { searchParams } = new URL(request.url);
@@ -36,7 +45,7 @@ export async function GET(request) {
     const offset = (page - 1) * limit;
     
     // Step 1: Get user IDs with subscriptions that match filters
-    let subsUserIdQuery = supabaseAdmin
+    let subsUserIdQuery = ssoAuthAdmin
       .from('subscriptions')
       .select('user_id');
 
@@ -65,7 +74,7 @@ export async function GET(request) {
     const subscriptionUserIds = [...new Set(subsUserIds.map(s => s.user_id))];
     
     // Step 2: Build users count query with filters
-    let usersCountQuery = supabaseAdmin
+    let usersCountQuery = ssoAuthAdmin
       .from('users')
       .select('id', { count: 'exact', head: true })
       .in('id', subscriptionUserIds);
@@ -124,7 +133,7 @@ export async function GET(request) {
     }
 
     // Step 3: Fetch paginated users
-    let usersQuery = supabaseAdmin
+    let usersQuery = ssoAuthAdmin
       .from('users')
       .select('*')
       .in('id', subscriptionUserIds);
@@ -170,7 +179,7 @@ export async function GET(request) {
     // Step 4: Fetch subscriptions for paginated users only
     const userIds = users.map(u => u.id);
     
-    let subsQuery = supabaseAdmin
+    let subsQuery = ssoAuthAdmin
       .from('subscriptions')
       .select('user_id, id, plan_type, plan_amount, billing_cycle, status, subscription_start_date, subscription_end_date, phone, email, full_name, created_at')
       .in('user_id', userIds);
