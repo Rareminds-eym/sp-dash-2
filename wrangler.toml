@@ -1,35 +1,32 @@
-# Cloudflare Pages Configuration for Service Bindings
-# This file configures service bindings for the dashboard to communicate with SSO Worker
-
 name = "sp-dash-2"
-compatibility_date = "2024-05-01"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
 
-# Service bindings for SSO Worker
 [[services]]
-binding = "SSO_SERVICE"
-service = "sso-worker"
-environment = "production"
+binding = "SSO"
+service = "sso-api"
+entrypoint = "SSOEntrypoint"
 
-# Environment variables
 [env.production.vars]
-SSO_WORKER_URL = "https://sso.rareminds.com"
 NEXT_PUBLIC_BASE_URL = "https://dashboard.rareminds.com"
 
+[[env.production.services]]
+binding = "SSO"
+service = "sso-api"
+entrypoint = "SSOEntrypoint"
+
 [env.staging.vars]
-SSO_WORKER_URL = "https://sso-staging.rareminds.com"
 NEXT_PUBLIC_BASE_URL = "https://dashboard-staging.rareminds.com"
 
+[[env.staging.services]]
+binding = "SSO"
+service = "sso-api"
+entrypoint = "SSOEntrypoint"
+
 [env.development.vars]
-SSO_WORKER_URL = "http://localhost:8788"
 NEXT_PUBLIC_BASE_URL = "http://localhost:3000"
 
-# Service bindings for different environments
-[env.staging.services]
-binding = "SSO_SERVICE"
-service = "sso-worker"
-environment = "staging"
-
-[env.development.services]
-binding = "SSO_SERVICE"
-service = "sso-worker"
-environment = "development"
+[[env.development.services]]
+binding = "SSO"
+service = "sso-api"
+entrypoint = "SSOEntrypoint"

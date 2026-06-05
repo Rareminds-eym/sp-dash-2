@@ -1,10 +1,11 @@
+export const runtime = 'edge';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { supabaseAdmin, ssoAuthAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 import Logger from '@/lib/logger';
 import { addSearchFilter, sanitizeSearchTerm } from '@/lib/supabase-utils';
 
-export const runtime = 'nodejs'; // Changed from 'edge' to support cookies()
+
 
 const logger = new Logger('SalesClientsAPI');
 

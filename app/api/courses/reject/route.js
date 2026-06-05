@@ -1,9 +1,10 @@
+export const runtime = 'edge';
 import { logAudit } from '@/lib/services/auditService';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { NextResponse } from 'next/server';
 
-export const runtime = 'nodejs';
+
 
 export async function POST(request) {
     try {

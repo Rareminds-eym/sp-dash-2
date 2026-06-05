@@ -1,10 +1,11 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { addCacheHeaders } from '@/lib/services/cacheService';
 import { handleError } from '@/lib/middleware/errorHandler';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
-export const runtime = 'nodejs';
+
 
 /**
  * GET /api/analytics/university-reports - University-wise analytics

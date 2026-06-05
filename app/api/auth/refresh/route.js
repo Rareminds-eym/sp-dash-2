@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { refreshSSOTokens } from '@/lib/middleware/sso-auth'
 import { verifyJWT, extractUserFromJWT } from '@/lib/jwt-utils'
+import { createSSOServiceClient } from '@/lib/sso-service-client'
 
-export const runtime = 'nodejs'
+export const runtime = 'edge'
 
 /**
- * Enhanced Token Refresh Route with Service Binding Support
+ * Token Refresh Route
  * 
  * This route handles refreshing expired access tokens using refresh tokens.
  * It's called automatically by the frontend when tokens are about to expire.
@@ -23,26 +23,38 @@ export async function POST(request) {
       )
     }
 
-    // Refresh tokens via SSO Worker with service binding support
-    const refreshResult = await refreshSSOTokens(refreshToken, {
-      SSO_SERVICE: process.env.SSO_SERVICE, // Cloudflare service binding
-      SSO_WORKER_URL: process.env.SSO_WORKER_URL,
-      NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL
+    // Refresh tokens via SSO Worker's RPC endpoint
+    const ssoClient = await createSSOServiceClient()
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('cf-connecting-ip') || 'unknown'
+    const ua = request.headers.get('user-agent') || 'unknown'
+
+    const refreshData = await ssoClient.refresh({
+      refresh_token: refreshToken,
+      ip,
+      ua
     })
 
-    if (!refreshResult.success) {
+    if (refreshData.error) {
       // Clear invalid refresh token
       cookieStore.delete('sso_refresh_token')
       cookieStore.delete('sso_access_token')
       cookieStore.delete('sso_user')
 
       return NextResponse.json(
-        { success: false, error: refreshResult.error || 'Token refresh failed' },
-        { status: 401 }
+        { success: false, error: refreshData.error || 'Token refresh failed' },
+        { status: refreshData.status || 401 }
       )
     }
 
-    const { access_token: newAccessToken, refresh_token: newRefreshToken } = refreshResult.tokens
+    const newAccessToken = refreshData.access_token
+    const newRefreshToken = refreshData.refresh_token
+
+    if (!newAccessToken) {
+      return NextResponse.json(
+        { success: false, error: 'No access token in refresh response' },
+        { status: 500 }
+      )
+    }
 
     // Verify the new access token
     const verificationResult = await verifyJWT(newAccessToken)
@@ -117,8 +129,7 @@ export async function POST(request) {
 
     console.log('[Token Refresh] Successful refresh for user:', {
       userId: user.id,
-      email: user.email,
-      method: refreshResult.usedServiceBinding ? 'service-binding' : 'http-fallback'
+      email: user.email
     })
 
     return response

@@ -1,15 +1,12 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { verifyJWT, extractUserFromJWT } from '@/lib/jwt-utils'
-import { loginWithSSO } from '@/lib/middleware/sso-auth'
+import { createSSOServiceClient } from '@/lib/sso-service-client'
 
-export const runtime = 'nodejs'
+export const runtime = 'edge'
 
 /**
- * Enhanced SSO Worker Login Route with Service Binding Support
- * 
- * This route handles authentication through the SSO worker with improved
- * JWT verification, service binding support, and better error handling.
+ * SSO Login Route
  */
 export async function POST(request) {
   try {
@@ -22,22 +19,25 @@ export async function POST(request) {
       )
     }
 
-    // Use enhanced SSO login with service binding support
-    const loginResult = await loginWithSSO(email, password, {
-      SSO_SERVICE: process.env.SSO_SERVICE, // Cloudflare service binding
-      SSO_WORKER_URL: process.env.SSO_WORKER_URL,
-      NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL
+    const ssoClient = await createSSOServiceClient()
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('cf-connecting-ip') || 'unknown'
+    const ua = request.headers.get('user-agent') || 'unknown'
+
+    const loginData = await ssoClient.login({
+      email,
+      password,
+      ip,
+      ua
     })
 
-    if (!loginResult.success) {
-      // Enhanced error handling
-      let errorMessage = loginResult.error || 'Invalid email or password'
-      let statusCode = 401
+    if (loginData.error) {
+      let errorMessage = loginData.error || 'Invalid email or password'
+      let statusCode = loginData.status || 401
       
-      if (loginResult.error?.includes('Too many')) {
+      if (errorMessage.includes('Too many')) {
         statusCode = 429
         errorMessage = 'Too many login attempts. Please try again later.'
-      } else if (loginResult.error?.includes('disabled') || loginResult.error?.includes('verification')) {
+      } else if (errorMessage.includes('disabled') || errorMessage.includes('verification') || errorMessage.includes('blocked')) {
         statusCode = 403
         errorMessage = 'Account is disabled or requires verification.'
       }
@@ -48,17 +48,12 @@ export async function POST(request) {
       )
     }
 
-    const { data: loginData, headers: loginHeaders } = loginResult
-
-    // Extract tokens from response - SSO worker returns access_token in body
-    const accessToken = loginHeaders.accessToken || loginData.access_token
+    const accessToken = loginData.access_token
     
     if (!loginData.user || !accessToken) {
       console.error('[SSO Login] Missing data:', { 
         hasUser: !!loginData.user, 
-        hasAccessToken: !!accessToken,
-        loginData: loginData,
-        loginHeaders: loginHeaders
+        hasAccessToken: !!accessToken
       })
       return NextResponse.json(
         { success: false, error: 'Login failed - incomplete response from SSO worker' },
@@ -106,8 +101,6 @@ export async function POST(request) {
     // Check email verification
     if (!user.isEmailVerified) {
       console.warn('[SSO Login] User email not verified:', user.email)
-      // Note: You can enforce email verification here if needed
-      // return NextResponse.json({ success: false, error: 'Email verification required' }, { status: 403 })
     }
 
     // Create response with user data
@@ -137,20 +130,16 @@ export async function POST(request) {
       path: '/',
     })
 
-    // Parse and set refresh token cookie from SSO worker
-    let refreshToken = null
-    if (loginHeaders.setCookie) {
-      const refreshTokenMatch = loginHeaders.setCookie.match(/refresh_token=([^;]+)/)
-      if (refreshTokenMatch) {
-        refreshToken = refreshTokenMatch[1]
-        cookieStore.set('sso_refresh_token', refreshToken, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          maxAge: 60 * 60 * 24 * 30, // 30 days
-          path: '/',
-        })
-      }
+    // Set refresh token cookie from RPC response
+    const refreshToken = loginData.refresh_token
+    if (refreshToken) {
+      cookieStore.set('sso_refresh_token', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+        path: '/',
+      })
     }
 
     // Store user info in cookie for middleware access
@@ -174,8 +163,7 @@ export async function POST(request) {
       email: user.email,
       roles: user.roles,
       hasRefreshToken: !!refreshToken,
-      tokenExpiry: new Date(user.expiresAt * 1000).toISOString(),
-      method: loginResult.usedServiceBinding ? 'service-binding' : 'http-fallback'
+      tokenExpiry: new Date(user.expiresAt * 1000).toISOString()
     })
 
     return response

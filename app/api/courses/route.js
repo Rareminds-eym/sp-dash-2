@@ -1,10 +1,11 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { addCacheHeaders } from '@/lib/services/cacheService';
 import { handleError } from '@/lib/middleware/errorHandler';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 
-export const runtime = 'nodejs';
+
 
 /**
  * GET /api/courses - List all courses with pagination, search, and filters

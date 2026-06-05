@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "set NODE_OPTIONS='--max-old-space-size=512' && next dev --hostname 0.0.0.0 --port 3000",
+    "dev:pages": "npx wrangler@4.94.0 pages dev .vercel/output/static --port 3000 --compatibility-flags nodejs_compat",
     "dev:no-reload": "next dev --hostname 0.0.0.0 --port 3000",
     "dev:webpack": "next dev --hostname 0.0.0.0 --port 3000",
     "build": "next build",
@@ -12,7 +13,6 @@
     "test:sso": "node scripts/test-sso-improvements.js"
   },
   "dependencies": {
-    "@cloudflare/next-on-pages": "^1.13.16",
     "@hookform/resolvers": "^5.1.1",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -72,6 +72,7 @@
     "zod": "^3.25.67"
   },
   "devDependencies": {
+    "@cloudflare/next-on-pages": "^1.13.16",
     "autoprefixer": "^10.4.19",
     "globals": "^16.2.0",
     "postcss": "^8",

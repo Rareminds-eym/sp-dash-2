@@ -1,39 +1,37 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { createSSOServiceClient } from '@/lib/sso-service-client'
 
-export const runtime = 'nodejs'
+export const runtime = 'edge'
 
 /**
  * Enhanced Logout Route
  * 
- * Handles logout by calling SSO Worker and cleaning up all session data.
+ * Handles logout by calling SSO Worker via RPC service binding and cleaning up all session data.
  */
-export async function POST() {
+export async function POST(request) {
   try {
     const cookieStore = await cookies()
-    const ssoAccessToken = cookieStore.get('sso_access_token')?.value
     const ssoRefreshToken = cookieStore.get('sso_refresh_token')?.value
 
-    // Call SSO Worker logout if we have tokens
-    if (ssoAccessToken) {
+    // Call SSO Worker logout via RPC if we have a refresh token
+    if (ssoRefreshToken) {
       try {
-        const ssoWorkerUrl = process.env.SSO_WORKER_URL || 'http://localhost:8788'
+        const ssoClient = await createSSOServiceClient()
         
-        await fetch(`${ssoWorkerUrl}/auth/logout`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${ssoAccessToken}`,
-            'Content-Type': 'application/json',
-            'Origin': process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000',
-          },
-          body: JSON.stringify({
-            refresh_token: ssoRefreshToken
-          }),
+        // Optionally get IP and UA from request headers
+        const ip = request.headers.get('x-forwarded-for') || request.headers.get('cf-connecting-ip') || 'unknown'
+        const ua = request.headers.get('user-agent') || 'unknown'
+
+        await ssoClient.logout({
+          refresh_token: ssoRefreshToken,
+          ip,
+          ua
         })
         
-        console.log('[Logout] SSO Worker logout called successfully')
+        console.log('[Logout] SSO Worker logout RPC called successfully')
       } catch (error) {
-        console.error('[Logout] SSO Worker logout failed:', error)
+        console.error('[Logout] SSO Worker logout RPC failed:', error)
         // Continue with local cleanup even if SSO logout fails
       }
     }

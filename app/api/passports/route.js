@@ -1,10 +1,11 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { filterAndRankResults, fuzzyMatch } from '@/lib/search-utils';
 import { handleError } from '@/lib/middleware/errorHandler';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
-export const runtime = 'nodejs';
+
 
 /**
  * GET /api/passports - List all skill passports with pagination, search, and filters

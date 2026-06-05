@@ -1,10 +1,11 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { filterAndRankResults } from '@/lib/search-utils';
 import { handleError } from '@/lib/middleware/errorHandler';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
-export const runtime = 'nodejs';
+
 
 /**
  * GET /api/audit-logs - List audit logs with pagination, filtering, and search

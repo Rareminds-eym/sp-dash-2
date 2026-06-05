@@ -1,8 +1,9 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { verifyJWT, getTokenExpiry, getTimeUntilExpiry, extractUserFromJWT } from '@/lib/jwt-utils'
 
-export const runtime = 'nodejs'
+
 
 /**
  * Enhanced SSO Session Route with Optimized Token Handling

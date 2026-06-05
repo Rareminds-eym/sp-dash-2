@@ -1,9 +1,10 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { handleError } from '@/lib/middleware/errorHandler';
 
-export const runtime = 'nodejs';
+
 
 /**
  * GET /api/student-dashboard/courses - Get student course enrollments and statistics

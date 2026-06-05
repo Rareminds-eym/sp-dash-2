@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { createSSOServiceClient } from '@/lib/sso-service-client'
 
-export const runtime = 'nodejs'
+export const runtime = 'edge'
 
 /**
- * SSO Worker Session Check Route
+ * SSO Session Check Route - Uses RPC service binding
  * 
  * This route checks if the user has a valid SSO session.
- * It verifies the access token with the SSO worker.
+ * It verifies the access token with the SSO worker via RPC.
  */
 export async function GET(request) {
   try {
@@ -22,18 +23,11 @@ export async function GET(request) {
       )
     }
 
-    const ssoWorkerUrl = process.env.SSO_WORKER_URL || 'http://localhost:8787'
-    
-    // Verify token with SSO worker
-    const meResponse = await fetch(`${ssoWorkerUrl}/auth/me`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Origin': process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000',
-      },
-    })
+    // Verify token with SSO worker via RPC
+    const ssoClient = await createSSOServiceClient()
+    const userData = await ssoClient.verifyToken(accessToken)
 
-    if (!meResponse.ok) {
+    if (!userData || !userData.user) {
       // Token is invalid, clear cookies
       cookieStore.delete('sso_access_token')
       cookieStore.delete('sso_refresh_token')
@@ -45,21 +39,12 @@ export async function GET(request) {
       )
     }
 
-    const userData = await meResponse.json()
-
     return NextResponse.json({
       success: true,
-      user: {
-        id: userData.user.id,
-        email: userData.user.email,
-        roles: userData.user.roles,
-        orgId: userData.user.orgId,
-        orgName: userData.user.orgName,
-        isEmailVerified: userData.user.isEmailVerified,
-      },
+      user: userData.user,
     })
   } catch (error) {
-    console.error('Session check error:', error)
+    console.error('[SSO Session] Error:', error)
     return NextResponse.json(
       { 
         success: false, 

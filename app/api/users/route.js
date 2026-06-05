@@ -1,9 +1,10 @@
+export const runtime = 'edge';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { handleError } from '@/lib/middleware/errorHandler';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 
-export const runtime = 'nodejs';
+
 
 /**
  * GET /api/users - List admin users from admin_users table with pagination, search, and filters

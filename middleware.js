@@ -34,7 +34,8 @@ export async function middleware(req) {
     // Check if token is about to expire (within 5 minutes)
     try {
       if (ssoAccessToken) {
-        const payload = JSON.parse(Buffer.from(ssoAccessToken.split('.')[1], 'base64').toString())
+        const base64 = ssoAccessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        const payload = JSON.parse(atob(base64));
         const now = Math.floor(Date.now() / 1000)
         const expiresIn = payload.exp - now
 
