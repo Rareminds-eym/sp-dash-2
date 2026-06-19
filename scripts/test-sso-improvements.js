@@ -17,6 +17,7 @@ const TEST_CONFIG = {
   ssoWorkerUrl: process.env.SSO_WORKER_URL || 'http://localhost:8788',
   testEmail: process.env.TEST_EMAIL || 'admin@test.com',
   testPassword: process.env.TEST_PASSWORD || 'password123',
+  testJWT: process.env.TEST_JWT,
 };
 
 console.log('🧪 SSO Improvements Test Suite');
@@ -64,13 +65,15 @@ async function testServiceClient() {
 
 async function testJWTUtils() {
   console.log('2. Testing Enhanced JWT Utilities...');
-  
+
+  if (!TEST_CONFIG.testJWT) {
+    console.log('   ⚠️  Skipping JWT utils test (no TEST_JWT environment variable)');
+    return;
+  }
+
   try {
-    // Test JWT decoding with a sample token (this is just for structure testing)
-    const sampleJWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
-    
     console.log('   🔍 Testing JWT extraction utilities...');
-    const userInfo = extractUserFromJWT(sampleJWT);
+    const userInfo = extractUserFromJWT(TEST_CONFIG.testJWT);
     console.log('   ✅ JWT extraction utilities working');
 
     // Test JWKS cache clearing
