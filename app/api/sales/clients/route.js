@@ -1,10 +1,14 @@
-import { authenticateRequest } from '@/lib/middleware/auth';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+export const runtime = 'edge';
+import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
+import { supabaseAdmin, ssoAuthAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 import Logger from '@/lib/logger';
 import { addSearchFilter, sanitizeSearchTerm } from '@/lib/supabase-utils';
 
-export const runtime = 'edge';
+// Skillpassport database admin client
+const skillpassportAdmin = supabaseAdmin;
+
+
 
 const logger = new Logger('SalesClientsAPI');
 
@@ -15,8 +19,22 @@ const logger = new Logger('SalesClientsAPI');
  */
 export async function GET(request) {
   try {
-    const { error } = await authenticateRequest(request, ['/sales']);
+    // Authenticate using SSO - allow super_admin, admin roles
+    const { error } = await authenticateSSORequest(request, ['super_admin', 'admin']);
     if (error) return error;
+
+    // Check if SSO Auth database client is available
+    if (!ssoAuthAdmin) {
+      logger.error('SSO Auth database client not available');
+      return NextResponse.json(
+        {
+          error: 'SSO Auth database not configured. For local development, ensure SSO_AUTH_SUPABASE_URL and SSO_AUTH_SERVICE_ROLE_KEY are set in .env.local',
+          data: [],
+          pagination: { page: 1, limit: 20, total: 0, totalPages: 0 }
+        },
+        { status: 200 } // Return 200 with empty data for graceful degradation
+      );
+    }
 
     // Get query parameters
     const { searchParams } = new URL(request.url);
@@ -34,11 +52,60 @@ export async function GET(request) {
     // Calculate offset for pagination
     const offset = (page - 1) * limit;
     
-    // Step 1: Build base users query with filters
-    let usersCountQuery = supabaseAdmin
+    // Step 1: Get user IDs with subscriptions that match filters
+    let subsUserIdQuery = ssoAuthAdmin
+      .from('subscriptions')
+      .select('user_id');
+
+    if (planType) {
+      subsUserIdQuery = subsUserIdQuery.eq('plan_type', planType);
+    }
+
+    if (status) {
+      subsUserIdQuery = subsUserIdQuery.eq('status', status);
+    }
+
+    let subsUserIds, subsUserIdError;
+    try {
+      const result = await subsUserIdQuery;
+      subsUserIds = result.data;
+      subsUserIdError = result.error;
+    } catch (fetchError) {
+      logger.error('Subscription user IDs fetch failed', {
+        error: fetchError.message,
+        url: process.env.SSO_AUTH_SUPABASE_URL
+      });
+      // Return empty data instead of error for graceful degradation
+      return NextResponse.json({
+        error: 'SSO database temporarily unavailable',
+        data: [],
+        pagination: { page: 1, limit: 20, total: 0, totalPages: 0 }
+      }, { status: 200 });
+    }
+
+    if (subsUserIdError) {
+      logger.error('Subscription user IDs query failed', { error: subsUserIdError.message });
+      return NextResponse.json({
+        error: `Database query failed: ${subsUserIdError.message}`,
+        data: [],
+        pagination: { page: 1, limit: 20, total: 0, totalPages: 0 }
+      }, { status: 200 });
+    }
+
+    if (!subsUserIds || subsUserIds.length === 0) {
+      return NextResponse.json({
+        data: [],
+        pagination: { page, limit, total: 0, totalPages: 0 },
+      });
+    }
+
+    const subscriptionUserIds = [...new Set(subsUserIds.map(s => s.user_id))];
+    
+    // Step 2: Build users count query with filters
+    let usersCountQuery = ssoAuthAdmin
       .from('users')
       .select('id', { count: 'exact', head: true })
-      .eq('isActive', true);
+      .in('id', subscriptionUserIds);
     
     // Exclude tempmail and rareminds domain emails
     const excludedDomains = [
@@ -61,61 +128,20 @@ export async function GET(request) {
       usersCountQuery = usersCountQuery.not('email', 'ilike', domain);
     });
 
-    // Apply user filters to count query
-    if (clientType) {
-      const clientTypes = clientType.split(',').filter(Boolean);
-      if (clientTypes.length > 0) {
-        usersCountQuery = usersCountQuery.in('role', clientTypes);
-      }
-    }
-
     if (search) {
       const sanitizedSearch = sanitizeSearchTerm(search);
       if (sanitizedSearch) {
-        usersCountQuery = addSearchFilter(usersCountQuery, ['firstName', 'lastName', 'email'], sanitizedSearch);
+        usersCountQuery = addSearchFilter(usersCountQuery, ['email'], sanitizedSearch);
       }
     }
 
     if (startDate) {
-      usersCountQuery = usersCountQuery.gte('createdAt', startDate);
+      usersCountQuery = usersCountQuery.gte('created_at', startDate);
     }
 
     if (endDate) {
-      usersCountQuery = usersCountQuery.lte('createdAt', endDate);
+      usersCountQuery = usersCountQuery.lte('created_at', endDate);
     }
-
-    // Step 2: Get users with subscriptions (using EXISTS-like filter)
-    // First get all subscription emails that match our filters
-    let subsEmailQuery = supabaseAdmin
-      .from('subscriptions')
-      .select('email');
-
-    if (planType) {
-      subsEmailQuery = subsEmailQuery.eq('plan_type', planType);
-    }
-
-    if (status) {
-      subsEmailQuery = subsEmailQuery.eq('status', status);
-    }
-
-    const { data: subsEmails, error: subsEmailError } = await subsEmailQuery;
-    
-    if (subsEmailError) {
-      logger.error('Subscription emails query failed', { error: subsEmailError.message });
-      throw new Error(subsEmailError.message);
-    }
-
-    if (!subsEmails || subsEmails.length === 0) {
-      return NextResponse.json({
-        data: [],
-        pagination: { page, limit, total: 0, totalPages: 0 },
-      });
-    }
-
-    const subscriptionEmails = [...new Set(subsEmails.map(s => s.email))];
-    
-    // Add subscription email filter to count query
-    usersCountQuery = usersCountQuery.in('email', subscriptionEmails);
 
     // Get total count
     const { count: totalCount, error: countError } = await usersCountQuery;
@@ -135,36 +161,28 @@ export async function GET(request) {
     }
 
     // Step 3: Fetch paginated users
-    let usersQuery = supabaseAdmin
+    let usersQuery = ssoAuthAdmin
       .from('users')
       .select('*')
-      .eq('isActive', true)
-      .in('email', subscriptionEmails);
+      .in('id', subscriptionUserIds);
     
     excludedDomains.forEach(domain => {
       usersQuery = usersQuery.not('email', 'ilike', domain);
     });
 
-    if (clientType) {
-      const clientTypes = clientType.split(',').filter(Boolean);
-      if (clientTypes.length > 0) {
-        usersQuery = usersQuery.in('role', clientTypes);
-      }
-    }
-
     if (search) {
       const sanitizedSearch = sanitizeSearchTerm(search);
       if (sanitizedSearch) {
-        usersQuery = addSearchFilter(usersQuery, ['firstName', 'lastName', 'email'], sanitizedSearch);
+        usersQuery = addSearchFilter(usersQuery, ['email'], sanitizedSearch);
       }
     }
 
     if (startDate) {
-      usersQuery = usersQuery.gte('createdAt', startDate);
+      usersQuery = usersQuery.gte('created_at', startDate);
     }
 
     if (endDate) {
-      usersQuery = usersQuery.lte('createdAt', endDate);
+      usersQuery = usersQuery.lte('created_at', endDate);
     }
 
     // Apply database-level pagination
@@ -187,12 +205,12 @@ export async function GET(request) {
     }
 
     // Step 4: Fetch subscriptions for paginated users only
-    const userEmails = users.map(u => u.email);
+    const userIds = users.map(u => u.id);
     
-    let subsQuery = supabaseAdmin
+    let subsQuery = ssoAuthAdmin
       .from('subscriptions')
-      .select('email, id, plan_type, plan_amount, billing_cycle, status, subscription_start_date, subscription_end_date, phone, created_at')
-      .in('email', userEmails);
+      .select('user_id, id, plan_type, plan_amount, billing_cycle, status, subscription_start_date, subscription_end_date, phone, email, full_name, created_at')
+      .in('user_id', userIds);
 
     if (planType) {
       subsQuery = subsQuery.eq('plan_type', planType);
@@ -211,13 +229,13 @@ export async function GET(request) {
 
     logger.debug('Subscriptions fetched', { count: subscriptions?.length || 0 });
 
-    // Create a map of subscriptions by email
-    const subscriptionsByEmail = {};
+    // Create a map of subscriptions by user_id
+    const subscriptionsByUserId = {};
     (subscriptions || []).forEach(sub => {
-      if (!subscriptionsByEmail[sub.email]) {
-        subscriptionsByEmail[sub.email] = [];
+      if (!subscriptionsByUserId[sub.user_id]) {
+        subscriptionsByUserId[sub.user_id] = [];
       }
-      subscriptionsByEmail[sub.email].push(sub);
+      subscriptionsByUserId[sub.user_id].push(sub);
     });
 
     // Helper function to select subscription deterministically
@@ -237,20 +255,52 @@ export async function GET(request) {
       return sorted[0];
     };
 
+    // Fetch user names from SkillPassport database for real client names
+    let skillpassportUsers = [];
+    try {
+      const { data: spUsers, error: spError } = await skillpassportAdmin
+        .from('users')
+        .select('id, "firstName", "lastName", email')
+        .in('id', users.map(u => u.id));
+
+      if (!spError && spUsers) {
+        skillpassportUsers = spUsers;
+      }
+    } catch (err) {
+      logger.warn('Failed to fetch SkillPassport user names', { error: err.message });
+      // Continue without names, will fallback to email
+    }
+
+    // Create a map of SkillPassport users by ID for quick lookup
+    const spUserMap = {};
+    skillpassportUsers.forEach(spUser => {
+      spUserMap[spUser.id] = spUser;
+    });
+
     // Combine users with their subscriptions
     const paginatedClients = users
-      .filter(user => subscriptionsByEmail[user.email])
+      .filter(user => subscriptionsByUserId[user.id])
       .map(user => {
-        const subscription = selectSubscription(subscriptionsByEmail[user.email]);
-        const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
-        
+        const subscription = selectSubscription(subscriptionsByUserId[user.id]);
+        const spUser = spUserMap[user.id];
+
+        // Try to get name from SkillPassport first, then subscription, then email
+        let fullName = '';
+        if (spUser?.firstName || spUser?.lastName) {
+          fullName = `${spUser.firstName || ''} ${spUser.lastName || ''}`.trim();
+        } else if (subscription?.full_name && subscription.full_name !== 'Freemium User') {
+          fullName = subscription.full_name;
+        } else {
+          fullName = user.email;
+        }
+
         return {
           id: user.id,
           email: user.email,
           fullName: fullName,
-          phone: user.phone || subscription?.phone || '-',
-          role: user.role,
-          organizationId: user.organizationId,
+          phone: subscription?.phone || '-',
+          role: 'user', // New schema doesn't have role on users table
+          organizationId: subscription?.organization_id || null,
           subscriptionId: subscription?.id || null,
           planType: subscription?.plan_type || null,
           planAmount: subscription?.plan_amount || null,

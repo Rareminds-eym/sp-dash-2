@@ -17,7 +17,7 @@ import { CourseDetailsDialog } from './course-management/CourseDetailsDialog'
 
 import { useDebounce } from '@/hooks/use-debounce'
 
-export default function CourseManagementPage({ currentUser }) {
+export default function CourseManagementPage() {
     const { toast } = useToast()
 
     // Course list state
@@ -437,7 +437,6 @@ export default function CourseManagementPage({ currentUser }) {
                 }}
                 editingCourse={editingCourse}
                 onSuccess={handleCourseSuccess}
-                currentUser={currentUser}
                 universities={universities}
             />
 

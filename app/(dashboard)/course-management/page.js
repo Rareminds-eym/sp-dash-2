@@ -1,8 +1,6 @@
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/supabase-rls'
 import CourseManagementPage from '@/components/pages/CourseManagementPage'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 export const metadata = {
     title: 'Course Management - Rareminds Admin',
@@ -10,11 +8,7 @@ export const metadata = {
 }
 
 export default async function CourseManagementRoute() {
-    const session = await getSession()
-
-    if (!session) {
-        redirect('/login')
-    }
-
-    return <CourseManagementPage currentUser={session} />
+    // SSO authentication is handled by middleware
+    // Page will only render if user is authenticated
+    return <CourseManagementPage />
 }

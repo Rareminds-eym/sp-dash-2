@@ -1,16 +1,17 @@
-import { authenticateRequest } from '@/lib/middleware/auth';
+export const runtime = 'edge';
+import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { handleError } from '@/lib/middleware/errorHandler';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 
-export const runtime = 'edge';
+
 
 /**
  * GET /api/users - List admin users from admin_users table with pagination, search, and filters
  */
 export async function GET(request) {
   try {
-    const { rlsClient, error } = await authenticateRequest(request, ['/users']);
+    const { error } = await authenticateSSORequest(request, ['super_admin', 'admin']);
     if (error) return error;
     
     // Get parameters from query string
@@ -24,8 +25,8 @@ export async function GET(request) {
     const sortBy = url.searchParams.get('sortBy') || 'granted_at';
     const sortOrder = url.searchParams.get('sortOrder') || 'desc';
     
-    // Build the query for admin users using RLS client
-    let adminUsersQuery = rlsClient
+    // Build the query for admin users using admin client
+    let adminUsersQuery = supabaseAdmin
       .from('admin_users')
       .select('*', { count: 'exact' });
     
@@ -50,7 +51,7 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Failed to fetch admin users', details: queryError }, { status: 500 });
     }
     
-    // Fetch user details for all admin users using RLS client
+    // Fetch user details for all admin users using admin client
     const userIds = (adminUsers || []).map(a => a.id);
     const grantedByIds = (adminUsers || []).map(a => a.granted_by).filter(Boolean);
     
@@ -58,7 +59,7 @@ export async function GET(request) {
     let grantedByMap = {};
     
     if (userIds.length > 0) {
-      const { data: usersData } = await rlsClient
+      const { data: usersData } = await supabaseAdmin
         .from('users')
         .select('id, email, isActive, createdAt, firstName, lastName, metadata')
         .in('id', userIds);
@@ -69,7 +70,7 @@ export async function GET(request) {
     }
     
     if (grantedByIds.length > 0) {
-      const { data: grantedByData } = await rlsClient
+      const { data: grantedByData } = await supabaseAdmin
         .from('users')
         .select('id, email, firstName, lastName, metadata')
         .in('id', grantedByIds);
@@ -156,7 +157,7 @@ export async function GET(request) {
  */
 export async function POST(request) {
   try {
-    const { rlsClient, session, error } = await authenticateRequest(request, ['/users']);
+    const { error, user } = await authenticateSSORequest(request, ['super_admin', 'admin']);
     if (error) return error;
     
     // Parse request body
@@ -245,7 +246,7 @@ export async function POST(request) {
         .insert({
           id: newUserId,
           admin_role: role,
-          granted_by: session?.user?.id || null,
+          granted_by: user?.id || null,
           granted_at: new Date().toISOString()
         });
       

@@ -1,20 +1,18 @@
+export const runtime = 'edge';
 import { logAudit } from '@/lib/services/auditService';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { createRLSClient, getUserContext } from '@/lib/supabase-rls';
+import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { NextResponse } from 'next/server';
 
-export const runtime = 'edge';
+
 
 /**
  * GET /api/courses/[id] - Fetch a single course by ID
  */
 export async function GET(request, { params }) {
     try {
-        const { supabase: rlsClient, user, error: authError } = await createRLSClient(request);
-
-        if (!user || authError) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
+        const { error: authError } = await authenticateSSORequest(request, ['super_admin', 'admin']);
+        if (authError) return authError;
 
         const { id } = await params;
 
@@ -72,17 +70,8 @@ export async function GET(request, { params }) {
  */
 export async function PUT(request, { params }) {
     try {
-        const { supabase: rlsClient, user, error: authError } = await createRLSClient(request);
-
-        if (!user || authError) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const userContext = await getUserContext(rlsClient, user);
-
-        if (!userContext) {
-            return NextResponse.json({ error: 'User context not found' }, { status: 403 });
-        }
+        const { error: authError, user } = await authenticateSSORequest(request, ['super_admin', 'admin']);
+        if (authError) return authError;
 
         const { id } = await params;
         const body = await request.json();
@@ -184,17 +173,8 @@ export async function PUT(request, { params }) {
  */
 export async function DELETE(request, { params }) {
     try {
-        const { supabase: rlsClient, user, error: authError } = await createRLSClient(request);
-
-        if (!user || authError) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const userContext = await getUserContext(rlsClient, user);
-
-        if (!userContext) {
-            return NextResponse.json({ error: 'User context not found' }, { status: 403 });
-        }
+        const { error: authError, user } = await authenticateSSORequest(request, ['super_admin', 'admin']);
+        if (authError) return authError;
 
         const { id } = await params;
 

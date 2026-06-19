@@ -1,5 +1,6 @@
-import { authenticateRequest } from '@/lib/middleware/auth';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+export const runtime = 'edge';
+import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
+import { supabaseAdmin, ssoAuthAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 // SECURITY NOTE: CSV export with proper sanitization
 // - All cell values sanitized via sanitizeCell() to prevent formula injection
@@ -8,7 +9,7 @@ import { NextResponse } from 'next/server';
 import Logger from '@/lib/logger';
 import { addSearchFilter, sanitizeSearchTerm } from '@/lib/supabase-utils';
 
-export const runtime = 'edge';
+
 
 const logger = new Logger('SalesExportAPI');
 
@@ -44,8 +45,18 @@ const toCsvCell = (value) => {
  */
 export async function GET(request) {
   try {
-    const { error } = await authenticateRequest(request, ['/sales']);
+    // Authenticate using SSO - allow super_admin, admin roles
+    const { error } = await authenticateSSORequest(request, ['super_admin', 'admin']);
     if (error) return error;
+
+    // Check if SSO Auth database client is available
+    if (!ssoAuthAdmin) {
+      logger.error('SSO Auth database client not available');
+      return NextResponse.json(
+        { error: 'SSO Auth database not configured' }, 
+        { status: 500 }
+      );
+    }
 
     // Get query parameters
     const { searchParams } = new URL(request.url);
@@ -66,10 +77,9 @@ export async function GET(request) {
     }
 
     // Build base query - fetch users
-    let usersQuery = supabaseAdmin
+    let usersQuery = ssoAuthAdmin
       .from('users')
-      .select('*')
-      .eq('isActive', true);
+      .select('*');
     
     // Exclude tempmail and rareminds domain emails
     const excludedDomains = [
@@ -135,7 +145,7 @@ export async function GET(request) {
       const userEmails = users.map(u => u.email);
 
       // Build subscription query
-      let subsQuery = supabaseAdmin
+      let subsQuery = ssoAuthAdmin
         .from('subscriptions')
         .select('*')
         .in('email', userEmails);
@@ -157,6 +167,28 @@ export async function GET(request) {
       }
 
       logger.debug('Subscriptions fetched for export', { count: subscriptions?.length || 0 });
+
+      // Fetch user names from SkillPassport database for real client names
+      let skillpassportUsers = [];
+      try {
+        const { data: spUsers, error: spError } = await supabaseAdmin
+          .from('users')
+          .select('id, "firstName", "lastName", email')
+          .in('id', users.map(u => u.id));
+
+        if (!spError && spUsers) {
+          skillpassportUsers = spUsers;
+        }
+      } catch (err) {
+        logger.warn('Failed to fetch SkillPassport user names', { error: err.message });
+        // Continue without names, will fallback to email
+      }
+
+      // Create a map of SkillPassport users by ID for quick lookup
+      const spUserMap = {};
+      skillpassportUsers.forEach(spUser => {
+        spUserMap[spUser.id] = spUser;
+      });
 
       // Create a map of subscriptions by email
       const subscriptionsByEmail = {};
@@ -189,7 +221,17 @@ export async function GET(request) {
         .filter(user => subscriptionsByEmail[user.email])
         .map(user => {
           const subscription = selectSubscription(subscriptionsByEmail[user.email]);
-          const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
+          const spUser = spUserMap[user.id];
+
+          // Try to get name from SkillPassport first, then SSO, then email
+          let fullName = '';
+          if (spUser?.firstName || spUser?.lastName) {
+            fullName = `${spUser.firstName || ''} ${spUser.lastName || ''}`.trim();
+          } else if (user.firstName || user.lastName) {
+            fullName = [user.firstName, user.lastName].filter(Boolean).join(' ');
+          } else {
+            fullName = user.email;
+          }
           
           return {
             id: user.id,

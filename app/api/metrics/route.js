@@ -1,20 +1,22 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/middleware/auth';
+import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { getDashboardMetrics } from '@/lib/services/metricsService';
 import { addCacheHeaders } from '@/lib/services/cacheService';
 import { handleError } from '@/lib/middleware/errorHandler';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
-export const runtime = 'edge';
+
 
 /**
  * GET /api/metrics - Dashboard metrics
  */
 export async function GET(request) {
   try {
-    const { rlsClient, error } = await authenticateRequest(request, ['/api/metrics']);
+    const { error } = await authenticateSSORequest(request, ['super_admin', 'admin']);
     if (error) return error;
 
-    const metrics = await getDashboardMetrics(rlsClient);
+    const metrics = await getDashboardMetrics(supabaseAdmin);
     const response = NextResponse.json(metrics);
     return addCacheHeaders(response, 'dynamic');
   } catch (error) {

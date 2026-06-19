@@ -1,20 +1,22 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/middleware/auth';
+import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { addCacheHeaders } from '@/lib/services/cacheService';
 import { handleError } from '@/lib/middleware/errorHandler';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
-export const runtime = 'edge';
+
 
 /**
  * GET /api/analytics/university-reports - University-wise analytics
  */
 export async function GET(request) {
   try {
-    const { rlsClient, error } = await authenticateRequest(request);
+    const { error } = await authenticateSSORequest(request, ['super_admin', 'admin']);
     if (error) return error;
     
     // Use RLS client - platform admins will see all data via RLS policies
-    const { data: universities, error: univError } = await rlsClient
+    const { data: universities, error: univError } = await supabaseAdmin
       .from('universities')
       .select('id, name, state');
     
@@ -28,7 +30,7 @@ export async function GET(request) {
     }
 
     // Fetch all students with their university IDs
-    const { data: students, error: studentError } = await rlsClient
+    const { data: students, error: studentError } = await supabaseAdmin
       .from('students')
       .select('id, universityId');
     
@@ -37,7 +39,7 @@ export async function GET(request) {
     }
 
     // Fetch all skill passports
-    const { data: passports, error: passportError } = await rlsClient
+    const { data: passports, error: passportError } = await supabaseAdmin
       .from('skill_passports')
       .select('studentId, status');
     
