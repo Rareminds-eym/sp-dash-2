@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { verifyJWT, extractUserFromJWT } from '@/lib/jwt-utils'
-import { createSSOServiceClient } from '@/lib/sso-service-client'
 
 export const runtime = 'edge'
 
 /**
  * SSO Login Route
+ *
+ * Direct HTTP POST to SSO worker with Origin header.
+ * Server-to-server authentication.
  */
 export async function POST(request) {
   try {
@@ -19,16 +21,20 @@ export async function POST(request) {
       )
     }
 
-    const ssoClient = await createSSOServiceClient()
-    const ip = request.headers.get('x-forwarded-for') || request.headers.get('cf-connecting-ip') || 'unknown'
-    const ua = request.headers.get('user-agent') || 'unknown'
+    const ssoWorkerUrl = process.env.SSO_WORKER_URL
+    if (!ssoWorkerUrl) {
+      throw new Error('SSO_WORKER_URL not configured')
+    }
 
-    const loginData = await ssoClient.login({
-      email,
-      password,
-      ip,
-      ua
-    })
+    // Direct HTTP POST with Origin header
+    const loginData = await fetch(`${ssoWorkerUrl}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Origin': 'http://127.0.0.1:3000', // Server origin
+      },
+      body: JSON.stringify({ email, password }),
+    }).then(res => res.json())
 
     if (loginData.error) {
       let errorMessage = loginData.error || 'Invalid email or password'
@@ -82,8 +88,8 @@ export async function POST(request) {
       )
     }
 
-    // Check if user has admin role (super_admin, admin, or manager)
-    const allowedRoles = ['super_admin', 'admin', 'manager']
+    // Check if user has rm_admin role only
+    const allowedRoles = ['rm_admin']
     const hasAdminRole = user.roles.some(role => allowedRoles.includes(role))
     
     if (!hasAdminRole) {
