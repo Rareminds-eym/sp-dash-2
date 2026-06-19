@@ -1,3 +1,9 @@
+// Enable Cloudflare Pages local development with service bindings
+if (process.env.NODE_ENV === 'development') {
+  const { setupDevPlatform } = require('@cloudflare/next-on-pages/next-dev');
+  setupDevPlatform();
+}
+
 const nextConfig = {
   // Configured for Cloudflare Pages deployment with Edge Runtime
   images: {

@@ -24,8 +24,12 @@ export async function GET(request) {
     if (!ssoAuthAdmin) {
       logger.error('SSO Auth database client not available');
       return NextResponse.json(
-        { error: 'SSO Auth database not configured' }, 
-        { status: 500 }
+        {
+          error: 'SSO Auth database not configured. For local development, ensure SSO_AUTH_SUPABASE_URL and SSO_AUTH_SERVICE_ROLE_KEY are set in .env.local',
+          data: [],
+          pagination: { page: 1, limit: 20, total: 0, totalPages: 0 }
+        },
+        { status: 200 } // Return 200 with empty data for graceful degradation
       );
     }
 
@@ -58,11 +62,31 @@ export async function GET(request) {
       subsUserIdQuery = subsUserIdQuery.eq('status', status);
     }
 
-    const { data: subsUserIds, error: subsUserIdError } = await subsUserIdQuery;
-    
+    let subsUserIds, subsUserIdError;
+    try {
+      const result = await subsUserIdQuery;
+      subsUserIds = result.data;
+      subsUserIdError = result.error;
+    } catch (fetchError) {
+      logger.error('Subscription user IDs fetch failed', {
+        error: fetchError.message,
+        url: process.env.SSO_AUTH_SUPABASE_URL
+      });
+      // Return empty data instead of error for graceful degradation
+      return NextResponse.json({
+        error: 'SSO database temporarily unavailable',
+        data: [],
+        pagination: { page: 1, limit: 20, total: 0, totalPages: 0 }
+      }, { status: 200 });
+    }
+
     if (subsUserIdError) {
       logger.error('Subscription user IDs query failed', { error: subsUserIdError.message });
-      throw new Error(subsUserIdError.message);
+      return NextResponse.json({
+        error: `Database query failed: ${subsUserIdError.message}`,
+        data: [],
+        pagination: { page: 1, limit: 20, total: 0, totalPages: 0 }
+      }, { status: 200 });
     }
 
     if (!subsUserIds || subsUserIds.length === 0) {
