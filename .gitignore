@@ -36,6 +36,7 @@ dist
 .env*
 !.env.example
 !.env.local.example
+!.env.production.example
 .dev.vars
 
 # Logs and debug files
