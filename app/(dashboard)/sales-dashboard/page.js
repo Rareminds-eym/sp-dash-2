@@ -126,35 +126,67 @@ export default function SalesDashboardPage() {
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
-  const handleExport = (format) => {
-    const params = new URLSearchParams();
+  const handleExport = async (format) => {
+    try {
+      const params = new URLSearchParams();
 
-    if (filters.clientType.length > 0) {
-      params.set('clientType', filters.clientType.join(','));
-    }
-    if (filters.planType) {
-      params.set('planType', filters.planType);
-    }
-    if (filters.status) {
-      params.set('status', filters.status);
-    }
-    if (filters.search) {
-      params.set('search', filters.search);
-    }
-    // Add date range filters
-    if (filters.dateRange && filters.dateRange.length >= 2) {
-      const [startDate, endDate] = filters.dateRange;
-      if (startDate) {
-        params.set('startDate', startDate.toISOString());
+      if (filters.clientType.length > 0) {
+        params.set('clientType', filters.clientType.join(','));
       }
-      if (endDate) {
-        params.set('endDate', endDate.toISOString());
+      if (filters.planType) {
+        params.set('planType', filters.planType);
       }
+      if (filters.status) {
+        params.set('status', filters.status);
+      }
+      if (filters.search) {
+        params.set('search', filters.search);
+      }
+      // Add date range filters
+      if (filters.dateRange && filters.dateRange.length >= 2) {
+        const [startDate, endDate] = filters.dateRange;
+        if (startDate) {
+          params.set('startDate', startDate.toISOString());
+        }
+        if (endDate) {
+          params.set('endDate', endDate.toISOString());
+        }
+      }
+
+      params.set('format', format);
+
+      // Fetch the file
+      const response = await fetch(`/api/sales/export?${params.toString()}`);
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Export failed');
+      }
+
+      // Get the filename from Content-Disposition header
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `clients_export.${format}`;
+      if (contentDisposition) {
+        const matches = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (matches && matches[1]) {
+          filename = matches[1];
+        }
+      }
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export error:', error);
+      alert(`Export failed: ${error.message}`);
     }
-
-    params.set('format', format);
-
-    window.location.href = `/api/sales/export?${params.toString()}`;
   };
 
   const handlePageChange = (page) => {

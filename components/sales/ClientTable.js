@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Mail, User, CreditCard, Calendar } from 'lucide-react';
+import { useState } from 'react';
 
 // Safe date formatter with error handling
 const formatDate = (dateString) => {
@@ -57,6 +58,38 @@ const getStatusColor = (status) => {
   }
 };
 
+// Truncate email with tooltip
+const truncateEmail = (email, maxLength = 25) => {
+  if (!email) return 'No email';
+  if (email.length <= maxLength) return email;
+  return email.substring(0, maxLength - 3) + '...';
+};
+
+// Email cell component with tooltip
+function EmailCell({ email }) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const truncated = truncateEmail(email);
+  const needsTruncation = email && email.length > 25;
+
+  return (
+    <div
+      className="relative inline-block cursor-help"
+      onMouseEnter={() => needsTruncation && setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
+      <span className="text-gray-700 dark:text-gray-300 text-sm">
+        {truncated}
+      </span>
+      {showTooltip && needsTruncation && (
+        <div className="absolute bottom-full left-0 mb-2 px-3 py-2 text-xs text-white bg-gray-800 dark:bg-gray-900 rounded shadow-lg whitespace-nowrap z-10">
+          {email}
+          <div className="absolute top-full left-2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-800 dark:border-t-gray-900"></div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ClientCard({ client }) {
   return (
     <Card className="mb-4">
@@ -73,7 +106,7 @@ function ClientCard({ client }) {
       <CardContent className="space-y-3">
         <div className="flex items-center gap-2 text-sm">
           <Mail className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-          <span className="text-gray-700 dark:text-gray-300">{client.email}</span>
+          <EmailCell email={client.email} />
         </div>
         <div className="flex items-center gap-2 text-sm">
           <User className="w-4 h-4 text-gray-500 dark:text-gray-400" />
@@ -167,7 +200,9 @@ export function ClientTable({ data, pagination, isLoading, onPageChange }) {
             {data.map((client) => (
               <TableRow key={client.id}>
                 <TableCell>{client.fullName}</TableCell>
-                <TableCell>{client.email}</TableCell>
+                <TableCell>
+                  <EmailCell email={client.email} />
+                </TableCell>
                 <TableCell>{client.phone || '-'}</TableCell>
                 <TableCell>{client.role}</TableCell>
                 <TableCell>{client.planType || '-'}</TableCell>

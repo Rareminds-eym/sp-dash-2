@@ -77,9 +77,9 @@ export async function GET(request) {
                     .from(tableName)
                     .select(`
                         *,
-                        users:learner_id (
-                            firstName,
-                            lastName,
+                        learners:learner_id (
+                            id,
+                            name,
                             email
                         )
                     `);
@@ -112,6 +112,39 @@ export async function GET(request) {
                     totalCount = count || 0;
                     tableFound = true;
                     console.log(`Found certificates in table: ${tableName}`);
+
+                    // Fetch learner details if join didn't work (missing learner data)
+                    const learnerIds = data
+                        .filter(cert => !cert.learners || !cert.learners.id)
+                        .map(cert => cert.learner_id)
+                        .filter(Boolean);
+
+                    if (learnerIds.length > 0) {
+                        try {
+                            const { data: learnerRecords } = await supabaseAdmin
+                                .from('learners')
+                                .select('id, name, email')
+                                .in('id', learnerIds);
+
+                            if (learnerRecords) {
+                                const learnerMap = {};
+                                learnerRecords.forEach(learner => {
+                                    learnerMap[learner.id] = learner;
+                                });
+
+                                // Merge learner data into certificates
+                                certificatesData = certificatesData.map(cert => {
+                                    if (!cert.learners && cert.learner_id) {
+                                        cert.learners = learnerMap[cert.learner_id];
+                                    }
+                                    return cert;
+                                });
+                            }
+                        } catch (err) {
+                            console.warn('Failed to fetch learner details separately:', err);
+                        }
+                    }
+
                     break;
                 }
             } catch (err) {
@@ -176,12 +209,20 @@ export async function GET(request) {
 
         // Transform the data to match frontend expectations
         const transformedCertificates = certificatesData.map(cert => {
-            // Handle user data from join or use learner_id
-            const userData = cert.users || {};
-            const studentName = userData.firstName && userData.lastName 
-                ? `${userData.firstName} ${userData.lastName}`
-                : cert.learner_name || `Learner ${cert.learner_id || 'Unknown'}`;
-            const studentEmail = userData.email || cert.learner_email || null;
+            // Get learner data from the join
+            const learnerData = cert.learners || {};
+
+            // Try to construct student name from available fields
+            let studentName = '';
+            if (learnerData.name) {
+                studentName = learnerData.name;
+            } else if (cert.learner_name) {
+                studentName = cert.learner_name;
+            } else {
+                studentName = `Unknown Learner`;
+            }
+
+            const studentEmail = learnerData.email || cert.learner_email || cert.email || null;
 
             return {
                 id: cert.id || cert.credential_id,

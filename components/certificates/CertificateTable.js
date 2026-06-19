@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Award, User, Calendar, Download, FileText } from 'lucide-react';
+import { Award, User, Calendar, FileText } from 'lucide-react';
+import { useState } from 'react';
 
 // Safe date formatter with error handling
 const formatDate = (dateString) => {
@@ -27,7 +28,6 @@ const COLUMNS = [
   { key: 'certificateId', label: 'Certificate ID' },
   { key: 'issueDate', label: 'Issue Date' },
   { key: 'downloadCount', label: 'Downloads' },
-  { key: 'lastDownloaded', label: 'Last Downloaded' },
 ];
 
 const getDownloadBadgeColor = (count) => {
@@ -36,6 +36,38 @@ const getDownloadBadgeColor = (count) => {
   if (count <= 15) return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300';
   return 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300';
 };
+
+// Truncate email with tooltip
+const truncateEmail = (email, maxLength = 25) => {
+  if (!email) return 'No email';
+  if (email.length <= maxLength) return email;
+  return email.substring(0, maxLength - 3) + '...';
+};
+
+// Email cell component with tooltip
+function EmailCell({ email }) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const truncated = truncateEmail(email);
+  const needsTruncation = email && email.length > 25;
+
+  return (
+    <div
+      className="relative inline-block cursor-help"
+      onMouseEnter={() => needsTruncation && setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
+      <span className="text-gray-700 dark:text-gray-300 text-sm">
+        {truncated}
+      </span>
+      {showTooltip && needsTruncation && (
+        <div className="absolute bottom-full left-0 mb-2 px-3 py-2 text-xs text-white bg-gray-800 dark:bg-gray-900 rounded shadow-lg whitespace-nowrap z-10">
+          {email}
+          <div className="absolute top-full left-2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-800 dark:border-t-gray-900"></div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function CertificateCard({ certificate }) {
   return (
@@ -51,9 +83,7 @@ function CertificateCard({ certificate }) {
       <CardContent className="space-y-3">
         <div className="flex items-center gap-2 text-sm">
           <User className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-          <span className="text-gray-700 dark:text-gray-300">
-            {certificate.studentEmail || 'No email available'}
-          </span>
+          <EmailCell email={certificate.studentEmail} />
         </div>
         <div className="flex items-center gap-2 text-sm">
           <Award className="w-4 h-4 text-gray-500 dark:text-gray-400" />
@@ -71,14 +101,6 @@ function CertificateCard({ certificate }) {
             Issued: {formatDate(certificate.issueDate)}
           </span>
         </div>
-        {certificate.lastDownloaded && (
-          <div className="flex items-center gap-2 text-sm">
-            <Download className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-            <span className="text-gray-700 dark:text-gray-300">
-              Last downloaded: {formatDate(certificate.lastDownloaded)}
-            </span>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
@@ -150,7 +172,9 @@ export function CertificateTable({ data, pagination, isLoading, onPageChange }) 
                   <div>
                     <p className="font-medium">{certificate.studentName}</p>
                     {certificate.studentEmail && (
-                      <p className="text-sm text-muted-foreground">{certificate.studentEmail}</p>
+                      <p className="text-sm text-muted-foreground">
+                        <EmailCell email={certificate.studentEmail} />
+                      </p>
                     )}
                   </div>
                 </TableCell>
@@ -165,11 +189,6 @@ export function CertificateTable({ data, pagination, isLoading, onPageChange }) 
                   <Badge className={getDownloadBadgeColor(certificate.downloadCount || 0)}>
                     {certificate.downloadCount || 0}
                   </Badge>
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {certificate.lastDownloaded 
-                    ? formatDate(certificate.lastDownloaded)
-                    : 'Never'}
                 </TableCell>
               </TableRow>
             ))}

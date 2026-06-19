@@ -5,6 +5,9 @@ import { NextResponse } from 'next/server';
 import Logger from '@/lib/logger';
 import { addSearchFilter, sanitizeSearchTerm } from '@/lib/supabase-utils';
 
+// Skillpassport database admin client
+const skillpassportAdmin = supabaseAdmin;
+
 
 
 const logger = new Logger('SalesClientsAPI');
@@ -252,13 +255,45 @@ export async function GET(request) {
       return sorted[0];
     };
 
+    // Fetch user names from SkillPassport database for real client names
+    let skillpassportUsers = [];
+    try {
+      const { data: spUsers, error: spError } = await skillpassportAdmin
+        .from('users')
+        .select('id, "firstName", "lastName", email')
+        .in('id', users.map(u => u.id));
+
+      if (!spError && spUsers) {
+        skillpassportUsers = spUsers;
+      }
+    } catch (err) {
+      logger.warn('Failed to fetch SkillPassport user names', { error: err.message });
+      // Continue without names, will fallback to email
+    }
+
+    // Create a map of SkillPassport users by ID for quick lookup
+    const spUserMap = {};
+    skillpassportUsers.forEach(spUser => {
+      spUserMap[spUser.id] = spUser;
+    });
+
     // Combine users with their subscriptions
     const paginatedClients = users
       .filter(user => subscriptionsByUserId[user.id])
       .map(user => {
         const subscription = selectSubscription(subscriptionsByUserId[user.id]);
-        const fullName = subscription?.full_name || user.email;
-        
+        const spUser = spUserMap[user.id];
+
+        // Try to get name from SkillPassport first, then subscription, then email
+        let fullName = '';
+        if (spUser?.firstName || spUser?.lastName) {
+          fullName = `${spUser.firstName || ''} ${spUser.lastName || ''}`.trim();
+        } else if (subscription?.full_name && subscription.full_name !== 'Freemium User') {
+          fullName = subscription.full_name;
+        } else {
+          fullName = user.email;
+        }
+
         return {
           id: user.id,
           email: user.email,
