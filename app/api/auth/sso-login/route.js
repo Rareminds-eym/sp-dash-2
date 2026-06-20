@@ -22,19 +22,38 @@ export async function POST(request) {
     }
 
     const ssoWorkerUrl = process.env.SSO_WORKER_URL
+    const serverOrigin = process.env.NEXT_PUBLIC_BASE_URL
+
     if (!ssoWorkerUrl) {
       throw new Error('SSO_WORKER_URL not configured')
     }
 
-    // Direct HTTP POST with Origin header
-    const loginData = await fetch(`${ssoWorkerUrl}/auth/login`, {
+    // Direct HTTP POST with Origin header and timeout
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10000)
+
+    const ssoResponse = await fetch(`${ssoWorkerUrl}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Origin': 'http://127.0.0.1:3000', // Server origin
+        'Origin': serverOrigin,
       },
       body: JSON.stringify({ email, password }),
-    }).then(res => res.json())
+      signal: controller.signal,
+    })
+
+    clearTimeout(timeout)
+
+    if (!ssoResponse.ok) {
+      const errorData = await ssoResponse.json()
+      console.error('[SSO Login] HTTP error:', { status: ssoResponse.status, error: errorData })
+      return NextResponse.json(
+        { success: false, error: errorData.error || 'Login failed' },
+        { status: ssoResponse.status }
+      )
+    }
+
+    const loginData = await ssoResponse.json()
 
     if (loginData.error) {
       let errorMessage = loginData.error || 'Invalid email or password'
