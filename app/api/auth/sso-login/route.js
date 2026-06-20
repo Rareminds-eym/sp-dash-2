@@ -28,24 +28,36 @@ export async function POST(request) {
       throw new Error('SSO_WORKER_URL not configured')
     }
 
+    if (!serverOrigin) {
+      throw new Error('NEXT_PUBLIC_BASE_URL not configured')
+    }
+
     // Direct HTTP POST with Origin header and timeout
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 10000)
 
-    const ssoResponse = await fetch(`${ssoWorkerUrl}/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Origin': serverOrigin,
-      },
-      body: JSON.stringify({ email, password }),
-      signal: controller.signal,
-    })
-
-    clearTimeout(timeout)
+    let ssoResponse
+    try {
+      ssoResponse = await fetch(`${ssoWorkerUrl}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Origin': serverOrigin,
+        },
+        body: JSON.stringify({ email, password }),
+        signal: controller.signal,
+      })
+    } finally {
+      clearTimeout(timeout)
+    }
 
     if (!ssoResponse.ok) {
-      const errorData = await ssoResponse.json()
+      let errorData = {}
+      try {
+        errorData = await ssoResponse.json()
+      } catch {
+        errorData = { error: ssoResponse.statusText || 'Request failed' }
+      }
       console.error('[SSO Login] HTTP error:', { status: ssoResponse.status, error: errorData })
       return NextResponse.json(
         { success: false, error: errorData.error || 'Login failed' },
