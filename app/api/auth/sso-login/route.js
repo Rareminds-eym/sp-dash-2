@@ -27,18 +27,18 @@ export async function POST(request) {
       throw new Error('SSO_WORKER_URL not configured')
     }
 
-    // Construct origin from request URL
-    const requestUrl = new URL(request.url)
-    let hostname = requestUrl.hostname
-    const port = requestUrl.port
+    // Get origin safely
+    let serverOrigin
 
-    // Normalize 0.0.0.0 to localhost for local development
-    if (hostname === '0.0.0.0') {
-      hostname = 'localhost'
+    if (process.env.NODE_ENV === 'production') {
+      // Production: use X-Forwarded-Host header (set by reverse proxy/load balancer)
+      const forwardedHost = request.headers.get('x-forwarded-host')
+      const protocol = request.headers.get('x-forwarded-proto') || 'https'
+      serverOrigin = `${protocol}://${forwardedHost || request.headers.get('host')}`
+    } else {
+      // Development: use safe default localhost
+      serverOrigin = 'http://localhost:3000'
     }
-
-    const host = port ? `${hostname}:${port}` : hostname
-    const serverOrigin = `${requestUrl.protocol}//${host}`
 
     // Direct HTTP POST with Origin header and timeout
     const controller = new AbortController()
