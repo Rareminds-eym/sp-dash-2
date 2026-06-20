@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { verifyJWT, extractUserFromJWT } from '@/lib/jwt-utils'
-import { createSSOServiceClient } from '@/lib/sso-service-client'
 
 export const runtime = 'edge'
 
 /**
  * SSO Login Route
+ *
+ * Direct HTTP POST to SSO worker with Origin header.
+ * Server-to-server authentication.
  */
 export async function POST(request) {
   try {
@@ -19,16 +21,51 @@ export async function POST(request) {
       )
     }
 
-    const ssoClient = await createSSOServiceClient()
-    const ip = request.headers.get('x-forwarded-for') || request.headers.get('cf-connecting-ip') || 'unknown'
-    const ua = request.headers.get('user-agent') || 'unknown'
+    const ssoWorkerUrl = process.env.SSO_WORKER_URL
+    const serverOrigin = process.env.NEXT_PUBLIC_BASE_URL
 
-    const loginData = await ssoClient.login({
-      email,
-      password,
-      ip,
-      ua
-    })
+    if (!ssoWorkerUrl) {
+      throw new Error('SSO_WORKER_URL not configured')
+    }
+
+    if (!serverOrigin) {
+      throw new Error('NEXT_PUBLIC_BASE_URL not configured')
+    }
+
+    // Direct HTTP POST with Origin header and timeout
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10000)
+
+    let ssoResponse
+    try {
+      ssoResponse = await fetch(`${ssoWorkerUrl}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Origin': serverOrigin,
+        },
+        body: JSON.stringify({ email, password }),
+        signal: controller.signal,
+      })
+    } finally {
+      clearTimeout(timeout)
+    }
+
+    if (!ssoResponse.ok) {
+      let errorData = {}
+      try {
+        errorData = await ssoResponse.json()
+      } catch {
+        errorData = { error: ssoResponse.statusText || 'Request failed' }
+      }
+      console.error('[SSO Login] HTTP error:', { status: ssoResponse.status, error: errorData })
+      return NextResponse.json(
+        { success: false, error: errorData.error || 'Login failed' },
+        { status: ssoResponse.status }
+      )
+    }
+
+    const loginData = await ssoResponse.json()
 
     if (loginData.error) {
       let errorMessage = loginData.error || 'Invalid email or password'
@@ -82,8 +119,8 @@ export async function POST(request) {
       )
     }
 
-    // Check if user has admin role (super_admin, admin, or manager)
-    const allowedRoles = ['super_admin', 'admin', 'manager']
+    // Check if user has rm_admin role only
+    const allowedRoles = ['rm_admin']
     const hasAdminRole = user.roles.some(role => allowedRoles.includes(role))
     
     if (!hasAdminRole) {
