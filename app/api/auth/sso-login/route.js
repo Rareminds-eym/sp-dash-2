@@ -22,15 +22,19 @@ export async function POST(request) {
     }
 
     const ssoWorkerUrl = process.env.SSO_WORKER_URL
-    const serverOrigin = process.env.NEXT_PUBLIC_BASE_URL
 
     if (!ssoWorkerUrl) {
       throw new Error('SSO_WORKER_URL not configured')
     }
 
-    if (!serverOrigin) {
-      throw new Error('NEXT_PUBLIC_BASE_URL not configured')
+    // Construct origin from request URL
+    const requestUrl = new URL(request.url)
+    let host = requestUrl.host
+    // Normalize 0.0.0.0 to localhost for local development
+    if (host.startsWith('0.0.0.0')) {
+      host = host.replace('0.0.0.0', 'localhost')
     }
+    const serverOrigin = `${requestUrl.protocol}//${host}`
 
     // Direct HTTP POST with Origin header and timeout
     const controller = new AbortController()

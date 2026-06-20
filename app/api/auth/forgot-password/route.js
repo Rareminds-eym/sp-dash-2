@@ -54,9 +54,9 @@ export async function POST(request) {
       )
     }
 
-    // Get the base URL from environment or construct it
+    // Construct the base URL dynamically from the request
     const requestUrl = new URL(request.url)
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `${requestUrl.protocol}//${requestUrl.host}`
+    const baseUrl = `${requestUrl.protocol}//${requestUrl.host}`
     const redirectUrl = `${baseUrl}/reset-password`
 
     // Send password reset email using Supabase Auth

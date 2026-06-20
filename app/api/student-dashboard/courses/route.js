@@ -11,7 +11,7 @@ import { handleError } from '@/lib/middleware/errorHandler';
  */
 export async function GET(request) {
     try {
-        const { error: authError } = await authenticateSSORequest(request, ['super_admin', 'admin']);
+        const { error: authError } = await authenticateSSORequest(request, ['super_admin', 'admin', 'rm_admin']);
         if (authError) return authError;
 
         const url = new URL(request.url);

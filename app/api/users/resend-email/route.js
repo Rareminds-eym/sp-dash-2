@@ -48,11 +48,15 @@ export async function POST(request) {
       }, { status: 400 });
     }
     
+    // Construct the base URL dynamically from the request
+    const requestUrl = new URL(request.url);
+    const baseUrl = `${requestUrl.protocol}//${requestUrl.host}`;
+
     // Resend password reset email
     const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(
       userData.email,
       {
-        redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/reset-password`
+        redirectTo: `${baseUrl}/reset-password`
       }
     );
     
