@@ -29,11 +29,15 @@ export async function POST(request) {
 
     // Construct origin from request URL
     const requestUrl = new URL(request.url)
-    let host = requestUrl.host
+    let hostname = requestUrl.hostname
+    const port = requestUrl.port
+
     // Normalize 0.0.0.0 to localhost for local development
-    if (host.startsWith('0.0.0.0')) {
-      host = host.replace('0.0.0.0', 'localhost')
+    if (hostname === '0.0.0.0') {
+      hostname = 'localhost'
     }
+
+    const host = port ? `${hostname}:${port}` : hostname
     const serverOrigin = `${requestUrl.protocol}//${host}`
 
     // Direct HTTP POST with Origin header and timeout
