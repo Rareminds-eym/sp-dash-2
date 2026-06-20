@@ -12,7 +12,7 @@ import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
  */
 export async function GET(request) {
     try {
-        const { error: authError } = await authenticateSSORequest(request, ['super_admin', 'admin']);
+        const { error: authError } = await authenticateSSORequest(request, ['super_admin', 'admin', 'rm_admin']);
         if (authError) return authError;
 
         const url = new URL(request.url);
@@ -183,7 +183,7 @@ export async function GET(request) {
  */
 export async function POST(request) {
     try {
-        const { error: authError, user } = await authenticateSSORequest(request, ['super_admin', 'admin']);
+        const { error: authError, user } = await authenticateSSORequest(request, ['super_admin', 'admin', 'rm_admin']);
         if (authError) return authError;
 
         const body = await request.json();

@@ -10,7 +10,6 @@ import type { SSOEntrypoint } from "../../workers/sso-worker/src/entrypoint";
 declare global {
   interface CloudflareEnv {
     SSO: Service<SSOEntrypoint>;
-    NEXT_PUBLIC_BASE_URL: string;
   }
 }
 

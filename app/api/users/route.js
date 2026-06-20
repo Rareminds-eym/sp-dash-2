@@ -261,9 +261,13 @@ export async function POST(request) {
         }, { status: 500 });
       }
       
+      // Construct the base URL dynamically from the request
+      const requestUrl = new URL(request.url);
+      const baseUrl = `${requestUrl.protocol}//${requestUrl.host}`;
+
       // Send password reset email to the new admin
       const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
-        redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/reset-password`
+        redirectTo: `${baseUrl}/reset-password`
       });
       
       if (resetError) {

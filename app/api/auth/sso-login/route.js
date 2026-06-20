@@ -22,14 +22,22 @@ export async function POST(request) {
     }
 
     const ssoWorkerUrl = process.env.SSO_WORKER_URL
-    const serverOrigin = process.env.NEXT_PUBLIC_BASE_URL
 
     if (!ssoWorkerUrl) {
       throw new Error('SSO_WORKER_URL not configured')
     }
 
-    if (!serverOrigin) {
-      throw new Error('NEXT_PUBLIC_BASE_URL not configured')
+    // Get origin safely
+    let serverOrigin
+
+    if (process.env.NODE_ENV === 'production') {
+      // Production: use X-Forwarded-Host header (set by reverse proxy/load balancer)
+      const forwardedHost = request.headers.get('x-forwarded-host')
+      const protocol = request.headers.get('x-forwarded-proto') || 'https'
+      serverOrigin = `${protocol}://${forwardedHost || request.headers.get('host')}`
+    } else {
+      // Development: use safe default localhost
+      serverOrigin = 'http://localhost:3000'
     }
 
     // Direct HTTP POST with Origin header and timeout

@@ -19,8 +19,8 @@ const logger = new Logger('SalesClientsAPI');
  */
 export async function GET(request) {
   try {
-    // Authenticate using SSO - allow super_admin, admin roles
-    const { error } = await authenticateSSORequest(request, ['super_admin', 'admin']);
+    // Authenticate using SSO - allow super_admin, admin, rm_admin roles
+    const { error } = await authenticateSSORequest(request, ['super_admin', 'admin', 'rm_admin']);
     if (error) return error;
 
     // Check if SSO Auth database client is available
