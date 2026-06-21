@@ -1,8 +1,9 @@
-export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
+
+export const runtime = 'edge';
 
 /**
  * GET /api/debug/sales - Debug endpoint to check sales data availability
@@ -37,22 +38,32 @@ export async function GET(request) {
                     });
 
                     results.ssoWorkerApi = {
-                        available: response.ok,
                         status: response.status,
                         statusText: response.statusText,
                     };
 
-                    if (response.ok) {
-                        const data = await response.json();
+                    let jsonData;
+                    try {
+                        jsonData = await response.json();
+                    } catch (parseError) {
+                        results.ssoWorkerApi.available = false;
+                        return;
+                    }
+
+                    results.ssoWorkerApi.available = response.ok;
+
+                    if (response.ok && jsonData) {
                         results.ssoWorkerData = {
-                            sampleCount: data.data?.length || 0,
-                            totalCount: data.pagination?.total || 0,
+                            sampleCount: jsonData.data?.length || 0,
+                            totalCount: jsonData.pagination?.total || 0,
                         };
+                    } else if (!response.ok && jsonData?.error) {
+                        results.ssoWorkerApi.errorMessage = jsonData.error;
                     }
                 }
             }
         } catch (err) {
-            results.ssoWorkerError = err.message;
+            results.ssoWorkerError = err instanceof Error ? err.message : String(err);
         }
 
         // Test SkillPassport connection
@@ -63,12 +74,12 @@ export async function GET(request) {
                 .limit(3);
 
             results.skillPassportCourses = {
-                available: true,
+                available: !coursesError,
                 totalCount: coursesCount,
                 error: coursesError?.message
             };
         } catch (err) {
-            results.skillPassportError = err.message;
+            results.skillPassportError = err instanceof Error ? err.message : String(err);
         }
 
         return NextResponse.json({
@@ -77,9 +88,9 @@ export async function GET(request) {
             note: 'Subscription data flows through SSO Worker API, not direct database access'
         });
     } catch (error) {
-        console.error('Debug Sales API Error:', error);
+        console.error('Debug Sales API Error:', error instanceof Error ? error.message : String(error));
         return NextResponse.json(
-            { error: 'Debug failed', details: error.message },
+            { error: 'Debug failed' },
             { status: 500 }
         );
     }
