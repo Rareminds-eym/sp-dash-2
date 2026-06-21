@@ -1,12 +1,16 @@
-export const runtime = 'edge';
 import { NextResponse } from 'next/server';
-import { supabaseAdmin, ssoAuthAdmin } from '@/lib/supabase-admin';
+import { cookies } from 'next/headers';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
+import Logger from '@/lib/logger';
 
+export const runtime = 'edge';
 
+const logger = new Logger('DebugSalesAPI');
 
 /**
  * GET /api/debug/sales - Debug endpoint to check sales data availability
+ * All subscription data flows through SSO Worker API
  */
 export async function GET(request) {
     try {
@@ -14,68 +18,86 @@ export async function GET(request) {
         if (authError) return authError;
 
         const results = {};
-        
-        // Test SSO Auth Admin connection
-        if (ssoAuthAdmin) {
-            try {
-                // Check users table
-                const { data: users, error: usersError, count: usersCount } = await ssoAuthAdmin
-                    .from('users')
-                    .select('*', { count: 'exact' })
-                    .limit(3);
 
-                results.ssoAuthUsers = {
-                    available: true,
-                    totalCount: usersCount,
-                    sampleData: users,
-                    error: usersError?.message
-                };
+        // Test SSO Worker API connection
+        try {
+            const ssoWorkerUrl = process.env.SSO_WORKER_URL;
 
-                // Check subscriptions table
-                const { data: subscriptions, error: subsError, count: subsCount } = await ssoAuthAdmin
-                    .from('subscriptions')
-                    .select('*', { count: 'exact' })
-                    .limit(3);
+            if (!ssoWorkerUrl) {
+                results.ssoWorkerError = 'SSO_WORKER_URL not configured';
+            } else {
+                const cookieStore = await cookies();
+                const token = cookieStore.get('sso_access_token')?.value;
 
-                results.ssoAuthSubscriptions = {
-                    available: true,
-                    totalCount: subsCount,
-                    sampleData: subscriptions,
-                    error: subsError?.message
-                };
-            } catch (err) {
-                results.ssoAuthError = err.message;
+                if (!token) {
+                    results.ssoWorkerError = 'No SSO access token found';
+                } else {
+                    const response = await fetch(`${ssoWorkerUrl}/api/sales/subscriptions?page=1&limit=1`, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                        },
+                    });
+
+                    results.ssoWorkerApi = {
+                        status: response.status,
+                        statusText: response.statusText,
+                    };
+
+                    let jsonData;
+                    let parseSuccess = true;
+                    try {
+                        jsonData = await response.json();
+                    } catch (parseError) {
+                        parseSuccess = false;
+                        results.ssoWorkerApi.parseError = parseError instanceof Error ? parseError.message : String(parseError);
+                    }
+
+                    results.ssoWorkerApi.available = response.ok && parseSuccess;
+
+                    if (response.ok && jsonData) {
+                        results.ssoWorkerData = {
+                            sampleCount: jsonData.data?.length || 0,
+                            totalCount: jsonData.pagination?.total || 0,
+                        };
+                    } else if (!response.ok && jsonData?.error) {
+                        results.ssoWorkerApi.errorMessage = jsonData.error;
+                    }
+                }
             }
-        } else {
-            results.ssoAuthAdmin = 'Not available - check SSO_AUTH_SUPABASE_URL and SSO_AUTH_SERVICE_ROLE_KEY';
+        } catch (err) {
+            results.ssoWorkerError = err instanceof Error ? err.message : String(err);
         }
 
-        // Test SkillPassport connection for comparison
+        // Test SkillPassport connection
         try {
-            const { data: courses, error: coursesError, count: coursesCount } = await supabaseAdmin
+            const { error: coursesError, count: coursesCount } = await supabaseAdmin
                 .from('courses')
-                .select('*', { count: 'exact' })
-                .limit(3);
+                .select('id', { count: 'estimated' })
+                .limit(1);
 
             results.skillPassportCourses = {
-                available: true,
+                available: !coursesError,
                 totalCount: coursesCount,
-                sampleData: courses,
                 error: coursesError?.message
             };
         } catch (err) {
-            results.skillPassportError = err.message;
+            results.skillPassportError = err instanceof Error ? err.message : String(err);
         }
 
         return NextResponse.json({
             message: 'Sales data debug results',
             results,
-            recommendation: 'Check if SSO Auth database has users and subscriptions data'
+            note: 'Subscription data flows through SSO Worker API, not direct database access'
         });
     } catch (error) {
-        console.error('Debug Sales API Error:', error);
+        logger.error('Debug Sales API Error', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined
+        });
         return NextResponse.json(
-            { error: 'Debug failed', details: error.message },
+            { error: 'Debug failed' },
             { status: 500 }
         );
     }
