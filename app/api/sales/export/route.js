@@ -77,7 +77,13 @@ export async function GET(request) {
     }
 
     // Build SSO Worker API URL with query params - fetch all data by using large limit
-    const ssoWorkerUrl = process.env.SSO_WORKER_URL
+    const ssoWorkerUrl = process.env.SSO_WORKER_URL;
+
+    if (!ssoWorkerUrl) {
+      logger.error('SSO_WORKER_URL not configured');
+      return NextResponse.json({ error: 'SSO service not configured' }, { status: 500 });
+    }
+
     const url = new URL(`${ssoWorkerUrl}/api/sales/subscriptions`);
     url.searchParams.set('page', '1');
     url.searchParams.set('limit', '10000'); // Large limit for export
@@ -107,7 +113,16 @@ export async function GET(request) {
       );
     }
 
-    const ssoData = await ssoResponse.json();
+    let ssoData;
+    try {
+      ssoData = await ssoResponse.json();
+    } catch (parseError) {
+      logger.error('Failed to parse SSO response', { error: parseError.message });
+      return NextResponse.json(
+        { error: 'Invalid response from SSO service' },
+        { status: 500 }
+      );
+    }
     const clients = ssoData.data || [];
 
     // Fetch user names from SkillPassport database for real client names

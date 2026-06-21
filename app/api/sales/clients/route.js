@@ -21,7 +21,7 @@ const logger = new Logger('SalesClientsAPI');
 export async function GET(request) {
   try {
     // Authenticate using SSO
-    const { error, user } = await authenticateSSORequest(request, ['super_admin', 'admin', 'rm_admin']);
+    const { error } = await authenticateSSORequest(request, ['super_admin', 'admin', 'rm_admin']);
     if (error) return error;
 
     // Extract token from cookies for SSO Worker API call
@@ -45,6 +45,12 @@ export async function GET(request) {
 
     // Build SSO Worker API URL with query params
     const ssoWorkerUrl = process.env.SSO_WORKER_URL;
+
+    if (!ssoWorkerUrl) {
+      logger.error('SSO_WORKER_URL not configured');
+      return NextResponse.json({ error: 'SSO service not configured' }, { status: 500 });
+    }
+
     const url = new URL(`${ssoWorkerUrl}/api/sales/subscriptions`);
     url.searchParams.set('page', page);
     url.searchParams.set('limit', limit);
@@ -74,7 +80,16 @@ export async function GET(request) {
       );
     }
 
-    const ssoData = await ssoResponse.json();
+    let ssoData;
+    try {
+      ssoData = await ssoResponse.json();
+    } catch (parseError) {
+      logger.error('Failed to parse SSO response', { error: parseError.message });
+      return NextResponse.json(
+        { error: 'Invalid response from SSO service' },
+        { status: 500 }
+      );
+    }
 
     // Fetch user names from SkillPassport database for real client names
     let skillpassportUsers = [];
