@@ -1,5 +1,6 @@
 export const runtime = 'edge';
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 
@@ -21,26 +22,33 @@ export async function GET(request) {
             if (!ssoWorkerUrl) {
                 results.ssoWorkerError = 'SSO_WORKER_URL not configured';
             } else {
-                const response = await fetch(`${ssoWorkerUrl}/api/sales/subscriptions?page=1&limit=1`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                });
+                const cookieStore = await cookies();
+                const token = cookieStore.get('sso_access_token')?.value;
 
-                results.ssoWorkerApi = {
-                    available: response.ok,
-                    status: response.status,
-                    statusText: response.statusText,
-                };
+                if (!token) {
+                    results.ssoWorkerError = 'No SSO access token found';
+                } else {
+                    const response = await fetch(`${ssoWorkerUrl}/api/sales/subscriptions?page=1&limit=1`, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                        },
+                    });
 
-                if (response.ok) {
-                    const data = await response.json();
-                    results.ssoWorkerData = {
-                        sampleCount: data.data?.length || 0,
-                        totalCount: data.pagination?.total || 0,
+                    results.ssoWorkerApi = {
+                        available: response.ok,
+                        status: response.status,
+                        statusText: response.statusText,
                     };
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        results.ssoWorkerData = {
+                            sampleCount: data.data?.length || 0,
+                            totalCount: data.pagination?.total || 0,
+                        };
+                    }
                 }
             }
         } catch (err) {

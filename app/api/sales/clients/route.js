@@ -35,8 +35,8 @@ export async function GET(request) {
 
     // Get query parameters
     const { searchParams } = new URL(request.url);
-    const page = searchParams.get('page') || '1';
-    const limit = searchParams.get('limit') || '20';
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+    const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '20', 10)));
     const planType = searchParams.get('planType');
     const status = searchParams.get('status');
     const startDate = searchParams.get('startDate');
@@ -115,7 +115,7 @@ export async function GET(request) {
     });
 
     // Combine with SkillPassport names
-    const enrichedClients = ssoData.data.map(client => {
+    const enrichedClients = (ssoData.data || []).map(client => {
       const spUser = spUserMap[client.id];
       let fullName = client.fullName;
 
