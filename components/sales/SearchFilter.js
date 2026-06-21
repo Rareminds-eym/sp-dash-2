@@ -1,10 +1,29 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 
 export function SearchFilter({ value, onChange }) {
+  const [inputValue, setInputValue] = useState(value || '');
+
+  // Debounce search input - only call onChange after user stops typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (inputValue !== value) {
+        onChange(inputValue);
+      }
+    }, 300); // Wait 300ms after user stops typing
+
+    return () => clearTimeout(timer);
+  }, [inputValue, value, onChange]);
+
+  // Update local input when parent value changes (e.g., filter reset)
+  useEffect(() => {
+    setInputValue(value || '');
+  }, [value]);
+
   return (
     <div className="relative">
       <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
@@ -13,8 +32,8 @@ export function SearchFilter({ value, onChange }) {
         type="text"
         placeholder="Search by name or email..."
         className="pl-9 h-10"
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value)}
         aria-label="Search clients by name or email"
       />
     </div>

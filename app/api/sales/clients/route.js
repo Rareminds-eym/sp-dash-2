@@ -38,6 +38,7 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
     const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '20', 10)));
+    const clientType = searchParams.get('clientType');
     const planType = searchParams.get('planType');
     const status = searchParams.get('status');
     const startDate = searchParams.get('startDate');
@@ -55,11 +56,12 @@ export async function GET(request) {
     const url = new URL(`${ssoWorkerUrl}/api/sales/subscriptions`);
     url.searchParams.set('page', page);
     url.searchParams.set('limit', limit);
+    if (clientType) url.searchParams.set('clientType', clientType);
     if (planType) url.searchParams.set('planType', planType);
     if (status) url.searchParams.set('status', status);
     if (startDate) url.searchParams.set('startDate', startDate);
     if (endDate) url.searchParams.set('endDate', endDate);
-    if (search) url.searchParams.set('search', search);
+    // Note: search filtering is done in sp-dash-2 after SkillPassport enrichment for name search support
 
     // Call SSO Worker API with auth token
     const ssoResponse = await fetch(url.toString(), {
@@ -131,11 +133,28 @@ export async function GET(request) {
       };
     });
 
-    logger.debug('Clients fetched', { count: enrichedClients.length });
+    // Apply name-based search filtering on enriched data (after SkillPassport name enrichment)
+    // This ensures search works with actual display names
+    let filteredClients = enrichedClients;
+
+    if (search) {
+      const searchLower = search.toLowerCase();
+      filteredClients = enrichedClients.filter(client => {
+        const matchesEmail = client.email?.toLowerCase().includes(searchLower) || false;
+        const matchesName = client.fullName?.toLowerCase().includes(searchLower) || false;
+        return matchesEmail || matchesName;
+      });
+    }
+
+    logger.debug('Clients fetched', { count: filteredClients.length, totalBefore: enrichedClients.length });
 
     return NextResponse.json({
-      data: enrichedClients,
-      pagination: ssoData.pagination ?? { page, limit, total: 0, totalPages: 0 },
+      data: filteredClients,
+      pagination: {
+        ...ssoData.pagination,
+        total: filteredClients.length,
+        totalPages: Math.ceil(filteredClients.length / (ssoData.pagination?.limit || limit)),
+      },
     });
   } catch (error) {
     logger.error('Error fetching sales clients', {

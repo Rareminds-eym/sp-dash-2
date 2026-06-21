@@ -67,7 +67,7 @@ export async function GET(request) {
     const status = searchParams.get('status');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
-    const search = searchParams.get('search');
+    const clientType = searchParams.get('clientType');
     const format = searchParams.get('format') || 'csv';
 
     // Validate format parameter - only CSV supported in Edge Runtime
@@ -93,7 +93,7 @@ export async function GET(request) {
     if (status) url.searchParams.set('status', status);
     if (startDate) url.searchParams.set('startDate', startDate);
     if (endDate) url.searchParams.set('endDate', endDate);
-    if (search) url.searchParams.set('search', search);
+    if (clientType) url.searchParams.set('clientType', clientType);
 
     // Call SSO Worker API with auth token
     const ssoResponse = await fetch(url.toString(), {
