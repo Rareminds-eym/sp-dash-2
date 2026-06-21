@@ -1,13 +1,15 @@
-export const runtime = 'edge';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import Logger from '@/lib/logger';
+
+export const runtime = 'edge';
+
 // SECURITY NOTE: CSV export with proper sanitization
 // - All cell values sanitized via sanitizeCell() to prevent formula injection
 // - Only generating files from server-controlled data (no user file uploads)
 // - Edge Runtime compatible (no Node.js dependencies)
-import Logger from '@/lib/logger';
 
 
 
@@ -211,12 +213,12 @@ export async function GET(request) {
       },
     });
   } catch (error) {
-    logger.error('Error exporting sales clients', { 
-      error: error.message, 
-      stack: error.stack 
+    logger.error('Error exporting sales clients', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
     });
     return NextResponse.json(
-      { error: 'Internal server error' }, 
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

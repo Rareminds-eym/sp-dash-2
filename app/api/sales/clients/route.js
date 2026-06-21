@@ -1,9 +1,10 @@
-export const runtime = 'edge';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import Logger from '@/lib/logger';
+
+export const runtime = 'edge';
 
 // Skillpassport database admin client
 const skillpassportAdmin = supabaseAdmin;
@@ -134,12 +135,12 @@ export async function GET(request) {
 
     return NextResponse.json({
       data: enrichedClients,
-      pagination: ssoData.pagination,
+      pagination: ssoData.pagination ?? { page, limit, total: 0, totalPages: 0 },
     });
   } catch (error) {
     logger.error('Error fetching sales clients', {
-      error: error.message,
-      stack: error.stack
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
     });
     return NextResponse.json(
       { error: 'Internal server error' },

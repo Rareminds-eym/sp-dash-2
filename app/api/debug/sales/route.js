@@ -2,8 +2,11 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
+import Logger from '@/lib/logger';
 
 export const runtime = 'edge';
+
+const logger = new Logger('DebugSalesAPI');
 
 /**
  * GET /api/debug/sales - Debug endpoint to check sales data availability
@@ -43,14 +46,15 @@ export async function GET(request) {
                     };
 
                     let jsonData;
+                    let parseSuccess = true;
                     try {
                         jsonData = await response.json();
                     } catch (parseError) {
-                        results.ssoWorkerApi.available = false;
-                        return;
+                        parseSuccess = false;
+                        results.ssoWorkerApi.parseError = parseError instanceof Error ? parseError.message : String(parseError);
                     }
 
-                    results.ssoWorkerApi.available = response.ok;
+                    results.ssoWorkerApi.available = response.ok && parseSuccess;
 
                     if (response.ok && jsonData) {
                         results.ssoWorkerData = {
@@ -68,10 +72,10 @@ export async function GET(request) {
 
         // Test SkillPassport connection
         try {
-            const { data: courses, error: coursesError, count: coursesCount } = await supabaseAdmin
+            const { error: coursesError, count: coursesCount } = await supabaseAdmin
                 .from('courses')
-                .select('*', { count: 'exact' })
-                .limit(3);
+                .select('id', { count: 'estimated' })
+                .limit(1);
 
             results.skillPassportCourses = {
                 available: !coursesError,
@@ -88,7 +92,10 @@ export async function GET(request) {
             note: 'Subscription data flows through SSO Worker API, not direct database access'
         });
     } catch (error) {
-        console.error('Debug Sales API Error:', error instanceof Error ? error.message : String(error));
+        logger.error('Debug Sales API Error', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined
+        });
         return NextResponse.json(
             { error: 'Debug failed' },
             { status: 500 }
