@@ -168,9 +168,11 @@ export async function GET(request) {
 
     // Apply search filtering on enriched data by enriched SkillPassport names
     // Search is not passed to SSO to ensure we find clients by enriched names, not just SSO names
+    let filteredClients = enrichedClients;
+
     if (search) {
       const searchLower = search.toLowerCase();
-      enrichedClients = enrichedClients.filter(client => {
+      filteredClients = enrichedClients.filter(client => {
         const matchesEmail = client.email?.toLowerCase().includes(searchLower) || false;
         const matchesName = client.fullName?.toLowerCase().includes(searchLower) || false;
         return matchesEmail || matchesName;
@@ -179,9 +181,9 @@ export async function GET(request) {
 
     logger.info('Export generated', {
       format: 'csv',
-      enrichedCount: clients.length,
-      exportCount: enrichedClients.length,
-      hasSearch: !!search,
+      rawCount: clients.length,
+      enrichedCount: enrichedClients.length,
+      filteredCount: filteredClients.length,
     });
 
     // Generate CSV export
@@ -201,7 +203,7 @@ export async function GET(request) {
 
     const csvRows = [
       headers.join(','),
-      ...enrichedClients.map(client => {
+      ...filteredClients.map(client => {
         return [
           toCsvCell(client.id),
           toCsvCell(client.email),

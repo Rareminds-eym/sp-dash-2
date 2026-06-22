@@ -1,23 +1,30 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 
 export function SearchFilter({ value, onChange }) {
   const [inputValue, setInputValue] = useState(value || '');
+  const onChangeRef = useRef(onChange);
+
+  // Update ref whenever onChange changes (without triggering debounce effect)
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   // Debounce search input - only call onChange after user stops typing
+  // Dependencies: [inputValue, value] only - onChange ref is stable, won't trigger effect
   useEffect(() => {
     const timer = setTimeout(() => {
       if (inputValue !== value) {
-        onChange(inputValue);
+        onChangeRef.current(inputValue);
       }
     }, 300); // Wait 300ms after user stops typing
 
     return () => clearTimeout(timer);
-  }, [inputValue, onChange]);
+  }, [inputValue, value]);
 
   // Sync input when parent's value changes externally (e.g., when filters are reset)
   // Only sync when parent's value is different from our local state
