@@ -54,14 +54,16 @@ export async function GET(request) {
     }
 
     const url = new URL(`${ssoWorkerUrl}/api/sales/subscriptions`);
-    url.searchParams.set('page', page);
-    url.searchParams.set('limit', limit);
+    // Fetch all results (high limit) to enable search filtering BEFORE pagination
+    // This ensures pagination totals match the filtered result set, not the unfiltered set
+    // Client-side pagination is applied after SkillPassport name enrichment and search
+    url.searchParams.set('page', '1');
+    url.searchParams.set('limit', '10000');
     if (clientType) url.searchParams.set('clientType', clientType);
     if (planType) url.searchParams.set('planType', planType);
     if (status) url.searchParams.set('status', status);
     if (startDate) url.searchParams.set('startDate', startDate);
     if (endDate) url.searchParams.set('endDate', endDate);
-    // Note: search filtering is done in sp-dash-2 after SkillPassport enrichment for name search support
 
     // Call SSO Worker API with auth token
     const ssoResponse = await fetch(url.toString(), {
@@ -134,7 +136,7 @@ export async function GET(request) {
     });
 
     // Apply name-based search filtering on enriched data (after SkillPassport name enrichment)
-    // This ensures search works with actual display names
+    // This ensures search works with actual display names, not just SSO names
     let filteredClients = enrichedClients;
 
     if (search) {
@@ -146,14 +148,28 @@ export async function GET(request) {
       });
     }
 
-    logger.debug('Clients fetched', { count: filteredClients.length, totalBefore: enrichedClients.length });
+    // Apply pagination after filtering to maintain proper pagination contract
+    const totalFiltered = filteredClients.length;
+    const totalPagesFiltered = Math.ceil(totalFiltered / limit);
+    const startIndex = (page - 1) * limit;
+    const paginatedClients = filteredClients.slice(startIndex, startIndex + limit);
+
+    logger.debug('Clients fetched', {
+      enrichedCount: enrichedClients.length,
+      filteredCount: totalFiltered,
+      returnedCount: paginatedClients.length,
+      page,
+      limit,
+      hasSearch: !!search,
+    });
 
     return NextResponse.json({
-      data: filteredClients,
+      data: paginatedClients,
       pagination: {
-        ...ssoData.pagination,
-        total: filteredClients.length,
-        totalPages: Math.ceil(filteredClients.length / (ssoData.pagination?.limit || limit)),
+        page,
+        limit,
+        total: totalFiltered,
+        totalPages: totalPagesFiltered,
       },
     });
   } catch (error) {

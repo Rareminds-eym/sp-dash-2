@@ -68,6 +68,7 @@ export async function GET(request) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const clientType = searchParams.get('clientType');
+    const search = searchParams.get('search');
     const format = searchParams.get('format') || 'csv';
 
     // Validate format parameter - only CSV supported in Edge Runtime
@@ -151,7 +152,7 @@ export async function GET(request) {
     });
 
     // Enrich with SkillPassport names
-    const enrichedClients = clients.map(client => {
+    let enrichedClients = clients.map(client => {
       const spUser = spUserMap[client.id];
       let fullName = client.fullName;
 
@@ -163,7 +164,22 @@ export async function GET(request) {
       return { ...client, fullName };
     });
 
-    logger.info('Export generated', { format: 'csv', clientCount: enrichedClients.length });
+    // Apply search filtering on enriched data (consistent with clients endpoint)
+    if (search) {
+      const searchLower = search.toLowerCase();
+      enrichedClients = enrichedClients.filter(client => {
+        const matchesEmail = client.email?.toLowerCase().includes(searchLower) || false;
+        const matchesName = client.fullName?.toLowerCase().includes(searchLower) || false;
+        return matchesEmail || matchesName;
+      });
+    }
+
+    logger.info('Export generated', {
+      format: 'csv',
+      enrichedCount: clients.length,
+      exportCount: enrichedClients.length,
+      hasSearch: !!search,
+    });
 
     // Generate CSV export
     const headers = [

@@ -17,11 +17,14 @@ export function SearchFilter({ value, onChange }) {
     }, 300); // Wait 300ms after user stops typing
 
     return () => clearTimeout(timer);
-  }, [inputValue, value, onChange]);
+  }, [inputValue, onChange]);
 
-  // Update local input when parent value changes (e.g., filter reset)
+  // Sync input when parent's value changes externally (e.g., when filters are reset)
+  // Only sync when parent's value is different from our local state
   useEffect(() => {
-    setInputValue(value || '');
+    if (value !== inputValue) {
+      setInputValue(value || '');
+    }
   }, [value]);
 
   return (
