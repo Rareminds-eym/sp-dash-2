@@ -54,8 +54,9 @@ export async function GET(request) {
     }
 
     // Calculate dynamic fetch limit for search: when searching by enriched names,
-    // fetch more records to account for additional filtering (SSO filters by email + SSO name,
-    // sp-dash-2 also filters by SkillPassport enriched names). Cap at 1000 to avoid memory issues.
+    // fetch more records to account for additional filtering (sp-dash-2 filters by enriched SkillPassport names)
+    // Cannot pass search to SSO because it filters by SSO names only, missing SkillPassport-only names
+    // Cap at 1000 to avoid memory issues
     const fetchLimit = search
       ? Math.min(limit * 10, 1000)
       : limit;
@@ -68,8 +69,8 @@ export async function GET(request) {
     if (status) url.searchParams.set('status', status);
     if (startDate) url.searchParams.set('startDate', startDate);
     if (endDate) url.searchParams.set('endDate', endDate);
-    // Pass search to SSO API for server-side filtering (email + SSO full_name)
-    if (search) url.searchParams.set('search', search);
+    // NOTE: Search is NOT passed to SSO API because we need to filter by enriched SkillPassport names
+    // This is handled client-side after SkillPassport name enrichment in lines 148-155
 
     // Call SSO Worker API with auth token
     const ssoResponse = await fetch(url.toString(), {
@@ -154,14 +155,27 @@ export async function GET(request) {
       });
     }
 
-    logger.debug('Clients fetched', { count: filteredClients.length, totalBefore: enrichedClients.length });
+    // Apply pagination after filtering to maintain proper page boundaries
+    const totalFiltered = filteredClients.length;
+    const totalPagesFiltered = Math.ceil(totalFiltered / limit);
+    const startIndex = (page - 1) * limit;
+    const paginatedClients = filteredClients.slice(startIndex, startIndex + limit);
+
+    logger.debug('Clients fetched', {
+      enrichedCount: enrichedClients.length,
+      filteredCount: totalFiltered,
+      returnedCount: paginatedClients.length,
+      page,
+      limit,
+    });
 
     return NextResponse.json({
-      data: filteredClients,
+      data: paginatedClients,
       pagination: {
-        ...ssoData.pagination,
-        total: filteredClients.length,
-        totalPages: Math.ceil(filteredClients.length / (ssoData.pagination?.limit || limit)),
+        page,
+        limit,
+        total: totalFiltered,
+        totalPages: totalPagesFiltered,
       },
     });
   } catch (error) {

@@ -96,8 +96,7 @@ export async function GET(request) {
     if (startDate) url.searchParams.set('startDate', startDate);
     if (endDate) url.searchParams.set('endDate', endDate);
     if (clientType) url.searchParams.set('clientType', clientType);
-    // Pass search to SSO API for server-side filtering
-    if (search) url.searchParams.set('search', search);
+    // NOTE: Search is NOT passed to SSO because we filter by enriched SkillPassport names client-side
 
     // Call SSO Worker API with auth token
     const ssoResponse = await fetch(url.toString(), {
@@ -167,7 +166,8 @@ export async function GET(request) {
       return { ...client, fullName };
     });
 
-    // Apply search filtering on enriched data (consistent with clients endpoint)
+    // Apply search filtering on enriched data by enriched SkillPassport names
+    // Search is not passed to SSO to ensure we find clients by enriched names, not just SSO names
     if (search) {
       const searchLower = search.toLowerCase();
       enrichedClients = enrichedClients.filter(client => {
