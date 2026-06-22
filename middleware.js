@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-const protectedRoutes = ['/dashboard', '/users', '/passports', '/recruiters', '/reports', '/audit-logs', '/integrations', '/settings', '/course-management', '/student-dashboard']
+const protectedRoutes = ['/dashboard', '/users', '/passports', '/recruiters', '/reports', '/audit-logs', '/integrations', '/settings', '/course-management', '/student-dashboard', '/sales-dashboard']
 const publicRoutes = ['/login', '/reset-password']
 
 /**

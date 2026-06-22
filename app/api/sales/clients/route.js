@@ -38,6 +38,7 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
     const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '20', 10)));
+    const clientType = searchParams.get('clientType');
     const planType = searchParams.get('planType');
     const status = searchParams.get('status');
     const startDate = searchParams.get('startDate');
@@ -52,14 +53,24 @@ export async function GET(request) {
       return NextResponse.json({ error: 'SSO service not configured' }, { status: 500 });
     }
 
+    // Calculate dynamic fetch limit for search: when searching by enriched names,
+    // fetch more records to account for additional filtering (sp-dash-2 filters by enriched SkillPassport names)
+    // Cannot pass search to SSO because it filters by SSO names only, missing SkillPassport-only names
+    // Cap at 1000 to avoid memory issues
+    const fetchLimit = search
+      ? Math.min(limit * 10, 1000)
+      : limit;
+
     const url = new URL(`${ssoWorkerUrl}/api/sales/subscriptions`);
     url.searchParams.set('page', page);
-    url.searchParams.set('limit', limit);
+    url.searchParams.set('limit', fetchLimit.toString());
+    if (clientType) url.searchParams.set('clientType', clientType);
     if (planType) url.searchParams.set('planType', planType);
     if (status) url.searchParams.set('status', status);
     if (startDate) url.searchParams.set('startDate', startDate);
     if (endDate) url.searchParams.set('endDate', endDate);
-    if (search) url.searchParams.set('search', search);
+    // NOTE: Search is NOT passed to SSO API because we need to filter by enriched SkillPassport names
+    // This is handled client-side after SkillPassport name enrichment in lines 148-155
 
     // Call SSO Worker API with auth token
     const ssoResponse = await fetch(url.toString(), {
@@ -131,11 +142,41 @@ export async function GET(request) {
       };
     });
 
-    logger.debug('Clients fetched', { count: enrichedClients.length });
+    // Apply name-based search filtering on enriched data (after SkillPassport name enrichment)
+    // This ensures search works with actual display names, not just SSO names
+    let filteredClients = enrichedClients;
+
+    if (search) {
+      const searchLower = search.toLowerCase();
+      filteredClients = enrichedClients.filter(client => {
+        const matchesEmail = client.email?.toLowerCase().includes(searchLower) || false;
+        const matchesName = client.fullName?.toLowerCase().includes(searchLower) || false;
+        return matchesEmail || matchesName;
+      });
+    }
+
+    // Apply pagination after filtering to maintain proper page boundaries
+    const totalFiltered = filteredClients.length;
+    const totalPagesFiltered = Math.ceil(totalFiltered / limit);
+    const startIndex = (page - 1) * limit;
+    const paginatedClients = filteredClients.slice(startIndex, startIndex + limit);
+
+    logger.debug('Clients fetched', {
+      enrichedCount: enrichedClients.length,
+      filteredCount: totalFiltered,
+      returnedCount: paginatedClients.length,
+      page,
+      limit,
+    });
 
     return NextResponse.json({
-      data: enrichedClients,
-      pagination: ssoData.pagination ?? { page, limit, total: 0, totalPages: 0 },
+      data: paginatedClients,
+      pagination: {
+        page,
+        limit,
+        total: totalFiltered,
+        totalPages: totalPagesFiltered,
+      },
     });
   } catch (error) {
     logger.error('Error fetching sales clients', {

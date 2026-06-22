@@ -67,6 +67,7 @@ export async function GET(request) {
     const status = searchParams.get('status');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
+    const clientType = searchParams.get('clientType');
     const search = searchParams.get('search');
     const format = searchParams.get('format') || 'csv';
 
@@ -78,7 +79,8 @@ export async function GET(request) {
       );
     }
 
-    // Build SSO Worker API URL with query params - fetch all data by using large limit
+    // Build SSO Worker API URL with query params
+    // Use reasonable upper limit for exports (5000 max to avoid memory exhaustion)
     const ssoWorkerUrl = process.env.SSO_WORKER_URL;
 
     if (!ssoWorkerUrl) {
@@ -88,12 +90,13 @@ export async function GET(request) {
 
     const url = new URL(`${ssoWorkerUrl}/api/sales/subscriptions`);
     url.searchParams.set('page', '1');
-    url.searchParams.set('limit', '10000'); // Large limit for export
+    url.searchParams.set('limit', '5000'); // Reasonable limit for export (prevents memory issues)
     if (planType) url.searchParams.set('planType', planType);
     if (status) url.searchParams.set('status', status);
     if (startDate) url.searchParams.set('startDate', startDate);
     if (endDate) url.searchParams.set('endDate', endDate);
-    if (search) url.searchParams.set('search', search);
+    if (clientType) url.searchParams.set('clientType', clientType);
+    // NOTE: Search is NOT passed to SSO because we filter by enriched SkillPassport names client-side
 
     // Call SSO Worker API with auth token
     const ssoResponse = await fetch(url.toString(), {
@@ -151,7 +154,7 @@ export async function GET(request) {
     });
 
     // Enrich with SkillPassport names
-    const enrichedClients = clients.map(client => {
+    let enrichedClients = clients.map(client => {
       const spUser = spUserMap[client.id];
       let fullName = client.fullName;
 
@@ -163,7 +166,25 @@ export async function GET(request) {
       return { ...client, fullName };
     });
 
-    logger.info('Export generated', { format: 'csv', clientCount: enrichedClients.length });
+    // Apply search filtering on enriched data by enriched SkillPassport names
+    // Search is not passed to SSO to ensure we find clients by enriched names, not just SSO names
+    let filteredClients = enrichedClients;
+
+    if (search) {
+      const searchLower = search.toLowerCase();
+      filteredClients = enrichedClients.filter(client => {
+        const matchesEmail = client.email?.toLowerCase().includes(searchLower) || false;
+        const matchesName = client.fullName?.toLowerCase().includes(searchLower) || false;
+        return matchesEmail || matchesName;
+      });
+    }
+
+    logger.info('Export generated', {
+      format: 'csv',
+      rawCount: clients.length,
+      enrichedCount: enrichedClients.length,
+      filteredCount: filteredClients.length,
+    });
 
     // Generate CSV export
     const headers = [
@@ -182,7 +203,7 @@ export async function GET(request) {
 
     const csvRows = [
       headers.join(','),
-      ...enrichedClients.map(client => {
+      ...filteredClients.map(client => {
         return [
           toCsvCell(client.id),
           toCsvCell(client.email),
