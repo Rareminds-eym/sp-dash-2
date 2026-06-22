@@ -53,17 +53,23 @@ export async function GET(request) {
       return NextResponse.json({ error: 'SSO service not configured' }, { status: 500 });
     }
 
+    // Calculate dynamic fetch limit for search: when searching by enriched names,
+    // fetch more records to account for additional filtering (SSO filters by email + SSO name,
+    // sp-dash-2 also filters by SkillPassport enriched names). Cap at 1000 to avoid memory issues.
+    const fetchLimit = search
+      ? Math.min(limit * 10, 1000)
+      : limit;
+
     const url = new URL(`${ssoWorkerUrl}/api/sales/subscriptions`);
-    // Fetch all results (high limit) to enable search filtering BEFORE pagination
-    // This ensures pagination totals match the filtered result set, not the unfiltered set
-    // Client-side pagination is applied after SkillPassport name enrichment and search
-    url.searchParams.set('page', '1');
-    url.searchParams.set('limit', '10000');
+    url.searchParams.set('page', page);
+    url.searchParams.set('limit', fetchLimit.toString());
     if (clientType) url.searchParams.set('clientType', clientType);
     if (planType) url.searchParams.set('planType', planType);
     if (status) url.searchParams.set('status', status);
     if (startDate) url.searchParams.set('startDate', startDate);
     if (endDate) url.searchParams.set('endDate', endDate);
+    // Pass search to SSO API for server-side filtering (email + SSO full_name)
+    if (search) url.searchParams.set('search', search);
 
     // Call SSO Worker API with auth token
     const ssoResponse = await fetch(url.toString(), {
@@ -148,28 +154,14 @@ export async function GET(request) {
       });
     }
 
-    // Apply pagination after filtering to maintain proper pagination contract
-    const totalFiltered = filteredClients.length;
-    const totalPagesFiltered = Math.ceil(totalFiltered / limit);
-    const startIndex = (page - 1) * limit;
-    const paginatedClients = filteredClients.slice(startIndex, startIndex + limit);
-
-    logger.debug('Clients fetched', {
-      enrichedCount: enrichedClients.length,
-      filteredCount: totalFiltered,
-      returnedCount: paginatedClients.length,
-      page,
-      limit,
-      hasSearch: !!search,
-    });
+    logger.debug('Clients fetched', { count: filteredClients.length, totalBefore: enrichedClients.length });
 
     return NextResponse.json({
-      data: paginatedClients,
+      data: filteredClients,
       pagination: {
-        page,
-        limit,
-        total: totalFiltered,
-        totalPages: totalPagesFiltered,
+        ...ssoData.pagination,
+        total: filteredClients.length,
+        totalPages: Math.ceil(filteredClients.length / (ssoData.pagination?.limit || limit)),
       },
     });
   } catch (error) {

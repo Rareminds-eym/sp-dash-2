@@ -79,7 +79,8 @@ export async function GET(request) {
       );
     }
 
-    // Build SSO Worker API URL with query params - fetch all data by using large limit
+    // Build SSO Worker API URL with query params
+    // Use reasonable upper limit for exports (5000 max to avoid memory exhaustion)
     const ssoWorkerUrl = process.env.SSO_WORKER_URL;
 
     if (!ssoWorkerUrl) {
@@ -89,12 +90,14 @@ export async function GET(request) {
 
     const url = new URL(`${ssoWorkerUrl}/api/sales/subscriptions`);
     url.searchParams.set('page', '1');
-    url.searchParams.set('limit', '10000'); // Large limit for export
+    url.searchParams.set('limit', '5000'); // Reasonable limit for export (prevents memory issues)
     if (planType) url.searchParams.set('planType', planType);
     if (status) url.searchParams.set('status', status);
     if (startDate) url.searchParams.set('startDate', startDate);
     if (endDate) url.searchParams.set('endDate', endDate);
     if (clientType) url.searchParams.set('clientType', clientType);
+    // Pass search to SSO API for server-side filtering
+    if (search) url.searchParams.set('search', search);
 
     // Call SSO Worker API with auth token
     const ssoResponse = await fetch(url.toString(), {
