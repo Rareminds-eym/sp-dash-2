@@ -45,60 +45,29 @@ export async function GET(request) {
     const endDate = searchParams.get('endDate');
     const search = searchParams.get('search');
 
-    // Build SSO Worker API URL with query params
-    const ssoWorkerUrl = process.env.SSO_WORKER_URL;
+    // Call SSO Worker via RPC
+    const { createSSOServiceClient } = await import('@/lib/sso-service-client');
+    const ssoClient = await createSSOServiceClient();
 
-    if (!ssoWorkerUrl) {
-      logger.error('SSO_WORKER_URL not configured');
-      return NextResponse.json({ error: 'SSO service not configured' }, { status: 500 });
-    }
-
-    // Calculate dynamic fetch limit for search: when searching by enriched names,
-    // fetch more records to account for additional filtering (sp-dash-2 filters by enriched SkillPassport names)
-    // Cannot pass search to SSO because it filters by SSO names only, missing SkillPassport-only names
-    // Cap at 1000 to avoid memory issues
-    const fetchLimit = search
-      ? Math.min(limit * 10, 1000)
-      : limit;
-
-    const url = new URL(`${ssoWorkerUrl}/api/sales/subscriptions`);
-    url.searchParams.set('page', page);
-    url.searchParams.set('limit', fetchLimit.toString());
-    if (clientType) url.searchParams.set('clientType', clientType);
-    if (planType) url.searchParams.set('planType', planType);
-    if (status) url.searchParams.set('status', status);
-    if (startDate) url.searchParams.set('startDate', startDate);
-    if (endDate) url.searchParams.set('endDate', endDate);
-    // NOTE: Search is NOT passed to SSO API because we need to filter by enriched SkillPassport names
-    // This is handled client-side after SkillPassport name enrichment in lines 148-155
-
-    // Call SSO Worker API with auth token
-    const ssoResponse = await fetch(url.toString(), {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!ssoResponse.ok) {
-      logger.error('SSO Worker API error', {
-        status: ssoResponse.status,
-        statusText: ssoResponse.statusText,
-      });
-      return NextResponse.json(
-        { error: 'Failed to fetch subscription data' },
-        { status: ssoResponse.status }
-      );
-    }
+    // Reconstruct search params
+    const rpcParams = new URLSearchParams();
+    rpcParams.set('page', page);
+    rpcParams.set('limit', fetchLimit.toString());
+    if (clientType) rpcParams.set('clientType', clientType);
+    if (planType) rpcParams.set('planType', planType);
+    if (status) rpcParams.set('status', status);
+    if (startDate) rpcParams.set('startDate', startDate);
+    if (endDate) rpcParams.set('endDate', endDate);
 
     let ssoData;
     try {
-      ssoData = await ssoResponse.json();
-    } catch (parseError) {
-      logger.error('Failed to parse SSO response', { error: parseError.message });
+      ssoData = await ssoClient.getSalesSubscriptions(rpcParams.toString());
+    } catch (ssoError) {
+      logger.error('SSO Worker RPC error', {
+        error: ssoError.message,
+      });
       return NextResponse.json(
-        { error: 'Invalid response from SSO service' },
+        { error: 'Failed to fetch subscription data' },
         { status: 500 }
       );
     }

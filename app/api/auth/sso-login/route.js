@@ -21,65 +21,24 @@ export async function POST(request) {
       )
     }
 
-    const ssoWorkerUrl = process.env.SSO_WORKER_URL
-
-    if (!ssoWorkerUrl) {
-      throw new Error('SSO_WORKER_URL not configured')
-    }
-
-    // Get origin safely
-    let serverOrigin
-
-    if (process.env.NODE_ENV === 'production') {
-      // Production: use X-Forwarded-Host header (set by reverse proxy/load balancer)
-      const forwardedHost = request.headers.get('x-forwarded-host')
-      const protocol = request.headers.get('x-forwarded-proto') || 'https'
-      serverOrigin = `${protocol}://${forwardedHost || request.headers.get('host')}`
-    } else {
-      // Development: use safe default localhost
-      serverOrigin = 'http://localhost:3000'
-    }
-
-    // Direct HTTP POST with Origin header and timeout
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 10000)
-
-    let ssoResponse
+    // Convert to RPC call
+    const { createSSOServiceClient } = await import('@/lib/sso-service-client')
+    const ssoClient = await createSSOServiceClient()
+    
+    let loginData
     try {
-      ssoResponse = await fetch(`${ssoWorkerUrl}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Origin': serverOrigin,
-        },
-        body: JSON.stringify({ email, password }),
-        signal: controller.signal,
+      loginData = await ssoClient.login({
+        email,
+        password,
+        ip: request.headers.get('x-forwarded-for') || '127.0.0.1',
+        ua: request.headers.get('user-agent') || 'sp-dash'
       })
-    } finally {
-      clearTimeout(timeout)
-    }
-
-    if (!ssoResponse.ok) {
-      let errorData = {}
-      try {
-        errorData = await ssoResponse.json()
-      } catch {
-        errorData = { error: ssoResponse.statusText || 'Request failed' }
-      }
-      console.error('[SSO Login] HTTP error:', { status: ssoResponse.status, error: errorData })
-      return NextResponse.json(
-        { success: false, error: errorData.error || 'Login failed' },
-        { status: ssoResponse.status }
-      )
-    }
-
-    const loginData = await ssoResponse.json()
-
-    if (loginData.error) {
-      let errorMessage = loginData.error || 'Invalid email or password'
-      let statusCode = loginData.status || 401
+    } catch (err) {
+      console.error('[SSO Login] RPC error:', err)
+      let errorMessage = err.message || 'Login failed'
+      let statusCode = 401
       
-      if (errorMessage.includes('Too many')) {
+      if (errorMessage.includes('Too many') || errorMessage.includes('Rate limit')) {
         statusCode = 429
         errorMessage = 'Too many login attempts. Please try again later.'
       } else if (errorMessage.includes('disabled') || errorMessage.includes('verification') || errorMessage.includes('blocked')) {
