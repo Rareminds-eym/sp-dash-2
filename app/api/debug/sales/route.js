@@ -19,52 +19,35 @@ export async function GET(request) {
 
         const results = {};
 
-        // Test SSO Worker API connection
+        // Test SSO Worker API connection via RPC
         try {
-            const ssoWorkerUrl = process.env.SSO_WORKER_URL;
+            const { createSSOServiceClient } = await import('@/lib/sso-service-client');
+            const ssoClient = await createSSOServiceClient();
 
-            if (!ssoWorkerUrl) {
-                results.ssoWorkerError = 'SSO_WORKER_URL not configured';
-            } else {
-                const cookieStore = await cookies();
-                const token = cookieStore.get('sso_access_token')?.value;
+            results.ssoWorkerApi = {
+                status: 200,
+                statusText: 'RPC OK',
+            };
 
-                if (!token) {
-                    results.ssoWorkerError = 'No SSO access token found';
-                } else {
-                    const response = await fetch(`${ssoWorkerUrl}/api/sales/subscriptions?page=1&limit=1`, {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json',
-                        },
-                    });
+            let jsonData;
+            let parseSuccess = true;
+            try {
+                // Testing connection via RPC
+                jsonData = await ssoClient.getSalesSubscriptions('page=1&limit=1');
+            } catch (rpcError) {
+                parseSuccess = false;
+                results.ssoWorkerApi.parseError = rpcError instanceof Error ? rpcError.message : String(rpcError);
+            }
 
-                    results.ssoWorkerApi = {
-                        status: response.status,
-                        statusText: response.statusText,
-                    };
+            results.ssoWorkerApi.available = parseSuccess;
 
-                    let jsonData;
-                    let parseSuccess = true;
-                    try {
-                        jsonData = await response.json();
-                    } catch (parseError) {
-                        parseSuccess = false;
-                        results.ssoWorkerApi.parseError = parseError instanceof Error ? parseError.message : String(parseError);
-                    }
-
-                    results.ssoWorkerApi.available = response.ok && parseSuccess;
-
-                    if (response.ok && jsonData) {
-                        results.ssoWorkerData = {
-                            sampleCount: jsonData.data?.length || 0,
-                            totalCount: jsonData.pagination?.total || 0,
-                        };
-                    } else if (!response.ok && jsonData?.error) {
-                        results.ssoWorkerApi.errorMessage = jsonData.error;
-                    }
-                }
+            if (parseSuccess && jsonData) {
+                results.ssoWorkerData = {
+                    sampleCount: jsonData.data?.length || 0,
+                    totalCount: jsonData.pagination?.total || 0,
+                };
+            } else if (!parseSuccess && jsonData?.error) {
+                results.ssoWorkerApi.errorMessage = jsonData.error;
             }
         } catch (err) {
             results.ssoWorkerError = err instanceof Error ? err.message : String(err);

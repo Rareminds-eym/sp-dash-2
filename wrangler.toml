@@ -5,7 +5,7 @@ compatibility_flags = ["nodejs_compat"]
 [[services]]
 binding = "SSO"
 service = "sso-api"
-entrypoint = "SSOEntrypoint"
+entrypoint = "SsoWorker"
 
 [env.production.vars]
 NEXT_PUBLIC_BASE_URL = "https://dashboard.rareminds.com"
@@ -13,7 +13,7 @@ NEXT_PUBLIC_BASE_URL = "https://dashboard.rareminds.com"
 [[env.production.services]]
 binding = "SSO"
 service = "sso-api"
-entrypoint = "SSOEntrypoint"
+entrypoint = "SsoWorker"
 
 [env.staging.vars]
 NEXT_PUBLIC_BASE_URL = "https://dashboard-staging.rareminds.com"
@@ -21,7 +21,7 @@ NEXT_PUBLIC_BASE_URL = "https://dashboard-staging.rareminds.com"
 [[env.staging.services]]
 binding = "SSO"
 service = "sso-api"
-entrypoint = "SSOEntrypoint"
+entrypoint = "SsoWorker"
 
 [env.development.vars]
 NEXT_PUBLIC_BASE_URL = "http://localhost:3000"
@@ -29,4 +29,4 @@ NEXT_PUBLIC_BASE_URL = "http://localhost:3000"
 [[env.development.services]]
 binding = "SSO"
 service = "sso-api"
-entrypoint = "SSOEntrypoint"
+entrypoint = "SsoWorker"

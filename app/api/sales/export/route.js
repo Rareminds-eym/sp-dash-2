@@ -79,52 +79,29 @@ export async function GET(request) {
       );
     }
 
-    // Build SSO Worker API URL with query params
-    // Use reasonable upper limit for exports (5000 max to avoid memory exhaustion)
-    const ssoWorkerUrl = process.env.SSO_WORKER_URL;
+    // Call SSO Worker via RPC
+    const { createSSOServiceClient } = await import('@/lib/sso-service-client');
+    const ssoClient = await createSSOServiceClient();
 
-    if (!ssoWorkerUrl) {
-      logger.error('SSO_WORKER_URL not configured');
-      return NextResponse.json({ error: 'SSO service not configured' }, { status: 500 });
-    }
-
-    const url = new URL(`${ssoWorkerUrl}/api/sales/subscriptions`);
-    url.searchParams.set('page', '1');
-    url.searchParams.set('limit', '5000'); // Reasonable limit for export (prevents memory issues)
-    if (planType) url.searchParams.set('planType', planType);
-    if (status) url.searchParams.set('status', status);
-    if (startDate) url.searchParams.set('startDate', startDate);
-    if (endDate) url.searchParams.set('endDate', endDate);
-    if (clientType) url.searchParams.set('clientType', clientType);
+    const rpcParams = new URLSearchParams();
+    rpcParams.set('page', '1');
+    rpcParams.set('limit', '5000'); // Reasonable limit for export (prevents memory issues)
+    if (planType) rpcParams.set('planType', planType);
+    if (status) rpcParams.set('status', status);
+    if (startDate) rpcParams.set('startDate', startDate);
+    if (endDate) rpcParams.set('endDate', endDate);
+    if (clientType) rpcParams.set('clientType', clientType);
     // NOTE: Search is NOT passed to SSO because we filter by enriched SkillPassport names client-side
-
-    // Call SSO Worker API with auth token
-    const ssoResponse = await fetch(url.toString(), {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!ssoResponse.ok) {
-      logger.error('SSO Worker API error', {
-        status: ssoResponse.status,
-        statusText: ssoResponse.statusText,
-      });
-      return NextResponse.json(
-        { error: 'Failed to fetch subscription data' },
-        { status: ssoResponse.status }
-      );
-    }
 
     let ssoData;
     try {
-      ssoData = await ssoResponse.json();
-    } catch (parseError) {
-      logger.error('Failed to parse SSO response', { error: parseError.message });
+      ssoData = await ssoClient.getSalesSubscriptions(rpcParams.toString());
+    } catch (ssoError) {
+      logger.error('SSO Worker RPC error', {
+        error: ssoError.message,
+      });
       return NextResponse.json(
-        { error: 'Invalid response from SSO service' },
+        { error: 'Failed to fetch subscription data' },
         { status: 500 }
       );
     }
