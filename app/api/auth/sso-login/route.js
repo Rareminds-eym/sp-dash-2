@@ -86,8 +86,8 @@ export async function POST(request) {
       )
     }
 
-    // Check if user has rm_admin role only
-    const allowedRoles = ['rm_admin']
+    // Check if user has super_admin or platform_admin role
+    const allowedRoles = ['super_admin', 'platform_admin']
     const hasAdminRole = user.roles.some(role => allowedRoles.includes(role))
     
     if (!hasAdminRole) {

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/hooks/use-toast'
-import { RefreshCw, Database, CheckCircle2, Save, Edit3, Lock, Eye, EyeOff } from 'lucide-react'
+import { RefreshCw, Database, CheckCircle2, Save, Edit3, Lock, Eye, EyeOff, AlertTriangle } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -43,6 +43,33 @@ export default function SettingsPage({ user }) {
     email: user?.email || '',
     organizationName: user?.organization?.name || ''
   })
+
+  // Maintenance mode state
+  const [maintenanceMode, setMaintenanceMode] = useState(false)
+  const [bypassToken, setBypassToken] = useState(null)
+  const [isTogglingMaintenance, setIsTogglingMaintenance] = useState(false)
+  const [isGeneratingToken, setIsGeneratingToken] = useState(false)
+  const [showMaintenanceDialog, setShowMaintenanceDialog] = useState(false)
+
+  // Fetch maintenance mode state
+  // user.role comes from users.role column. Only super_admin sees this section.
+  useEffect(() => {
+    if (user?.role === 'super_admin') {
+      const fetchMaintenanceMode = async () => {
+        try {
+          const res = await fetch('/api/system/maintenance')
+          if (res.ok) {
+            const data = await res.json()
+            setMaintenanceMode(data.enabled)
+            setBypassToken(data.bypassToken)
+          }
+        } catch (error) {
+          console.error('Failed to fetch maintenance mode', error)
+        }
+      }
+      fetchMaintenanceMode()
+    }
+  }, [user])
 
   // Sync profileData with user prop when it changes
   useEffect(() => {
@@ -83,6 +110,74 @@ export default function SettingsPage({ user }) {
       })
     } finally {
       setIsUpdating(false)
+    }
+  }
+
+  const handleToggleMaintenance = async () => {
+    setIsTogglingMaintenance(true)
+    const newStatus = !maintenanceMode
+    
+    try {
+      const response = await fetch('/api/system/maintenance', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ enabled: newStatus }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        setMaintenanceMode(newStatus)
+        setShowMaintenanceDialog(false)
+        toast({
+          title: newStatus ? 'Maintenance Mode Enabled' : 'Maintenance Mode Disabled',
+          description: newStatus 
+            ? 'Public access is now restricted. Only super_admins can access the application.' 
+            : 'Public access has been restored.',
+          variant: newStatus ? 'destructive' : 'default',
+        })
+      } else {
+        throw new Error(data.error || 'Failed to toggle maintenance mode')
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'An unexpected error occurred.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsTogglingMaintenance(false)
+    }
+  }
+
+  const handleToggleBypassToken = async (action) => {
+    setIsGeneratingToken(true)
+    try {
+      const response = await fetch('/api/system/maintenance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      })
+      const data = await response.json()
+      if (response.ok && data.success) {
+        setBypassToken(data.bypassToken || null)
+        toast({
+          title: action === 'generate' ? 'Bypass Link Generated' : 'Bypass Link Revoked',
+          description: action === 'generate' ? 'You can now copy the link to test as a normal user.' : 'The bypass link is no longer active.',
+        })
+      } else {
+        throw new Error(data.error || 'Failed to toggle token')
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      })
+    } finally {
+      setIsGeneratingToken(false)
     }
   }
 
@@ -479,6 +574,115 @@ export default function SettingsPage({ user }) {
           </CardContent>
         </Card>
       )}
+
+      {/* Platform Operations Section - Only super_admin can toggle maintenance mode */}
+      {user?.role === 'super_admin' && (
+        <Card className="neu-card border-orange-200 dark:border-orange-900">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+              <CardTitle>Platform Operations</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between border-b pb-4">
+              <div className="space-y-1">
+                <p className="font-medium text-orange-700 dark:text-orange-400">Maintenance Mode</p>
+                <p className="text-sm text-muted-foreground max-w-[400px]">
+                  When active, all public users will be blocked and shown a maintenance screen. 
+                  Only super_admins will be able to access the platform.
+                </p>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className={`px-2 py-1 text-xs font-semibold rounded-full ${maintenanceMode ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-800'}`}>
+                  {maintenanceMode ? 'ACTIVE' : 'INACTIVE'}
+                </div>
+                <Switch 
+                  checked={maintenanceMode} 
+                  onCheckedChange={() => setShowMaintenanceDialog(true)} 
+                  disabled={isTogglingMaintenance}
+                />
+              </div>
+            </div>
+            
+            {maintenanceMode && (
+              <div className="flex items-center justify-between border-t pt-4">
+                <div className="space-y-1">
+                  <p className="font-medium text-gray-700 dark:text-gray-300">Bypass Token Link</p>
+                  <p className="text-sm text-muted-foreground max-w-[400px]">
+                    Generate a secret URL to bypass the maintenance screen and test the platform as a regular user.
+                  </p>
+                  {bypassToken && (() => {
+                    const baseUrl = process.env.NEXT_PUBLIC_SKILLPASSPORT_URL || 'http://localhost:8788'
+                    const bypassUrl = `${baseUrl}/?bypass=${bypassToken}`
+                    return (
+                    <div className="flex items-center gap-2 mt-2 bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs select-all">
+                      <code className="break-all">{bypassUrl}</code>
+                      <Button variant="ghost" size="sm" onClick={() => {
+                        navigator.clipboard.writeText(bypassUrl)
+                        toast({ title: "Copied!", description: "Bypass link copied to clipboard." })
+                      }}>
+                        Copy
+                      </Button>
+                    </div>
+                    )
+                  })()}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Button 
+                    variant={bypassToken ? "destructive" : "outline"} 
+                    size="sm"
+                    onClick={() => handleToggleBypassToken(bypassToken ? 'revoke' : 'generate')}
+                    disabled={isGeneratingToken}
+                  >
+                    {isGeneratingToken && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
+                    {bypassToken ? 'Revoke Link' : 'Generate Link'}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Maintenance Mode Confirmation Dialog */}
+      <Dialog open={showMaintenanceDialog} onOpenChange={setShowMaintenanceDialog}>
+        <DialogContent className="sm:max-w-md border-orange-200">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-orange-600">
+              <AlertTriangle className="h-5 w-5" />
+              {maintenanceMode ? 'Disable Maintenance Mode?' : 'Enable Maintenance Mode?'}
+            </DialogTitle>
+            <DialogDescription>
+              {maintenanceMode 
+                ? 'This will restore public access to the platform for all users immediately.' 
+                : 'This will instantly restrict access for all public users and students. They will see a maintenance screen. Only super_admins will have access.'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <DialogFooter className="flex gap-2 sm:justify-between w-full pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowMaintenanceDialog(false)}
+              disabled={isTogglingMaintenance}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant={maintenanceMode ? "default" : "destructive"}
+              onClick={handleToggleMaintenance}
+              disabled={isTogglingMaintenance}
+            >
+              {isTogglingMaintenance ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : null}
+              {maintenanceMode ? 'Restore Access' : 'Activate Maintenance Mode'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Password Update Dialog */}
       <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
