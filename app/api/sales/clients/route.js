@@ -1,29 +1,43 @@
-import { authenticateRequest } from '@/lib/middleware/auth';
+import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import Logger from '@/lib/logger';
-import { addSearchFilter, sanitizeSearchTerm } from '@/lib/supabase-utils';
 
 export const runtime = 'edge';
+
+// Skillpassport database admin client
+const skillpassportAdmin = supabaseAdmin;
+
+
 
 const logger = new Logger('SalesClientsAPI');
 
 /**
  * GET handler for fetching sales clients with pagination and filters
+ * Calls SSO Worker API to fetch subscription data
  * @param {Request} request - The incoming request object
  * @returns {Promise<Response>} JSON response with clients data and pagination
  */
 export async function GET(request) {
   try {
-    const { error } = await authenticateRequest(request, ['/sales']);
+    // Authenticate using SSO
+    const { error } = await authenticateSSORequest(request, ['super_admin', 'admin', 'rm_admin']);
     if (error) return error;
+
+    // Extract token from cookies for SSO Worker API call
+    const cookieStore = await cookies();
+    const token = cookieStore.get('sso_access_token')?.value;
+
+    if (!token) {
+      logger.error('No SSO access token found');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     // Get query parameters
     const { searchParams } = new URL(request.url);
-    const rawPage = Number(searchParams.get('page') ?? '1');
-    const rawLimit = Number(searchParams.get('limit') ?? '20');
-    const page = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1;
-    const limit = Number.isInteger(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 100) : 20;
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+    const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '20', 10)));
     const clientType = searchParams.get('clientType');
     const planType = searchParams.get('planType');
     const status = searchParams.get('status');
@@ -31,254 +45,115 @@ export async function GET(request) {
     const endDate = searchParams.get('endDate');
     const search = searchParams.get('search');
 
-    // Calculate offset for pagination
-    const offset = (page - 1) * limit;
-    
-    // Step 1: Build base users query with filters
-    let usersCountQuery = supabaseAdmin
-      .from('users')
-      .select('id', { count: 'exact', head: true })
-      .eq('isActive', true);
-    
-    // Exclude tempmail and rareminds domain emails
-    const excludedDomains = [
-      '%@tempmail.%',
-      '%@temp-mail.%',
-      '%@guerrillamail.%',
-      '%@10minutemail.%',
-      '%@throwaway.%',
-      '%@mailinator.%',
-      '%@maildrop.%',
-      '%@trashmail.%',
-      '%@yopmail.%',
-      '%@fakeinbox.%',
-      '%@rareminds.%',
-      '%@rareminds.com%',
-      '%@rareminds.in%'
-    ];
-    
-    excludedDomains.forEach(domain => {
-      usersCountQuery = usersCountQuery.not('email', 'ilike', domain);
-    });
+    // Call SSO Worker via RPC
+    const { createSSOServiceClient } = await import('@/lib/sso-service-client');
+    const ssoClient = await createSSOServiceClient();
 
-    // Apply user filters to count query
-    if (clientType) {
-      const clientTypes = clientType.split(',').filter(Boolean);
-      if (clientTypes.length > 0) {
-        usersCountQuery = usersCountQuery.in('role', clientTypes);
+    // Reconstruct search params
+    const rpcParams = new URLSearchParams();
+    rpcParams.set('page', page);
+    rpcParams.set('limit', limit.toString());
+    if (clientType) rpcParams.set('clientType', clientType);
+    if (planType) rpcParams.set('planType', planType);
+    if (status) rpcParams.set('status', status);
+    if (startDate) rpcParams.set('startDate', startDate);
+    if (endDate) rpcParams.set('endDate', endDate);
+
+    let ssoData;
+    try {
+      ssoData = await ssoClient.getSalesSubscriptions(rpcParams.toString());
+    } catch (ssoError) {
+      logger.error('SSO Worker RPC error', {
+        error: ssoError.message,
+      });
+      return NextResponse.json(
+        { error: 'Failed to fetch subscription data' },
+        { status: 500 }
+      );
+    }
+
+    // Fetch user names from SkillPassport database for real client names
+    let skillpassportUsers = [];
+    if (ssoData.data && ssoData.data.length > 0) {
+      try {
+        const { data: spUsers, error: spError } = await skillpassportAdmin
+          .from('users')
+          .select('id, "firstName", "lastName", email')
+          .in('id', ssoData.data.map(u => u.id));
+
+        if (!spError && spUsers) {
+          skillpassportUsers = spUsers;
+        }
+      } catch (err) {
+        logger.warn('Failed to fetch SkillPassport user names', { error: err.message });
       }
     }
+
+    // Create a map of SkillPassport users by ID for quick lookup
+    const spUserMap = {};
+    skillpassportUsers.forEach(spUser => {
+      spUserMap[spUser.id] = spUser;
+    });
+
+    // Combine with SkillPassport names
+    const enrichedClients = (ssoData.data || []).map(client => {
+      const spUser = spUserMap[client.id];
+      let fullName = client.fullName;
+
+      // Override with SkillPassport name if available
+      if (spUser?.firstName || spUser?.lastName) {
+        fullName = `${spUser.firstName || ''} ${spUser.lastName || ''}`.trim();
+      }
+
+      return {
+        ...client,
+        fullName,
+      };
+    });
+
+    // Apply name-based search filtering on enriched data (after SkillPassport name enrichment)
+    // This ensures search works with actual display names, not just SSO names
+    let filteredClients = enrichedClients;
 
     if (search) {
-      const sanitizedSearch = sanitizeSearchTerm(search);
-      if (sanitizedSearch) {
-        usersCountQuery = addSearchFilter(usersCountQuery, ['firstName', 'lastName', 'email'], sanitizedSearch);
-      }
-    }
-
-    if (startDate) {
-      usersCountQuery = usersCountQuery.gte('createdAt', startDate);
-    }
-
-    if (endDate) {
-      usersCountQuery = usersCountQuery.lte('createdAt', endDate);
-    }
-
-    // Step 2: Get users with subscriptions (using EXISTS-like filter)
-    // First get all subscription emails that match our filters
-    let subsEmailQuery = supabaseAdmin
-      .from('subscriptions')
-      .select('email');
-
-    if (planType) {
-      subsEmailQuery = subsEmailQuery.eq('plan_type', planType);
-    }
-
-    if (status) {
-      subsEmailQuery = subsEmailQuery.eq('status', status);
-    }
-
-    const { data: subsEmails, error: subsEmailError } = await subsEmailQuery;
-    
-    if (subsEmailError) {
-      logger.error('Subscription emails query failed', { error: subsEmailError.message });
-      throw new Error(subsEmailError.message);
-    }
-
-    if (!subsEmails || subsEmails.length === 0) {
-      return NextResponse.json({
-        data: [],
-        pagination: { page, limit, total: 0, totalPages: 0 },
+      const searchLower = search.toLowerCase();
+      filteredClients = enrichedClients.filter(client => {
+        const matchesEmail = client.email?.toLowerCase().includes(searchLower) || false;
+        const matchesName = client.fullName?.toLowerCase().includes(searchLower) || false;
+        return matchesEmail || matchesName;
       });
     }
 
-    const subscriptionEmails = [...new Set(subsEmails.map(s => s.email))];
-    
-    // Add subscription email filter to count query
-    usersCountQuery = usersCountQuery.in('email', subscriptionEmails);
+    // Apply pagination after filtering to maintain proper page boundaries
+    const totalFiltered = filteredClients.length;
+    const totalPagesFiltered = Math.ceil(totalFiltered / limit);
+    const startIndex = (page - 1) * limit;
+    const paginatedClients = filteredClients.slice(startIndex, startIndex + limit);
 
-    // Get total count
-    const { count: totalCount, error: countError } = await usersCountQuery;
-    
-    if (countError) {
-      logger.error('Count query failed', { error: countError.message });
-      throw new Error(countError.message);
-    }
-
-    const total = totalCount || 0;
-
-    if (total === 0) {
-      return NextResponse.json({
-        data: [],
-        pagination: { page, limit, total: 0, totalPages: 0 },
-      });
-    }
-
-    // Step 3: Fetch paginated users
-    let usersQuery = supabaseAdmin
-      .from('users')
-      .select('*')
-      .eq('isActive', true)
-      .in('email', subscriptionEmails);
-    
-    excludedDomains.forEach(domain => {
-      usersQuery = usersQuery.not('email', 'ilike', domain);
+    logger.debug('Clients fetched', {
+      enrichedCount: enrichedClients.length,
+      filteredCount: totalFiltered,
+      returnedCount: paginatedClients.length,
+      page,
+      limit,
     });
-
-    if (clientType) {
-      const clientTypes = clientType.split(',').filter(Boolean);
-      if (clientTypes.length > 0) {
-        usersQuery = usersQuery.in('role', clientTypes);
-      }
-    }
-
-    if (search) {
-      const sanitizedSearch = sanitizeSearchTerm(search);
-      if (sanitizedSearch) {
-        usersQuery = addSearchFilter(usersQuery, ['firstName', 'lastName', 'email'], sanitizedSearch);
-      }
-    }
-
-    if (startDate) {
-      usersQuery = usersQuery.gte('createdAt', startDate);
-    }
-
-    if (endDate) {
-      usersQuery = usersQuery.lte('createdAt', endDate);
-    }
-
-    // Apply database-level pagination
-    usersQuery = usersQuery.range(offset, offset + limit - 1);
-
-    const { data: users, error: usersError } = await usersQuery;
-    
-    if (usersError) {
-      logger.error('Users query failed', { error: usersError.message });
-      throw new Error(usersError.message);
-    }
-
-    logger.debug('Users fetched', { count: users?.length || 0, total });
-
-    if (!users || users.length === 0) {
-      return NextResponse.json({
-        data: [],
-        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
-      });
-    }
-
-    // Step 4: Fetch subscriptions for paginated users only
-    const userEmails = users.map(u => u.email);
-    
-    let subsQuery = supabaseAdmin
-      .from('subscriptions')
-      .select('email, id, plan_type, plan_amount, billing_cycle, status, subscription_start_date, subscription_end_date, phone, created_at')
-      .in('email', userEmails);
-
-    if (planType) {
-      subsQuery = subsQuery.eq('plan_type', planType);
-    }
-
-    if (status) {
-      subsQuery = subsQuery.eq('status', status);
-    }
-
-    const { data: subscriptions, error: subsError } = await subsQuery;
-    
-    if (subsError) {
-      logger.error('Subscriptions query failed', { error: subsError.message });
-      throw new Error(subsError.message);
-    }
-
-    logger.debug('Subscriptions fetched', { count: subscriptions?.length || 0 });
-
-    // Create a map of subscriptions by email
-    const subscriptionsByEmail = {};
-    (subscriptions || []).forEach(sub => {
-      if (!subscriptionsByEmail[sub.email]) {
-        subscriptionsByEmail[sub.email] = [];
-      }
-      subscriptionsByEmail[sub.email].push(sub);
-    });
-
-    // Helper function to select subscription deterministically
-    const selectSubscription = (subs) => {
-      if (!subs || subs.length === 0) return null;
-      
-      // Sort by: 1) active status first, 2) most recent created_at
-      const sorted = subs.sort((a, b) => {
-        // Active subscriptions first
-        if (a.status === 'active' && b.status !== 'active') return -1;
-        if (a.status !== 'active' && b.status === 'active') return 1;
-        
-        // Then by most recent created_at
-        return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-      });
-      
-      return sorted[0];
-    };
-
-    // Combine users with their subscriptions
-    const paginatedClients = users
-      .filter(user => subscriptionsByEmail[user.email])
-      .map(user => {
-        const subscription = selectSubscription(subscriptionsByEmail[user.email]);
-        const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
-        
-        return {
-          id: user.id,
-          email: user.email,
-          fullName: fullName,
-          phone: user.phone || subscription?.phone || '-',
-          role: user.role,
-          organizationId: user.organizationId,
-          subscriptionId: subscription?.id || null,
-          planType: subscription?.plan_type || null,
-          planAmount: subscription?.plan_amount || null,
-          billingCycle: subscription?.billing_cycle || null,
-          subscriptionStatus: subscription?.status || null,
-          startDate: subscription?.subscription_start_date || null,
-          endDate: subscription?.subscription_end_date || null,
-        };
-      });
-
-    logger.debug('Clients combined', { count: paginatedClients.length });
 
     return NextResponse.json({
       data: paginatedClients,
       pagination: {
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit),
+        total: totalFiltered,
+        totalPages: totalPagesFiltered,
       },
     });
   } catch (error) {
-    logger.error('Error fetching sales clients', { 
-      error: error.message, 
-      stack: error.stack 
+    logger.error('Error fetching sales clients', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
     });
     return NextResponse.json(
-      { error: 'Internal server error' }, 
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

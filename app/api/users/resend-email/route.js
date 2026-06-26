@@ -1,16 +1,17 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/middleware/auth';
+import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { handleError } from '@/lib/middleware/errorHandler';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
-export const runtime = 'edge';
+
 
 /**
  * POST /api/users/resend-email - Resend password reset email to an admin user
  */
 export async function POST(request) {
   try {
-    const { rlsClient, error } = await authenticateRequest(request, ['/users']);
+    const { error } = await authenticateSSORequest(request, ['super_admin', 'admin']);
     if (error) return error;
     
     // Parse request body
@@ -47,11 +48,15 @@ export async function POST(request) {
       }, { status: 400 });
     }
     
+    // Construct the base URL dynamically from the request
+    const requestUrl = new URL(request.url);
+    const baseUrl = `${requestUrl.protocol}//${requestUrl.host}`;
+
     // Resend password reset email
     const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(
       userData.email,
       {
-        redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/reset-password`
+        redirectTo: `${baseUrl}/reset-password`
       }
     );
     

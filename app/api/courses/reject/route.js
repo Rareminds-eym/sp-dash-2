@@ -1,30 +1,22 @@
+export const runtime = 'edge';
 import { logAudit } from '@/lib/services/auditService';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { createRLSClient, getUserContext } from '@/lib/supabase-rls';
+import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { NextResponse } from 'next/server';
 
-export const runtime = 'edge';
+
 
 export async function POST(request) {
     try {
-        const { supabase: rlsClient, user, error: authError } = await createRLSClient(request);
-
-        if (!user || authError) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const userContext = await getUserContext(rlsClient, user);
-
-        if (!userContext) {
-            return NextResponse.json({ error: 'User context not found' }, { status: 403 });
-        }
+        const { error: authError, user } = await authenticateSSORequest(request, ['super_admin', 'admin']);
+        if (authError) return authError;
 
         const body = await request.json();
-        const { courseId, reason, notes, userId } = body;
+        const { courseId, reason, notes } = body;
 
-        if (!courseId || !userId || !reason) {
+        if (!courseId || !reason) {
             return NextResponse.json(
-                { error: 'Missing required fields (courseId, userId, reason)' },
+                { error: 'Missing required fields (courseId, reason)' },
                 { status: 400 }
             );
         }
@@ -35,7 +27,7 @@ export async function POST(request) {
             .update({
                 approval_status: 'rejected',
                 rejection_reason: reason,
-                rejected_by: userId,
+                rejected_by: user.id,
                 rejected_at: new Date().toISOString()
             })
             .eq('course_id', courseId)
@@ -51,7 +43,7 @@ export async function POST(request) {
         }
 
         // Log audit
-        await logAudit(userId, 'reject_course', courseId, { reason, notes });
+        await logAudit(user.id, 'reject_course', courseId, { reason, notes });
 
         return NextResponse.json({ success: true, data });
     } catch (error) {
