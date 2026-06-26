@@ -52,7 +52,7 @@ export async function GET(request) {
     // Reconstruct search params
     const rpcParams = new URLSearchParams();
     rpcParams.set('page', page);
-    rpcParams.set('limit', fetchLimit.toString());
+    rpcParams.set('limit', limit.toString());
     if (clientType) rpcParams.set('clientType', clientType);
     if (planType) rpcParams.set('planType', planType);
     if (status) rpcParams.set('status', status);

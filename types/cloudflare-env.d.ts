@@ -5,7 +5,7 @@
  * used in the dashboard application.
  */
 
-import type { SSOEntrypoint } from "../../workers/sso-worker/src/entrypoint";
+import type { SsoWorker as SSOEntrypoint } from "../../workers/sso-worker/src/index";
 
 declare global {
   interface CloudflareEnv {
