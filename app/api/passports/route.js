@@ -1,16 +1,18 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/middleware/auth';
+import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { filterAndRankResults, fuzzyMatch } from '@/lib/search-utils';
 import { handleError } from '@/lib/middleware/errorHandler';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
-export const runtime = 'edge';
+
 
 /**
  * GET /api/passports - List all skill passports with pagination, search, and filters
  */
 export async function GET(request) {
   try {
-    const { rlsClient, error } = await authenticateRequest(request, ['/passports']);
+    const { error } = await authenticateSSORequest(request, ['super_admin', 'admin']);
     if (error) return error;
     
     // Get parameters from query string
@@ -26,7 +28,7 @@ export async function GET(request) {
     const sortOrder = url.searchParams.get('sortOrder') || 'desc';
     
     // Build the query for passports using RLS client
-    let passportsQuery = rlsClient.from('skill_passports').select('*', { count: 'exact' });
+    let passportsQuery = supabaseAdmin.from('skill_passports').select('*', { count: 'exact' });
     
     // Apply status filter
     if (statusFilter && statusFilter !== 'all') {
@@ -63,12 +65,12 @@ export async function GET(request) {
       if (studentIds.length > 0) {
         // Fetch all students and their users in parallel using RLS client
         const [studentsResult, usersResult] = await Promise.all([
-          rlsClient.from('students').select('*').in('id', studentIds),
-          rlsClient.from('students').select('userId, organizationId').in('id', studentIds).then(async (result) => {
+          supabaseAdmin.from('students').select('*').in('id', studentIds),
+          supabaseAdmin.from('students').select('userId, organizationId').in('id', studentIds).then(async (result) => {
             if (result.data && result.data.length > 0) {
               const userIds = result.data.map(s => s.userId).filter(Boolean);
               if (userIds.length > 0) {
-                return await rlsClient.from('users').select('id, email, metadata').in('id', userIds);
+                return await supabaseAdmin.from('users').select('id, email, metadata').in('id', userIds);
               }
             }
             return { data: [] };
@@ -82,7 +84,7 @@ export async function GET(request) {
         const orgIds = students.map(s => s.universityId || s.organizationId).filter(Boolean);
         let universities = [];
         if (orgIds.length > 0) {
-          const { data: univData } = await rlsClient.from('universities').select('id, name').in('id', orgIds);
+          const { data: univData } = await supabaseAdmin.from('universities').select('id, name').in('id', orgIds);
           universities = univData || [];
         }
         

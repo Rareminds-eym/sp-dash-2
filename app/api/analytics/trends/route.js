@@ -1,16 +1,17 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { handleError } from '@/lib/middleware/errorHandler';
-import { authenticateRequest } from '@/lib/middleware/auth';
+import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 
-export const runtime = 'edge';
+
 
 /**
  * GET /api/analytics/trends - Employability trends
  */
 export async function GET(request) {
   try {
-    const { rlsClient, error } = await authenticateRequest(request, ['/api/metrics']);
+    const { error } = await authenticateSSORequest(request, ['super_admin', 'admin']);
     if (error) return error;
 
     const { data: metrics, error: dbError } = await supabaseAdmin

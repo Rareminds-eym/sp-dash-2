@@ -1,3 +1,9 @@
+// Enable Cloudflare Pages local development with service bindings
+if (process.env.NODE_ENV === 'development') {
+  const { setupDevPlatform } = require('@cloudflare/next-on-pages/next-dev');
+  setupDevPlatform();
+}
+
 const nextConfig = {
   // Configured for Cloudflare Pages deployment with Edge Runtime
   images: {
@@ -6,13 +12,19 @@ const nextConfig = {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
+  serverExternalPackages: ['jose'],
   experimental: {
-    // Remove if not using Server Components
+    // Enable service bindings for Cloudflare Workers
   },
-  webpack(config, { dev }) {
+  webpack(config, { dev, nextRuntime }) {
+    if (nextRuntime === 'edge') {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        'async_hooks': 'node:async_hooks',
+      };
+    }
     if (dev) {
       // Reduce CPU/memory from file watching
-
     }
     return config;
   },
@@ -27,7 +39,7 @@ const nextConfig = {
         headers: [
           { key: "X-Frame-Options", value: "ALLOWALL" },
           { key: "Content-Security-Policy", value: "frame-ancestors *;" },
-          { key: "Access-Control-Allow-Origin", value: process.env.CORS_ORIGINS || "*" },
+          { key: "Access-Control-Allow-Origin", value: "*" },
           { key: "Access-Control-Allow-Methods", value: "GET, POST, PUT, DELETE, OPTIONS" },
           { key: "Access-Control-Allow-Headers", value: "*" },
         ],

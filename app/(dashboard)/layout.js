@@ -28,11 +28,11 @@ import {
   CheckCircle,
   ChevronDown,
   ChevronRight,
-  DollarSign,
   Download,
   FileText,
   GraduationCap,
   History,
+  IndianRupee,
   LayoutDashboard,
   LogOut,
   MapPin,
@@ -64,6 +64,15 @@ const initialNavigation = [
   { name: 'Verification Center', icon: FileText, href: '/passports' },
   { name: 'Recruiter Management', icon: Briefcase, href: '/recruiters' },
   {
+    name: 'Student Dashboard',
+    icon: Users,
+    href: '/student-dashboard',
+    subItems: [
+      { name: 'Courses', href: '/student-dashboard/courses', icon: BookOpen },
+      { name: 'Certificates', href: '/student-dashboard/certificates', icon: Trophy },
+    ]
+  },
+  {
     name: 'Approval Center',
     icon: CheckCircle,
     href: '/approvals',
@@ -87,7 +96,7 @@ const initialNavigation = [
       { name: 'Insights', href: '/reports?tab=insights', icon: Brain },
     ]
   },
-  { name: 'Sales Dashboard', icon: DollarSign, href: '/sales-dashboard' },
+  { name: 'Sales Dashboard', icon: IndianRupee, href: '/sales-dashboard' },
   { name: 'Audit Logs', icon: History, href: '/audit-logs' },
   { name: 'Integrations', icon: Plug, href: '/integrations' },
   { name: 'Settings', icon: Settings, href: '/settings' },
