@@ -86,7 +86,18 @@ export default function SalesDashboardPage() {
     if (!changed) return;
 
     const newUrl = `${window.location.pathname}?${params.toString()}`;
-    window.history.replaceState(null, '', newUrl);
+    // Preserve Next.js router state + bypass ACTION_RESTORE dispatch
+    // to avoid cascading re-renders (next.js monkey-patches replaceState)
+    const currentState = window.history.state || {};
+    window.history.replaceState(
+      {
+        ...currentState,
+        __NA: true,
+        __PRIVATE_NEXTJS_INTERNALS_TREE: currentState.__PRIVATE_NEXTJS_INTERNALS_TREE,
+      },
+      '',
+      newUrl,
+    );
   }, [
     filters.clientType.join(','),
     filters.planType,
