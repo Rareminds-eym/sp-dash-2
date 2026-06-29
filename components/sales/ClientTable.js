@@ -243,6 +243,11 @@ export function ClientTable({ data, pagination, isLoading, onPageChange }) {
             </PaginationLink>
           </PaginationItem>
           <PaginationItem>
+            <span className="px-3 text-sm text-muted-foreground">
+              of {pagination?.totalPages || 1}
+            </span>
+          </PaginationItem>
+          <PaginationItem>
             <PaginationNext
               onClick={() => handlePageChange(currentPage + 1)}
               onKeyDown={(e) => handleKeyboardNavigation(e, currentPage + 1)}

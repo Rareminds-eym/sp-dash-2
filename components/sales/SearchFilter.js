@@ -1,38 +1,31 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 
 export function SearchFilter({ value, onChange }) {
-  const [inputValue, setInputValue] = useState(value || '');
-  const onChangeRef = useRef(onChange);
+  const [localValue, setLocalValue] = useState(value || '');
 
-  // Update ref whenever onChange changes (without triggering debounce effect)
+  // Sync when parent's value changes externally (e.g., reset)
   useEffect(() => {
-    onChangeRef.current = onChange;
-  }, [onChange]);
-
-  // Debounce search input - only call onChange after user stops typing
-  // Dependencies: [inputValue, value] only - onChange ref is stable, won't trigger effect
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (inputValue !== value) {
-        onChangeRef.current(inputValue);
-      }
-    }, 300); // Wait 300ms after user stops typing
-
-    return () => clearTimeout(timer);
-  }, [inputValue, value]);
-
-  // Sync input when parent's value changes externally (e.g., when filters are reset)
-  // Only sync when parent's value is different from our local state
-  useEffect(() => {
-    if (value !== inputValue) {
-      setInputValue(value || '');
+    if (value !== localValue) {
+      setLocalValue(value || '');
     }
   }, [value]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      onChange(localValue);
+    }
+  };
+
+  const handleBlur = () => {
+    if (localValue !== value) {
+      onChange(localValue);
+    }
+  };
 
   return (
     <div className="relative">
@@ -40,10 +33,12 @@ export function SearchFilter({ value, onChange }) {
       <Input
         id="search-filter"
         type="text"
-        placeholder="Search by name or email..."
+        placeholder="Search by name or email... (Press Enter)"
         className="pl-9 h-10"
-        value={inputValue}
-        onChange={(e) => setInputValue(e.target.value)}
+        value={localValue}
+        onChange={(e) => setLocalValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onBlur={handleBlur}
         aria-label="Search clients by name or email"
       />
     </div>
