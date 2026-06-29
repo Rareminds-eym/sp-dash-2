@@ -79,23 +79,31 @@ export async function GET(request) {
       );
     }
 
-    // Call SSO Worker via RPC
+    // Call SSO Worker via RPC with pagination to overcome the 100-record limit cap
     const { createSSOServiceClient } = await import('@/lib/sso-service-client');
     const ssoClient = await createSSOServiceClient();
 
-    const rpcParams = new URLSearchParams();
-    rpcParams.set('page', '1');
-    rpcParams.set('limit', '5000'); // Reasonable limit for export (prevents memory issues)
-    if (planType) rpcParams.set('planType', planType);
-    if (status) rpcParams.set('status', status);
-    if (startDate) rpcParams.set('startDate', startDate);
-    if (endDate) rpcParams.set('endDate', endDate);
-    if (clientType) rpcParams.set('clientType', clientType);
+    // Build base params (shared across all pages)
+    const baseParams = new URLSearchParams();
+    baseParams.set('limit', '100'); // SSO Worker caps at 100
+    if (planType) baseParams.set('planType', planType);
+    if (status) baseParams.set('status', status);
+    if (startDate) baseParams.set('startDate', startDate);
+    if (endDate) baseParams.set('endDate', endDate);
+    if (clientType) baseParams.set('clientType', clientType);
     // NOTE: Search is NOT passed to SSO because we filter by enriched SkillPassport names client-side
 
+    const allClients = [];
+    let currentPage = 1;
+    let totalPages = 1;
+    const MAX_EXPORT_PAGES = 30; // Stay under Cloudflare's 32-subrequest limit (buffer for jwks cache miss)
+
+    // Fetch first page to get pagination metadata
+    const firstParams = new URLSearchParams(baseParams);
+    firstParams.set('page', '1');
     let ssoData;
     try {
-      ssoData = await ssoClient.getSalesSubscriptions(rpcParams.toString());
+      ssoData = await ssoClient.getSalesSubscriptions(firstParams.toString());
     } catch (ssoError) {
       logger.error('SSO Worker RPC error', {
         error: ssoError.message,
@@ -105,7 +113,44 @@ export async function GET(request) {
         { status: 500 }
       );
     }
-    const clients = ssoData.data || [];
+
+    if (!ssoData?.data?.length) {
+      // No data at all — skip pagination loop
+      allClients.push(...(ssoData?.data || []));
+      totalPages = 0;
+    } else {
+      allClients.push(...ssoData.data);
+      totalPages = ssoData.pagination?.totalPages || 1;
+
+      // Fetch remaining pages if any, capped at MAX_EXPORT_PAGES
+      const maxFetch = Math.min(totalPages, MAX_EXPORT_PAGES);
+      for (let p = 2; p <= maxFetch; p++) {
+        const pageParams = new URLSearchParams(baseParams);
+        pageParams.set('page', String(p));
+        try {
+          const pageData = await ssoClient.getSalesSubscriptions(pageParams.toString());
+          if (pageData?.data?.length) {
+            allClients.push(...pageData.data);
+          }
+        } catch (pageError) {
+          logger.warn('SSO Worker RPC error on page', {
+            page: p,
+            error: pageError.message,
+          });
+          // Continue with data collected so far
+        }
+      }
+
+      if (totalPages > MAX_EXPORT_PAGES) {
+        logger.warn('Export truncated', {
+          totalPages,
+          maxPages: MAX_EXPORT_PAGES,
+          recordsFetched: allClients.length,
+        });
+      }
+    }
+
+    const clients = allClients;
 
     // Fetch user names from SkillPassport database for real client names
     let skillpassportUsers = [];

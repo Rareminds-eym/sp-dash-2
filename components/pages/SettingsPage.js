@@ -1,29 +1,29 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
-import { useToast } from '@/hooks/use-toast'
-import { RefreshCw, Database, CheckCircle2, Save, Edit3, Lock, Eye, EyeOff, AlertTriangle } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { useToast } from '@/hooks/use-toast'
 import { createClient } from '@/lib/supabase-browser'
+import { AlertTriangle, CheckCircle2, Database, Edit3, Eye, EyeOff, Lock, RefreshCw, Save } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 export default function SettingsPage({ user }) {
   const { toast } = useToast()
   const [isUpdating, setIsUpdating] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
-  
+
   // Password update dialog state
   const [showPasswordDialog, setShowPasswordDialog] = useState(false)
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
@@ -35,7 +35,7 @@ export default function SettingsPage({ user }) {
     newPassword: '',
     confirmPassword: ''
   })
-  
+
   // Profile form state  
   const [profileData, setProfileData] = useState({
     firstName: user?.firstName || '',
@@ -51,25 +51,9 @@ export default function SettingsPage({ user }) {
   const [isGeneratingToken, setIsGeneratingToken] = useState(false)
   const [showMaintenanceDialog, setShowMaintenanceDialog] = useState(false)
 
-  // Fetch maintenance mode state
-  // user.role comes from users.role column. Only super_admin sees this section.
-  useEffect(() => {
-    if (user?.role === 'super_admin') {
-      const fetchMaintenanceMode = async () => {
-        try {
-          const res = await fetch('/api/system/maintenance')
-          if (res.ok) {
-            const data = await res.json()
-            setMaintenanceMode(data.enabled)
-            setBypassToken(data.bypassToken)
-          }
-        } catch (error) {
-          console.error('Failed to fetch maintenance mode', error)
-        }
-      }
-      fetchMaintenanceMode()
-    }
-  }, [user])
+  // Maintenance mode state - initialized with defaults
+  // TODO: Subscribe to WebSocket for real-time maintenance state updates from realtime-worker
+  // The GET endpoint is not supported since sp-dash only uses queue for writes
 
   // Sync profileData with user prop when it changes
   useEffect(() => {
@@ -116,9 +100,9 @@ export default function SettingsPage({ user }) {
   const handleToggleMaintenance = async () => {
     setIsTogglingMaintenance(true)
     const newStatus = !maintenanceMode
-    
+
     try {
-      const response = await fetch('/api/system/maintenance', {
+      const response = await fetch('/api/maintenance', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -133,8 +117,8 @@ export default function SettingsPage({ user }) {
         setShowMaintenanceDialog(false)
         toast({
           title: newStatus ? 'Maintenance Mode Enabled' : 'Maintenance Mode Disabled',
-          description: newStatus 
-            ? 'Public access is now restricted. Only super_admins can access the application.' 
+          description: newStatus
+            ? 'Public access is now restricted. Only super_admins can access the application.'
             : 'Public access has been restored.',
           variant: newStatus ? 'destructive' : 'default',
         })
@@ -155,7 +139,7 @@ export default function SettingsPage({ user }) {
   const handleToggleBypassToken = async (action) => {
     setIsGeneratingToken(true)
     try {
-      const response = await fetch('/api/system/maintenance', {
+      const response = await fetch('/api/maintenance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action }),
@@ -184,7 +168,7 @@ export default function SettingsPage({ user }) {
   const handleSaveProfile = async () => {
     console.log('handleSaveProfile called')
     console.log('Profile data to save:', profileData)
-    
+
     // Validate email exists
     if (!profileData.email) {
       console.error('Email is missing from profileData!')
@@ -195,7 +179,7 @@ export default function SettingsPage({ user }) {
       })
       return
     }
-    
+
     setIsSaving(true)
     try {
       console.log('Sending PUT request to /api/users/profile...')
@@ -219,7 +203,7 @@ export default function SettingsPage({ user }) {
       if (!response.ok) {
         throw new Error(data.error || 'Failed to update profile')
       }
-      
+
       toast({
         title: 'Profile Updated',
         description: 'Your profile information has been updated successfully.',
@@ -398,7 +382,7 @@ export default function SettingsPage({ user }) {
                 disabled={!isEditing}
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="lastName">Last Name</Label>
               <Input
@@ -520,8 +504,8 @@ export default function SettingsPage({ user }) {
           </div>
           <div className="space-y-2">
             <Label>Change Password</Label>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="w-full"
               onClick={() => setShowPasswordDialog(true)}
             >
@@ -554,7 +538,7 @@ export default function SettingsPage({ user }) {
                 <strong>Note:</strong> Dashboard KPI cards fetch real-time data, but updating snapshots helps track historical trends in the analytics charts.
               </div>
             </div>
-            <Button 
+            <Button
               onClick={handleUpdateMetrics}
               disabled={isUpdating}
               className="w-full"
@@ -589,7 +573,7 @@ export default function SettingsPage({ user }) {
               <div className="space-y-1">
                 <p className="font-medium text-orange-700 dark:text-orange-400">Maintenance Mode</p>
                 <p className="text-sm text-muted-foreground max-w-[400px]">
-                  When active, all public users will be blocked and shown a maintenance screen. 
+                  When active, all public users will be blocked and shown a maintenance screen.
                   Only super_admins will be able to access the platform.
                 </p>
               </div>
@@ -597,14 +581,14 @@ export default function SettingsPage({ user }) {
                 <div className={`px-2 py-1 text-xs font-semibold rounded-full ${maintenanceMode ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-800'}`}>
                   {maintenanceMode ? 'ACTIVE' : 'INACTIVE'}
                 </div>
-                <Switch 
-                  checked={maintenanceMode} 
-                  onCheckedChange={() => setShowMaintenanceDialog(true)} 
+                <Switch
+                  checked={maintenanceMode}
+                  onCheckedChange={() => setShowMaintenanceDialog(true)}
                   disabled={isTogglingMaintenance}
                 />
               </div>
             </div>
-            
+
             {maintenanceMode && (
               <div className="flex items-center justify-between border-t pt-4">
                 <div className="space-y-1">
@@ -616,21 +600,21 @@ export default function SettingsPage({ user }) {
                     const baseUrl = process.env.NEXT_PUBLIC_SKILLPASSPORT_URL || 'http://localhost:8788'
                     const bypassUrl = `${baseUrl}/?bypass=${bypassToken}`
                     return (
-                    <div className="flex items-center gap-2 mt-2 bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs select-all">
-                      <code className="break-all">{bypassUrl}</code>
-                      <Button variant="ghost" size="sm" onClick={() => {
-                        navigator.clipboard.writeText(bypassUrl)
-                        toast({ title: "Copied!", description: "Bypass link copied to clipboard." })
-                      }}>
-                        Copy
-                      </Button>
-                    </div>
+                      <div className="flex items-center gap-2 mt-2 bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs select-all">
+                        <code className="break-all">{bypassUrl}</code>
+                        <Button variant="ghost" size="sm" onClick={() => {
+                          navigator.clipboard.writeText(bypassUrl)
+                          toast({ title: "Copied!", description: "Bypass link copied to clipboard." })
+                        }}>
+                          Copy
+                        </Button>
+                      </div>
                     )
                   })()}
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Button 
-                    variant={bypassToken ? "destructive" : "outline"} 
+                  <Button
+                    variant={bypassToken ? "destructive" : "outline"}
                     size="sm"
                     onClick={() => handleToggleBypassToken(bypassToken ? 'revoke' : 'generate')}
                     disabled={isGeneratingToken}
@@ -654,12 +638,12 @@ export default function SettingsPage({ user }) {
               {maintenanceMode ? 'Disable Maintenance Mode?' : 'Enable Maintenance Mode?'}
             </DialogTitle>
             <DialogDescription>
-              {maintenanceMode 
-                ? 'This will restore public access to the platform for all users immediately.' 
+              {maintenanceMode
+                ? 'This will restore public access to the platform for all users immediately.'
                 : 'This will instantly restrict access for all public users and students. They will see a maintenance screen. Only super_admins will have access.'}
             </DialogDescription>
           </DialogHeader>
-          
+
           <DialogFooter className="flex gap-2 sm:justify-between w-full pt-4">
             <Button
               type="button"
