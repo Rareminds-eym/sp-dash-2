@@ -7,6 +7,7 @@
     "dev:pages": "npm run build:cf && npx wrangler pages dev .vercel/output/static --port 3000 --compatibility-flags nodejs_compat",
     "build": "next build",
     "build:cf": "npx @cloudflare/next-on-pages",
+    "cf-build": "npm run build:cf",
     "start": "next start",
     "test:sso": "node scripts/test-sso-improvements.js"
   },
