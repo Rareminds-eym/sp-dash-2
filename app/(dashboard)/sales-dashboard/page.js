@@ -24,6 +24,17 @@ export default function SalesDashboardPage() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [filterMeta, setFilterMeta] = useState(null);
+
+  // Fetch filter metadata on mount
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/sales/filters-meta')
+      .then(res => res.ok ? res.json() : (console.warn('[FilterMeta] Bad response:', res.status), null))
+      .then(meta => { if (!cancelled && meta) setFilterMeta(meta); })
+      .catch(err => console.warn('[FilterMeta] Fetch failed:', err));
+    return () => { cancelled = true; };
+  }, []);
 
   // Initialize filters from URL params
   useEffect(() => {
@@ -274,6 +285,7 @@ export default function SalesDashboardPage() {
           filters={filters}
           onFilterChange={handleFilterChange}
           onReset={handleResetFilters}
+          filterMeta={filterMeta}
         />
       </div>
 

@@ -9,18 +9,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-const PLAN_TYPES = [
-  { value: 'pay_as_you_go', label: 'Pay As You Go' },
-  { value: 'Basic', label: 'Basic' },
-  { value: 'Professional', label: 'Professional' },
-  { value: 'Enterprise', label: 'Enterprise' },
-];
+export function PlanTypeFilter({ value, onChange, options }) {
+  const items = (options ?? [])
+    .map(t => typeof t === 'string' ? { value: t, label: t } : t);
 
-export function PlanTypeFilter({ value, onChange }) {
   return (
     <Select value={value || 'all'} onValueChange={(val) => onChange(val === 'all' ? '' : val)}>
       <SelectTrigger 
-        id="plan-type-filter"
         className="w-full h-10"
         aria-label="Filter by plan type"
       >
@@ -28,7 +23,7 @@ export function PlanTypeFilter({ value, onChange }) {
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="all">All Plans</SelectItem>
-        {PLAN_TYPES.map((plan) => (
+        {items.map((plan) => (
           <SelectItem key={plan.value} value={plan.value}>
             {plan.label}
           </SelectItem>
@@ -41,8 +36,10 @@ export function PlanTypeFilter({ value, onChange }) {
 PlanTypeFilter.propTypes = {
   value: PropTypes.string,
   onChange: PropTypes.func.isRequired,
+  options: PropTypes.array,
 };
 
 PlanTypeFilter.defaultProps = {
   value: '',
+  options: null,
 };
