@@ -9,3 +9,7 @@ NEXT_PUBLIC_BASE_URL = "https://dashboard.rareminds.com"
 binding = "SSO"
 service = "sso-api"
 entrypoint = "SsoWorker"
+
+[[queues.producers]]
+binding = "MAINTENANCE_EVENTS_QUEUE"
+queue = "realtime-events-queue"

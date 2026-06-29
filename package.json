@@ -3,12 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "set NODE_OPTIONS='--max-old-space-size=512' && next dev --hostname 0.0.0.0 --port 3000",
-    "dev:pages": "npx wrangler@4.94.0 pages dev .vercel/output/static --port 3000 --compatibility-flags nodejs_compat",
-    "dev:no-reload": "next dev --hostname 0.0.0.0 --port 3000",
-    "dev:webpack": "next dev --hostname 0.0.0.0 --port 3000",
+    "dev": "next dev --hostname 0.0.0.0 --port 3000",
+    "dev:pages": "npm run build:cf && npx wrangler pages dev .vercel/output/static --port 3000 --compatibility-flags nodejs_compat",
     "build": "next build",
-    "cf-build": "npx @cloudflare/next-on-pages",
+    "build:cf": "npx @cloudflare/next-on-pages",
     "start": "next start",
     "test:sso": "node scripts/test-sso-improvements.js"
   },

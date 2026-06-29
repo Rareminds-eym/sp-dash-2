@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { FilterPanel } from '@/components/sales/FilterPanel';
 import { ExportControls } from '@/components/sales/ExportControls';
@@ -22,7 +22,7 @@ export default function SalesDashboardPage() {
     total: 0,
     totalPages: 0,
   });
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
   // Initialize filters from URL params
@@ -48,6 +48,54 @@ export default function SalesDashboardPage() {
       search: search ?? '',
     });
   }, [searchParams]);
+
+  // Sync page from URL params (supports browser back/forward navigation)
+  useEffect(() => {
+    const urlPage = parseInt(searchParams.get('page') || '1', 10);
+    if (urlPage !== pagination.page) {
+      setPagination(prev => ({ ...prev, page: urlPage }));
+    }
+  }, [searchParams.get('page')]);
+
+  // Sync ALL filter + page state to URL when it changes.
+  // Skipped on initial render to avoid overwriting URL state before the
+  // init effects above have read URL → state.
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+
+    const params = new URLSearchParams();
+    if (filters.clientType.length > 0) params.set('clientType', filters.clientType.join(','));
+    if (filters.planType) params.set('planType', filters.planType);
+    if (filters.status) params.set('status', filters.status);
+    if (filters.search) params.set('search', filters.search);
+    if (filters.dateRange?.[0]) params.set('startDate', filters.dateRange[0].toISOString());
+    if (filters.dateRange?.[1]) params.set('endDate', filters.dateRange[1].toISOString());
+    params.set('page', String(pagination.page));
+
+    // Compare params as key-value sets (order-independent)
+    const currentParams = new URLSearchParams(window.location.search);
+    const keys = new Set([...params.keys(), ...currentParams.keys()]);
+    let changed = false;
+    for (const k of keys) {
+      if (params.get(k) !== currentParams.get(k)) { changed = true; break; }
+    }
+    if (!changed) return;
+
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState(null, '', newUrl);
+  }, [
+    filters.clientType.join(','),
+    filters.planType,
+    filters.status,
+    filters.search,
+    filters.dateRange[0]?.getTime() ?? '',
+    filters.dateRange[1]?.getTime() ?? '',
+    pagination.page,
+  ]);
 
   // Fetch data when filters change - memoized to avoid recreating on every render
   const fetchData = useCallback(async (signal) => {
@@ -90,6 +138,7 @@ export default function SalesDashboardPage() {
       }
 
       const result = await response.json();
+      if (signal.aborted) return;
 
       setData(result.data);
       setPagination(result.pagination);

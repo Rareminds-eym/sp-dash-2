@@ -49,7 +49,7 @@ export async function GET(request) {
     const { createSSOServiceClient } = await import('@/lib/sso-service-client');
     const ssoClient = await createSSOServiceClient();
 
-    // Reconstruct search params
+    // Reconstruct search params — forward ALL params to SSO Worker
     const rpcParams = new URLSearchParams();
     rpcParams.set('page', page);
     rpcParams.set('limit', limit.toString());
@@ -58,6 +58,7 @@ export async function GET(request) {
     if (status) rpcParams.set('status', status);
     if (startDate) rpcParams.set('startDate', startDate);
     if (endDate) rpcParams.set('endDate', endDate);
+    if (search) rpcParams.set('search', search);
 
     let ssoData;
     try {
@@ -95,57 +96,28 @@ export async function GET(request) {
       spUserMap[spUser.id] = spUser;
     });
 
-    // Combine with SkillPassport names
+    // Enrich with SkillPassport names — override SSO fullName if SkillPassport has fresher data
+    // Search/pagination is handled by the SSO Worker; this layer only enriches display names
     const enrichedClients = (ssoData.data || []).map(client => {
       const spUser = spUserMap[client.id];
       let fullName = client.fullName;
 
-      // Override with SkillPassport name if available
       if (spUser?.firstName || spUser?.lastName) {
         fullName = `${spUser.firstName || ''} ${spUser.lastName || ''}`.trim();
       }
 
-      return {
-        ...client,
-        fullName,
-      };
+      return { ...client, fullName };
     });
-
-    // Apply name-based search filtering on enriched data (after SkillPassport name enrichment)
-    // This ensures search works with actual display names, not just SSO names
-    let filteredClients = enrichedClients;
-
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filteredClients = enrichedClients.filter(client => {
-        const matchesEmail = client.email?.toLowerCase().includes(searchLower) || false;
-        const matchesName = client.fullName?.toLowerCase().includes(searchLower) || false;
-        return matchesEmail || matchesName;
-      });
-    }
-
-    // Apply pagination after filtering to maintain proper page boundaries
-    const totalFiltered = filteredClients.length;
-    const totalPagesFiltered = Math.ceil(totalFiltered / limit);
-    const startIndex = (page - 1) * limit;
-    const paginatedClients = filteredClients.slice(startIndex, startIndex + limit);
 
     logger.debug('Clients fetched', {
       enrichedCount: enrichedClients.length,
-      filteredCount: totalFiltered,
-      returnedCount: paginatedClients.length,
-      page,
-      limit,
+      page: ssoData.pagination?.page,
+      total: ssoData.pagination?.total,
     });
 
     return NextResponse.json({
-      data: paginatedClients,
-      pagination: {
-        page,
-        limit,
-        total: totalFiltered,
-        totalPages: totalPagesFiltered,
-      },
+      data: enrichedClients,
+      pagination: ssoData.pagination || { page, limit, total: 0, totalPages: 0 },
     });
   } catch (error) {
     logger.error('Error fetching sales clients', {
