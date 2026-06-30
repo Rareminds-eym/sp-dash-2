@@ -4,6 +4,10 @@ import { verifyJWT, extractUserFromJWT } from '@/lib/jwt-utils'
 
 export const runtime = 'edge'
 
+function respondError(status, error) {
+  return NextResponse.json({ success: false, error }, { status })
+}
+
 /**
  * SSO Login Route
  *
@@ -15,10 +19,7 @@ export async function POST(request) {
     const { email, password } = await request.json()
 
     if (!email || !password) {
-      return NextResponse.json(
-        { success: false, error: 'Email and password are required' },
-        { status: 400 }
-      )
+      return respondError(400, 'Email and password are required')
     }
 
     // Convert to RPC call
@@ -46,23 +47,26 @@ export async function POST(request) {
         errorMessage = 'Account is disabled or requires verification.'
       }
       
-      return NextResponse.json(
-        { success: false, error: errorMessage },
-        { status: statusCode }
-      )
+      return respondError(statusCode, errorMessage)
+    }
+
+    // Business-logic error from SSO Worker (normal return, not exception)
+    // loginData.status is forwarded from performLogin() via RPC wrapper
+    if (!loginData || !loginData.success || loginData.error) {
+      const statusCode = loginData.status ?? 401
+      const errorMessage = loginData.error || 'Login failed'
+      console.warn('[SSO Login] Login failed:', { status: statusCode, error: errorMessage })
+      return respondError(statusCode, errorMessage)
     }
 
     const accessToken = loginData.access_token
-    
+
     if (!loginData.user || !accessToken) {
       console.error('[SSO Login] Missing data:', { 
         hasUser: !!loginData.user, 
         hasAccessToken: !!accessToken
       })
-      return NextResponse.json(
-        { success: false, error: 'Login failed - incomplete response from SSO worker' },
-        { status: 500 }
-      )
+      return respondError(500, 'Login failed - incomplete response from SSO worker')
     }
 
     // Verify the JWT token we received
@@ -70,25 +74,19 @@ export async function POST(request) {
     
     if (!verificationResult.valid) {
       console.error('[SSO Login] JWT verification failed:', verificationResult.error)
-      return NextResponse.json(
-        { success: false, error: 'Login failed - invalid token received' },
-        { status: 500 }
-      )
+      return respondError(500, 'Login failed - invalid token received')
     }
 
     // Extract user data from verified JWT payload
     const user = extractUserFromJWT(accessToken)
     
     if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Login failed - invalid token payload' },
-        { status: 500 }
-      )
+      return respondError(500, 'Login failed - invalid token payload')
     }
 
     // Check if user has super_admin or platform_admin role
     const allowedRoles = ['super_admin', 'platform_admin']
-    const hasAdminRole = user.roles.some(role => allowedRoles.includes(role))
+    const hasAdminRole = user.roles?.some(role => allowedRoles.includes(role)) ?? false
     
     if (!hasAdminRole) {
       return NextResponse.json(
@@ -172,13 +170,10 @@ export async function POST(request) {
 
     return response
   } catch (error) {
+    if (error instanceof SyntaxError) {
+      return respondError(400, 'Invalid JSON in request body')
+    }
     console.error('[SSO Login] Error:', error)
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'An internal error occurred during login. Please try again.' 
-      },
-      { status: 500 }
-    )
+    return respondError(500, 'An internal error occurred during login. Please try again.')
   }
 }
