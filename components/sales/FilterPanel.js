@@ -8,7 +8,7 @@ import { StatusFilter } from './StatusFilter';
 import { DateRangeFilter } from './DateRangeFilter';
 import { SearchFilter } from './SearchFilter';
 
-export function FilterPanel({ filters, onFilterChange, onReset }) {
+export function FilterPanel({ filters, onFilterChange, onReset, filterMeta }) {
   // Count active filters
   const activeFiltersCount = [
     filters.clientType?.length > 0,
@@ -35,6 +35,7 @@ export function FilterPanel({ filters, onFilterChange, onReset }) {
           <ClientTypeFilter
             value={filters.clientType || []}
             onChange={(value) => onFilterChange({ clientType: value })}
+            options={filterMeta?.clientTypes}
           />
         </div>
 
@@ -42,6 +43,7 @@ export function FilterPanel({ filters, onFilterChange, onReset }) {
           <PlanTypeFilter
             value={filters.planType}
             onChange={(value) => onFilterChange({ planType: value })}
+            options={filterMeta?.planTypes}
           />
         </div>
 
@@ -49,6 +51,7 @@ export function FilterPanel({ filters, onFilterChange, onReset }) {
           <StatusFilter
             value={filters.status}
             onChange={(value) => onFilterChange({ status: value })}
+            options={filterMeta?.statuses}
           />
         </div>
 
