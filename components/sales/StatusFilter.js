@@ -9,19 +9,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-const SUBSCRIPTION_STATUSES = [
-  { value: 'active', label: 'Active' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'cancelled', label: 'Cancelled' },
-  { value: 'expired', label: 'Expired' },
-  { value: 'paused', label: 'Paused' },
-];
+export function StatusFilter({ value, onChange, options }) {
+  const items = (options ?? [])
+    .map(s => typeof s === 'string' ? { value: s, label: s.charAt(0).toUpperCase() + s.slice(1) } : s);
 
-export function StatusFilter({ value, onChange }) {
   return (
     <Select value={value || 'all'} onValueChange={(val) => onChange(val === 'all' ? '' : val)}>
       <SelectTrigger 
-        id="status-filter"
         className="w-full h-10"
         aria-label="Filter by subscription status"
       >
@@ -29,7 +23,7 @@ export function StatusFilter({ value, onChange }) {
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="all">All Statuses</SelectItem>
-        {SUBSCRIPTION_STATUSES.map((status) => (
+        {items.map((status) => (
           <SelectItem key={status.value} value={status.value}>
             {status.label}
           </SelectItem>
@@ -42,8 +36,10 @@ export function StatusFilter({ value, onChange }) {
 StatusFilter.propTypes = {
   value: PropTypes.string,
   onChange: PropTypes.func.isRequired,
+  options: PropTypes.array,
 };
 
 StatusFilter.defaultProps = {
   value: '',
+  options: null,
 };
