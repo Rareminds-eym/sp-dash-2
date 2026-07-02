@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0 --port 3000",
     "dev:pages": "npm run build:cf && npx wrangler pages dev .vercel/output/static --port 3000 --compatibility-flags nodejs_compat",
+    "pages:dev": "npx wrangler pages dev .vercel/output/static --port 8789 --compatibility-flags nodejs_compat",
     "build": "next build",
     "build:cf": "npx @cloudflare/next-on-pages",
     "cf-build": "npm run build:cf",
@@ -72,6 +73,7 @@
   },
   "devDependencies": {
     "@cloudflare/next-on-pages": "^1.13.16",
+    "@types/react": "19.2.17",
     "autoprefixer": "^10.4.19",
     "globals": "^16.2.0",
     "postcss": "^8",

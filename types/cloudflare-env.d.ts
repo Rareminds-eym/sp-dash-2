@@ -10,6 +10,7 @@ import type { SsoWorker as SSOEntrypoint } from "../../workers/sso-worker/src/in
 declare global {
   interface CloudflareEnv {
     SSO: Service<SSOEntrypoint>;
+    MAINTENANCE_EVENTS_QUEUE: Queue;
   }
 }
 
