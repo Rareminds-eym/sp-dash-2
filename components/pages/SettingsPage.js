@@ -14,7 +14,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/hooks/use-toast'
-import { createClient } from '@/lib/supabase-browser'
+
+import { updatePasswordAction } from '@/app/actions/auth'
 import { AlertTriangle, CheckCircle2, Database, Edit3, Eye, EyeOff, Lock, RefreshCw, Save } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
@@ -283,33 +284,15 @@ export default function SettingsPage({ user }) {
     setIsUpdatingPassword(true)
 
     try {
-      const supabase = createClient()
+      const result = await updatePasswordAction(
+        passwordData.currentPassword,
+        passwordData.newPassword
+      )
 
-      // First, verify current password by trying to sign in
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user.email,
-        password: passwordData.currentPassword,
-      })
-
-      if (signInError) {
+      if (!result.success) {
         toast({
           title: 'Error',
-          description: 'Current password is incorrect',
-          variant: 'destructive',
-        })
-        setIsUpdatingPassword(false)
-        return
-      }
-
-      // Update the password
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: passwordData.newPassword
-      })
-
-      if (updateError) {
-        toast({
-          title: 'Error',
-          description: updateError.message || 'Failed to update password',
+          description: result.error || 'Failed to update password',
           variant: 'destructive',
         })
         setIsUpdatingPassword(false)

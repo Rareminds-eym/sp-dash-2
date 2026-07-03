@@ -13,3 +13,10 @@ entrypoint = "SsoWorker"
 [[queues.producers]]
 binding = "MAINTENANCE_EVENTS_QUEUE"
 queue = "realtime-events-queue"
+
+# Rate limiting KV namespace
+# Create with: wrangler kv namespace create RATE_LIMIT_KV
+# Then paste the ID below
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "a162f140e4464515a8d5a27b5ebc6c6b"

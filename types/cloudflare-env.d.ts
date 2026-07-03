@@ -11,6 +11,7 @@ declare global {
   interface CloudflareEnv {
     SSO: Service<SSOEntrypoint>;
     MAINTENANCE_EVENTS_QUEUE: Queue;
+    RATE_LIMIT_KV: KVNamespace;
   }
 }
 

@@ -7,7 +7,10 @@ import { Label } from '@/components/ui/label'
 import { AlertCircle, CheckCircle, Lock } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase-browser'
+import { resetPasswordAction } from '@/app/actions/auth'
+
+export const dynamic = 'force-dynamic'
+export const runtime = 'edge'
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState('')
@@ -15,52 +18,17 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [hasToken, setHasToken] = useState(false)
+  const [token, setToken] = useState(null)
   const router = useRouter()
 
   useEffect(() => {
-    // Check if there's a password reset token in the URL hash and establish session
-    const initializeSession = async () => {
+    const initializeSession = () => {
       const hashParams = new URLSearchParams(window.location.hash.substring(1))
       const accessToken = hashParams.get('access_token')
-      const refreshToken = hashParams.get('refresh_token')
       const type = hashParams.get('type')
       
       if (accessToken && type === 'recovery') {
-        try {
-          // Create Supabase client and set the session
-          const supabase = createClient()
-          
-          // Set the session using the tokens from the URL
-          const { data, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken || ''
-          })
-          
-          if (error) {
-            console.error('Error setting session:', error)
-            setError('Failed to verify password reset link. Please request a new one.')
-            setTimeout(() => {
-              router.push('/login')
-            }, 3000)
-            return
-          }
-          
-          if (data.session) {
-            setHasToken(true)
-          } else {
-            setError('Invalid or expired password reset link. Please request a new one.')
-            setTimeout(() => {
-              router.push('/login')
-            }, 3000)
-          }
-        } catch (err) {
-          console.error('Error initializing session:', err)
-          setError('An error occurred. Please request a new password reset link.')
-          setTimeout(() => {
-            router.push('/login')
-          }, 3000)
-        }
+        setToken(accessToken)
       } else {
         // No valid token, redirect to login
         setError('Invalid or expired password reset link. Please request a new one.')
@@ -109,63 +77,27 @@ export default function ResetPasswordPage() {
     setLoading(true)
 
     try {
-      // Create Supabase client - session is already established from the URL tokens
-      const supabase = createClient()
-
-      // First, verify we have a valid session
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-      
-      if (sessionError || !sessionData.session) {
-        console.error('No active session:', sessionError)
+      if (!token) {
         setError('Session expired. Please request a new password reset link.')
         setLoading(false)
         return
       }
 
-      // Update the user's password using the established session
-      const { data, error: updateError } = await supabase.auth.updateUser({
-        password: password
-      })
+      const result = await resetPasswordAction(token, password)
 
-      if (updateError) {
-        console.error('Error updating password:', updateError)
-        setError(updateError.message || 'Failed to update password')
+      if (!result.success) {
+        setError(result.error || 'Failed to update password')
         setLoading(false)
         return
       }
 
-      if (data?.user) {
-        // Password updated successfully
-        setSuccess(true)
+      // Password updated successfully
+      setSuccess(true)
 
-        // Call the verify-and-activate endpoint to activate the admin account
-        try {
-          const response = await fetch('/api/users/verify-and-activate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              userId: data.user.id,
-              email: data.user.email 
-            })
-          })
-
-          const activationData = await response.json()
-          
-          if (!response.ok) {
-            console.error('Activation error:', activationData)
-            // Don't fail the password reset if activation fails
-            // User can still login, but admin might need to manually activate
-          }
-        } catch (activationError) {
-          console.error('Error calling activation endpoint:', activationError)
-          // Continue anyway - password is set
-        }
-
-        // Wait a moment then redirect to dashboard (user is now logged in)
-        setTimeout(() => {
-          window.location.href = '/dashboard'
-        }, 2000)
-      }
+      // Wait a moment then redirect to dashboard (user can log in)
+      setTimeout(() => {
+        window.location.href = '/login'
+      }, 2000)
     } catch (err) {
       console.error('Unexpected error:', err)
       setError('An unexpected error occurred. Please try again.')
@@ -173,7 +105,7 @@ export default function ResetPasswordPage() {
     }
   }
 
-  if (!hasToken && !error) {
+  if (!token && !error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
         <Card className="w-full max-w-md mx-4">

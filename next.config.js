@@ -15,6 +15,9 @@ const nextConfig = {
   serverExternalPackages: ['jose'],
   experimental: {
     // Enable service bindings for Cloudflare Workers
+    serverActions: {
+      allowedOrigins: ['localhost:3000', 'localhost:8789', '*.pages.dev', '*.rareminds.in'],
+    },
   },
   webpack(config, { dev, nextRuntime }) {
     if (nextRuntime === 'edge') {
@@ -37,11 +40,11 @@ const nextConfig = {
       {
         source: "/(.*)",
         headers: [
-          { key: "X-Frame-Options", value: "ALLOWALL" },
-          { key: "Content-Security-Policy", value: "frame-ancestors *;" },
-          { key: "Access-Control-Allow-Origin", value: "*" },
-          { key: "Access-Control-Allow-Methods", value: "GET, POST, PUT, DELETE, OPTIONS" },
-          { key: "Access-Control-Allow-Headers", value: "*" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Content-Security-Policy", value: "default-src 'self'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
         ],
       },
     ];
