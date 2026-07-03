@@ -48,9 +48,11 @@ async function tryQueueSend(env, enabled) {
           from: 'sp-dash',
         },
       })
+    } else {
+      console.warn('[Maintenance] MAINTENANCE_EVENTS_QUEUE binding not available — realtime notification skipped')
     }
   } catch (err) {
-    console.warn('Maintenance queue send failed (non-fatal):', err)
+    console.error('[Maintenance] Queue send failed:', err)
   }
 }
 
@@ -66,9 +68,11 @@ async function tryQueueSendToken(env, action, token) {
           from: 'sp-dash',
         },
       })
+    } else {
+      console.warn('[Maintenance] MAINTENANCE_EVENTS_QUEUE binding not available — realtime notification skipped')
     }
   } catch (err) {
-    console.warn('Maintenance queue send failed (non-fatal):', err)
+    console.error('[Maintenance] Queue send failed:', err)
   }
 }
 
@@ -78,7 +82,7 @@ export async function PUT(request) {
     if (authError) return authError
 
     const { getRequestContext } = await import('@cloudflare/next-on-pages')
-    const { env } = getRequestContext()
+    const { env, ctx } = getRequestContext()
 
     if (!SUPABASE_URL || !SERVICE_KEY) {
       return NextResponse.json(
@@ -99,7 +103,7 @@ export async function PUT(request) {
 
     await upsertConfig('maintenance_mode', enabled ? 'true' : 'false')
 
-    tryQueueSend(env, enabled)
+    ctx.waitUntil(tryQueueSend(env, enabled))
 
     return NextResponse.json({
       success: true,
@@ -121,7 +125,7 @@ export async function POST(request) {
     if (authError) return authError
 
     const { getRequestContext } = await import('@cloudflare/next-on-pages')
-    const { env } = getRequestContext()
+    const { env, ctx } = getRequestContext()
 
     if (!SUPABASE_URL || !SERVICE_KEY) {
       return NextResponse.json(
@@ -148,7 +152,7 @@ export async function POST(request) {
       await deleteConfig('maintenance_bypass_token')
     }
 
-    tryQueueSendToken(env, action, newTokenValue)
+    ctx.waitUntil(tryQueueSendToken(env, action, newTokenValue))
 
     return NextResponse.json({
       success: true,
