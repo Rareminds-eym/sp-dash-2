@@ -54,8 +54,6 @@ export default function SettingsPage({ user }) {
 
   // Maintenance mode state - initialized with defaults
   // TODO: Subscribe to WebSocket for real-time maintenance state updates from realtime-worker
-  // The GET endpoint is not supported since sp-dash only uses queue for writes
-
   // Sync profileData with user prop when it changes
   useEffect(() => {
     if (user) {
@@ -66,6 +64,19 @@ export default function SettingsPage({ user }) {
         email: user.email || '',
         organizationName: user.organization?.name || ''
       })
+      
+      // Fetch maintenance state if super_admin
+      if (user.role === 'super_admin') {
+        fetch('/api/maintenance')
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              setMaintenanceMode(data.enabled)
+              setBypassToken(data.bypassToken)
+            }
+          })
+          .catch(err => console.error('Failed to fetch maintenance mode:', err))
+      }
     }
   }, [user])
 

@@ -162,3 +162,45 @@ export async function POST(request) {
     )
   }
 }
+
+export async function GET(request) {
+  try {
+    const { error: authError } = await authenticateSSORequest(request, ['super_admin'])
+    if (authError) return authError
+
+    if (!SUPABASE_URL || !SERVICE_KEY) {
+      return NextResponse.json(
+        { error: 'Supabase credentials not configured' },
+        { status: 500 }
+      )
+    }
+
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/app_config?key=in.(maintenance_mode,maintenance_bypass_token)`, {
+      headers: {
+        'apikey': SERVICE_KEY,
+        'Authorization': `Bearer ${SERVICE_KEY}`,
+      },
+    })
+
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(`Supabase fetch failed (${res.status}): ${text}`)
+    }
+
+    const data = await res.json()
+    const maintenanceModeConfig = data.find(c => c.key === 'maintenance_mode')
+    const bypassTokenConfig = data.find(c => c.key === 'maintenance_bypass_token')
+
+    return NextResponse.json({
+      success: true,
+      enabled: maintenanceModeConfig?.value === 'true',
+      bypassToken: bypassTokenConfig?.value || null
+    })
+  } catch (error) {
+    console.error('Maintenance GET Error:', error)
+    return NextResponse.json(
+      { error: error.message || 'Internal Server Error' },
+      { status: 500 }
+    )
+  }
+}
