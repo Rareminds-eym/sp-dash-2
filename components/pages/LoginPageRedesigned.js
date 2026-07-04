@@ -4,6 +4,8 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AlertCircle, Mail, Lock, ArrowRight, KeyRound, X, Check, Eye, EyeOff } from 'lucide-react'
+import { forgotPasswordAction } from '@/app/actions/auth'
+import { authClient } from '@/lib/auth-client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -39,15 +41,9 @@ export default function LoginPageRedesigned() {
 
     startTransition(async () => {
       try {
-        const response = await fetch('/api/auth/sso-login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        })
+        const data = await authClient.login(email, password)
 
-        const data = await response.json()
-
-        if (!response.ok) {
+        if (!data.success) {
           setError(data.error || 'Login failed')
           return
         }
@@ -75,15 +71,9 @@ export default function LoginPageRedesigned() {
     setIsSendingReset(true)
 
     try {
-      const response = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: forgotEmail })
-      })
+      const data = await forgotPasswordAction(forgotEmail)
 
-      const data = await response.json()
-
-      if (!response.ok) {
+      if (!data.success && data.error) {
         setForgotError(data.error || 'Failed to send reset email')
         setIsSendingReset(false)
         return
