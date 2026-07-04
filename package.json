@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0 --port 3000",
     "dev:pages": "npm run build:cf && npx wrangler pages dev .vercel/output/static --port 3000 --compatibility-flags nodejs_compat",
+    "pages:dev": "npx wrangler pages dev .vercel/output/static --port 8789 --compatibility-flags nodejs_compat",
     "build": "next build",
     "build:cf": "npx @cloudflare/next-on-pages",
     "cf-build": "npm run build:cf",
@@ -63,6 +64,7 @@
     "react-hook-form": "^7.58.1",
     "react-resizable-panels": "^3.0.3",
     "recharts": "^2.15.3",
+    "server-only": "^0.0.1",
     "sonner": "^2.0.5",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
@@ -72,6 +74,7 @@
   },
   "devDependencies": {
     "@cloudflare/next-on-pages": "^1.13.16",
+    "@types/react": "19.2.17",
     "autoprefixer": "^10.4.19",
     "globals": "^16.2.0",
     "postcss": "^8",

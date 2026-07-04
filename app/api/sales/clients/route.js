@@ -1,7 +1,7 @@
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+
 import Logger from '@/lib/logger';
 
 export const runtime = 'edge';
@@ -24,15 +24,6 @@ export async function GET(request) {
     // Authenticate using SSO
     const { error } = await authenticateSSORequest(request, ['super_admin', 'admin', 'rm_admin']);
     if (error) return error;
-
-    // Extract token from cookies for SSO Worker API call
-    const cookieStore = await cookies();
-    const token = cookieStore.get('sso_access_token')?.value;
-
-    if (!token) {
-      logger.error('No SSO access token found');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     // Get query parameters
     const { searchParams } = new URL(request.url);

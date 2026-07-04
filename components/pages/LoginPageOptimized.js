@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { AlertCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
+import { authClient } from '@/lib/auth-client'
 
 export default function LoginPageOptimized() {
   const [email, setEmail] = useState('')
@@ -21,23 +22,15 @@ export default function LoginPageOptimized() {
 
     startTransition(async () => {
       try {
-        // Use SSO worker login endpoint
-        const response = await fetch('/api/auth/sso-login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        })
+        const data = await authClient.login(email, password)
 
-        const data = await response.json()
-
-        if (!response.ok) {
+        if (!data.success) {
           setError(data.error || 'Login failed')
           return
         }
 
         if (data.success) {
-          // Wait a bit for cookies to be set, then force a full page reload
-          // This ensures middleware properly validates the session
+          // Add a small delay for smoother transition
           await new Promise(resolve => setTimeout(resolve, 100))
           window.location.href = '/dashboard'
         }

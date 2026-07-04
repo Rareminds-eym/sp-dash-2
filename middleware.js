@@ -1,5 +1,14 @@
 import { NextResponse } from 'next/server'
 
+/**
+ * Cookie name helper — __Host- prefix requires Secure flag, which browsers
+ * reject on plain HTTP (localhost dev). Fall back to unprefixed names in dev.
+ */
+const isSecure = process.env.NODE_ENV === 'production'
+const COOKIE_ACCESS  = isSecure ? '__Host-sso_access_token'  : 'sso_access_token'
+const COOKIE_USER    = isSecure ? '__Host-sso_user'          : 'sso_user'
+const COOKIE_REFRESH = isSecure ? '__Host-sso_refresh_token' : 'sso_refresh_token'
+
 const protectedRoutes = ['/dashboard', '/users', '/passports', '/recruiters', '/reports', '/audit-logs', '/integrations', '/settings', '/course-management', '/student-dashboard', '/sales-dashboard']
 const publicRoutes = ['/login', '/reset-password']
 
@@ -17,9 +26,9 @@ export async function middleware(req) {
   }
 
   // Check for SSO session cookies
-  const ssoAccessToken = req.cookies.get('sso_access_token')?.value
-  const ssoUser = req.cookies.get('sso_user')?.value
-  const ssoRefreshToken = req.cookies.get('sso_refresh_token')?.value
+  const ssoAccessToken = req.cookies.get(COOKIE_ACCESS)?.value
+  const ssoUser = req.cookies.get(COOKIE_USER)?.value
+  const ssoRefreshToken = req.cookies.get(COOKIE_REFRESH)?.value
 
   const hasValidSession = !!(ssoAccessToken && ssoUser)
 
@@ -34,8 +43,8 @@ export async function middleware(req) {
     // Check if token is about to expire (within 5 minutes)
     try {
       if (ssoAccessToken) {
-        const base64 = ssoAccessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-        const payload = JSON.parse(atob(base64));
+        const base64 = ssoAccessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+        const payload = JSON.parse(atob(base64))
         const now = Math.floor(Date.now() / 1000)
         const expiresIn = payload.exp - now
 

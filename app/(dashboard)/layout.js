@@ -53,6 +53,7 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ApprovalViewProvider } from '@/components/approvals/ApprovalViewContext'
 import Logger, { getErrorMessage } from '@/lib/logger'
+import { authClient } from '@/lib/auth-client'
 
 const logger = new Logger('DashboardLayout');
 
@@ -405,23 +406,17 @@ export default function DashboardLayout({ children }) {
   }, [pathname, expandedNav])
 
   useEffect(() => {
-    // Fetch current user session
-    fetch('/api/auth/session')
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`)
-        }
-        return res.json()
-      })
+    authClient.checkAuth()
       .then(data => {
-        if (data.success && data.user) {
+        if (data.authenticated && data.user) {
           setUser(data.user)
+        } else {
+          router.push('/login')
         }
+        setLoading(false)
       })
-      .catch(err => {
-        logger.error('Failed to fetch session', { error: getErrorMessage(err) });
-        // If session fetch fails, user might not be authenticated
-        // Don't redirect here, let middleware handle it
+      .catch(() => {
+        router.push('/login')
       })
   }, [])
 
@@ -435,28 +430,9 @@ export default function DashboardLayout({ children }) {
 
   const handleLogout = async () => {
     try {
-      const response = await fetch('/api/auth/logout', { method: 'POST' })
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data = await response.json()
-
-      if (data.success) {
-        // Clear any local state
-        setUser(null)
-
-        // Force a full page reload to clear all cached state
-        window.location.href = '/login'
-      } else {
-        logger.error('Logout failed', { error: getErrorMessage(data.error) });
-        // Even if server-side logout fails, redirect to login
-        window.location.href = '/login'
-      }
+      await authClient.logout()
     } catch (err) {
       logger.error('Logout error', { error: getErrorMessage(err) });
-      // On error, still redirect to login page
       window.location.href = '/login'
     }
   }

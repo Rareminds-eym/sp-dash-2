@@ -14,7 +14,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/hooks/use-toast'
-import { createClient } from '@/lib/supabase-browser'
+
+import { updatePasswordAction } from '@/app/actions/auth'
 import { AlertTriangle, CheckCircle2, Database, Edit3, Eye, EyeOff, Lock, RefreshCw, Save } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
@@ -53,8 +54,6 @@ export default function SettingsPage({ user }) {
 
   // Maintenance mode state - initialized with defaults
   // TODO: Subscribe to WebSocket for real-time maintenance state updates from realtime-worker
-  // The GET endpoint is not supported since sp-dash only uses queue for writes
-
   // Sync profileData with user prop when it changes
   useEffect(() => {
     if (user) {
@@ -65,6 +64,19 @@ export default function SettingsPage({ user }) {
         email: user.email || '',
         organizationName: user.organization?.name || ''
       })
+      
+      // Fetch maintenance state if super_admin
+      if (user.role === 'super_admin') {
+        fetch('/api/maintenance')
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              setMaintenanceMode(data.enabled)
+              setBypassToken(data.bypassToken)
+            }
+          })
+          .catch(err => console.error('Failed to fetch maintenance mode:', err))
+      }
     }
   }, [user])
 
@@ -118,7 +130,7 @@ export default function SettingsPage({ user }) {
         toast({
           title: newStatus ? 'Maintenance Mode Enabled' : 'Maintenance Mode Disabled',
           description: newStatus
-            ? 'Public access is now restricted. Only super_admins can access the application.'
+            ? 'Public access is now restricted. A bypass code is required for access.'
             : 'Public access has been restored.',
           variant: newStatus ? 'destructive' : 'default',
         })
@@ -148,8 +160,8 @@ export default function SettingsPage({ user }) {
       if (response.ok && data.success) {
         setBypassToken(data.bypassToken || null)
         toast({
-          title: action === 'generate' ? 'Bypass Link Generated' : 'Bypass Link Revoked',
-          description: action === 'generate' ? 'You can now copy the link to test as a normal user.' : 'The bypass link is no longer active.',
+          title: action === 'generate' ? 'Bypass Token Generated' : 'Bypass Token Revoked',
+          description: action === 'generate' ? 'Share this token with staff to bypass maintenance.' : 'The bypass token is no longer active.',
         })
       } else {
         throw new Error(data.error || 'Failed to toggle token')
@@ -283,33 +295,15 @@ export default function SettingsPage({ user }) {
     setIsUpdatingPassword(true)
 
     try {
-      const supabase = createClient()
+      const result = await updatePasswordAction(
+        passwordData.currentPassword,
+        passwordData.newPassword
+      )
 
-      // First, verify current password by trying to sign in
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user.email,
-        password: passwordData.currentPassword,
-      })
-
-      if (signInError) {
+      if (!result.success) {
         toast({
           title: 'Error',
-          description: 'Current password is incorrect',
-          variant: 'destructive',
-        })
-        setIsUpdatingPassword(false)
-        return
-      }
-
-      // Update the password
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: passwordData.newPassword
-      })
-
-      if (updateError) {
-        toast({
-          title: 'Error',
-          description: updateError.message || 'Failed to update password',
+          description: result.error || 'Failed to update password',
           variant: 'destructive',
         })
         setIsUpdatingPassword(false)
@@ -572,10 +566,10 @@ export default function SettingsPage({ user }) {
             <div className="flex items-center justify-between border-b pb-4">
               <div className="space-y-1">
                 <p className="font-medium text-orange-700 dark:text-orange-400">Maintenance Mode</p>
-                <p className="text-sm text-muted-foreground max-w-[400px]">
-                  When active, all public users will be blocked and shown a maintenance screen.
-                  Only super_admins will be able to access the platform.
-                </p>
+                  <p className="text-sm text-muted-foreground max-w-[400px]">
+                    When active, all users are blocked and shown a maintenance screen.
+                    Access requires a bypass token (generated below).
+                  </p>
               </div>
               <div className="flex items-center gap-4">
                 <div className={`px-2 py-1 text-xs font-semibold rounded-full ${maintenanceMode ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-800'}`}>
@@ -592,25 +586,21 @@ export default function SettingsPage({ user }) {
             {maintenanceMode && (
               <div className="flex items-center justify-between border-t pt-4">
                 <div className="space-y-1">
-                  <p className="font-medium text-gray-700 dark:text-gray-300">Bypass Token Link</p>
+                  <p className="font-medium text-gray-700 dark:text-gray-300">Bypass Token</p>
                   <p className="text-sm text-muted-foreground max-w-[400px]">
-                    Generate a secret URL to bypass the maintenance screen and test the platform as a regular user.
+                    Generate a secret code to bypass the maintenance screen and test the platform as a regular user.
                   </p>
-                  {bypassToken && (() => {
-                    const baseUrl = process.env.NEXT_PUBLIC_SKILLPASSPORT_URL || 'http://localhost:8788'
-                    const bypassUrl = `${baseUrl}/?bypass=${bypassToken}`
-                    return (
-                      <div className="flex items-center gap-2 mt-2 bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs select-all">
-                        <code className="break-all">{bypassUrl}</code>
-                        <Button variant="ghost" size="sm" onClick={() => {
-                          navigator.clipboard.writeText(bypassUrl)
-                          toast({ title: "Copied!", description: "Bypass link copied to clipboard." })
-                        }}>
-                          Copy
-                        </Button>
-                      </div>
-                    )
-                  })()}
+                  {bypassToken && (
+                    <div className="flex items-center gap-2 mt-2 bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs select-all">
+                      <code className="break-all">{bypassToken}</code>
+                      <Button variant="ghost" size="sm" onClick={() => {
+                        navigator.clipboard.writeText(bypassToken)
+                        toast({ title: "Copied!", description: "Bypass token copied to clipboard." })
+                      }}>
+                        Copy
+                      </Button>
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-col gap-2">
                   <Button
@@ -620,7 +610,7 @@ export default function SettingsPage({ user }) {
                     disabled={isGeneratingToken}
                   >
                     {isGeneratingToken && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-                    {bypassToken ? 'Revoke Link' : 'Generate Link'}
+                    {bypassToken ? 'Revoke Token' : 'Generate Token'}
                   </Button>
                 </div>
               </div>
@@ -640,7 +630,7 @@ export default function SettingsPage({ user }) {
             <DialogDescription>
               {maintenanceMode
                 ? 'This will restore public access to the platform for all users immediately.'
-                : 'This will instantly restrict access for all public users and students. They will see a maintenance screen. Only super_admins will have access.'}
+                : 'This will instantly restrict access for all users. Everyone will see a maintenance screen. A bypass token is required for access.'}
             </DialogDescription>
           </DialogHeader>
 
