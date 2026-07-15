@@ -64,13 +64,15 @@ export async function GET(request) {
       );
     }
 
-    // Fetch user names from SkillPassport database for real client names
+    // Fetch user names and phone from SkillPassport database — SkillPassport's
+    // users.phone is the single source of truth for phone numbers (subscriptions.phone
+    // in the SSO database is no longer used).
     let skillpassportUsers = [];
     if (ssoData.data && ssoData.data.length > 0) {
       try {
         const { data: spUsers, error: spError } = await skillpassportAdmin
           .from('users')
-          .select('id, "firstName", "lastName", email')
+          .select('id, "firstName", "lastName", email, phone')
           .in('id', ssoData.data.map(u => u.id));
 
         if (!spError && spUsers) {
@@ -87,8 +89,9 @@ export async function GET(request) {
       spUserMap[spUser.id] = spUser;
     });
 
-    // Enrich with SkillPassport names — override SSO fullName if SkillPassport has fresher data
-    // Search/pagination is handled by the SSO Worker; this layer only enriches display names
+    // Enrich with SkillPassport names and phone — override SSO fullName if SkillPassport
+    // has fresher data, and always source phone from SkillPassport's users table.
+    // Search/pagination is handled by the SSO Worker; this layer only enriches display fields.
     const enrichedClients = (ssoData.data || []).map(client => {
       const spUser = spUserMap[client.id];
       let fullName = client.fullName;
@@ -97,7 +100,9 @@ export async function GET(request) {
         fullName = `${spUser.firstName || ''} ${spUser.lastName || ''}`.trim();
       }
 
-      return { ...client, fullName };
+      const phone = spUser?.phone || '-';
+
+      return { ...client, fullName, phone };
     });
 
     logger.debug('Clients fetched', {
