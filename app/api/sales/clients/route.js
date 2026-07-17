@@ -102,7 +102,7 @@ export async function GET(request) {
         fullName = `${spUser.firstName || ''} ${spUser.lastName || ''}`.trim();
       }
 
-      const phone = spUser?.phone || '-';
+      const phone = spUser?.phone ?? null;
 
       return { ...client, fullName, phone };
     });
