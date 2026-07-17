@@ -27,8 +27,10 @@ export async function GET(request) {
 
     // Get query parameters
     const { searchParams } = new URL(request.url);
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
-    const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '20', 10)));
+    const parsedPage = parseInt(searchParams.get('page'), 10);
+    const page = Math.max(1, Number.isNaN(parsedPage) ? 1 : parsedPage);
+    const parsedLimit = parseInt(searchParams.get('limit'), 10);
+    const limit = Math.max(1, Math.min(100, Number.isNaN(parsedLimit) ? 20 : parsedLimit));
     const clientType = searchParams.get('clientType');
     const planType = searchParams.get('planType');
     const status = searchParams.get('status');
