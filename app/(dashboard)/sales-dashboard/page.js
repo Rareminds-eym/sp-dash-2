@@ -93,7 +93,8 @@ export default function SalesDashboardPage() {
       // "To" date is a date-only selection at local midnight; serialize the
       // inclusive end of that day so records on the selected day aren't
       // excluded when local midnight converts to the previous UTC day.
-      params.set('endDate', endOfDay(filters.dateRange[1]).toISOString());
+      const endDate = filters.dateRange[1];
+      params.set('endDate', endOfDay(endDate).toISOString());
     }
     params.set('page', String(pagination.page));
 
