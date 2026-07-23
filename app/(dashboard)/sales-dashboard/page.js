@@ -7,6 +7,23 @@ import { FilterPanel } from '@/components/sales/FilterPanel';
 import { ExportControls } from '@/components/sales/ExportControls';
 import { ClientTable } from '@/components/sales/ClientTable';
 
+// Applies the dateRange filter's startDate/endDate onto params, matching the
+// validation and serialization used by both the table fetch and CSV export.
+function applyDateRangeParams(dateRange, params) {
+  if (dateRange && dateRange.length >= 2) {
+    const [startDate, endDate] = dateRange;
+    if (startDate) {
+      params.set('startDate', startDate.toISOString());
+    }
+    if (endDate && isValid(endDate)) {
+      // "To" date is a date-only selection at local midnight; serialize the
+      // inclusive end of that day so records on the selected day aren't
+      // excluded when local midnight converts to the previous UTC day.
+      params.set('endDate', endOfDay(endDate).toISOString());
+    }
+  }
+}
+
 export default function SalesDashboardPage() {
   const searchParams = useSearchParams();
   const [filters, setFilters] = useState({
@@ -153,18 +170,7 @@ export default function SalesDashboardPage() {
         params.set('search', filters.search);
       }
       // Add date range filters
-      if (filters.dateRange && filters.dateRange.length >= 2) {
-        const [startDate, endDate] = filters.dateRange;
-        if (startDate) {
-          params.set('startDate', startDate.toISOString());
-        }
-        if (endDate && isValid(endDate)) {
-          // "To" date is a date-only selection at local midnight; serialize the
-          // inclusive end of that day so records on the selected day aren't
-          // excluded when local midnight converts to the previous UTC day.
-          params.set('endDate', endOfDay(endDate).toISOString());
-        }
-      }
+      applyDateRangeParams(filters.dateRange, params);
 
       const response = await fetch(`/api/sales/clients?${params.toString()}`, { signal });
       
@@ -228,18 +234,7 @@ export default function SalesDashboardPage() {
         params.set('search', filters.search);
       }
       // Add date range filters
-      if (filters.dateRange && filters.dateRange.length >= 2) {
-        const [startDate, endDate] = filters.dateRange;
-        if (startDate) {
-          params.set('startDate', startDate.toISOString());
-        }
-        if (endDate && isValid(endDate)) {
-          // "To" date is a date-only selection at local midnight; serialize the
-          // inclusive end of that day so records on the selected day aren't
-          // excluded when local midnight converts to the previous UTC day.
-          params.set('endDate', endOfDay(endDate).toISOString());
-        }
-      }
+      applyDateRangeParams(filters.dateRange, params);
 
       params.set('format', format);
 

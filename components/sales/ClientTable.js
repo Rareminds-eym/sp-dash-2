@@ -61,7 +61,7 @@ const getStatusColor = (status) => {
 const truncateEmail = (email, maxLength = 25) => {
   if (!email) return 'No email';
   if (email.length <= maxLength) return email;
-  return email.substring(0, maxLength - 3) + '...';
+  return `${email.substring(0, maxLength - 3)}...`;
 };
 
 // Email cell component with tooltip
