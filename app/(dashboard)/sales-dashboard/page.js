@@ -244,7 +244,7 @@ export default function SalesDashboardPage() {
       let filename = `clients_export.${format}`;
       if (contentDisposition) {
         const matches = contentDisposition.match(/filename="?([^"]+)"?/);
-        if (matches && matches[1]) {
+        if (matches?.[1]) {
           filename = matches[1];
         }
       }
