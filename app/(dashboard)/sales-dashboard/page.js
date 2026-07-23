@@ -12,10 +12,10 @@ import { ClientTable } from '@/components/sales/ClientTable';
 function applyDateRangeParams(dateRange, params) {
   if (dateRange && dateRange.length >= 2) {
     const [startDate, endDate] = dateRange;
-    if (startDate) {
+    if (startDate instanceof Date) {
       params.set('startDate', startDate.toISOString());
     }
-    if (endDate && isValid(endDate)) {
+    if (endDate instanceof Date && isValid(endDate)) {
       // "To" date is a date-only selection at local midnight; serialize the
       // inclusive end of that day so records on the selected day aren't
       // excluded when local midnight converts to the previous UTC day.
@@ -105,14 +105,7 @@ export default function SalesDashboardPage() {
     if (filters.planType) params.set('planType', filters.planType);
     if (filters.status) params.set('status', filters.status);
     if (filters.search) params.set('search', filters.search);
-    if (filters.dateRange?.[0]) params.set('startDate', filters.dateRange[0].toISOString());
-    if (filters.dateRange?.[1] && isValid(filters.dateRange[1])) {
-      // "To" date is a date-only selection at local midnight; serialize the
-      // inclusive end of that day so records on the selected day aren't
-      // excluded when local midnight converts to the previous UTC day.
-      const endDate = filters.dateRange[1];
-      params.set('endDate', endOfDay(endDate).toISOString());
-    }
+    applyDateRangeParams(filters.dateRange, params);
     params.set('page', String(pagination.page));
 
     // Compare params as key-value sets (order-independent)
@@ -251,7 +244,7 @@ export default function SalesDashboardPage() {
       let filename = `clients_export.${format}`;
       if (contentDisposition) {
         const matches = contentDisposition.match(/filename="?([^"]+)"?/);
-        if (matches?.[1]) {
+        if (matches && matches[1]) {
           filename = matches[1];
         }
       }
