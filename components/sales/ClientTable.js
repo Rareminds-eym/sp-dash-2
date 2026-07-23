@@ -179,11 +179,13 @@ export function ClientTable({ data, pagination, isLoading, onPageChange }) {
   return (
     <div className="space-y-4">
       {/* Mobile Card View - visible on screens < 640px */}
-      <div className="block sm:hidden" role="list" aria-label="Client list">
+      <ul className="block sm:hidden list-none p-0 m-0" aria-label="Client list">
         {data.map((client) => (
-          <ClientCard key={client.id} client={client} />
+          <li key={client.id}>
+            <ClientCard client={client} />
+          </li>
         ))}
-      </div>
+      </ul>
 
       {/* Desktop/Tablet Table View - visible on screens >= 640px */}
       <div className="hidden sm:block border dark:border-gray-700 rounded-lg overflow-x-auto">

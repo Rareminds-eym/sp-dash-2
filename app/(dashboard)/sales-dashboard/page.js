@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { endOfDay } from 'date-fns';
+import { endOfDay, isValid } from 'date-fns';
 import { FilterPanel } from '@/components/sales/FilterPanel';
 import { ExportControls } from '@/components/sales/ExportControls';
 import { ClientTable } from '@/components/sales/ClientTable';
@@ -31,7 +31,11 @@ export default function SalesDashboardPage() {
   useEffect(() => {
     let cancelled = false;
     fetch('/api/sales/filters-meta')
-      .then(res => res.ok ? res.json() : (console.warn('[FilterMeta] Bad response:', res.status), null))
+      .then(res => {
+        if (res.ok) return res.json();
+        console.warn('[FilterMeta] Bad response:', res.status);
+        return null;
+      })
       .then(meta => { if (!cancelled && meta) setFilterMeta(meta); })
       .catch(err => console.warn('[FilterMeta] Fetch failed:', err));
     return () => { cancelled = true; };
@@ -85,7 +89,7 @@ export default function SalesDashboardPage() {
     if (filters.status) params.set('status', filters.status);
     if (filters.search) params.set('search', filters.search);
     if (filters.dateRange?.[0]) params.set('startDate', filters.dateRange[0].toISOString());
-    if (filters.dateRange?.[1]) {
+    if (filters.dateRange?.[1] && isValid(filters.dateRange[1])) {
       // "To" date is a date-only selection at local midnight; serialize the
       // inclusive end of that day so records on the selected day aren't
       // excluded when local midnight converts to the previous UTC day.
@@ -153,7 +157,7 @@ export default function SalesDashboardPage() {
         if (startDate) {
           params.set('startDate', startDate.toISOString());
         }
-        if (endDate) {
+        if (endDate && isValid(endDate)) {
           // "To" date is a date-only selection at local midnight; serialize the
           // inclusive end of that day so records on the selected day aren't
           // excluded when local midnight converts to the previous UTC day.
@@ -228,7 +232,7 @@ export default function SalesDashboardPage() {
         if (startDate) {
           params.set('startDate', startDate.toISOString());
         }
-        if (endDate) {
+        if (endDate && isValid(endDate)) {
           // "To" date is a date-only selection at local midnight; serialize the
           // inclusive end of that day so records on the selected day aren't
           // excluded when local midnight converts to the previous UTC day.
@@ -251,7 +255,7 @@ export default function SalesDashboardPage() {
       let filename = `clients_export.${format}`;
       if (contentDisposition) {
         const matches = contentDisposition.match(/filename="?([^"]+)"?/);
-        if (matches && matches[1]) {
+        if (matches?.[1]) {
           filename = matches[1];
         }
       }
