@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { endOfDay } from 'date-fns';
 import { FilterPanel } from '@/components/sales/FilterPanel';
 import { ExportControls } from '@/components/sales/ExportControls';
 import { ClientTable } from '@/components/sales/ClientTable';
@@ -84,7 +85,12 @@ export default function SalesDashboardPage() {
     if (filters.status) params.set('status', filters.status);
     if (filters.search) params.set('search', filters.search);
     if (filters.dateRange?.[0]) params.set('startDate', filters.dateRange[0].toISOString());
-    if (filters.dateRange?.[1]) params.set('endDate', filters.dateRange[1].toISOString());
+    if (filters.dateRange?.[1]) {
+      // "To" date is a date-only selection at local midnight; serialize the
+      // inclusive end of that day so records on the selected day aren't
+      // excluded when local midnight converts to the previous UTC day.
+      params.set('endDate', endOfDay(filters.dateRange[1]).toISOString());
+    }
     params.set('page', String(pagination.page));
 
     // Compare params as key-value sets (order-independent)
@@ -148,7 +154,10 @@ export default function SalesDashboardPage() {
           params.set('startDate', startDate.toISOString());
         }
         if (endDate) {
-          params.set('endDate', endDate.toISOString());
+          // "To" date is a date-only selection at local midnight; serialize the
+          // inclusive end of that day so records on the selected day aren't
+          // excluded when local midnight converts to the previous UTC day.
+          params.set('endDate', endOfDay(endDate).toISOString());
         }
       }
 
@@ -220,7 +229,10 @@ export default function SalesDashboardPage() {
           params.set('startDate', startDate.toISOString());
         }
         if (endDate) {
-          params.set('endDate', endDate.toISOString());
+          // "To" date is a date-only selection at local midnight; serialize the
+          // inclusive end of that day so records on the selected day aren't
+          // excluded when local midnight converts to the previous UTC day.
+          params.set('endDate', endOfDay(endDate).toISOString());
         }
       }
 

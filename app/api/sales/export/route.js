@@ -210,8 +210,7 @@ export async function GET(request) {
       'Plan Amount',
       'Billing Cycle',
       'Subscription Status',
-      'Start Date',
-      'End Date',
+      'Subscription Date',
     ];
 
     const csvRows = [
@@ -227,8 +226,7 @@ export async function GET(request) {
           toCsvCell(client.planAmount || ''),
           toCsvCell(client.billingCycle || ''),
           toCsvCell(client.subscriptionStatus || ''),
-          toCsvCell(client.startDate || ''),
-          toCsvCell(client.endDate || ''),
+          toCsvCell(client.subscriptionDate || ''),
         ].join(',');
       }),
     ];

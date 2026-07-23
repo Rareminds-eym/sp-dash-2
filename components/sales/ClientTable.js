@@ -37,8 +37,7 @@ const COLUMNS = [
   { key: 'planAmount', label: 'Amount' },
   { key: 'billingCycle', label: 'Billing Cycle' },
   { key: 'subscriptionStatus', label: 'Status' },
-  { key: 'startDate', label: 'Start Date' },
-  { key: 'endDate', label: 'End Date' },
+  { key: 'subscriptionDate', label: 'Subscription Date' },
 ];
 
 const getStatusColor = (status) => {
@@ -124,11 +123,11 @@ function ClientCard({ client }) {
             <span className="text-gray-700 dark:text-gray-300">{client.planType} - ₹{client.planAmount || 0} / {client.billingCycle || 'N/A'}</span>
           </div>
         )}
-        {(client.startDate || client.endDate) && (
+        {client.subscriptionDate && (
           <div className="flex items-center gap-2 text-sm">
             <Calendar className="w-4 h-4 text-gray-500 dark:text-gray-400" />
             <span className="text-gray-700 dark:text-gray-300">
-              {formatDate(client.startDate)} to {formatDate(client.endDate)}
+              {formatDate(client.subscriptionDate)}
             </span>
           </div>
         )}
@@ -213,8 +212,7 @@ export function ClientTable({ data, pagination, isLoading, onPageChange }) {
                     {client.subscriptionStatus || '-'}
                   </Badge>
                 </TableCell>
-                <TableCell>{formatDate(client.startDate)}</TableCell>
-                <TableCell>{formatDate(client.endDate)}</TableCell>
+                <TableCell>{formatDate(client.subscriptionDate)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
