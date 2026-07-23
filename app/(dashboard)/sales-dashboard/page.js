@@ -10,9 +10,9 @@ import { ClientTable } from '@/components/sales/ClientTable';
 // Applies the dateRange filter's startDate/endDate onto params, matching the
 // validation and serialization used by both the table fetch and CSV export.
 function applyDateRangeParams(dateRange, params) {
-  if (dateRange && dateRange.length >= 2) {
+  if (Array.isArray(dateRange) && dateRange.length >= 2) {
     const [startDate, endDate] = dateRange;
-    if (startDate instanceof Date) {
+    if (startDate instanceof Date && isValid(startDate)) {
       params.set('startDate', startDate.toISOString());
     }
     if (endDate instanceof Date && isValid(endDate)) {
