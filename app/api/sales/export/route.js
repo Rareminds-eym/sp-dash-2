@@ -85,7 +85,6 @@ export async function GET(request) {
     // NOTE: Search is NOT passed to SSO because we filter by enriched SkillPassport names client-side
 
     const allClients = [];
-    let currentPage = 1;
     let totalPages = 1;
     const MAX_EXPORT_PAGES = 30; // Stay under Cloudflare's 32-subrequest limit (buffer for jwks cache miss)
 
@@ -167,7 +166,7 @@ export async function GET(request) {
     });
 
     // Enrich with SkillPassport names
-    let enrichedClients = clients.map(client => {
+    const enrichedClients = clients.map(client => {
       const spUser = spUserMap[client.id];
       let fullName = client.fullName;
 
@@ -210,8 +209,7 @@ export async function GET(request) {
       'Plan Amount',
       'Billing Cycle',
       'Subscription Status',
-      'Start Date',
-      'End Date',
+      'Subscription Date',
     ];
 
     const csvRows = [
@@ -227,8 +225,7 @@ export async function GET(request) {
           toCsvCell(client.planAmount || ''),
           toCsvCell(client.billingCycle || ''),
           toCsvCell(client.subscriptionStatus || ''),
-          toCsvCell(client.startDate || ''),
-          toCsvCell(client.endDate || ''),
+          toCsvCell(client.subscriptionDate || ''),
         ].join(',');
       }),
     ];
