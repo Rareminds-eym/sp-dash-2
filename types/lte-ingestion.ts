@@ -86,6 +86,7 @@ export interface LTEIngestionSnapshot {
   sourceType: 'google_sheets' | 'xlsx';
   sourceName: string;
   snapshotHash: string;
+  reviewedSnapshotHash?: string;
   tables?: Record<string, {
     columns: string[];
     rows: any[][];
@@ -102,7 +103,8 @@ export interface LTEIngestionSnapshot {
   levelCourses?: LTELevelCourse[];
   validationReport: LTERelationalValidationReport;
   createdAt: string;
-  status: 'uploaded' | 'validating' | 'validated' | 'published' | 'validation_failed';
+  status: 'uploaded' | 'validating' | 'validated' | 'publishing' | 'published' | 'validation_failed' | 'publish_failed';
+  assetStatus?: 'none' | 'staged' | 'active' | 'activation_pending' | 'cleanup_pending';
 }
 
 export interface LTEUploadResponse {
@@ -118,7 +120,13 @@ export interface LTEPublishResult {
   inserted: number;
   skipped: number;
   completedAt: string;
+  assetStatus?: string;
+  catalogPublished?: boolean;
+  assetsActive?: boolean;
+  retryScheduled?: boolean;
+  errorCode?: string;
   error?: string;
+  tableSummary?: Record<string, { inserted: number; skipped: number }>;
 }
 
 export interface LearnerStageInfo {

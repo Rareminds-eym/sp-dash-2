@@ -5,8 +5,8 @@ vi.mock('@/lib/middleware/sso-auth', () => ({
   authenticateSSORequest: vi.fn(),
 }));
 
-vi.mock('@/lib/supabase-admin', () => ({
-  supabaseAdmin: {
+vi.mock('@/lib/supabase-lte', () => ({
+  supabaseLTE: {
     from: vi.fn(),
   },
 }));
@@ -15,7 +15,7 @@ vi.mock('@/lib/supabase-admin', () => ({
 import { GET } from './route';
 import { NextRequest } from 'next/server';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseLTE } from '@/lib/supabase-lte';
 
 describe('GET /api/admin/lte/review', () => {
   const mockUser = {
@@ -101,7 +101,7 @@ describe('GET /api/admin/lte/review', () => {
       error: null,
     });
 
-    vi.mocked(supabaseAdmin.from).mockReturnValue({
+    vi.mocked(supabaseLTE.from).mockReturnValue({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           single: vi.fn().mockResolvedValue({
@@ -142,7 +142,7 @@ describe('GET /api/admin/lte/review', () => {
   });
 
   it('should return 404 when upload does not exist', async () => {
-    vi.mocked(supabaseAdmin.from).mockReturnValue({
+    vi.mocked(supabaseLTE.from).mockReturnValue({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           single: vi.fn().mockResolvedValue({
@@ -167,7 +167,7 @@ describe('GET /api/admin/lte/review', () => {
 
   it('should reject unauthorized access to another user\'s upload', async () => {
     // Upload belongs to different user
-    vi.mocked(supabaseAdmin.from).mockReturnValue({
+    vi.mocked(supabaseLTE.from).mockReturnValue({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           single: vi.fn().mockResolvedValue({
@@ -205,7 +205,7 @@ describe('GET /api/admin/lte/review', () => {
 
   it('should allow admin to access any upload', async () => {
     // Upload belongs to different user
-    vi.mocked(supabaseAdmin.from).mockReturnValue({
+    vi.mocked(supabaseLTE.from).mockReturnValue({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           single: vi.fn().mockResolvedValue({
@@ -250,8 +250,8 @@ describe('GET /api/admin/lte/review', () => {
     expect(data.createdAt).toBe('2026-08-18T10:00:00Z');
 
     // Verify Supabase query was called correctly
-    expect(supabaseAdmin.from).toHaveBeenCalledWith('lte_catalog_uploads');
-    const fromMock = vi.mocked(supabaseAdmin.from).mock.results[0]?.value;
+    expect(supabaseLTE.from).toHaveBeenCalledWith('lte_catalog_uploads');
+    const fromMock = vi.mocked(supabaseLTE.from).mock.results[0]?.value;
     expect(fromMock.select).toHaveBeenCalledWith('*');
   });
 
@@ -329,7 +329,7 @@ describe('GET /api/admin/lte/review', () => {
   });
 
   it('should handle missing course metadata gracefully', async () => {
-    vi.mocked(supabaseAdmin.from).mockReturnValue({
+    vi.mocked(supabaseLTE.from).mockReturnValue({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           single: vi.fn().mockResolvedValue({
@@ -368,7 +368,7 @@ describe('GET /api/admin/lte/review', () => {
   });
 
   it('should handle missing modules gracefully', async () => {
-    vi.mocked(supabaseAdmin.from).mockReturnValue({
+    vi.mocked(supabaseLTE.from).mockReturnValue({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           single: vi.fn().mockResolvedValue({
@@ -397,7 +397,7 @@ describe('GET /api/admin/lte/review', () => {
   });
 
   it('should handle database query errors', async () => {
-    vi.mocked(supabaseAdmin.from).mockReturnValue({
+    vi.mocked(supabaseLTE.from).mockReturnValue({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           single: vi.fn().mockResolvedValue({
@@ -421,7 +421,7 @@ describe('GET /api/admin/lte/review', () => {
   });
 
   it('should handle unexpected errors gracefully', async () => {
-    vi.mocked(supabaseAdmin.from).mockImplementation(() => {
+    vi.mocked(supabaseLTE.from).mockImplementation(() => {
       throw new Error('Unexpected error');
     });
 

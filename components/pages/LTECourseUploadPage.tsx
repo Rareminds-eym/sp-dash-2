@@ -49,17 +49,35 @@ export const LTECourseUploadPage: React.FC = () => {
     });
 
     try {
+      const reviewedHash = snapshot?.reviewedSnapshotHash || snapshot?.snapshotHash || 'hash_default';
       const res = await fetch('/api/admin/lte/publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           uploadId: snapshot?.uploadId || 'upload_default',
-          confirm: true,
-          snapshotHash: snapshot?.snapshotHash || 'hash_default',
+          reviewedSnapshotHash: reviewedHash,
         }),
       });
 
       const data = await res.json();
+
+      if (res.status === 409) {
+        toast({
+          title: 'Snapshot Version Changed (409)',
+          description: data.error || 'The reviewed snapshot version has changed. Please refresh and re-verify before publishing.',
+          variant: 'destructive',
+        });
+        throw new Error(data.error || 'SNAPSHOT_CHANGED');
+      }
+
+      if (res.status === 202) {
+        toast({
+          title: 'Publish in Progress (202)',
+          description: 'A catalog publication operation is currently running for this upload record.',
+        });
+        return;
+      }
+
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'Publish transaction failed.');
       }
@@ -69,6 +87,10 @@ export const LTECourseUploadPage: React.FC = () => {
         title: 'Course Uploaded & Published Successfully!',
         description: `Inserted ${data.inserted} catalog rows, skipped ${data.skipped} existing rows across 13 tables.`,
       });
+
+      if (snapshot) {
+        setSnapshot({ ...snapshot, status: 'published' });
+      }
     } catch (err: unknown) {
       const msg = getErrorMessage(err);
       logger.error('Course publish error', { error: msg });

@@ -7,8 +7,8 @@ import { NextResponse } from 'next/server';
 export async function GET() {
   try {
     // Get SSO service binding
-    const { getRequestContext } = await import('@cloudflare/next-on-pages');
-    const { env } = getRequestContext();
+    const { getCloudflareContext } = await import('@opennextjs/cloudflare');
+    const { env } = await getCloudflareContext({ async: true });
     
     if (!env.SSO) {
       return NextResponse.json({

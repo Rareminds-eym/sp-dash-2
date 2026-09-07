@@ -20,3 +20,7 @@ queue = "realtime-events-queue"
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"
 id = "a162f140e4464515a8d5a27b5ebc6c6b"
+
+[[r2_buckets]]
+binding = "LTE_ASSETS"
+bucket_name = "lte-course-assets"

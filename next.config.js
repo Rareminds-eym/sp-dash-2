@@ -1,9 +1,3 @@
-// Enable Cloudflare Pages local development with service bindings
-if (process.env.NODE_ENV === 'development') {
-  const { setupDevPlatform } = require('@cloudflare/next-on-pages/next-dev');
-  setupDevPlatform();
-}
-
 const path = require('path');
 
 const nextConfig = {
@@ -19,14 +13,24 @@ const nextConfig = {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
-  serverExternalPackages: ['jose'],
+  serverExternalPackages: ['jose', 'bcryptjs'],
   experimental: {
     // Enable service bindings for Cloudflare Workers
     serverActions: {
       allowedOrigins: ['localhost:3000', 'localhost:8789', '*.pages.dev', '*.rareminds.in'],
     },
   },
-  webpack(config, { dev, nextRuntime }) {
+  webpack(config, { dev, isServer, nextRuntime }) {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        crypto: false,
+        fs: false,
+        path: false,
+        stream: false,
+        buffer: false,
+      };
+    }
     if (nextRuntime === 'edge') {
       config.resolve.alias = {
         ...config.resolve.alias,

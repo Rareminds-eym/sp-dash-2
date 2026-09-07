@@ -17,6 +17,37 @@ const COOKIE_REFRESH = isSecure ? '__Host-sso_refresh_token' : 'sso_refresh_toke
 const COOKIE_USER    = isSecure ? '__Host-sso_user'          : 'sso_user'
 
 /**
+ * Retry helper for transient database errors
+ * @param {Function} fn - Async function to retry
+ * @param {number} maxRetries - Maximum number of retry attempts
+ * @param {number} delayMs - Delay between retries in milliseconds
+ * @returns {Promise} Result of the function
+ */
+async function retryOnTransientError(fn, maxRetries = 2, delayMs = 1000) {
+  let lastError
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn()
+    } catch (error) {
+      lastError = error
+      const errorMsg = error.message || ''
+      const isTransient = errorMsg.includes('PGRST002') || 
+                          errorMsg.includes('503') || 
+                          errorMsg.includes('Could not query the database') ||
+                          errorMsg.includes('schema cache')
+      
+      if (!isTransient || attempt === maxRetries) {
+        throw error
+      }
+      
+      console.warn(`[Retry] Attempt ${attempt + 1}/${maxRetries + 1} failed with transient error, retrying in ${delayMs}ms...`)
+      await new Promise(resolve => setTimeout(resolve, delayMs * (attempt + 1)))
+    }
+  }
+  throw lastError
+}
+
+/**
  * Handle SSO Login Action
  */
 const loginSchema = z.object({
@@ -43,11 +74,14 @@ export async function loginAction(email, password) {
     
     let loginData
     try {
-      loginData = await ssoClient.login({
-        email: parsed.data.email,
-        password: parsed.data.password,
-        ip,
-        ua
+      // Retry transient database errors automatically
+      loginData = await retryOnTransientError(async () => {
+        return await ssoClient.login({
+          email: parsed.data.email,
+          password: parsed.data.password,
+          ip,
+          ua
+        })
       })
     } catch (err) {
       console.error('[SSO Login Action] RPC error:', err)
@@ -60,6 +94,12 @@ export async function loginAction(email, password) {
       } else if (errorMessage.includes('disabled') || errorMessage.includes('verification') || errorMessage.includes('blocked')) {
         statusCode = 403
         errorMessage = 'Account is disabled or requires verification.'
+      } else if (errorMessage.includes('PGRST002') || errorMessage.includes('503') || errorMessage.includes('Could not query the database')) {
+        statusCode = 503
+        errorMessage = 'The authentication service is temporarily unavailable. Please try again in a few moments.'
+      } else if (errorMessage.includes('network') || errorMessage.includes('timeout') || errorMessage.includes('ECONNREFUSED')) {
+        statusCode = 503
+        errorMessage = 'Unable to connect to the authentication service. Please check your connection and try again.'
       }
       
       return { success: false, error: errorMessage, status: statusCode }
@@ -184,11 +224,30 @@ export async function refreshAction() {
     const ua = headersList.get('user-agent') || 'unknown'
 
     const ssoClient = await createSSOServiceClient()
-    const refreshData = await ssoClient.refresh({
-      refresh_token: refreshToken,
-      ip,
-      ua
-    })
+    
+    let refreshData
+    try {
+      // Retry transient database errors automatically
+      refreshData = await retryOnTransientError(async () => {
+        return await ssoClient.refresh({
+          refresh_token: refreshToken,
+          ip,
+          ua
+        })
+      })
+    } catch (err) {
+      console.error('[Token Refresh Action] RPC error:', err)
+      cookieStore.delete(COOKIE_REFRESH)
+      cookieStore.delete(COOKIE_ACCESS)
+      cookieStore.delete(COOKIE_USER)
+      
+      let errorMessage = err.message || 'Token refresh failed'
+      if (errorMessage.includes('PGRST002') || errorMessage.includes('503') || errorMessage.includes('Could not query the database')) {
+        errorMessage = 'Authentication service temporarily unavailable'
+      }
+      
+      return { success: false, error: errorMessage, status: 503 }
+    }
 
     if (refreshData.error) {
       cookieStore.delete(COOKIE_REFRESH)

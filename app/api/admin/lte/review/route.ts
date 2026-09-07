@@ -105,8 +105,17 @@ export async function GET(request: NextRequest): Promise<NextResponse<ReviewResp
       sourceName: uploadRecord.source_name 
     });
 
-    // Extract snapshot from normalized_snapshot JSONB column
-    const snapshot = uploadRecord.normalized_snapshot as LTEIngestionSnapshot;
+    // Extract snapshot from reviewed_snapshot or fallback normalized_snapshot JSONB column
+    const rawSnapshot = uploadRecord.reviewed_snapshot || uploadRecord.normalized_snapshot;
+    const reviewedHash = uploadRecord.reviewed_snapshot_hash || uploadRecord.snapshot_hash;
+    
+    const snapshot: LTEIngestionSnapshot = {
+      ...(rawSnapshot as LTEIngestionSnapshot),
+      uploadId: uploadRecord.id,
+      reviewedSnapshotHash: reviewedHash,
+      snapshotHash: reviewedHash,
+      status: uploadRecord.status,
+    };
 
     // Extract course specification from the snapshot
     const courseSpecification = extractCourseSpecification(snapshot);
@@ -117,7 +126,8 @@ export async function GET(request: NextRequest): Promise<NextResponse<ReviewResp
     logger.info('Review data prepared', { 
       uploadId, 
       courseTitle: courseSpecification?.courseTitle,
-      modulesCount: modules.length 
+      modulesCount: modules.length,
+      reviewedHash,
     });
 
     return NextResponse.json({
@@ -125,6 +135,8 @@ export async function GET(request: NextRequest): Promise<NextResponse<ReviewResp
       uploadId: uploadRecord.id,
       sourceName: uploadRecord.source_name,
       status: uploadRecord.status,
+      reviewedSnapshotHash: reviewedHash,
+      snapshot,
       validationReport: uploadRecord.validation_result,
       courseSpecification,
       modules,

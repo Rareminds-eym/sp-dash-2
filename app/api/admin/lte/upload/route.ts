@@ -137,9 +137,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<LTEUpload
           source_name: snapshot.sourceName,
           source_file_hash: sourceFileHash,
           snapshot_hash: snapshot.snapshotHash,
-          normalized_snapshot: snapshot, // Store entire snapshot as JSONB
+          reviewed_snapshot_hash: snapshot.snapshotHash,
+          normalized_snapshot: snapshot, // Legacy backfill field
+          reviewed_snapshot: snapshot,   // Authoritative v2.1 reviewed snapshot
           validation_result: snapshot.validationReport,
           status: snapshot.status,
+          asset_status: 'none',
           created_by: user.userId,
         })
         .select('id')
@@ -152,10 +155,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<LTEUpload
 
       logger.info('Upload record created', { uploadId: uploadRecord.id });
 
-      // Update snapshot with the database-generated ID
+      // Update snapshot with the database-generated ID and reviewedSnapshotHash
       const finalSnapshot = {
         ...snapshot,
         uploadId: uploadRecord.id,
+        reviewedSnapshotHash: snapshot.snapshotHash,
       };
 
       return NextResponse.json({
