@@ -137,4 +137,25 @@ describe('LTEIngestionService.extractLevelCourses', () => {
     expect(course.modules[0].stages[0].prerequisites).toEqual(['Case pack']);
     expect(course.modules[0].stages[5].subtitle).toBe('Evolve workbook title');
   });
+
+  it('links modules by level code and preserves all stage asset metadata', () => {
+    const snapshot: NormalizedSnapshot = {
+      tables: {
+        levels: { columns: ['id', 'level_code', 'course_code'], rows: [['level-1', 'L1', 'COURSE_L1']] },
+        modules: { columns: ['id', 'level_code', 'module_no', 'title'], rows: [['module-1', 'L1', 1, 'Introduction']] },
+        modules_content: { columns: ['id', 'module_id', 'stage_name'], rows: [['mc-1', 'module-1', 'engage']] },
+        e_content: { columns: ['id', 'modules_content_id', 'file_url', 'filename', 'mime_type'], rows: [
+          ['asset-1', 'mc-1', 'https://example.test/intro.mp4', 'intro.mp4', 'video/mp4'],
+          ['asset-2', 'mc-1', 'https://example.test/deck.pdf', 'deck.pdf', 'application/pdf'],
+        ] },
+      },
+      metadata: { sourceType: 'xlsx', sourceName: 'assets.xlsx', tableCount: 4, totalRows: 5, parsedAt: '2026-09-10T00:00:00.000Z' },
+    };
+    const [course] = LTEIngestionService.extractLevelCourses(snapshot);
+    expect(course.modules).toHaveLength(1);
+    expect(course.modules[0].stages[0].assets).toEqual([
+      expect.objectContaining({ url: 'https://example.test/intro.mp4', fileName: 'intro.mp4', contentType: 'video/mp4' }),
+      expect.objectContaining({ url: 'https://example.test/deck.pdf', fileName: 'deck.pdf', contentType: 'application/pdf' }),
+    ]);
+  });
 });

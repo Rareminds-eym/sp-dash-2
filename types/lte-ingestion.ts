@@ -15,6 +15,15 @@ export interface LTEStage6E {
   technicalConcepts: string[];
   engineeringContext: string;
   isCompleted?: boolean;
+  assets?: LTELearningAsset[];
+}
+
+export interface LTELearningAsset {
+  id: string;
+  url?: string;
+  title: string;
+  fileName?: string;
+  contentType?: string;
 }
 
 export interface LTEArtifactPractice {

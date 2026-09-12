@@ -41,7 +41,7 @@ describe('Validation Reporter', () => {
       expect(result.validationCards).toHaveLength(3);
     });
 
-    it('should reject modules missing required 6E stage content', () => {
+    it('should allow dynamic E count (1+ stages) without blocking publish', () => {
       const workbookData = new Map([
         ['modules', [{ id: 'module-1', title: 'Evidence Intake' }]],
         ['modules_content', [
@@ -64,9 +64,31 @@ describe('Validation Reporter', () => {
 
       const result = generateValidationReport(workbookData, duplicateResults, existingResult);
 
+      expect(result.publishReady).toBe(true);
+      expect(result.errors.some(error => error.code === 'MISSING_6E_STAGE' && error.severity === 'ERROR')).toBe(false);
+    });
+
+    it('should reject modules with zero stage rows', () => {
+      const workbookData = new Map([
+        ['modules', [{ id: 'module-1', title: 'Evidence Intake' }]],
+        ['modules_content', []],
+        ['e_content', []],
+        ['module_artifacts', []],
+        ['artifact_questions', []],
+        ['artifact_templates', []],
+      ]);
+
+      const duplicateResults = new Map<string, DuplicateDetectionResult>();
+      const existingResult: ExistingRecordResult = {
+        existingUUIDs: new Set(),
+        existingUniqueKeys: new Map(),
+        referenceTableRecords: new Map(),
+      };
+
+      const result = generateValidationReport(workbookData, duplicateResults, existingResult);
+
       expect(result.publishReady).toBe(false);
-      expect(result.errors.some(error => error.code === 'MISSING_6E_STAGE')).toBe(true);
-      expect(result.errors.some(error => error.code === 'MISSING_ARTIFACT_PRACTICE')).toBe(true);
+      expect(result.errors.some(error => error.code === 'MISSING_6E_STAGE' && error.severity === 'ERROR')).toBe(true);
     });
 
     it('should accept complete 6E module, content, artifact, question, and template links', () => {
@@ -76,7 +98,7 @@ describe('Validation Reporter', () => {
         stage_name: stage,
         stage_order: index + 1,
       }));
-      const workbookData = new Map([
+      const workbookData = new Map<string, any[]>([
         ['modules', [{ id: 'module-1', title: 'Evidence Intake' }]],
         ['modules_content', stageRows],
         ['e_content', stageRows.map(row => ({ id: `file-${row.id}`, modules_content_id: row.id }))],

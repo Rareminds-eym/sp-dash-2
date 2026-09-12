@@ -3,6 +3,7 @@ import Logger, { getErrorMessage } from '@/lib/logger';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { supabaseLTE } from '@/lib/supabase-lte';
 import { LTEIngestionSnapshot } from '@/types/lte-ingestion';
+import { formatText } from '@/lib/services/lte-ingestion/text-formatter';
 
 const logger = new Logger('LTEReviewAPI');
 
@@ -140,7 +141,21 @@ export async function GET(request: NextRequest): Promise<NextResponse<ReviewResp
       validationReport: uploadRecord.validation_result,
       courseSpecification,
       modules,
-      levelCourses: snapshot.levelCourses || [],
+      levelCourses: (snapshot.levelCourses || []).map((lc: any) => ({
+        ...lc,
+        courseMetadata: lc?.courseMetadata ? {
+          ...lc.courseMetadata,
+          courseTitle: formatText(lc.courseMetadata.courseTitle, 'Untitled Course'),
+          courseCode: formatText(lc.courseMetadata.courseCode, 'UNKNOWN'),
+          domain: formatText(lc.courseMetadata.domain, 'General'),
+          capabilityCode: formatText(lc.courseMetadata.capabilityCode, 'UNKNOWN'),
+          capabilityLevel: formatText(lc.courseMetadata.capabilityLevel, 'Level 1'),
+          instructorLead: formatText(lc.courseMetadata.instructorLead, 'Unknown Instructor'),
+          courseSummary: formatText(lc.courseMetadata.courseSummary),
+          problemStatement: formatText(lc.courseMetadata.problemStatement),
+          capstoneTitle: formatText(lc.courseMetadata.capstoneTitle),
+        } : lc?.courseMetadata,
+      })),
       createdAt: uploadRecord.created_at,
     });
 
@@ -174,15 +189,15 @@ function extractCourseSpecification(snapshot: LTEIngestionSnapshot): any {
   }
 
   return {
-    courseTitle: snapshot.courseMetadata.courseTitle || 'Untitled Course',
-    courseCode: snapshot.courseMetadata.courseCode || 'UNKNOWN',
-    domain: snapshot.courseMetadata.domain || 'General',
-    capabilityCode: snapshot.courseMetadata.capabilityCode || 'UNKNOWN',
-    capabilityLevel: snapshot.courseMetadata.capabilityLevel || 'Level 1',
-    instructorLead: snapshot.courseMetadata.instructorLead || 'Unknown Instructor',
-    courseSummary: snapshot.courseMetadata.courseSummary || '',
-    problemStatement: snapshot.courseMetadata.problemStatement || '',
-    capstoneArtifactTitle: snapshot.courseMetadata.capstoneTitle || '',
+    courseTitle: formatText(snapshot.courseMetadata.courseTitle, 'Untitled Course'),
+    courseCode: formatText(snapshot.courseMetadata.courseCode, 'UNKNOWN'),
+    domain: formatText(snapshot.courseMetadata.domain, 'General'),
+    capabilityCode: formatText(snapshot.courseMetadata.capabilityCode, 'UNKNOWN'),
+    capabilityLevel: formatText(snapshot.courseMetadata.capabilityLevel, 'Level 1'),
+    instructorLead: formatText(snapshot.courseMetadata.instructorLead, 'Unknown Instructor'),
+    courseSummary: formatText(snapshot.courseMetadata.courseSummary),
+    problemStatement: formatText(snapshot.courseMetadata.problemStatement),
+    capstoneArtifactTitle: formatText(snapshot.courseMetadata.capstoneTitle),
   };
 }
 

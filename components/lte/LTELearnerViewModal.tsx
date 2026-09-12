@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   X,
-  Play,
   Download,
   ArrowLeft,
   Edit3,
@@ -11,9 +10,11 @@ import {
   Zap,
   Clock,
   FileText,
+  ExternalLink,
 } from 'lucide-react';
 import Logger from '@/lib/logger';
 import { LTEIngestionSnapshot, LTELevelCourse, LTEModule, LTEStage6E } from '@/types/lte-ingestion';
+import { classifyPreviewAsset } from '@/lib/services/lte-ingestion/asset-preview';
 
 const logger = new Logger('LTELearnerViewModal');
 
@@ -33,6 +34,7 @@ export const LTELearnerViewModal: React.FC<LTELearnerViewModalProps> = ({
   const [selectedModuleIndex, setSelectedModuleIndex] = useState<number>(0);
   const [selectedStageName, setSelectedStageName] = useState<string>('Explore');
   const [activeSubTab, setActiveSubTab] = useState<number>(1);
+  const [selectedAssetIndex, setSelectedAssetIndex] = useState<number>(0);
 
   useEffect(() => {
     const availableModules = course?.modules || snapshot?.modules || [];
@@ -43,7 +45,10 @@ export const LTELearnerViewModal: React.FC<LTELearnerViewModalProps> = ({
 
     setSelectedModuleIndex(0);
     setSelectedStageName(firstStage?.name || '');
+    setSelectedAssetIndex(0);
   }, [course, snapshot]);
+
+  useEffect(() => setSelectedAssetIndex(0), [selectedModuleIndex, selectedStageName]);
 
   if (!isOpen) return null;
 
@@ -81,6 +86,19 @@ export const LTELearnerViewModal: React.FC<LTELearnerViewModalProps> = ({
   );
   const capabilityLevel =
     courseMetadata?.capabilityLevel || course?.levelName || course?.levelCode || 'Level not specified';
+  const stageAssets = currentStage.assets || [];
+  const previewAsset = stageAssets[selectedAssetIndex] || stageAssets[0];
+  const previewKind = previewAsset ? classifyPreviewAsset(previewAsset) : null;
+
+  const renderPreview = () => {
+    if (!previewAsset?.url) return <div className="p-8 text-center text-white"><FileText className="mx-auto mb-3 h-10 w-10 text-slate-400" /><p className="font-semibold">No preview asset was supplied</p><p className="mt-1 text-xs text-slate-400">Add a URL in e_content using file_url, content_url, media_url, url, or asset_url.</p></div>;
+    if (previewKind === 'video') return <video className="h-full w-full bg-black object-contain" controls preload="metadata" src={previewAsset.url} />;
+    if (previewKind === 'image') return <img className="h-full w-full object-contain" src={previewAsset.url} alt={previewAsset.title} />;
+    if (previewKind === 'audio') return <div className="w-full p-8"><audio className="w-full" controls preload="metadata" src={previewAsset.url} /></div>;
+    if (previewKind === 'document') return <iframe className="h-full min-h-[300px] w-full bg-white" src={previewAsset.url} title={previewAsset.title} />;
+    if (previewKind === 'slides') return <div className="max-w-md rounded-xl border border-slate-600 bg-slate-900 p-6 text-center text-white"><FileText className="mx-auto mb-3 h-10 w-10 text-amber-300" /><p className="font-semibold">{previewAsset.fileName || previewAsset.title}</p><p className="mt-1 text-xs text-slate-300">PowerPoint files open in a compatible viewer or download to your device.</p><div className="mt-4 flex justify-center gap-2"><a className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold" href={previewAsset.url} target="_blank" rel="noreferrer">Open</a><a className="rounded-lg border border-slate-500 px-4 py-2 text-xs font-semibold" href={previewAsset.url} download={previewAsset.fileName || true}>Download</a></div></div>;
+    return <a className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white" href={previewAsset.url} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" />Open {previewAsset.title}</a>;
+  };
 
   logger.info('Rendering Learner View Modal', {
     moduleIndex: selectedModuleIndex,
@@ -277,23 +295,32 @@ export const LTELearnerViewModal: React.FC<LTELearnerViewModalProps> = ({
                   </span>
                 </div>
 
-                <button className="px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center gap-1.5">
-                  <Download className="w-3.5 h-3.5" />
-                  Download
-                </button>
+                <div className="flex gap-2">
+                  <a href={previewAsset?.url || undefined} target="_blank" rel="noreferrer" aria-disabled={!previewAsset?.url} className={`px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs transition-all flex items-center gap-1.5 ${previewAsset?.url ? 'hover:bg-slate-100' : 'pointer-events-none opacity-40'}`}><ExternalLink className="w-3.5 h-3.5" />Open asset</a>
+                  <a href={previewAsset?.url || undefined} download={previewAsset?.fileName || true} aria-disabled={!previewAsset?.url} className={`px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs transition-all flex items-center gap-1.5 ${previewAsset?.url ? 'hover:bg-slate-100' : 'pointer-events-none opacity-40'}`}><Download className="w-3.5 h-3.5" />Download / open file</a>
+                </div>
               </div>
 
               <h3 className="text-lg font-bold text-[#101c32] dark:text-slate-100">
                 {currentStage.label || currentStage.name}: Module {currentModule?.index}: {currentStage.subtitle || currentModule?.title}
               </h3>
 
-              {/* Video Player Box */}
-              <div className="group relative flex min-h-[260px] w-full flex-1 flex-col items-center justify-center overflow-hidden rounded-xl bg-[#101c32] shadow-inner lg:min-h-[300px]">
-                <div className="w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center cursor-pointer shadow-lg transition-transform group-hover:scale-110">
-                  <Play className="w-6 h-6 fill-white ml-1" />
+              {stageAssets.length > 0 && (
+                <div className="flex max-w-full gap-2 overflow-x-auto pb-1" aria-label="Stage assets">
+                  {stageAssets.map((asset, index) => (
+                    <button key={asset.id} type="button" onClick={() => setSelectedAssetIndex(index)} aria-pressed={selectedAssetIndex === index} className={`shrink-0 rounded-lg border px-3 py-2 text-left text-xs ${selectedAssetIndex === index ? 'border-blue-500 bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200' : 'border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'}`}>
+                      <span className="block max-w-[180px] truncate font-semibold">{asset.fileName || asset.title}</span>
+                      <span className="text-[10px] opacity-70">{classifyPreviewAsset(asset)}</span>
+                    </button>
+                  ))}
                 </div>
+              )}
+
+              {/* Asset-aware learning content preview */}
+              <div className="group relative flex min-h-[260px] w-full flex-1 flex-col items-center justify-center overflow-hidden rounded-xl bg-[#101c32] shadow-inner lg:min-h-[300px]">
+                {renderPreview()}
                 <span className="absolute bottom-4 left-4 text-xs font-semibold text-white/80 bg-slate-900/80 px-3 py-1 rounded-full backdrop-blur-xs">
-                  {currentStage.mediaType} lesson • {currentStage.estimatedDuration}
+                  {previewAsset?.title || `${currentStage.mediaType} lesson`} • {currentStage.estimatedDuration}
                 </span>
               </div>
 

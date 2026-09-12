@@ -24,6 +24,7 @@ import {
   REQUIRED_LTE_TABLES,
 } from './lte-ingestion/constants';
 import { isJsonNullText, normalizeJsonValue } from './lte-ingestion/json-parser';
+import { formatText } from './lte-ingestion/text-formatter';
 
 const logger = new Logger('LTEIngestionService');
 
@@ -172,6 +173,9 @@ export class LTEIngestionService {
         });
         workbookData.set(worksheet.tableName, rows);
       }
+
+      // Backfill DB NOT NULL defaults so publish RPC never hits null violations
+      this.backfillRequiredFields(workbookData);
 
       // Detect duplicates within the upload
       const duplicateResults = new Map();
@@ -378,6 +382,15 @@ export class LTEIngestionService {
           const match = matchedEContent.find((ec: any) =>
             this.valuesMatch(ec.modules_content_id, moduleContent?.id)
           );
+          const stageAssets = matchedEContent
+            .filter((ec: any) => this.valuesMatch(ec.modules_content_id, moduleContent?.id))
+            .map((ec: any, assetIndex: number) => ({
+              id: this.firstText(ec.id, `${moduleContent?.id || modId}-asset-${assetIndex}`),
+              url: this.firstText(ec.file_url, ec.content_url, ec.media_url, ec.url, ec.asset_url, ''),
+              title: this.firstText(ec.title, ec.name, ec.filename, ec.file_name, `Learning asset ${assetIndex + 1}`),
+              fileName: this.firstText(ec.filename, ec.file_name, ec.name, ''),
+              contentType: this.firstText(ec.mime_type, ec.content_type, ''),
+            }));
 
           return {
             id: match?.id || moduleContent?.id || `stage_${modId || modIdx}_${sIdx}`,
@@ -393,6 +406,7 @@ export class LTEIngestionService {
             prerequisites: this.metadataList(moduleContent?.curriculum_reference?.prerequisites),
             technicalConcepts: this.metadataList(moduleContent?.curriculum_reference?.technical_concepts),
             engineeringContext: this.firstText(moduleContent?.module_context, moduleContent?.curriculum_reference?.workplace_context, ''),
+            assets: stageAssets,
           };
         });
 
@@ -462,8 +476,9 @@ export class LTEIngestionService {
 
   private static firstText(...values: any[]): string {
     for (const value of values) {
-      if (value !== null && value !== undefined && String(value).trim() !== '') {
-        return String(value).trim();
+      const formatted = formatText(value);
+      if (formatted !== '') {
+        return formatted;
       }
     }
     return '';
@@ -490,6 +505,88 @@ export class LTEIngestionService {
       return [];
     }
     return [String(value).trim()];
+  }
+
+  private static backfillRequiredFields(workbookData: Map<string, any[]>): void {
+    const isEmpty = (v: any) => v === null || v === undefined || String(v).trim() === '';
+    const fill = (row: any, col: string, fallback: any) => {
+      if (!(col in row) || isEmpty(row[col])) row[col] = fallback;
+    };
+    const scaleByNo: Record<string, string> = { '1': '63fb8a2c-ee37-5143-9f81-554d2d7d9b96', '2': '0a63f10a-c626-5e20-81ea-d59df58df6d9', '3': '63526d31-3736-514c-8ab6-59a5583e1115', '4': '67d35213-1ba2-57de-b5a9-c1cce52b3a59', '5': '25d863fd-4211-5b12-9076-550cde32b71a' };
+    const labelByNo: Record<string, string> = { '1': 'Beginner', '2': 'Foundation', '3': 'Intermediate', '4': 'Advanced', '5': 'Expert' };
+    for (const [table, rows] of workbookData.entries()) {
+      rows.forEach((row: any, idx: number) => {
+        if (table === 'capabilities') {
+          fill(row, 'name', String(row.code || row.id || 'Capability'));
+          fill(row, 'description', String(row.name || row.code || 'Capability description'));
+        } else if (table === 'roles') {
+          fill(row, 'role_name', String((row as any).id || 'Role'));
+          fill(row, 'role_family_name', String(row.domain_name || 'General'));
+          fill(row, 'domain_name', String((row as any).role_family_name || 'General'));
+        } else if (table === 'level_scale') {
+          const no = String(row.level_no ?? '1');
+          fill(row, 'level_no', Number(no));
+          fill(row, 'level_label', labelByNo[no] || `Level ${no}`);
+          fill(row, 'generic_definition', String(row.level_label || `Level ${no} definition`));
+        } else if (table === 'role_capability_sequence') {
+          fill(row, 'sequence_step', Number(row.sequence_no ?? row.sequence_step ?? idx + 1));
+          if (!('sequence_no' in row) || isEmpty((row as any).sequence_no)) (row as any).sequence_no = (row as any).sequence_step;
+          fill(row, 'capability_priority', 'Core');
+          fill(row, 'required_level', 'L1');
+          fill(row, 'duration_weeks', 2);
+          fill(row, 'work_style_demands', 'General work readiness');
+        } else if (table === 'levels') {
+          const no = String(row.level_no ?? '1');
+          fill(row, 'title', String(row.course_title || row.level_name || row.level_code || 'Level'));
+          fill(row, 'description', String(row.course_title || row.title || 'Level description'));
+          fill(row, 'level_id', scaleByNo[no] || scaleByNo['1']);
+          fill(row, 'duration_minutes', 60);
+          fill(row, 'difficulty_level', 'beginner');
+          fill(row, 'status', 'draft');
+          fill(row, 'version_no', 1);
+          fill(row, 'is_active', true);
+        } else if (table === 'skills') {
+          fill(row, 'name', String(row.code || row.id || 'Skill'));
+          fill(row, 'description', String(row.name || row.code || 'Skill description'));
+        } else if (table === 'modules') {
+          fill(row, 'title', String(row.module_title || row.name || `Module ${row.module_no ?? ''}`.trim() || 'Module'));
+          fill(row, 'description', String(row.title || 'Module description'));
+        } else if (table === 'modules_content') {
+          fill(row, 'stage_order', idx + 1);
+          fill(row, 'stage_description', `${row.stage_name || 'Stage'} phase`);
+          fill(row, 'module_context', String(row.stage_description || 'Module context'));
+          fill(row, 'is_active', true);
+        } else if (table === 'e_content') {
+          const url = row.url || row.file_url || row.content_url || row.media_url || row.asset_url || '';
+          fill(row, 'url', String(url));
+          fill(row, 'content_type', 'article');
+          fill(row, 'title', String(row.name || row.filename || 'Learning content'));
+          fill(row, 'description', String(row.title || 'Learning content'));
+          fill(row, 'sort_order', 1);
+          fill(row, 'duration_seconds', 900);
+          fill(row, 'version', 1);
+          fill(row, 'status', 'draft');
+        } else if (table === 'module_artifacts') {
+          fill(row, 'artifact_type', 'practice');
+          fill(row, 'total_score', 10);
+          fill(row, 'passing_score', 6);
+          fill(row, 'is_active', true);
+        } else if (table === 'artifact_questions') {
+          fill(row, 'question_order', 1);
+          fill(row, 'title', 'Artifact question');
+          fill(row, 'description', String(row.title || 'Complete the artifact'));
+          fill(row, 'response_type', 'file');
+          fill(row, 'is_active', true);
+          fill(row, 'response_required', true);
+        } else if (table === 'artifact_templates') {
+          fill(row, 'file_name', String(row.filename || row.title || 'template.xlsx'));
+          fill(row, 'file_url', String(row.template_file_url || row.url || 'https://example.test/template.xlsx'));
+          fill(row, 'file_type', 'excel');
+          fill(row, 'version', 1);
+          fill(row, 'is_downloadable', true);
+        }
+      });
+    }
   }
 
   private static getTableRowsAsObjects(snapshot: NormalizedSnapshot, tableName: string): any[] {
@@ -521,15 +618,15 @@ export class LTEIngestionService {
       });
 
       return {
-        courseTitle: courseObj.course_title || courseObj.title || 'Untitled Course',
-        courseCode: courseObj.course_code || courseObj.code || 'UNKNOWN',
-        domain: courseObj.domain || 'General',
-        capabilityCode: courseObj.capability_code || 'UNKNOWN',
-        capabilityLevel: courseObj.capability_level || 'Level 1',
-        instructorLead: courseObj.instructor_lead || courseObj.instructor || 'Unknown Instructor',
-        courseSummary: courseObj.course_summary || courseObj.summary || '',
-        problemStatement: courseObj.problem_statement || '',
-        capstoneTitle: courseObj.capstone_title || courseObj.capstone_artifact_title || '',
+        courseTitle: this.firstText(courseObj.course_title, courseObj.title, 'Untitled Course'),
+        courseCode: this.firstText(courseObj.course_code, courseObj.code, 'UNKNOWN'),
+        domain: this.firstText(courseObj.domain, 'General'),
+        capabilityCode: this.firstText(courseObj.capability_code, 'UNKNOWN'),
+        capabilityLevel: this.firstText(courseObj.capability_level, 'Level 1'),
+        instructorLead: this.firstText(courseObj.instructor_lead, courseObj.instructor, 'Unknown Instructor'),
+        courseSummary: this.firstText(courseObj.course_summary, courseObj.summary, ''),
+        problemStatement: this.firstText(courseObj.problem_statement, ''),
+        capstoneTitle: this.firstText(courseObj.capstone_title, courseObj.capstone_artifact_title, ''),
       };
     }
 

@@ -202,25 +202,44 @@ function validateCurriculumStructure(workbookData: Map<string, any[]>): Validati
       stages.set(stage, existing);
     }
 
-    const missingStages = EXPECTED_6E_STAGES.filter(stage => !stages.has(stage));
-    if (missingStages.length > 0) {
+    if (contentRows.length === 0) {
       errors.push({
         severity: 'ERROR',
         code: 'MISSING_6E_STAGE',
-        message: `modules ${moduleId}: missing modules_content stage(s): ${missingStages.join(', ')}`,
+        message: `modules ${moduleId}: no modules_content stage rows found (add 1+ E stages: engage, explore, explain, express, empower, evolve)`,
         table: 'modules_content',
         row: index + 2,
         column: 'stage_name',
       });
-    }
-
-    for (const stage of EXPECTED_6E_STAGES) {
-      const stageRows = stages.get(stage) || [];
-      if (stageRows.length > 1) {
+    } else {
+      const recognized = [...stages.keys()].filter(s => (EXPECTED_6E_STAGES as readonly string[]).includes(s));
+      if (recognized.length === 0) {
         errors.push({
           severity: 'ERROR',
+          code: 'MISSING_6E_STAGE',
+          message: `modules ${moduleId}: no recognized E stage found (use 1+ of: engage, explore, explain, express, empower, evolve)`,
+          table: 'modules_content',
+          row: index + 2,
+          column: 'stage_name',
+        });
+      }
+    }
+
+    for (const [stage, stageRows] of stages.entries()) {
+      if (!(EXPECTED_6E_STAGES as readonly string[]).includes(stage)) {
+        errors.push({
+          severity: 'WARNING',
+          code: 'UNKNOWN_6E_STAGE',
+          message: `modules ${moduleId}: unrecognized stage "${stage}" will still be imported`,
+          table: 'modules_content',
+          column: 'stage_name',
+        });
+      }
+      if (stageRows.length > 1) {
+        errors.push({
+          severity: 'WARNING',
           code: 'DUPLICATE_6E_STAGE',
-          message: `modules ${moduleId}: duplicate modules_content rows for stage ${stage}`,
+          message: `modules ${moduleId}: ${stageRows.length} rows for stage ${stage} will all be imported`,
           table: 'modules_content',
           column: 'stage_name',
         });
@@ -230,7 +249,7 @@ function validateCurriculumStructure(workbookData: Map<string, any[]>): Validati
         const contentId = textKey(stageRow.id);
         if (contentId && (eContentByModuleContent.get(contentId) || []).length === 0) {
           errors.push({
-            severity: 'ERROR',
+            severity: 'WARNING',
             code: 'MISSING_STAGE_CONTENT',
             message: `modules_content ${contentId}: no e_content row is linked to stage ${stage}`,
             table: 'e_content',
@@ -241,11 +260,11 @@ function validateCurriculumStructure(workbookData: Map<string, any[]>): Validati
     }
 
     const moduleArtifacts = contentRows.flatMap(row => artifactsByContent.get(textKey(row.id)) || []);
-    if (moduleArtifacts.length < 2) {
+    if (moduleArtifacts.length === 0) {
       errors.push({
-        severity: 'ERROR',
+        severity: 'WARNING',
         code: 'MISSING_ARTIFACT_PRACTICE',
-        message: `modules ${moduleId}: expected at least 2 linked artifact practices, found ${moduleArtifacts.length}`,
+        message: `modules ${moduleId}: no linked artifact practices (artifacts are optional)`,
         table: 'module_artifacts',
         column: 'modules_content_id',
       });
@@ -256,7 +275,7 @@ function validateCurriculumStructure(workbookData: Map<string, any[]>): Validati
       if (!artifactId) continue;
       if ((questionsByArtifact.get(artifactId) || []).length === 0) {
         errors.push({
-          severity: 'ERROR',
+          severity: 'WARNING',
           code: 'MISSING_ARTIFACT_QUESTION',
           message: `module_artifacts ${artifactId}: no artifact_questions row is linked`,
           table: 'artifact_questions',
@@ -265,7 +284,7 @@ function validateCurriculumStructure(workbookData: Map<string, any[]>): Validati
       }
       if ((templatesByArtifact.get(artifactId) || []).length === 0) {
         errors.push({
-          severity: 'ERROR',
+          severity: 'WARNING',
           code: 'MISSING_ARTIFACT_TEMPLATE',
           message: `module_artifacts ${artifactId}: no artifact_templates row is linked`,
           table: 'artifact_templates',
@@ -417,9 +436,9 @@ function generateCurriculumCard(
     };
   }
   
-  // Check for curriculum-related errors
+  // Check for curriculum-related errors (blocking ERRORs only; WARNINGs are dynamic/optional)
   const curriculumErrors = errors.filter(
-    e => e.table === 'modules_content' || e.table === 'modules'
+    e => e.severity === 'ERROR' && (e.table === 'modules_content' || e.table === 'modules')
   );
   
   if (curriculumErrors.length > 0) {
@@ -467,11 +486,12 @@ function generateArtifactsCard(
     };
   }
   
-  // Check for artifact-related errors
+  // Check for artifact-related errors (blocking ERRORs only)
   const artifactErrors = errors.filter(
-    e => e.table === 'module_artifacts' || 
-         e.table === 'artifact_questions' ||
-         e.table === 'artifact_templates'
+    e => e.severity === 'ERROR' &&
+         (e.table === 'module_artifacts' ||
+          e.table === 'artifact_questions' ||
+          e.table === 'artifact_templates')
   );
   
   if (artifactErrors.length > 0) {

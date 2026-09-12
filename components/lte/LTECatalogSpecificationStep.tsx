@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, Eye, UploadCloud, CheckCircle, Loader2 } from 'lucide-react';
 import Logger from '@/lib/logger';
 import { LTECourseMetadata, LTEIngestionSnapshot, LTELevelCourse, LTEModule } from '@/types/lte-ingestion';
+import { formatText } from '@/lib/services/lte-ingestion/text-formatter';
 
 const logger = new Logger('LTECatalogSpecificationStep');
 
@@ -28,25 +29,20 @@ export const LTECatalogSpecificationStep: React.FC<LTECatalogSpecificationStepPr
       return snapshot.levelCourses;
     }
     
-    const baseMeta: LTECourseMetadata = snapshot?.courseMetadata || {
-      courseTitle: '',
-      courseCode: '',
-      domain: '',
-      capabilityCode: '',
-      capabilityLevel: '',
-      instructorLead: '',
-      courseSummary: '',
-      problemStatement: '',
-      capstoneTitle: '',
+    const baseMeta: LTECourseMetadata = {
+      courseTitle: formatText(snapshot?.courseMetadata?.courseTitle),
+      courseCode: formatText(snapshot?.courseMetadata?.courseCode),
+      domain: formatText(snapshot?.courseMetadata?.domain),
+      capabilityCode: formatText(snapshot?.courseMetadata?.capabilityCode),
+      capabilityLevel: formatText(snapshot?.courseMetadata?.capabilityLevel),
+      instructorLead: formatText(snapshot?.courseMetadata?.instructorLead),
+      courseSummary: formatText(snapshot?.courseMetadata?.courseSummary),
+      problemStatement: formatText(snapshot?.courseMetadata?.problemStatement),
+      capstoneTitle: formatText(snapshot?.courseMetadata?.capstoneTitle),
     };
 
-    return [{
-      levelCode: baseMeta.capabilityLevel || 'Course 1',
-      levelNo: 1,
-      levelName: baseMeta.capabilityLevel || 'Uploaded Course',
-      courseMetadata: baseMeta,
-      modules: snapshot?.modules || [],
-    }];
+    const hasRealMetadata = Boolean(baseMeta.courseCode || baseMeta.courseTitle);
+    return hasRealMetadata ? [{ levelCode: baseMeta.capabilityLevel || baseMeta.courseCode, levelNo: 1, levelName: baseMeta.courseTitle, courseMetadata: baseMeta, modules: snapshot?.modules || [] }] : [];
   });
 
   const [loading, setLoading] = useState<boolean>(false);
@@ -57,7 +53,24 @@ export const LTECatalogSpecificationStep: React.FC<LTECatalogSpecificationStepPr
   // Sync snapshot changes into levelCourses state
   React.useEffect(() => {
     if (snapshot?.levelCourses && snapshot.levelCourses.length > 0) {
-      setLevelCourses(snapshot.levelCourses);
+      const sanitizedLevels = snapshot.levelCourses.map((lc) => ({
+        ...lc,
+        courseMetadata: {
+          courseTitle: formatText(lc.courseMetadata?.courseTitle),
+          courseCode: formatText(lc.courseMetadata?.courseCode),
+          domain: formatText(lc.courseMetadata?.domain),
+          capabilityCode: formatText(lc.courseMetadata?.capabilityCode),
+          capabilityLevel: formatText(lc.courseMetadata?.capabilityLevel, 'Level 1'),
+          instructorLead: formatText(lc.courseMetadata?.instructorLead),
+          courseSummary: formatText(lc.courseMetadata?.courseSummary),
+          problemStatement: formatText(lc.courseMetadata?.problemStatement),
+          capstoneTitle: formatText(lc.courseMetadata?.capstoneTitle),
+        },
+      }));
+      setLevelCourses(sanitizedLevels);
+      setSelectedLevelIndex(0);
+    } else {
+      setLevelCourses([]);
       setSelectedLevelIndex(0);
     }
     setPublished(snapshot?.status === 'published');
@@ -88,30 +101,41 @@ export const LTECatalogSpecificationStep: React.FC<LTECatalogSpecificationStepPr
       logger.info('Review data loaded successfully');
       
       if (data.levelCourses && data.levelCourses.length > 0) {
-        setLevelCourses(data.levelCourses);
-      } else if (data.courseSpecification) {
-        // Single specification fallback
-        setLevelCourses((prev) => {
-          const updated = [...prev];
-          if (updated[0]) {
-            updated[0] = {
-              ...updated[0],
-              courseMetadata: {
-                courseTitle: data.courseSpecification.courseTitle || '',
-                courseCode: data.courseSpecification.courseCode || '',
-                domain: data.courseSpecification.domain || '',
-                capabilityCode: data.courseSpecification.capabilityCode || '',
-                capabilityLevel: data.courseSpecification.capabilityLevel?.toString() || 'Level 1',
-                instructorLead: data.courseSpecification.instructorLead || '',
-                courseSummary: data.courseSpecification.courseSummary || '',
-                problemStatement: data.courseSpecification.problemStatement || '',
-                capstoneTitle: data.courseSpecification.capstoneArtifactTitle || '',
-              },
-              modules: data.modules || updated[0].modules,
-            };
-          }
-          return updated;
-        });
+        const sanitizedLevels = data.levelCourses.map((lc: any) => ({
+          ...lc,
+          courseMetadata: {
+            courseTitle: formatText(lc.courseMetadata?.courseTitle),
+            courseCode: formatText(lc.courseMetadata?.courseCode),
+            domain: formatText(lc.courseMetadata?.domain),
+            capabilityCode: formatText(lc.courseMetadata?.capabilityCode),
+            capabilityLevel: formatText(lc.courseMetadata?.capabilityLevel, 'Level 1'),
+            instructorLead: formatText(lc.courseMetadata?.instructorLead),
+            courseSummary: formatText(lc.courseMetadata?.courseSummary),
+            problemStatement: formatText(lc.courseMetadata?.problemStatement),
+            capstoneTitle: formatText(lc.courseMetadata?.capstoneTitle),
+          },
+        }));
+        setLevelCourses(sanitizedLevels);
+      } else if (data.courseSpecification && (data.courseSpecification.courseCode || data.courseSpecification.courseTitle)) {
+        setLevelCourses([{
+          levelCode: formatText(data.courseSpecification.capabilityLevel, data.courseSpecification.courseCode),
+          levelNo: 1,
+          levelName: formatText(data.courseSpecification.courseTitle, 'Uploaded course'),
+          courseMetadata: {
+                courseTitle: formatText(data.courseSpecification.courseTitle),
+                courseCode: formatText(data.courseSpecification.courseCode),
+                domain: formatText(data.courseSpecification.domain),
+                capabilityCode: formatText(data.courseSpecification.capabilityCode),
+                capabilityLevel: formatText(data.courseSpecification.capabilityLevel, 'Level 1'),
+                instructorLead: formatText(data.courseSpecification.instructorLead),
+                courseSummary: formatText(data.courseSpecification.courseSummary),
+                problemStatement: formatText(data.courseSpecification.problemStatement),
+                capstoneTitle: formatText(data.courseSpecification.capstoneArtifactTitle),
+          },
+          modules: data.modules || [],
+        }]);
+      } else {
+        setLevelCourses([]);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
@@ -212,9 +236,15 @@ export const LTECatalogSpecificationStep: React.FC<LTECatalogSpecificationStepPr
           <h2 className="text-lg md:text-xl font-bold text-[#101c32] dark:text-slate-100 border-b border-[#dce6f2] dark:border-slate-800 pb-3">
             Course Catalog Specification & Capability Level Mapping
           </h2>
+          {levelCourses.length === 0 && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+              <p className="text-sm font-bold">No uploaded courses were detected</p>
+              <p className="mt-1 text-xs">Parsed {snapshot?.tables?.levels?.rows?.length || 0} level rows and {snapshot?.tables?.modules?.rows?.length || 0} module rows. Add a row to the levels sheet with a course code/title, then link modules using <code>levels.id = modules.level_id</code> (for example, <code>level-1</code>), or matching <code>level_code</code>/<code>level_no</code>.</p>
+            </div>
+          )}
 
           {/* Capability Level Switcher Bar (L1...L5) */}
-          <div className="bg-[#f6f9fd] dark:bg-slate-800/50 border border-[#dbe5f0] dark:border-slate-700/80 rounded-2xl p-4 space-y-3">
+          <div className={`${levelCourses.length === 0 ? 'hidden' : ''} bg-[#f6f9fd] dark:bg-slate-800/50 border border-[#dbe5f0] dark:border-slate-700/80 rounded-2xl p-4 space-y-3`}>
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-[#2c466c] dark:text-slate-300 uppercase tracking-wider">
                 Uploaded Courses ({levelCourses.length} Detected)
@@ -264,7 +294,7 @@ export const LTECatalogSpecificationStep: React.FC<LTECatalogSpecificationStepPr
           </div>
 
           {/* Form Grid */}
-          <div className="space-y-3.5">
+          <div className={`${levelCourses.length === 0 ? 'hidden' : ''} space-y-3.5`}>
           {/* Row 1 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
             <div>
@@ -360,7 +390,7 @@ export const LTECatalogSpecificationStep: React.FC<LTECatalogSpecificationStepPr
               </label>
               <textarea
                 rows={2}
-                value={formData.problemStatement}
+                value={formatText(formData.problemStatement)}
                 onChange={(e) => handleInputChange('problemStatement', e.target.value)}
                 className="w-full bg-[#f5f8fc] dark:bg-slate-800/80 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-medium text-[#172743] dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#7545ff]/40 focus:border-[#7545ff] resize-none"
               />
@@ -380,7 +410,7 @@ export const LTECatalogSpecificationStep: React.FC<LTECatalogSpecificationStepPr
         </div>
 
         {/* Module Curriculum Breakdown Section */}
-        <div className="pt-4 border-t border-[#dce6f2] dark:border-slate-800 space-y-3.5">
+        <div className={`${levelCourses.length === 0 ? 'hidden' : ''} pt-4 border-t border-[#dce6f2] dark:border-slate-800 space-y-3.5`}>
           <div>
             <h3 className="text-xs font-bold text-[#516b91] dark:text-purple-400 tracking-wide uppercase">
               MODULE CURRICULUM BREAKDOWN (MODULES 0 TO {sortedModules.length - 1}) – TOTAL ({sortedModules.length})
@@ -452,19 +482,19 @@ export const LTECatalogSpecificationStep: React.FC<LTECatalogSpecificationStepPr
           ))}
 
           {sortedModules.length === 0 && (
-            <div className="bg-slate-50/70 dark:bg-slate-800/40 border border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-6">
+            <div className="bg-amber-50/80 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 rounded-2xl p-6">
               <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                 No modules were linked to this uploaded course.
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Check the modules sheet level_id, level_code, or level_no values for this course.
+                Course: {formData.courseCode || 'missing course code'} · Level: {activeCourse?.levelCode || activeCourse?.levelNo || 'missing level identifier'}. Parsed {snapshot?.tables?.levels?.rows?.length || 0} levels and {snapshot?.tables?.modules?.rows?.length || 0} modules. Match <code>levels.id = modules.level_id</code> (example: <code>level-1</code>), or use equal <code>level_code</code>/<code>level_no</code> values.
               </p>
             </div>
           )}
         </div>
 
         {/* Footer Actions */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-5 border-t border-[#dce6f2] dark:border-slate-800">
+        <div className={`flex flex-col sm:flex-row items-center justify-between gap-4 pt-5 border-t border-[#dce6f2] dark:border-slate-800 ${levelCourses.length === 0 ? 'justify-start border-t-0 pt-0' : ''}`}>
           <button
             onClick={onBack}
             className="w-full sm:w-auto px-5 py-2.5 rounded-[10px] border border-[#d5e1ef] bg-[#f7f9fc] dark:border-slate-700 text-[#172743] dark:text-slate-300 font-semibold text-xs md:text-sm hover:bg-[#eef3f9] dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
@@ -473,7 +503,7 @@ export const LTECatalogSpecificationStep: React.FC<LTECatalogSpecificationStepPr
             Back
           </button>
 
-          <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+          <div className={`${levelCourses.length === 0 ? 'hidden' : 'flex'} flex-col sm:flex-row items-center gap-3 w-full sm:w-auto`}>
             <button
               onClick={() => activeCourse && onOpenLearnerPreview(activeCourse)}
               disabled={!activeCourse}

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
-import { LTEModule } from '@/types/lte-ingestion';
+import { LTEModule, LTEStage6E, LTEArtifactPractice } from '@/types/lte-ingestion';
 
 /**
  * Property 11: Module Sequence Order
@@ -79,8 +79,8 @@ describe('Property 11: Module Sequence Order', () => {
             subtitle: fc.string({ minLength: 5, maxLength: 100 }),
             completionPercentage: fc.integer({ min: 0, max: 100 }),
             status: fc.constantFrom('locked', 'in_progress', 'completed') as fc.Arbitrary<'locked' | 'in_progress' | 'completed'>,
-            stages: fc.constant([]),
-            artifactPractices: fc.constant([]),
+            stages: fc.constant([] as LTEStage6E[]),
+            artifactPractices: fc.constant([] as LTEArtifactPractice[]),
             contextDescription: fc.string({ minLength: 10, maxLength: 100 }),
           }),
           { minLength: 2, maxLength: 10 }

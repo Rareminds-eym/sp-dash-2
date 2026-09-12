@@ -191,3 +191,54 @@ export const EXCEL_ONLY_COLUMNS = new Set([
 // Drive file URL patterns
 export const DRIVE_FILE_PATTERN = /drive\.google\.com\/file\/d\/([^/?]+)/;
 export const GOOGLE_EDITOR_FILE_PATTERN = /docs\.google\.com\/(?:document|spreadsheets|presentation)\/d\/([^/?]+)/;
+
+// Upload Modes (v1.5 spec)
+export const UPLOAD_MODES = {
+  ADD_NEW: 'ADD_NEW',
+  PATCH_UPDATE: 'PATCH_UPDATE',
+  ADD_AND_UPDATE: 'ADD_AND_UPDATE',
+  FULL_REPLACEMENT: 'FULL_REPLACEMENT',
+} as const;
+
+export type UploadMode = keyof typeof UPLOAD_MODES;
+
+// Mapping Resolution Status (v1.5 spec)
+export const MAPPING_RESOLUTION_STATUS = {
+  MATCHED: 'MATCHED',
+  SUGGESTED: 'SUGGESTED',
+  CREATE_NEW: 'CREATE_NEW',
+  CONFLICT: 'CONFLICT',
+  REVIEW_REQUIRED: 'REVIEW_REQUIRED',
+} as const;
+
+export type MappingResolutionStatus = keyof typeof MAPPING_RESOLUTION_STATUS;
+
+// Content Change Status (v1.5 spec)
+export const CONTENT_CHANGE_STATUS = {
+  NOT_APPLICABLE: 'NOT_APPLICABLE',
+  ADDED: 'ADDED',
+  UNCHANGED: 'UNCHANGED',
+  MODIFIED: 'MODIFIED',
+  REMOVED: 'REMOVED',
+} as const;
+
+export type ContentChangeStatus = keyof typeof CONTENT_CHANGE_STATUS;
+
+// v1.5 Template Contract Sheets
+export const V1_5_SHEETS = [
+  'UPLOAD_INFO',
+  'CAPABILITIES',
+  'ROLES',
+  'ROLE_CAPABILITY_MAP',
+  'CAPABILITY_COURSE_MAP',
+  'CAPABILITY_COURSE_PLAN',
+  'COURSES',
+  'COURSE_LEVELS',
+  'MODULES',
+  '6E_CONTENT',
+  'ARTIFACTS',
+  'SKILLS',
+  'MODULE_SKILL_MAP',
+  'SOURCE_ASSETS',
+] as const;
+

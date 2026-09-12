@@ -47,7 +47,7 @@ export function parsePipeKeyValues(value: string): Record<string, string> {
   const parsed: Record<string, string> = {};
   
   for (const part of splitPipe(value)) {
-    const keyMatch = part.match(/^([A-Za-z][A-Za-z0-9_ ]{1,80}):\s*(.*)$/s);
+    const keyMatch = part.match(/^([A-Za-z][A-Za-z0-9_ ]{1,80}):\s*([\s\S]*)$/);
     
     if (!keyMatch) {
       throw new Error(`Pipe section has no key: ${part}`);
@@ -125,7 +125,7 @@ export function parseArtifactInstructions(value: string): Record<string, string>
 export function pipeTextHasKeyValues(value: string): boolean {
   try {
     const parts = splitPipe(value);
-    return parts.every(p => /^[A-Za-z][A-Za-z0-9_ ]{1,80}:\s*.+$/s.test(p));
+    return parts.every(p => /^[A-Za-z][A-Za-z0-9_ ]{1,80}:\s*[\s\S]+$/.test(p));
   } catch {
     return false;
   }

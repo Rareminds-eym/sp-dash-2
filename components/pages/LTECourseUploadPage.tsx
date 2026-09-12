@@ -5,6 +5,7 @@ import Logger, { getErrorMessage } from '@/lib/logger';
 import { LTEStepperHeader } from '@/components/lte/LTEStepperHeader';
 import { LTEIngestionStep } from '@/components/lte/LTEIngestionStep';
 import { LTECatalogSpecificationStep } from '@/components/lte/LTECatalogSpecificationStep';
+import { CatalogWorkspace } from '@/components/lte/CatalogWorkspace';
 import { LTELearnerViewModal } from '@/components/lte/LTELearnerViewModal';
 import { LTECourseMetadata, LTEIngestionSnapshot, LTELevelCourse } from '@/types/lte-ingestion';
 import { useToast } from '@/hooks/use-toast';
@@ -12,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 const logger = new Logger('LTECourseUploadPage');
 
 export const LTECourseUploadPage: React.FC = () => {
-  const [currentStep, setCurrentStep] = useState<1 | 2>(1);
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const [snapshot, setSnapshot] = useState<LTEIngestionSnapshot | null>(null);
   const [isLearnerModalOpen, setIsLearnerModalOpen] = useState<boolean>(false);
   const [previewCourse, setPreviewCourse] = useState<LTELevelCourse | null>(null);
@@ -21,7 +22,6 @@ export const LTECourseUploadPage: React.FC = () => {
 
   useEffect(() => {
     logger.info('Initializing LTECourseUploadPage');
-    // Pre-fetch default canonical snapshot for initial review state
     fetch('/api/admin/lte/review')
       .then((res) => res.json())
       .then((data) => {
@@ -63,8 +63,8 @@ export const LTECourseUploadPage: React.FC = () => {
 
       if (res.status === 409) {
         toast({
-          title: 'Snapshot Version Changed (409)',
-          description: data.error || 'The reviewed snapshot version has changed. Please refresh and re-verify before publishing.',
+          title: 'Version / Concurrency Conflict (409)',
+          description: data.error || 'The reviewed snapshot version or capability structure has changed. Please refresh and re-verify before publishing.',
           variant: 'destructive',
         });
         throw new Error(data.error || 'SNAPSHOT_CHANGED');
@@ -85,7 +85,7 @@ export const LTECourseUploadPage: React.FC = () => {
       logger.info('Publish operation succeeded', data);
       toast({
         title: 'Course Uploaded & Published Successfully!',
-        description: `Inserted ${data.inserted} catalog rows, skipped ${data.skipped} existing rows across 13 tables.`,
+        description: `Inserted ${data.inserted} catalog rows, skipped ${data.skipped} existing rows across tables.`,
       });
 
       if (snapshot) {
@@ -107,7 +107,7 @@ export const LTECourseUploadPage: React.FC = () => {
 
   return (
     <div className="min-h-screen w-full bg-[#f4f8ff] dark:bg-slate-950 p-3 md:p-4 lg:p-5 space-y-5">
-      {/* Stepper Header */}
+      {/* Stepper Header with 3 steps */}
       <LTEStepperHeader
         currentStep={currentStep}
         onStepClick={(step) => {
@@ -116,7 +116,7 @@ export const LTECourseUploadPage: React.FC = () => {
         }}
       />
 
-      {/* Step 1: Live Ingestion & 13-Table Inspector */}
+      {/* Step 1: Upload & Validate */}
       {currentStep === 1 && (
         <LTEIngestionStep
           snapshot={snapshot}
@@ -125,7 +125,7 @@ export const LTECourseUploadPage: React.FC = () => {
         />
       )}
 
-      {/* Step 2: Course Catalog Specification & Mapping */}
+      {/* Step 2: Mapping & Review */}
       {currentStep === 2 && (
         <LTECatalogSpecificationStep
           snapshot={snapshot}
@@ -138,6 +138,9 @@ export const LTECourseUploadPage: React.FC = () => {
           publishing={publishing}
         />
       )}
+
+      {/* Step 3: Catalog Workspace (Full-screen page) */}
+      {currentStep === 3 && <CatalogWorkspace />}
 
       {/* Learner View Preview Modal */}
       <LTELearnerViewModal

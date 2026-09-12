@@ -4,8 +4,8 @@ import React from 'react';
 import { CheckCircle2 } from 'lucide-react';
 
 interface LTEStepperHeaderProps {
-  currentStep: 1 | 2;
-  onStepClick?: (step: 1 | 2) => void;
+  currentStep: 1 | 2 | 3;
+  onStepClick?: (step: 1 | 2 | 3) => void;
 }
 
 export const LTEStepperHeader: React.FC<LTEStepperHeaderProps> = ({ currentStep, onStepClick }) => {
@@ -18,72 +18,105 @@ export const LTEStepperHeader: React.FC<LTEStepperHeaderProps> = ({ currentStep,
         </div>
         <div>
           <h1 className="text-xl md:text-[26px] font-bold text-[#101c32] dark:text-slate-100 tracking-tight leading-tight">
-            LTE Google Sheets & Multi-Table Ingestion Pipeline
+            LTE Incremental Course Upload & Catalog Management
           </h1>
           <p className="mt-0.5 text-xs font-medium text-[#70819d] dark:text-slate-400">
-            Google Sheets Direct Sync • Multi-Sheet Excel • 6 Es & Artifacts • Seed SQL
+            Multi-Sheet Ingestion • Versioning & Mapping • Monotonic Rollback • Catalog Workspace (v1.5)
           </p>
         </div>
       </div>
 
       {/* Stepper Box */}
-      <div className="bg-white dark:bg-slate-900 border border-[#d7e2ef] dark:border-slate-800 rounded-[18px] px-6 md:px-10 py-3.5">
-        <div className="flex items-center justify-between gap-4 max-w-[760px] mx-auto">
+      <div className="bg-white dark:bg-slate-900 border border-[#d7e2ef] dark:border-slate-800 rounded-[18px] px-4 md:px-8 py-3.5">
+        <div className="flex items-center justify-between gap-3 max-w-[960px] mx-auto">
           {/* Step 1 Badge Card */}
           <div
             onClick={() => onStepClick?.(1)}
-            className="flex items-center gap-3 cursor-pointer shrink-0"
+            className="flex items-center gap-2.5 cursor-pointer shrink-0"
           >
             <div
-              className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-all ${
+              className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-all ${
                 currentStep === 1
-                  ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white'
-                  : currentStep === 2
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+                  : currentStep > 1
                   ? 'bg-emerald-500 text-white'
                   : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
               }`}
             >
-              {currentStep === 2 ? <CheckCircle2 className="w-5 h-5" /> : '1'}
+              {currentStep > 1 ? <CheckCircle2 className="w-5 h-5" /> : '1'}
             </div>
             <div>
-              <h2 className="text-sm md:text-base font-bold text-slate-900 dark:text-slate-100 leading-tight">
-                Live Ingestion & 13-Table Inspector
+              <h2 className="text-xs md:text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight">
+                Upload & Validate
               </h2>
-              <p className="text-xs text-slate-400 dark:text-slate-500 font-normal mt-0.5">
-                Google Sheets Sync, Inspector & Validation
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 font-normal mt-0.5">
+                Ingestion & Inspection
               </p>
             </div>
           </div>
 
-          {/* Stepper Connecting Divider line */}
-          <div className="hidden sm:block flex-1 min-w-[48px] max-w-[140px] h-px bg-[#9fb5d3] dark:bg-slate-700 mx-2 self-center" />
+          <div className="hidden sm:block flex-1 min-w-[24px] max-w-[80px] h-px bg-[#9fb5d3] dark:bg-slate-700 mx-1 self-center" />
 
           {/* Step 2 Badge Card */}
           <div
             onClick={() => onStepClick?.(2)}
-            className="flex items-center gap-3 cursor-pointer shrink-0"
+            className="flex items-center gap-2.5 cursor-pointer shrink-0"
           >
             <div
-              className={`w-9 h-9 rounded-full flex items-center justify-center font-semibold text-sm shrink-0 transition-all ${
+              className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-all ${
                 currentStep === 2
                   ? 'bg-purple-600 text-white shadow-sm'
+                  : currentStep > 2
+                  ? 'bg-emerald-500 text-white'
                   : 'bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 text-slate-400 dark:text-slate-500'
               }`}
             >
-              2
+              {currentStep > 2 ? <CheckCircle2 className="w-5 h-5" /> : '2'}
             </div>
             <div>
               <h2
-                className={`text-sm md:text-base font-bold leading-tight ${
+                className={`text-xs md:text-sm font-bold leading-tight ${
                   currentStep === 2
                     ? 'text-purple-700 dark:text-purple-300'
                     : 'text-slate-900 dark:text-slate-100'
                 }`}
               >
-                Course Catalog Specification & Mapping
+                Mapping & Review
               </h2>
-              <p className="text-xs text-slate-400 dark:text-slate-500 font-normal mt-0.5">
-                Metadata, Capabilities & Publishing
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 font-normal mt-0.5">
+                Diff & Versioning Review
+              </p>
+            </div>
+          </div>
+
+          <div className="hidden sm:block flex-1 min-w-[24px] max-w-[80px] h-px bg-[#9fb5d3] dark:bg-slate-700 mx-1 self-center" />
+
+          {/* Step 3 Badge Card: Catalog Workspace */}
+          <div
+            onClick={() => onStepClick?.(3)}
+            className="flex items-center gap-2.5 cursor-pointer shrink-0"
+          >
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-all ${
+                currentStep === 3
+                  ? 'bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-300 dark:ring-indigo-800'
+                  : 'bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 text-slate-400 dark:text-slate-500'
+              }`}
+            >
+              3
+            </div>
+            <div>
+              <h2
+                className={`text-xs md:text-sm font-bold leading-tight ${
+                  currentStep === 3
+                    ? 'text-indigo-700 dark:text-indigo-300'
+                    : 'text-slate-900 dark:text-slate-100'
+                }`}
+              >
+                Catalog Workspace
+              </h2>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 font-normal mt-0.5">
+                Full-Screen Management
               </p>
             </div>
           </div>
@@ -94,3 +127,4 @@ export const LTEStepperHeader: React.FC<LTEStepperHeaderProps> = ({ currentStep,
 };
 
 export default LTEStepperHeader;
+

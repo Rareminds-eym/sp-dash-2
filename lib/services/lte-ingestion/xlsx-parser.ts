@@ -56,7 +56,7 @@ export async function parseXLSX(
   fileName: string
 ): Promise<ParsedWorkbook> {
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(fileBuffer);
+  await workbook.xlsx.load(fileBuffer as any);
 
   const worksheets: WorksheetData[] = [];
   let totalRows = 0;
