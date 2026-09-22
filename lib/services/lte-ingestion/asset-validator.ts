@@ -29,6 +29,36 @@ const SIZE_LIMITS: Record<string, number> = {
   'application/pdf': 50 * 1024 * 1024,
 };
 
+const EXTERNAL_WEB_RESOURCE_DOMAINS = [
+  'docs.google.com',
+  'drive.google.com',
+  'sheets.google.com',
+  'slides.google.com',
+  'forms.google.com',
+  'youtube.com',
+  'youtu.be',
+  'vimeo.com',
+  'github.com',
+  'gitlab.com',
+  'loom.com',
+  'figma.com',
+  'canva.com',
+  'notion.so',
+  'notion.site',
+];
+
+export function isExternalWebResourceUrl(urlString: string): boolean {
+  try {
+    const url = new URL(urlString);
+    const hostname = url.hostname.toLowerCase();
+    return EXTERNAL_WEB_RESOURCE_DOMAINS.some((domain) =>
+      hostname === domain || hostname.endsWith('.' + domain)
+    );
+  } catch {
+    return false;
+  }
+}
+
 export type AssetValidationErrorCode =
   | 'INVALID_URL'
   | 'INVALID_PROTOCOL'
@@ -61,6 +91,7 @@ export interface ValidatedAsset {
 export interface AssetValidationResult {
   url: string;
   valid: boolean;
+  isExternalWebResource?: boolean;
   asset?: ValidatedAsset;
   errorCode?: AssetValidationErrorCode;
   error?: string;
@@ -147,7 +178,16 @@ export async function validateAndDownloadAsset(
       const parsed = await validateAssetDestination(currentUrl, dependencies);
       let response: Response;
       try {
-        response = await dependencies.fetch(parsed, { method: 'GET', redirect: 'manual', signal: timeout.signal });
+        response = await dependencies.fetch(parsed, {
+          method: 'GET',
+          redirect: 'manual',
+          signal: timeout.signal,
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            Accept: '*/*',
+          },
+        });
       } catch (error) {
         if (timeout.signal.aborted || (error as Error).name === 'AbortError') {
           throw new AssetValidationError('DOWNLOAD_TIMEOUT', 'Asset download timed out');
@@ -212,6 +252,17 @@ export async function validateAssetBatch(
   async function worker(): Promise<void> {
     while (nextIndex < urls.length) {
       const index = nextIndex++;
+
+      // Check if URL is an external web document / reference resource (e.g. Google Docs, YouTube, GitHub, Figma)
+      if (isExternalWebResourceUrl(urls[index])) {
+        results[index] = {
+          url: urls[index],
+          valid: true,
+          isExternalWebResource: true,
+        };
+        continue;
+      }
+
       const remaining = deadline - Date.now();
       if (remaining <= 0) {
         results[index] = { url: urls[index], valid: false, errorCode: 'DOWNLOAD_TIMEOUT', error: 'Asset batch timed out' };

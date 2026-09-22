@@ -56,7 +56,28 @@ export async function processSnapshotAssets(
   logger.info('Validating extracted assets', { uploadId, count: references.length });
   const validation = await validateAssetBatch(references.map(({ originalUrl }) => originalUrl));
   await heartbeat?.();
-  const failures = validation.filter((result) => !result.valid);
+
+  // Failures are strictly security/protocol errors (e.g. BLOCKED_DOMAIN, PRIVATE_IP, INVALID_PROTOCOL).
+  // External web documents (e.g. Google Docs, YouTube) and external page links are retained in snapshot.
+  const failures = validation.filter((result) => {
+    if (result.valid) return false;
+    if (
+      result.isExternalWebResource ||
+      result.errorCode === 'INVALID_MIME_TYPE' ||
+      result.errorCode === 'DOWNLOAD_TIMEOUT' ||
+      result.errorCode === 'HTTP_ERROR' ||
+      result.errorCode === 'DOWNLOAD_FAILED'
+    ) {
+      logger.warn('Retaining external reference URL in catalog snapshot without R2 upload', {
+        url: result.url,
+        errorCode: result.errorCode,
+        error: result.error,
+      });
+      return false;
+    }
+    return true;
+  });
+
   if (failures.length > 0) {
     const error = new Error(`ASSET_VALIDATION_FAILED: ${failures.map((item) => `${item.url} (${item.errorCode})`).join(', ')}`);
     (error as any).details = failures;
@@ -67,7 +88,14 @@ export async function processSnapshotAssets(
   const assetManifest: AssetManifestEntry[] = [];
   for (let index = 0; index < references.length; index += 1) {
     const reference = references[index];
-    const asset = validation[index].asset!;
+    const validationResult = validation[index];
+    
+    // Skip R2 blob upload for external web reference links (keep original URL in snapshot)
+    if (!validationResult.valid || validationResult.isExternalWebResource || !validationResult.asset) {
+      continue;
+    }
+
+    const asset = validationResult.asset;
     const uploaded = await storage.uploadAsset({
       capabilityCode: snapshot.courseMetadata?.capabilityCode || snapshot.metadata?.capabilityCode || 'CAPABILITY',
       levelCode: snapshot.levelCourses?.[0]?.levelCode || snapshot.metadata?.levelCode || 'LEVEL',
@@ -93,5 +121,5 @@ export async function processSnapshotAssets(
     await heartbeat?.();
   }
 
-  return { finalSnapshot, finalSnapshotHash: calculateHash(finalSnapshot), assetManifest, hasAssets: true };
+  return { finalSnapshot, finalSnapshotHash: calculateHash(finalSnapshot), assetManifest, hasAssets: assetManifest.length > 0 };
 }

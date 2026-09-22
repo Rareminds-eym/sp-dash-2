@@ -11,6 +11,7 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
+  Download,
 } from 'lucide-react';
 import Logger, { getErrorMessage } from '@/lib/logger';
 import { LTEIngestionSnapshot, LTERelationalValidationReport } from '@/types/lte-ingestion';
@@ -37,6 +38,9 @@ export const LTEIngestionStep: React.FC<LTEIngestionStepProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [isTableSummaryExpanded, setIsTableSummaryExpanded] = useState<boolean>(false);
+
+  const [customCapCode, setCustomCapCode] = useState<string>('BCP_CREDIT');
+  const [customLevelNo, setCustomLevelNo] = useState<string>('all');
 
   const report: LTERelationalValidationReport | null = snapshot?.validationReport || null;
 
@@ -246,10 +250,66 @@ export const LTEIngestionStep: React.FC<LTEIngestionStepProps> = ({
 
         {/* Tab Content 2: Local Excel file upload */}
         {activeTab === 'xlsx' && (
-          <div className="mt-5 space-y-3">
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-              Select LTE Learning Catalog Excel Workbook (.xlsx)
-            </label>
+          <div className="mt-5 space-y-4">
+            {/* Dynamic Template Generator Box for Full L1-L5 or Single Level Course Ingestion */}
+            <div className="p-3 bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-xl space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <span className="text-xs font-bold text-purple-900 dark:text-purple-200 flex items-center gap-1.5">
+                  <FileSpreadsheet className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                  <span>Download Pre-filled Excel Template (.xlsx):</span>
+                </span>
+                <span className="text-[11px] text-purple-700 dark:text-purple-300 font-medium">
+                  Supports full L1 to L5 catalog or incremental single level addition
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <input
+                  type="text"
+                  placeholder="Capability Code (e.g. BCP_CREDIT - or leave blank for full catalog)"
+                  value={customCapCode}
+                  onChange={(e) => setCustomCapCode(e.target.value.toUpperCase())}
+                  className="flex-1 min-w-[220px] px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-mono font-bold text-slate-800 dark:text-slate-100 placeholder:font-normal placeholder:text-slate-400"
+                />
+                <select
+                  value={customLevelNo}
+                  onChange={(e) => setCustomLevelNo(e.target.value)}
+                  className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-800 dark:text-slate-100"
+                >
+                  <option value="all">All Levels (L1 to L5 Full Catalog)</option>
+                  <option value="1">Level 1 (L1 Only)</option>
+                  <option value="2">Level 2 (L2 Only)</option>
+                  <option value="3">Level 3 (L3 Only)</option>
+                  <option value="4">Level 4 (L4 Only)</option>
+                  <option value="5">Level 5 (L5 Only)</option>
+                </select>
+                <a
+                  href={`/api/admin/lte/template?capabilityCode=${encodeURIComponent(customCapCode.trim())}&levelNo=${customLevelNo}`}
+                  download={
+                    customLevelNo === 'all'
+                      ? customCapCode.trim() ? `LTE_${customCapCode.trim()}_Full_L1_to_L5_Template.xlsx` : 'LTE_Learning_Catalog_Full_L1_to_L5_Template.xlsx'
+                      : customCapCode.trim() ? `LTE_${customCapCode.trim()}_L${customLevelNo}_Template.xlsx` : `LTE_Level_${customLevelNo}_Template.xlsx`
+                  }
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white transition-all shadow-sm cursor-pointer ml-auto"
+                  title={`Download Excel template pre-filled with ${customCapCode.trim() || 'default capability'} for ${customLevelNo === 'all' ? 'All Levels (L1 to L5)' : `Level ${customLevelNo}`}`}
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>
+                    {customLevelNo === 'all'
+                      ? customCapCode.trim() ? `Download ${customCapCode.trim()} Full L1-L5 Template (.xlsx)` : 'Download Full L1-L5 Template (.xlsx)'
+                      : `Download L${customLevelNo} Template (.xlsx)`}
+                  </span>
+                </a>
+              </div>
+              <p className="text-[11px] text-purple-800/80 dark:text-purple-300/80 italic pt-0.5">
+                💡 Note: Leave Capability Code blank to download the complete 5-level catalog workbook (L1-L5). Enter a Capability Code (e.g. BCP_CREDIT) to pre-fill its existing roles and capability sequence from DB.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Upload Completed LTE Excel Workbook (.xlsx)
+              </label>
+            </div>
             <div
               className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors bg-slate-50/50 dark:bg-slate-800/30 ${
                 isDragging
@@ -295,6 +355,17 @@ export const LTEIngestionStep: React.FC<LTEIngestionStepProps> = ({
                     <p className="text-[11px] text-slate-400">
                       Maximum file size: 10 MB (Up to 10,000 rows across sheets)
                     </p>
+                    <div className="pt-2 flex justify-center">
+                      <a
+                        href="/api/admin/lte/template"
+                        download="LTE_Learning_Catalog_Template.xlsx"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-medium text-purple-600 dark:text-purple-300 hover:text-purple-800 dark:hover:text-purple-200 hover:bg-purple-100/60 dark:hover:bg-purple-900/40 transition-colors"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Need the template format? Click to download sample .xlsx</span>
+                      </a>
+                    </div>
                   </>
                 )}
               </label>

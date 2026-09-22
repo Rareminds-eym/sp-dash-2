@@ -11,6 +11,8 @@ import {
   Clock,
   FileText,
   ExternalLink,
+  Save,
+  Link2,
 } from 'lucide-react';
 import Logger from '@/lib/logger';
 import { LTEIngestionSnapshot, LTELevelCourse, LTEModule, LTEStage6E } from '@/types/lte-ingestion';
@@ -25,6 +27,55 @@ interface LTELearnerViewModalProps {
   course?: LTELevelCourse | null;
 }
 
+function getEmbeddableUrl(url: string): string {
+  if (!url) return '';
+  const trimmed = url.trim();
+
+  // 1. Google Slides presentation
+  if (trimmed.includes('docs.google.com/presentation')) {
+    if (trimmed.includes('/embed')) return trimmed;
+    return trimmed
+      .replace(/\/edit.*$/, '/embed?start=false&loop=false&delayms=3000')
+      .replace(/\/pub.*$/, '/embed?start=false&loop=false&delayms=3000')
+      .replace(/\/preview.*$/, '/embed?start=false&loop=false&delayms=3000');
+  }
+
+  // 2. Google Docs document
+  if (trimmed.includes('docs.google.com/document')) {
+    if (trimmed.includes('/preview')) return trimmed;
+    return trimmed.replace(/\/edit.*$/, '/preview');
+  }
+
+  // 3. Google Spreadsheets
+  if (trimmed.includes('docs.google.com/spreadsheets')) {
+    if (trimmed.includes('/preview')) return trimmed;
+    return trimmed.replace(/\/edit.*$/, '/preview');
+  }
+
+  // 4. Google Drive file link
+  if (trimmed.includes('drive.google.com/file/d/')) {
+    if (trimmed.includes('/preview')) return trimmed;
+    return trimmed.replace(/\/view.*$/, '/preview').replace(/\/edit.*$/, '/preview');
+  }
+
+  // 5. YouTube Video link
+  if (trimmed.includes('youtube.com/watch') || trimmed.includes('youtu.be/')) {
+    const videoId = trimmed.includes('youtube.com/watch')
+      ? new URLSearchParams(trimmed.split('?')[1]).get('v')
+      : trimmed.split('/').pop()?.split('?')[0];
+    if (videoId) return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
+  }
+
+  // 6. PowerPoint / Word / Office or direct download links
+  if (/\.(pptx?|docx?|xlsx?)$/i.test(trimmed) || trimmed.includes('officeapps.live.com')) {
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return `https://docs.google.com/gview?url=${encodeURIComponent(trimmed)}&embedded=true`;
+    }
+  }
+
+  return trimmed;
+}
+
 export const LTELearnerViewModal: React.FC<LTELearnerViewModalProps> = ({
   isOpen,
   onClose,
@@ -35,6 +86,17 @@ export const LTELearnerViewModal: React.FC<LTELearnerViewModalProps> = ({
   const [selectedStageName, setSelectedStageName] = useState<string>('Explore');
   const [activeSubTab, setActiveSubTab] = useState<number>(1);
   const [selectedAssetIndex, setSelectedAssetIndex] = useState<number>(0);
+
+  // Edit Content Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [editStageTitle, setEditStageTitle] = useState<string>('');
+  const [editStageSubtitle, setEditStageSubtitle] = useState<string>('');
+  const [editStageDescription, setEditStageDescription] = useState<string>('');
+  const [editAssetTitle, setEditAssetTitle] = useState<string>('');
+  const [editAssetUrl, setEditAssetUrl] = useState<string>('');
+  const [editDuration, setEditDuration] = useState<string>('');
+  const [editXpReward, setEditXpReward] = useState<number>(50);
+  const [editEngineeringContext, setEditEngineeringContext] = useState<string>('');
 
   useEffect(() => {
     const availableModules = course?.modules || snapshot?.modules || [];
@@ -55,7 +117,7 @@ export const LTELearnerViewModal: React.FC<LTELearnerViewModalProps> = ({
   const courseMetadata = course?.courseMetadata || snapshot?.courseMetadata;
   const modules: LTEModule[] = course?.modules || snapshot?.modules || [];
   
-  // Sort modules by index in ascending order (as per Property 11)
+  // Sort modules by index in ascending order
   const sortedModules = [...modules].sort((a, b) => a.index - b.index);
 
   const currentModule = sortedModules[selectedModuleIndex] || sortedModules[0];
@@ -90,14 +152,79 @@ export const LTELearnerViewModal: React.FC<LTELearnerViewModalProps> = ({
   const previewAsset = stageAssets[selectedAssetIndex] || stageAssets[0];
   const previewKind = previewAsset ? classifyPreviewAsset(previewAsset) : null;
 
+  const handleOpenEdit = () => {
+    setEditStageTitle(currentStage.label || currentStage.name);
+    setEditStageSubtitle(currentStage.subtitle || '');
+    setEditStageDescription(currentStage.description || '');
+    setEditAssetTitle(previewAsset?.title || previewAsset?.fileName || '');
+    setEditAssetUrl(previewAsset?.url || '');
+    setEditDuration(currentStage.estimatedDuration || '5 mins');
+    setEditXpReward(currentStage.xpReward || 50);
+    setEditEngineeringContext(currentStage.engineeringContext || '');
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    currentStage.label = editStageTitle;
+    if (['Engage', 'Explore', 'Explain', 'Express', 'Empower', 'Evolve'].includes(editStageTitle)) {
+      currentStage.name = editStageTitle as any;
+    }
+    currentStage.subtitle = editStageSubtitle;
+    currentStage.description = editStageDescription;
+    currentStage.estimatedDuration = editDuration;
+    currentStage.xpReward = Number(editXpReward) || 50;
+    currentStage.engineeringContext = editEngineeringContext;
+
+    if (previewAsset) {
+      previewAsset.title = editAssetTitle;
+      previewAsset.url = editAssetUrl;
+    } else if (editAssetUrl.trim()) {
+      if (!currentStage.assets) currentStage.assets = [];
+      currentStage.assets.push({
+        id: `asset-${Date.now()}`,
+        title: editAssetTitle || 'Learning Asset',
+        url: editAssetUrl,
+        contentType: 'slide',
+      });
+    }
+
+    setIsEditModalOpen(false);
+  };
+
   const renderPreview = () => {
-    if (!previewAsset?.url) return <div className="p-8 text-center text-white"><FileText className="mx-auto mb-3 h-10 w-10 text-slate-400" /><p className="font-semibold">No preview asset was supplied</p><p className="mt-1 text-xs text-slate-400">Add a URL in e_content using file_url, content_url, media_url, url, or asset_url.</p></div>;
-    if (previewKind === 'video') return <video className="h-full w-full bg-black object-contain" controls preload="metadata" src={previewAsset.url} />;
-    if (previewKind === 'image') return <img className="h-full w-full object-contain" src={previewAsset.url} alt={previewAsset.title} />;
-    if (previewKind === 'audio') return <div className="w-full p-8"><audio className="w-full" controls preload="metadata" src={previewAsset.url} /></div>;
-    if (previewKind === 'document') return <iframe className="h-full min-h-[300px] w-full bg-white" src={previewAsset.url} title={previewAsset.title} />;
-    if (previewKind === 'slides') return <div className="max-w-md rounded-xl border border-slate-600 bg-slate-900 p-6 text-center text-white"><FileText className="mx-auto mb-3 h-10 w-10 text-amber-300" /><p className="font-semibold">{previewAsset.fileName || previewAsset.title}</p><p className="mt-1 text-xs text-slate-300">PowerPoint files open in a compatible viewer or download to your device.</p><div className="mt-4 flex justify-center gap-2"><a className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold" href={previewAsset.url} target="_blank" rel="noreferrer">Open</a><a className="rounded-lg border border-slate-500 px-4 py-2 text-xs font-semibold" href={previewAsset.url} download={previewAsset.fileName || true}>Download</a></div></div>;
-    return <a className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white" href={previewAsset.url} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" />Open {previewAsset.title}</a>;
+    if (!previewAsset?.url) {
+      return (
+        <div className="p-8 text-center text-white">
+          <FileText className="mx-auto mb-3 h-10 w-10 text-slate-400" />
+          <p className="font-semibold text-sm">No preview asset supplied</p>
+          <p className="mt-1 text-xs text-slate-400">Click "Edit Content" above to add a Google Slides URL, YouTube URL, or Doc link.</p>
+        </div>
+      );
+    }
+
+    if (previewKind === 'video' && (previewAsset.url.endsWith('.mp4') || previewAsset.url.endsWith('.webm'))) {
+      return <video className="h-full w-full bg-black object-contain" controls preload="metadata" src={previewAsset.url} />;
+    }
+
+    if (previewKind === 'image') {
+      return <img className="h-full w-full object-contain" src={previewAsset.url} alt={previewAsset.title} />;
+    }
+
+    if (previewKind === 'audio') {
+      return <div className="w-full p-8"><audio className="w-full" controls preload="metadata" src={previewAsset.url} /></div>;
+    }
+
+    // Direct in-screen iframe player for all Google Slides, Docs, Drive, YouTube, Office, PDFs, and web links
+    const embedUrl = getEmbeddableUrl(previewAsset.url);
+    return (
+      <iframe
+        className="h-full min-h-[350px] w-full border-0 bg-white"
+        src={embedUrl}
+        title={previewAsset.title || 'Course Presentation Content'}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+      />
+    );
   };
 
   logger.info('Rendering Learner View Modal', {
@@ -214,9 +341,12 @@ export const LTELearnerViewModal: React.FC<LTELearnerViewModalProps> = ({
             ))}
           </div>
 
-          <button className="justify-self-end flex items-center gap-1.5 rounded-xl border border-blue-200 px-3.5 py-1.5 text-xs font-semibold text-blue-600 transition-all hover:bg-blue-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+          <button
+            onClick={handleOpenEdit}
+            className="justify-self-end flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/60 px-3.5 py-1.5 text-xs font-bold text-blue-600 transition-all hover:bg-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-blue-400 cursor-pointer shadow-2xs"
+          >
             <Edit3 className="w-3.5 h-3.5" />
-            Edit Content
+            <span>Edit Content</span>
           </button>
         </div>
 
@@ -296,8 +426,18 @@ export const LTELearnerViewModal: React.FC<LTELearnerViewModalProps> = ({
                 </div>
 
                 <div className="flex gap-2">
-                  <a href={previewAsset?.url || undefined} target="_blank" rel="noreferrer" aria-disabled={!previewAsset?.url} className={`px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs transition-all flex items-center gap-1.5 ${previewAsset?.url ? 'hover:bg-slate-100' : 'pointer-events-none opacity-40'}`}><ExternalLink className="w-3.5 h-3.5" />Open asset</a>
-                  <a href={previewAsset?.url || undefined} download={previewAsset?.fileName || true} aria-disabled={!previewAsset?.url} className={`px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs transition-all flex items-center gap-1.5 ${previewAsset?.url ? 'hover:bg-slate-100' : 'pointer-events-none opacity-40'}`}><Download className="w-3.5 h-3.5" />Download / open file</a>
+                  <a
+                    href={previewAsset?.url || undefined}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-disabled={!previewAsset?.url}
+                    className={`px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs transition-all flex items-center gap-1.5 ${
+                      previewAsset?.url ? 'hover:bg-slate-100 dark:hover:bg-slate-800' : 'pointer-events-none opacity-40'
+                    }`}
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Open in new tab</span>
+                  </a>
                 </div>
               </div>
 
@@ -308,7 +448,17 @@ export const LTELearnerViewModal: React.FC<LTELearnerViewModalProps> = ({
               {stageAssets.length > 0 && (
                 <div className="flex max-w-full gap-2 overflow-x-auto pb-1" aria-label="Stage assets">
                   {stageAssets.map((asset, index) => (
-                    <button key={asset.id} type="button" onClick={() => setSelectedAssetIndex(index)} aria-pressed={selectedAssetIndex === index} className={`shrink-0 rounded-lg border px-3 py-2 text-left text-xs ${selectedAssetIndex === index ? 'border-blue-500 bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200' : 'border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'}`}>
+                    <button
+                      key={asset.id}
+                      type="button"
+                      onClick={() => setSelectedAssetIndex(index)}
+                      aria-pressed={selectedAssetIndex === index}
+                      className={`shrink-0 rounded-lg border px-3 py-2 text-left text-xs ${
+                        selectedAssetIndex === index
+                          ? 'border-blue-500 bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200 font-bold'
+                          : 'border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
+                      }`}
+                    >
                       <span className="block max-w-[180px] truncate font-semibold">{asset.fileName || asset.title}</span>
                       <span className="text-[10px] opacity-70">{classifyPreviewAsset(asset)}</span>
                     </button>
@@ -316,8 +466,8 @@ export const LTELearnerViewModal: React.FC<LTELearnerViewModalProps> = ({
                 </div>
               )}
 
-              {/* Asset-aware learning content preview */}
-              <div className="group relative flex min-h-[260px] w-full flex-1 flex-col items-center justify-center overflow-hidden rounded-xl bg-[#101c32] shadow-inner lg:min-h-[300px]">
+              {/* In-screen Direct Player Container */}
+              <div className="group relative flex min-h-[350px] w-full flex-1 flex-col items-center justify-center overflow-hidden rounded-xl bg-[#101c32] shadow-inner lg:min-h-[420px]">
                 {renderPreview()}
                 <span className="absolute bottom-4 left-4 text-xs font-semibold text-white/80 bg-slate-900/80 px-3 py-1 rounded-full backdrop-blur-xs">
                   {previewAsset?.title || `${currentStage.mediaType} lesson`} • {currentStage.estimatedDuration}
@@ -344,7 +494,15 @@ export const LTELearnerViewModal: React.FC<LTELearnerViewModalProps> = ({
 
               {/* Player Navigation Footer */}
               <div className="mt-auto flex items-center justify-between border-t border-slate-200 pt-4 dark:border-slate-700">
-                <button className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center gap-1.5">
+                <button
+                  disabled={currentStageIndex <= 0}
+                  onClick={() => {
+                    if (currentStageIndex > 0) {
+                      setSelectedStageName(currentStages[currentStageIndex - 1].name);
+                    }
+                  }}
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 transition-all flex items-center gap-1.5"
+                >
                   <ArrowLeft className="w-3.5 h-3.5" />
                   Previous Stage
                 </button>
@@ -362,7 +520,14 @@ export const LTELearnerViewModal: React.FC<LTELearnerViewModalProps> = ({
                   ))}
                 </div>
 
-                <button className="rounded-xl bg-[#2458f5] px-5 py-2.5 text-xs font-bold text-white shadow-md transition-all hover:bg-blue-700">
+                <button
+                  onClick={() => {
+                    if (currentStageIndex < currentStages.length - 1) {
+                      setSelectedStageName(currentStages[currentStageIndex + 1].name);
+                    }
+                  }}
+                  className="rounded-xl bg-[#2458f5] px-5 py-2.5 text-xs font-bold text-white shadow-md transition-all hover:bg-blue-700"
+                >
                   Mark Done & Next (+{currentStage.xpReward} XP)
                 </button>
               </div>
@@ -431,7 +596,7 @@ export const LTELearnerViewModal: React.FC<LTELearnerViewModalProps> = ({
                   🎓 PREREQUISITES
                 </span>
                 <p className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                  {currentStage.prerequisites.length > 0
+                  {currentStage.prerequisites?.length > 0
                     ? currentStage.prerequisites.join(', ')
                     : 'No prerequisites specified'}
                 </p>
@@ -442,7 +607,7 @@ export const LTELearnerViewModal: React.FC<LTELearnerViewModalProps> = ({
                   ⚙ TECHNICAL CONCEPTS
                 </span>
                 <div className="space-y-1.5">
-                  {currentStage.technicalConcepts.map((tc, idx) => (
+                  {currentStage.technicalConcepts?.map((tc, idx) => (
                     <span
                       key={idx}
                       className="block px-3 py-1 rounded-full text-[11px] font-medium bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-800 text-slate-700 dark:text-slate-300 shadow-2xs"
@@ -481,6 +646,103 @@ export const LTELearnerViewModal: React.FC<LTELearnerViewModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Interactive Content Editor Modal */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-60 bg-black/70 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-w-xl w-full p-6 space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <Edit3 className="w-4 h-4 text-blue-600" />
+                <span>Edit Stage & Asset Content</span>
+              </h3>
+              <button onClick={() => setIsEditModalOpen(false)} className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Stage Title</label>
+                  <input
+                    type="text"
+                    value={editStageTitle}
+                    onChange={(e) => setEditStageTitle(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Duration</label>
+                  <input
+                    type="text"
+                    value={editDuration}
+                    onChange={(e) => setEditDuration(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Stage Subtitle</label>
+                <input
+                  type="text"
+                  value={editStageSubtitle}
+                  onChange={(e) => setEditStageSubtitle(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Stage Overview / Description</label>
+                <textarea
+                  rows={3}
+                  value={editStageDescription}
+                  onChange={(e) => setEditStageDescription(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                />
+              </div>
+
+              <div className="p-3 bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-xl space-y-2">
+                <label className="font-bold text-purple-900 dark:text-purple-200 block flex items-center gap-1.5">
+                  <Link2 className="w-3.5 h-3.5 text-purple-600" />
+                  <span>Content Asset URL (Google Slides / YouTube / Doc Link)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://docs.google.com/presentation/d/... or YouTube URL"
+                  value={editAssetUrl}
+                  onChange={(e) => setEditAssetUrl(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono text-[11px]"
+                />
+                <input
+                  type="text"
+                  placeholder="Asset Display Title"
+                  value={editAssetTitle}
+                  onChange={(e) => setEditAssetTitle(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t">
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>Save Changes</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

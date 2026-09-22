@@ -45,10 +45,47 @@ export const LTECatalogSpecificationStep: React.FC<LTECatalogSpecificationStepPr
     return hasRealMetadata ? [{ levelCode: baseMeta.capabilityLevel || baseMeta.courseCode, levelNo: 1, levelName: baseMeta.courseTitle, courseMetadata: baseMeta, modules: snapshot?.modules || [] }] : [];
   });
 
+  const [availableRoles, setAvailableRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState<boolean>(false);
   const [published, setPublished] = useState<boolean>(false);
+
+  React.useEffect(() => {
+    const loadRoles = async () => {
+      const rolesSet = new Set<string>([
+        'Lead Credit Analyst',
+        'Senior Risk Assessment Specialist',
+        'Software Engineering Specialist',
+        'Aerostructures Manufacturing Engineer',
+        'Senior Technical Project Manager',
+        'Enterprise Domain Architect',
+        'Quality Review Specialist',
+      ]);
+
+      if (snapshot?.tables?.roles?.rows) {
+        snapshot.tables.roles.rows.forEach((r: any) => {
+          if (r.role_name) rolesSet.add(r.role_name);
+        });
+      }
+
+      try {
+        const res = await fetch('/api/admin/lte/workspace?view=roles');
+        const data = await res.json();
+        if (data.success && data.roles) {
+          data.roles.forEach((r: any) => {
+            if (r.name || r.code) rolesSet.add(r.name || r.code);
+          });
+        }
+      } catch (e) {
+        console.error('Error fetching workspace roles:', e);
+      }
+
+      setAvailableRoles(Array.from(rolesSet));
+    };
+
+    loadRoles();
+  }, [snapshot]);
 
   // Sync snapshot changes into levelCourses state
   React.useEffect(() => {
@@ -122,15 +159,15 @@ export const LTECatalogSpecificationStep: React.FC<LTECatalogSpecificationStepPr
           levelNo: 1,
           levelName: formatText(data.courseSpecification.courseTitle, 'Uploaded course'),
           courseMetadata: {
-                courseTitle: formatText(data.courseSpecification.courseTitle),
-                courseCode: formatText(data.courseSpecification.courseCode),
-                domain: formatText(data.courseSpecification.domain),
-                capabilityCode: formatText(data.courseSpecification.capabilityCode),
-                capabilityLevel: formatText(data.courseSpecification.capabilityLevel, 'Level 1'),
-                instructorLead: formatText(data.courseSpecification.instructorLead),
-                courseSummary: formatText(data.courseSpecification.courseSummary),
-                problemStatement: formatText(data.courseSpecification.problemStatement),
-                capstoneTitle: formatText(data.courseSpecification.capstoneArtifactTitle),
+            courseTitle: formatText(data.courseSpecification.courseTitle),
+            courseCode: formatText(data.courseSpecification.courseCode),
+            domain: formatText(data.courseSpecification.domain),
+            capabilityCode: formatText(data.courseSpecification.capabilityCode),
+            capabilityLevel: formatText(data.courseSpecification.capabilityLevel, 'Level 1'),
+            instructorLead: formatText(data.courseSpecification.instructorLead),
+            courseSummary: formatText(data.courseSpecification.courseSummary),
+            problemStatement: formatText(data.courseSpecification.problemStatement),
+            capstoneTitle: formatText(data.courseSpecification.capstoneArtifactTitle),
           },
           modules: data.modules || [],
         }]);
@@ -181,7 +218,6 @@ export const LTECatalogSpecificationStep: React.FC<LTECatalogSpecificationStepPr
   };
 
   const handleUploadClick = () => {
-    // Show confirmation dialog
     setShowConfirmDialog(true);
   };
 
@@ -295,250 +331,274 @@ export const LTECatalogSpecificationStep: React.FC<LTECatalogSpecificationStepPr
 
           {/* Form Grid */}
           <div className={`${levelCourses.length === 0 ? 'hidden' : ''} space-y-3.5`}>
-          {/* Row 1 */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                Course Title
-              </label>
-              <input
-                type="text"
-                value={formData.courseTitle}
-                onChange={(e) => handleInputChange('courseTitle', e.target.value)}
-                className="w-full bg-[#f5f8fc] dark:bg-slate-800/80 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-medium text-[#172743] dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#7545ff]/40 focus:border-[#7545ff]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                Course Code
-              </label>
-              <input
-                type="text"
-                value={formData.courseCode}
-                onChange={(e) => handleInputChange('courseCode', e.target.value)}
-                className="w-full bg-[#f5f8fc] dark:bg-slate-800/80 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-medium text-[#172743] dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#7545ff]/40 focus:border-[#7545ff] font-mono"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                Domain / Industry Field
-              </label>
-              <input
-                type="text"
-                value={formData.domain}
-                onChange={(e) => handleInputChange('domain', e.target.value)}
-                className="w-full bg-[#f5f8fc] dark:bg-slate-800/80 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-medium text-[#172743] dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#7545ff]/40 focus:border-[#7545ff]"
-              />
-            </div>
-          </div>
-
-          {/* Row 2 */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                Capability Code
-              </label>
-              <input
-                type="text"
-                value={formData.capabilityCode}
-                onChange={(e) => handleInputChange('capabilityCode', e.target.value)}
-                className="w-full bg-[#f5f8fc] dark:bg-slate-800/80 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-medium text-[#172743] dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#7545ff]/40 focus:border-[#7545ff]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                Capability Level (1 to 5)
-              </label>
-              <input
-                type="text"
-                value={formData.capabilityLevel}
-                onChange={(e) => handleInputChange('capabilityLevel', e.target.value)}
-                className="w-full bg-[#f5f8fc] dark:bg-slate-800/80 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-medium text-[#172743] dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#7545ff]/40 focus:border-[#7545ff]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                Assigned Instructor Lead
-              </label>
-              <input
-                type="text"
-                value={formData.instructorLead}
-                onChange={(e) => handleInputChange('instructorLead', e.target.value)}
-                className="w-full bg-[#f5f8fc] dark:bg-slate-800/80 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-medium text-[#172743] dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#7545ff]/40 focus:border-[#7545ff]"
-              />
-            </div>
-          </div>
-
-          {/* Row 3 Full width */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-              Course Summary / Overview
-            </label>
-            <textarea
-              rows={2}
-              value={formData.courseSummary}
-              onChange={(e) => handleInputChange('courseSummary', e.target.value)}
-              className="w-full bg-[#f5f8fc] dark:bg-slate-800/80 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-medium text-[#172743] dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#7545ff]/40 focus:border-[#7545ff] resize-none"
-            />
-          </div>
-
-          {/* Row 4 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                Problem Statement
-              </label>
-              <textarea
-                rows={2}
-                value={formatText(formData.problemStatement)}
-                onChange={(e) => handleInputChange('problemStatement', e.target.value)}
-                className="w-full bg-[#f5f8fc] dark:bg-slate-800/80 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-medium text-[#172743] dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#7545ff]/40 focus:border-[#7545ff] resize-none"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                Final Capstone Artifact Title
-              </label>
-              <textarea
-                rows={2}
-                value={formData.capstoneTitle}
-                onChange={(e) => handleInputChange('capstoneTitle', e.target.value)}
-                className="w-full bg-[#f5f8fc] dark:bg-slate-800/80 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-medium text-[#172743] dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#7545ff]/40 focus:border-[#7545ff] resize-none"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Module Curriculum Breakdown Section */}
-        <div className={`${levelCourses.length === 0 ? 'hidden' : ''} pt-4 border-t border-[#dce6f2] dark:border-slate-800 space-y-3.5`}>
-          <div>
-            <h3 className="text-xs font-bold text-[#516b91] dark:text-purple-400 tracking-wide uppercase">
-              MODULE CURRICULUM BREAKDOWN (MODULES 0 TO {sortedModules.length - 1}) – TOTAL ({sortedModules.length})
-            </h3>
-            <p className="text-xs text-[#647b9c] dark:text-slate-400 mt-1.5">
-              Each module includes the 6 Es Framework (Engage, Explore, Explain, Express, Empower, Evolve) + 2 Artifact Practices.
-            </p>
-          </div>
-
-          {/* Module Card Component */}
-            {sortedModules.map((mod) => (
-            <div
-              key={mod.index}
-              className="bg-[#f4f8fd] dark:bg-slate-800/40 border border-[#d5e1ef] dark:border-slate-700/80 rounded-[14px] p-4 space-y-3"
-            >
-              {/* Module Header Pill */}
-              <div className="flex items-center gap-3">
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#f1e8ff] dark:bg-purple-950 text-[#7c23e8] dark:text-purple-300 border border-[#e2ceff] dark:border-purple-800">
-                  Module {mod.index}
-                </span>
-                <h4 className="min-w-0 rounded-full border border-[#cfdded] bg-white/80 px-4 py-1 text-sm font-bold text-[#101c32] dark:text-slate-100">
-                  {mod.title}
-                </h4>
+            {/* Row 1 */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Course Title
+                </label>
+                <input
+                  type="text"
+                  value={formData.courseTitle}
+                  onChange={(e) => handleInputChange('courseTitle', e.target.value)}
+                  className="w-full bg-[#f5f8fc] dark:bg-slate-800/80 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-medium text-[#172743] dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#7545ff]/40 focus:border-[#7545ff]"
+                />
               </div>
-
-              {/* 6 Stage Pills */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2">
-                {mod.stages
-                  .sort((a, b) => a.stageIndex - b.stageIndex)
-                  .map((st) => {
-                    let borderColor = 'border-purple-300 dark:border-purple-700 bg-purple-50/60 dark:bg-purple-950/40 text-purple-900 dark:text-purple-200';
-                    if (st.name === 'Explore')
-                      borderColor = 'border-blue-300 dark:border-blue-700 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200';
-                    if (st.name === 'Explain')
-                      borderColor = 'border-cyan-300 dark:border-cyan-700 bg-cyan-50/60 dark:bg-cyan-950/40 text-cyan-900 dark:text-cyan-200';
-                    if (st.name === 'Express')
-                      borderColor = 'border-emerald-300 dark:border-emerald-700 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200';
-                    if (st.name === 'Empower')
-                      borderColor = 'border-amber-300 dark:border-amber-700 bg-amber-50/60 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200';
-                    if (st.name === 'Evolve')
-                      borderColor = 'border-green-300 dark:border-green-700 bg-green-50/60 dark:bg-green-950/40 text-green-900 dark:text-green-200';
-
-                    return (
-                      <div
-                        key={st.id}
-                        className={`min-h-[58px] p-2 rounded-[10px] border text-left shadow-2xs ${borderColor}`}
-                      >
-                        <span className="text-[11px] font-bold block">{st.label}</span>
-                        <span className="text-[10px] text-slate-600 dark:text-slate-400 block truncate">
-                          {st.subtitle}
-                        </span>
-                      </div>
-                    );
-                  })}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Course Code
+                </label>
+                <input
+                  type="text"
+                  value={formData.courseCode}
+                  onChange={(e) => handleInputChange('courseCode', e.target.value)}
+                  className="w-full bg-[#f5f8fc] dark:bg-slate-800/80 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-medium text-[#172743] dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#7545ff]/40 focus:border-[#7545ff] font-mono"
+                />
               </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Domain / Industry Field
+                </label>
+                <input
+                  type="text"
+                  value={formData.domain}
+                  onChange={(e) => handleInputChange('domain', e.target.value)}
+                  className="w-full bg-[#f5f8fc] dark:bg-slate-800/80 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-medium text-[#172743] dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#7545ff]/40 focus:border-[#7545ff]"
+                />
+              </div>
+            </div>
 
-              {/* 2 Artifact Practices Pills */}
-              <div className="flex flex-wrap gap-2 pt-1">
-                {mod.artifactPractices.map((art) => (
-                  <span
-                    key={art.id}
-                    className="px-4 py-1.5 rounded-full text-xs font-medium bg-white dark:bg-slate-900 border border-[#cfdded] dark:border-slate-700 text-[#2c466c] dark:text-slate-300 shadow-2xs"
+            {/* Row 2 */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Capability Code
+                </label>
+                <input
+                  type="text"
+                  value={formData.capabilityCode}
+                  onChange={(e) => handleInputChange('capabilityCode', e.target.value)}
+                  className="w-full bg-[#f5f8fc] dark:bg-slate-800/80 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-medium text-[#172743] dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#7545ff]/40 focus:border-[#7545ff]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Capability Level (1 to 5)
+                </label>
+                <input
+                  type="text"
+                  value={formData.capabilityLevel}
+                  onChange={(e) => handleInputChange('capabilityLevel', e.target.value)}
+                  className="w-full bg-[#f5f8fc] dark:bg-slate-800/80 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-medium text-[#172743] dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#7545ff]/40 focus:border-[#7545ff]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Assigned Instructor Lead
+                </label>
+                <div className="space-y-1.5">
+                  <select
+                    value={availableRoles.includes(formData.instructorLead) ? formData.instructorLead : (formData.instructorLead ? '__custom__' : '')}
+                    onChange={(e) => {
+                      if (e.target.value === '__custom__') {
+                        handleInputChange('instructorLead', 'Custom Instructor');
+                      } else {
+                        handleInputChange('instructorLead', e.target.value);
+                      }
+                    }}
+                    className="w-full bg-[#f5f8fc] dark:bg-slate-800/80 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-bold text-[#172743] dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#7545ff]/40 focus:border-[#7545ff]"
                   >
-                    {art.title}
-                  </span>
-                ))}
+                    <option value="">-- Select Instructor Lead / Role --</option>
+                    {availableRoles.map((roleName) => (
+                      <option key={roleName} value={roleName}>
+                        {roleName}
+                      </option>
+                    ))}
+                    <option value="__custom__">+ Custom Instructor Name / Role</option>
+                  </select>
+                  {(!availableRoles.includes(formData.instructorLead) && formData.instructorLead !== '') && (
+                    <input
+                      type="text"
+                      placeholder="Type Custom Instructor Lead Name..."
+                      value={formData.instructorLead}
+                      onChange={(e) => handleInputChange('instructorLead', e.target.value)}
+                      className="w-full bg-white dark:bg-slate-900 border border-purple-300 dark:border-purple-700 rounded-[11px] px-3 py-1.5 text-xs font-semibold text-[#172743] dark:text-slate-100"
+                    />
+                  )}
+                </div>
               </div>
             </div>
-          ))}
 
-          {sortedModules.length === 0 && (
-            <div className="bg-amber-50/80 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 rounded-2xl p-6">
-              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                No modules were linked to this uploaded course.
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Course: {formData.courseCode || 'missing course code'} · Level: {activeCourse?.levelCode || activeCourse?.levelNo || 'missing level identifier'}. Parsed {snapshot?.tables?.levels?.rows?.length || 0} levels and {snapshot?.tables?.modules?.rows?.length || 0} modules. Match <code>levels.id = modules.level_id</code> (example: <code>level-1</code>), or use equal <code>level_code</code>/<code>level_no</code> values.
+            {/* Row 3 Full width */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                Course Summary / Overview
+              </label>
+              <textarea
+                rows={2}
+                value={formData.courseSummary}
+                onChange={(e) => handleInputChange('courseSummary', e.target.value)}
+                className="w-full bg-[#f5f8fc] dark:bg-slate-800/80 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-medium text-[#172743] dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#7545ff]/40 focus:border-[#7545ff] resize-none"
+              />
+            </div>
+
+            {/* Row 4 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Problem Statement
+                </label>
+                <textarea
+                  rows={2}
+                  value={formatText(formData.problemStatement)}
+                  onChange={(e) => handleInputChange('problemStatement', e.target.value)}
+                  className="w-full bg-[#f5f8fc] dark:bg-slate-800/80 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-medium text-[#172743] dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#7545ff]/40 focus:border-[#7545ff] resize-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Final Capstone Artifact Title
+                </label>
+                <textarea
+                  rows={2}
+                  value={formData.capstoneTitle}
+                  onChange={(e) => handleInputChange('capstoneTitle', e.target.value)}
+                  className="w-full bg-[#f5f8fc] dark:bg-slate-800/80 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-medium text-[#172743] dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#7545ff]/40 focus:border-[#7545ff] resize-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Module Curriculum Breakdown Section */}
+          <div className={`${levelCourses.length === 0 ? 'hidden' : ''} pt-4 border-t border-[#dce6f2] dark:border-slate-800 space-y-3.5`}>
+            <div>
+              <h3 className="text-xs font-bold text-[#516b91] dark:text-purple-400 tracking-wide uppercase">
+                MODULE CURRICULUM BREAKDOWN (MODULES 0 TO {sortedModules.length - 1}) – TOTAL ({sortedModules.length})
+              </h3>
+              <p className="text-xs text-[#647b9c] dark:text-slate-400 mt-1.5">
+                Each module includes the 6 Es Framework (Engage, Explore, Explain, Express, Empower, Evolve) + 2 Artifact Practices.
               </p>
             </div>
-          )}
-        </div>
 
-        {/* Footer Actions */}
-        <div className={`flex flex-col sm:flex-row items-center justify-between gap-4 pt-5 border-t border-[#dce6f2] dark:border-slate-800 ${levelCourses.length === 0 ? 'justify-start border-t-0 pt-0' : ''}`}>
-          <button
-            onClick={onBack}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-[10px] border border-[#d5e1ef] bg-[#f7f9fc] dark:border-slate-700 text-[#172743] dark:text-slate-300 font-semibold text-xs md:text-sm hover:bg-[#eef3f9] dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </button>
+            {/* Module Card Component */}
+            {sortedModules.map((mod) => (
+              <div
+                key={mod.index}
+                className="bg-[#f4f8fd] dark:bg-slate-800/40 border border-[#d5e1ef] dark:border-slate-700/80 rounded-[14px] p-4 space-y-3"
+              >
+                {/* Module Header Pill */}
+                <div className="flex items-center gap-3">
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#f1e8ff] dark:bg-purple-950 text-[#7c23e8] dark:text-purple-300 border border-[#e2ceff] dark:border-purple-800">
+                    Module {mod.index}
+                  </span>
+                  <h4 className="min-w-0 rounded-full border border-[#cfdded] bg-white/80 px-4 py-1 text-sm font-bold text-[#101c32] dark:text-slate-100">
+                    {mod.title}
+                  </h4>
+                </div>
 
-          <div className={`${levelCourses.length === 0 ? 'hidden' : 'flex'} flex-col sm:flex-row items-center gap-3 w-full sm:w-auto`}>
+                {/* 6 Stage Pills */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2">
+                  {mod.stages
+                    .sort((a, b) => a.stageIndex - b.stageIndex)
+                    .map((st) => {
+                      let borderColor = 'border-purple-300 dark:border-purple-700 bg-purple-50/60 dark:bg-purple-950/40 text-purple-900 dark:text-purple-200';
+                      if (st.name === 'Explore')
+                        borderColor = 'border-blue-300 dark:border-blue-700 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200';
+                      if (st.name === 'Explain')
+                        borderColor = 'border-cyan-300 dark:border-cyan-700 bg-cyan-50/60 dark:bg-cyan-950/40 text-cyan-900 dark:text-cyan-200';
+                      if (st.name === 'Express')
+                        borderColor = 'border-emerald-300 dark:border-emerald-700 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200';
+                      if (st.name === 'Empower')
+                        borderColor = 'border-amber-300 dark:border-amber-700 bg-amber-50/60 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200';
+                      if (st.name === 'Evolve')
+                        borderColor = 'border-green-300 dark:border-green-700 bg-green-50/60 dark:bg-green-950/40 text-green-900 dark:text-green-200';
+
+                      return (
+                        <div
+                          key={st.id}
+                          className={`min-h-[58px] p-2 rounded-[10px] border text-left shadow-2xs ${borderColor}`}
+                        >
+                          <span className="text-[11px] font-bold block">{st.label}</span>
+                          <span className="text-[10px] text-slate-600 dark:text-slate-400 block truncate">
+                            {st.subtitle}
+                          </span>
+                        </div>
+                      );
+                    })}
+                </div>
+
+                {/* 2 Artifact Practices Pills */}
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {mod.artifactPractices.map((art) => (
+                    <span
+                      key={art.id}
+                      className="px-4 py-1.5 rounded-full text-xs font-medium bg-white dark:bg-slate-900 border border-[#cfdded] dark:border-slate-700 text-[#2c466c] dark:text-slate-300 shadow-2xs"
+                    >
+                      {art.title}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {sortedModules.length === 0 && (
+              <div className="bg-amber-50/80 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 rounded-2xl p-6">
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  No modules were linked to this uploaded course.
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Course: {formData.courseCode || 'missing course code'} · Level: {activeCourse?.levelCode || activeCourse?.levelNo || 'missing level identifier'}. Parsed {snapshot?.tables?.levels?.rows?.length || 0} levels and {snapshot?.tables?.modules?.rows?.length || 0} modules. Match <code>levels.id = modules.level_id</code> (example: <code>level-1</code>), or use equal <code>level_code</code>/<code>level_no</code> values.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Footer Actions */}
+          <div className={`flex flex-col sm:flex-row items-center justify-between gap-4 pt-5 border-t border-[#dce6f2] dark:border-slate-800 ${levelCourses.length === 0 ? 'justify-start border-t-0 pt-0' : ''}`}>
             <button
-              onClick={() => activeCourse && onOpenLearnerPreview(activeCourse)}
-              disabled={!activeCourse}
-              className="w-full sm:w-auto px-6 py-2.5 rounded-[10px] border border-[#d7e2ef] dark:border-purple-500 text-[#7435f5] dark:text-purple-300 font-bold text-xs md:text-sm hover:bg-[#f4efff] dark:hover:bg-purple-950/40 transition-all flex items-center justify-center gap-2 shadow-2xs"
+              onClick={onBack}
+              className="w-full sm:w-auto px-5 py-2.5 rounded-[10px] border border-[#d5e1ef] bg-[#f7f9fc] dark:border-slate-700 text-[#172743] dark:text-slate-300 font-semibold text-xs md:text-sm hover:bg-[#eef3f9] dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
             >
-              <Eye className="w-4 h-4" />
-              Verify in Learner View
+              <ArrowLeft className="w-4 h-4" />
+              Back
             </button>
 
-            <button
-              onClick={handleUploadClick}
-              disabled={publishing || published}
-              className="w-full sm:w-auto px-8 py-2.5 rounded-[10px] bg-gradient-to-r from-[#315cf4] to-[#9828ef] hover:from-[#274ee0] hover:to-[#861fd8] text-white font-bold text-xs md:text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {publishing ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Publishing Course...
-                </>
-              ) : published ? (
-                <>
-                  <CheckCircle className="w-4 h-4" />
-                  Published
-                </>
-              ) : (
-                <>
-                  <UploadCloud className="w-4 h-4" />
-                  Upload Course
-                </>
-              )}
-            </button>
+            <div className={`${levelCourses.length === 0 ? 'hidden' : 'flex'} flex-col sm:flex-row items-center gap-3 w-full sm:w-auto`}>
+              <button
+                onClick={() => activeCourse && onOpenLearnerPreview(activeCourse)}
+                disabled={!activeCourse}
+                className="w-full sm:w-auto px-6 py-2.5 rounded-[10px] border border-[#d7e2ef] dark:border-purple-500 text-[#7435f5] dark:text-purple-300 font-bold text-xs md:text-sm hover:bg-[#f4efff] dark:hover:bg-purple-950/40 transition-all flex items-center justify-center gap-2 shadow-2xs"
+              >
+                <Eye className="w-4 h-4" />
+                Verify in Learner View
+              </button>
+
+              <button
+                onClick={handleUploadClick}
+                disabled={publishing || published}
+                className="w-full sm:w-auto px-8 py-2.5 rounded-[10px] bg-gradient-to-r from-[#315cf4] to-[#9828ef] hover:from-[#274ee0] hover:to-[#861fd8] text-white font-bold text-xs md:text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {publishing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Publishing Course...
+                  </>
+                ) : published ? (
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    Published
+                  </>
+                ) : (
+                  <>
+                    <UploadCloud className="w-4 h-4" />
+                    Upload Course
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    )}
+      )}
 
       {/* Confirmation Dialog */}
       {showConfirmDialog && (
