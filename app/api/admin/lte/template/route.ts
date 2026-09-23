@@ -4,6 +4,7 @@ import Logger, { getErrorMessage } from '@/lib/logger';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { supabaseLTE } from '@/lib/supabase-lte';
 import { REQUIRED_LTE_TABLES } from '@/lib/services/lte-ingestion/constants';
+import { deterministicUUID } from '@/lib/services/lte-ingestion/uuid-generator';
 
 const logger = new Logger('LTETemplateAPI');
 
@@ -35,6 +36,14 @@ const EXPORT_COLUMN_DEFS: Record<string, TemplateColumn[]> = Object.fromEntries(
 );
 
 type ExportRows = Record<string, any[]>;
+
+function toLevelCodeCapabilityPart(capabilityCode: string): string {
+  return capabilityCode.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'CATALOG';
+}
+
+function buildLevelCode(capabilityCode: string, levelNo: number): string {
+  return `LTE_${toLevelCodeCapabilityPart(capabilityCode)}_L${levelNo}`;
+}
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
@@ -78,7 +87,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
 
     const buffer = await workbook.xlsx.writeBuffer();
-    const safeCapability = (capabilityCode || '').trim().toUpperCase().replace(/[^A-Z0-9-]+/g, '') || 'CATALOG';
+    const safeCapability = toLevelCodeCapabilityPart(capabilityCode || 'CATALOG');
     const safeLevel = (levelNoParam || '').trim().replace(/[^0-9]/g, '');
     const fileName = safeLevel
       ? `LTE_${safeCapability}_L${safeLevel}_Template.xlsx`
@@ -122,7 +131,7 @@ async function buildTemplateRows(sampleLevelCode?: string, capabilityCode?: stri
     : undefined;
   const resolvedLevelCode = sampleLevelCode
     || (capability && Number.isFinite(requestedLevelNo)
-      ? `${capability.code}_L${requestedLevelNo}`
+      ? buildLevelCode(capability.code, requestedLevelNo)
       : undefined);
 
   let sampleLevel = await fetchSampleLevel(resolvedLevelCode, capability?.id);
@@ -131,9 +140,10 @@ async function buildTemplateRows(sampleLevelCode?: string, capabilityCode?: stri
     // fill a fresh level without cloning L1 ids. Publish treats it as insert
     // because the level_code is new; re-uploaded codes update instead.
     const levelScaleRow = levelScale.find((row) => Number(row.level_no) === requestedLevelNo);
+    const levelCode = buildLevelCode(capability.code, requestedLevelNo);
     sampleLevel = {
-      id: `${capability.code}_L${requestedLevelNo}`,
-      level_code: `${capability.code}_L${requestedLevelNo}`,
+      id: deterministicUUID('levels', levelCode),
+      level_code: levelCode,
       capability_id: capability.id,
       level_id: levelScaleRow?.id || null,
       title: '',

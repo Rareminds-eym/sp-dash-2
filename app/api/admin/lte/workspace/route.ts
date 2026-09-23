@@ -62,7 +62,6 @@ async function handleDashboardView(): Promise<NextResponse> {
   const [
     levelsRes,
     levelsCountRes,
-    publishedCountRes,
     publishedLevelVersionsRes,
     needsReviewRes,
     levelVersionsCountRes,
@@ -70,14 +69,13 @@ async function handleDashboardView(): Promise<NextResponse> {
   ] = await Promise.all([
     supabaseLTE.from('levels').select('id, level_code, title, capability_id, status, version_no, is_active').eq('is_active', true).order('level_code'),
     supabaseLTE.from('levels').select('id', { count: 'exact', head: true }).eq('is_active', true),
-    supabaseLTE.from('levels').select('id', { count: 'exact', head: true }).eq('is_active', true).ilike('status', 'published'),
     supabaseLTE.from('catalog_versions').select('entity_id, version_no').eq('entity_type', 'level').eq('status', 'PUBLISHED'),
-    supabaseLTE.from('catalog_versions').select('id', { count: 'exact', head: true }).in('status', ['DRAFT', 'VALIDATED']),
+    supabaseLTE.from('catalog_versions').select('id, created_at').eq('entity_type', 'catalog').in('status', ['DRAFT', 'VALIDATED']),
     supabaseLTE.from('catalog_versions').select('id', { count: 'exact', head: true }).eq('entity_type', 'level'),
-    supabaseLTE.from('catalog_versions').select('snapshot_data').eq('entity_type', 'catalog').eq('status', 'PUBLISHED').order('published_at', { ascending: false }).limit(1).maybeSingle(),
+    supabaseLTE.from('catalog_versions').select('snapshot_data, published_at, created_at').eq('entity_type', 'catalog').eq('status', 'PUBLISHED').order('published_at', { ascending: false }).limit(1).maybeSingle(),
   ]);
 
-  throwIfAnyError([levelsRes, levelsCountRes, publishedCountRes, publishedLevelVersionsRes, needsReviewRes, levelVersionsCountRes, latestCatalogRes]);
+  throwIfAnyError([levelsRes, levelsCountRes, publishedLevelVersionsRes, needsReviewRes, levelVersionsCountRes, latestCatalogRes]);
 
   const levels = levelsRes.data || [];
   const publishedLevelVersions = publishedLevelVersionsRes.data || [];
@@ -133,8 +131,13 @@ async function handleDashboardView(): Promise<NextResponse> {
   const assetManifestCount = (latestCatalogRes.data as any)?.snapshot_data?.assetManifest?.length || 0;
   const assetsReady = assetStatus === 'staged' || assetStatus === 'none';
   const isPublished = (status: unknown) => String(status || '').toLowerCase() === 'published';
+  const latestPublishedAt = (latestCatalogRes.data as any)?.published_at || (latestCatalogRes.data as any)?.created_at || null;
+  const needsReviewCount = ((needsReviewRes.data || []) as any[]).filter((version) => {
+    if (!latestPublishedAt) return true;
+    return new Date(version.created_at).getTime() > new Date(latestPublishedAt).getTime();
+  }).length;
 
-  const publishedCount = publishedCountRes.count || 0;
+  const publishedCount = levels.filter((level: any) => isPublished(level.status)).length;
   const courses = levels.map((level) => {
     const version = versionByEntityId.get(level.id);
     return {
@@ -152,16 +155,17 @@ async function handleDashboardView(): Promise<NextResponse> {
       assignableStatus: isPublished(level.status) && assetsReady ? 'ASSIGNABLE' : 'PENDING_ASSET_READINESS',
     };
   });
+  const assignableCoursesCount = courses.filter((course) => course.assignableStatus === 'ASSIGNABLE').length;
 
   return NextResponse.json({
     success: true,
     summary: {
       capabilitiesCount: uploadedCapabilityIds.length,
       rolesCount: uploadedRoleIds.length,
-      coursesLogicalCount: levelsCountRes.count || 0,
+      coursesLogicalCount: levelsCountRes.count ?? levels.length,
       publishedCoursesCount: publishedCount,
-      assignableCoursesCount: assetsReady ? publishedCount : 0,
-      needsReviewCount: needsReviewRes.count || 0,
+      assignableCoursesCount,
+      needsReviewCount,
       optionalVersionsCount: levelVersionsCountRes.count || 0,
     },
     capabilities: capabilities.map((capability) => {
@@ -197,17 +201,19 @@ async function handleDashboardView(): Promise<NextResponse> {
 }
 
 async function handleSummaryView(): Promise<NextResponse> {
-  const [levelsRes, publishedRes, versionsRes, reviewRes, latestCatalogRes] = await Promise.all([
-    supabaseLTE.from('levels').select('id, capability_id', { count: 'exact' }).eq('is_active', true),
-    supabaseLTE.from('levels').select('id', { count: 'exact', head: true }).eq('is_active', true).ilike('status', 'published'),
+  const [levelsRes, versionsRes, reviewRes, latestCatalogRes] = await Promise.all([
+    supabaseLTE.from('levels').select('id, capability_id, status', { count: 'exact' }).eq('is_active', true),
     supabaseLTE.from('catalog_versions').select('id', { count: 'exact', head: true }).eq('entity_type', 'level'),
-    supabaseLTE.from('catalog_versions').select('id', { count: 'exact', head: true }).in('status', ['DRAFT', 'VALIDATED']),
-    supabaseLTE.from('catalog_versions').select('snapshot_data').eq('entity_type', 'catalog').eq('status', 'PUBLISHED').order('published_at', { ascending: false }).limit(1).maybeSingle(),
+    supabaseLTE.from('catalog_versions').select('id, created_at').eq('entity_type', 'catalog').in('status', ['DRAFT', 'VALIDATED']),
+    supabaseLTE.from('catalog_versions').select('snapshot_data, published_at, created_at').eq('entity_type', 'catalog').eq('status', 'PUBLISHED').order('published_at', { ascending: false }).limit(1).maybeSingle(),
   ]);
 
-  throwIfAnyError([levelsRes, publishedRes, versionsRes, reviewRes, latestCatalogRes]);
+  throwIfAnyError([levelsRes, versionsRes, reviewRes, latestCatalogRes]);
+  const levels = (levelsRes.data || []) as any[];
+  const isPublished = (status: unknown) => String(status || '').toLowerCase() === 'published';
+  const publishedCount = levels.filter((level: any) => isPublished(level.status)).length;
   const scopedCapIds = Array.from(
-    new Set(((levelsRes.data || []) as any[]).map((level: any) => level.capability_id).filter(Boolean))
+    new Set(levels.map((level: any) => level.capability_id).filter(Boolean))
   );
   const seqRes = scopedCapIds.length > 0
     ? await supabaseLTE.from('role_capability_sequence').select('role_id').in('capability_id', scopedCapIds)
@@ -216,16 +222,21 @@ async function handleSummaryView(): Promise<NextResponse> {
   const scopedRoleCount = new Set(((seqRes.data || []) as any[]).map((row: any) => row.role_id).filter(Boolean)).size;
   const assetStatus = (latestCatalogRes.data as any)?.snapshot_data?.assetStatus || 'none';
   const assetsReady = assetStatus === 'staged' || assetStatus === 'none';
+  const latestPublishedAt = (latestCatalogRes.data as any)?.published_at || (latestCatalogRes.data as any)?.created_at || null;
+  const needsReviewCount = ((reviewRes.data || []) as any[]).filter((version) => {
+    if (!latestPublishedAt) return true;
+    return new Date(version.created_at).getTime() > new Date(latestPublishedAt).getTime();
+  }).length;
 
   return NextResponse.json({
     success: true,
     summary: {
       capabilitiesCount: scopedCapIds.length,
       rolesCount: scopedRoleCount,
-      coursesLogicalCount: levelsRes.count || 0,
-      publishedCoursesCount: publishedRes.count || 0,
-      assignableCoursesCount: assetsReady ? publishedRes.count || 0 : 0,
-      needsReviewCount: reviewRes.count || 0,
+      coursesLogicalCount: levelsRes.count ?? levels.length,
+      publishedCoursesCount: publishedCount,
+      assignableCoursesCount: assetsReady ? publishedCount : 0,
+      needsReviewCount,
       optionalVersionsCount: versionsRes.count || 0,
     },
   });
