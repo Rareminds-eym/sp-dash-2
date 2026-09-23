@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import Logger, { getErrorMessage } from '@/lib/logger';
 import { LTEIngestionService } from '@/lib/services/lte-ingestion-service';
-import { LTEUploadResponse } from '@/types/lte-ingestion';
+import { LTEIngestionSnapshot, LTEUploadResponse } from '@/types/lte-ingestion';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { supabaseLTE } from '@/lib/supabase-lte';
 
@@ -129,23 +129,39 @@ export async function POST(request: NextRequest): Promise<NextResponse<LTEUpload
         );
       }
 
-      // Insert into lte_catalog_uploads table
+      const { data: latestVersion, error: versionError } = await supabaseLTE
+        .from('catalog_versions')
+        .select('version_no')
+        .eq('entity_type', 'catalog')
+        .order('version_no', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (versionError) {
+        logger.error('Failed to read latest catalog version', { error: versionError });
+        throw new Error(`Database version lookup failed: ${versionError.message}`);
+      }
+
+      const nextVersionNo = (latestVersion?.version_no || 0) + 1;
+      const versionStatus = snapshot.status === 'validated' ? 'VALIDATED' : 'DRAFT';
+
+      // Store the parsed upload as the next catalog version snapshot.
       const { data: uploadRecord, error: insertError } = await supabaseLTE
-        .from('lte_catalog_uploads')
+        .from('catalog_versions')
         .insert({
-          source_type: snapshot.sourceType,
-          source_name: snapshot.sourceName,
-          source_file_hash: sourceFileHash,
+          entity_type: 'catalog',
+          entity_id: null,
+          version_no: nextVersionNo,
+          status: versionStatus,
           snapshot_hash: snapshot.snapshotHash,
-          reviewed_snapshot_hash: snapshot.snapshotHash,
-          normalized_snapshot: snapshot, // Legacy backfill field
-          reviewed_snapshot: snapshot,   // Authoritative v2.1 reviewed snapshot
-          validation_result: snapshot.validationReport,
-          status: snapshot.status,
-          asset_status: 'none',
+          snapshot_data: {
+            ...snapshot,
+            sourceFileHash,
+          },
+          change_reason: `UPLOAD:${file.name}`,
           created_by: user.userId,
         })
-        .select('id')
+        .select('id, status')
         .single();
 
       if (insertError) {
@@ -153,13 +169,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<LTEUpload
         throw new Error(`Database insert failed: ${insertError.message}`);
       }
 
-      logger.info('Upload record created', { uploadId: uploadRecord.id });
+      logger.info('Catalog version snapshot created', { uploadId: uploadRecord.id, versionNo: nextVersionNo });
 
       // Update snapshot with the database-generated ID and reviewedSnapshotHash
-      const finalSnapshot = {
+      const finalSnapshot: LTEIngestionSnapshot = {
         ...snapshot,
         uploadId: uploadRecord.id,
         reviewedSnapshotHash: snapshot.snapshotHash,
+        status: uploadRecord.status === 'VALIDATED' ? 'validated' : 'validation_failed',
       };
 
       return NextResponse.json({

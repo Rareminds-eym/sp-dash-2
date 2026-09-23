@@ -67,6 +67,31 @@ describe('POST /api/admin/lte/upload', () => {
     createdAt: new Date().toISOString(),
   };
 
+  function mockCatalogVersionInsert(result: {
+    data: { id: string; status?: string } | null;
+    error: { message: string; code?: string } | null;
+  }) {
+    vi.mocked(supabaseLTE.from).mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          order: vi.fn().mockReturnValue({
+            limit: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { version_no: 1 },
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      }),
+      insert: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue(result),
+        }),
+      }),
+    } as any);
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
     
@@ -76,16 +101,10 @@ describe('POST /api/admin/lte/upload', () => {
       error: null,
     });
 
-    vi.mocked(supabaseLTE.from).mockReturnValue({
-      insert: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({
-            data: { id: 'db-generated-uuid-456' },
-            error: null,
-          }),
-        }),
-      }),
-    } as any);
+    mockCatalogVersionInsert({
+      data: { id: 'db-generated-uuid-456', status: 'VALIDATED' },
+      error: null,
+    });
 
     vi.mocked(LTEIngestionService.processIngestionSource).mockResolvedValue(mockSnapshot);
   });
@@ -195,23 +214,16 @@ describe('POST /api/admin/lte/upload', () => {
       expect.any(ArrayBuffer),
       mockUser.userId
     );
-
     // Verify database insert was called
-    expect(supabaseLTE.from).toHaveBeenCalledWith('lte_catalog_uploads');
+    expect(supabaseLTE.from).toHaveBeenCalledWith('catalog_versions');
   });
 
   it('should handle database insertion errors', async () => {
     // Mock database error
-    vi.mocked(supabaseLTE.from).mockReturnValue({
-      insert: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({
-            data: null,
-            error: { message: 'Database error', code: 'DB_ERROR' },
-          }),
-        }),
-      }),
-    } as any);
+    mockCatalogVersionInsert({
+      data: null,
+      error: { message: 'Database error', code: 'DB_ERROR' },
+    });
 
     const formData = new FormData();
     formData.append('file', new Blob(['test'], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'test.xlsx');

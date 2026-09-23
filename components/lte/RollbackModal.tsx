@@ -72,8 +72,8 @@ export const RollbackModal: React.FC<RollbackModalProps> = ({
       }
 
       toast({
-        title: 'Rollback Draft Created',
-        description: `Created Version ${data.newVersionNo} as a draft. Review and publish it through the normal workflow.`,
+        title: 'Course Version Restored',
+        description: `Restored as Version ${data.newVersionNo}. The selected snapshot is now published again.`,
       });
 
       onRollbackComplete();
@@ -98,8 +98,8 @@ export const RollbackModal: React.FC<RollbackModalProps> = ({
           <div className="flex items-center gap-2">
             <RotateCcw className="w-5 h-5 text-indigo-600" />
             <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Rollback Course Version</h3>
-              <p className="text-xs text-slate-500">Monotonic rollback creating next version from historical snapshot</p>
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Restore Course Version</h3>
+              <p className="text-xs text-slate-500">Restore any published snapshot as the next published version</p>
             </div>
           </div>
           <button
@@ -113,14 +113,14 @@ export const RollbackModal: React.FC<RollbackModalProps> = ({
         {/* Body */}
         <div className="space-y-4 text-xs">
           <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 p-3 rounded-xl space-y-1 text-blue-900 dark:text-blue-200">
-            <p className="font-bold">Monotonic Rollback Principle:</p>
+            <p className="font-bold">Version Restore Principle:</p>
             <p className="text-[11px] text-blue-700 dark:text-blue-300">
-              Rolling back V3 to V1 creates V4 cloned from V1. Previous published versions remain strictly immutable.
+              Restoring V1 while V3 is current creates V4 from V1. Previous published versions remain immutable and can be restored again later.
             </p>
           </div>
 
           <div className="space-y-1.5">
-            <label className="font-semibold text-slate-700 dark:text-slate-300">Target Rollback Source Version</label>
+            <label className="font-semibold text-slate-700 dark:text-slate-300">Version To Restore</label>
             <select
               value={selectedVersionId}
               onChange={(e) => setSelectedVersionId(e.target.value)}
@@ -179,7 +179,7 @@ export const RollbackModal: React.FC<RollbackModalProps> = ({
             className="px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>{loading ? 'Processing...' : 'Create Rollback Draft'}</span>
+            <span>{loading ? 'Restoring...' : 'Restore As New Published Version'}</span>
           </button>
         </div>
       </div>

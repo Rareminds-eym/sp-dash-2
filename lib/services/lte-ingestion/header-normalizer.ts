@@ -45,6 +45,10 @@ export function normalizeHeader(header: string): string {
   // Remove pipe suffix "(|)" if present
   cleaned = cleaned.replace(/\s*\(\|\)\s*$/, '').trim();
 
+  if (Object.prototype.hasOwnProperty.call(FRIENDLY_HEADER_ALIASES, cleaned)) {
+    return FRIENDLY_HEADER_ALIASES[cleaned];
+  }
+
   return cleaned;
 }
 

@@ -42,6 +42,67 @@ export const LTECourseUploadPage: React.FC = () => {
     setSnapshot(newSnapshot);
   };
 
+  const handlePreviewCourseSaved = async (updatedCourse: LTELevelCourse) => {
+    logger.info('Learner preview content saved', {
+      levelCode: updatedCourse.levelCode,
+      courseTitle: updatedCourse.courseMetadata.courseTitle,
+    });
+
+    let savedSnapshot: LTEIngestionSnapshot | null = null;
+
+    if (snapshot?.uploadId) {
+      const res = await fetch('/api/admin/lte/review', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uploadId: snapshot.uploadId,
+          course: updatedCourse,
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        const message = data.error || 'Failed to save preview content changes.';
+        toast({
+          title: 'Save Failed',
+          description: message,
+          variant: 'destructive',
+        });
+        throw new Error(message);
+      }
+
+      savedSnapshot = data.snapshot;
+    }
+
+    setPreviewCourse(updatedCourse);
+    setSnapshot((current) => {
+      if (!current) return current;
+      if (savedSnapshot) return savedSnapshot;
+
+      const existingLevelCourses = current.levelCourses || [];
+      const levelCourses = existingLevelCourses.length > 0
+        ? existingLevelCourses.map((levelCourse) =>
+            levelCourse.levelCode === updatedCourse.levelCode ||
+            levelCourse.levelNo === updatedCourse.levelNo
+              ? updatedCourse
+              : levelCourse
+          )
+        : [updatedCourse];
+
+      return {
+        ...current,
+        courseMetadata: updatedCourse.courseMetadata,
+        modules: updatedCourse.modules,
+        levelCourses,
+      };
+    });
+
+    toast({
+      title: 'Preview Content Saved',
+      description: 'Your learner preview changes have been saved in the reviewed snapshot.',
+    });
+  };
+
   const handlePublishCourse = async (updatedMetadata: LTECourseMetadata) => {
     setPublishing(true);
     logger.info('Initiating transactional course publish', {
@@ -94,11 +155,23 @@ export const LTECourseUploadPage: React.FC = () => {
     } catch (err: unknown) {
       const msg = getErrorMessage(err);
       logger.error('Course publish error', { error: msg });
-      toast({
-        title: 'Publish Failed',
-        description: msg,
-        variant: 'destructive',
-      });
+      if (msg.includes('ASSET_VALIDATION_FAILED')) {
+        const fileCount = msg.match(/\((\d+) file/)?.[1];
+        const notPublic = msg.includes('DRIVE_NOT_PUBLIC');
+        toast({
+          title: notPublic ? 'Google Drive Files Are Not Public' : 'Asset Download Failed',
+          description: notPublic
+            ? `Publish stopped: ${fileCount ? `${fileCount} linked Drive file(s)` : 'linked Drive files'} are not publicly downloadable. For each file: open it in Drive → Share → General access → "Anyone with the link" (Viewer) → republish.`
+            : `Publish stopped: ${fileCount ? `${fileCount} linked asset(s)` : 'linked assets'} could not be downloaded. Check the URLs in the workbook and republish.`,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Publish Failed',
+          description: msg.length > 300 ? `${msg.slice(0, 300)}…` : msg,
+          variant: 'destructive',
+        });
+      }
       throw err;
     } finally {
       setPublishing(false);
@@ -148,6 +221,7 @@ export const LTECourseUploadPage: React.FC = () => {
         onClose={() => setIsLearnerModalOpen(false)}
         snapshot={snapshot}
         course={previewCourse}
+        onCourseSaved={handlePreviewCourseSaved}
       />
     </div>
   );

@@ -187,6 +187,8 @@ describe('Header Normalization Unit Tests', () => {
 
   it('should handle combination of alias and pipe suffix', () => {
     expect(normalizeHeader('allowed_file_types (|)')).toBe('allowed_file_types');
+    expect(normalizeHeader('Prerequisites (|)')).toBe('prerequisites');
+    expect(normalizeHeader('WhatYoullLearn (|)')).toBe('what_youll_learn');
   });
 
   it('should be idempotent', () => {

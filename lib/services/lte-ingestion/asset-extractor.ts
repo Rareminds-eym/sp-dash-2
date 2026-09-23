@@ -1,5 +1,5 @@
 export const ASSET_EXTRACTION_CONFIG: Record<string, string[]> = {
-  artifact_templates: ['template_file_url', 'template_url', 'sample_output_url', 'resource_url'],
+  artifact_templates: ['file_url', 'template_file_url', 'template_url', 'sample_output_url', 'resource_url'],
   artifact_questions: ['reference_url', 'solution_url', 'asset_url', 'image_url'],
   module_artifacts: ['template_url', 'artifact_url', 'sample_url', 'starter_code_url', 'download_url'],
   e_content: ['url', 'media_url', 'asset_url', 'content_url', 'learning_content.context_link'],
@@ -7,6 +7,7 @@ export const ASSET_EXTRACTION_CONFIG: Record<string, string[]> = {
 };
 
 const URL_PATTERN = /https?:\/\/[^\s<>"'|]+/gi;
+const IMPORTABLE_HOSTS = new Set(['drive.google.com', 'docs.google.com']);
 
 export interface AssetOccurrence {
   tableName: string;
@@ -36,6 +37,15 @@ function urlsIn(value: unknown): string[] {
   return [];
 }
 
+function isImportableSourceUrl(urlString: string): boolean {
+  try {
+    const url = new URL(urlString);
+    return url.protocol === 'https:' && IMPORTABLE_HOSTS.has(url.hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
 export function extractAssets(
   snapshot: unknown,
   config: Record<string, string[]> = ASSET_EXTRACTION_CONFIG,
@@ -58,7 +68,7 @@ export function extractAssets(
         const value = nestedPath.length ? readNested(columnValue, nestedPath) : columnValue;
         const fieldPath = `tables.${tableName}.rows.${rowIndex}.${configuredPath}`;
 
-        for (const originalUrl of urlsIn(value)) {
+        for (const originalUrl of urlsIn(value).filter(isImportableSourceUrl)) {
           const occurrence: AssetOccurrence = { tableName, rowIndex, fieldPath };
           const existing = unique.get(originalUrl);
           if (existing) existing.occurrences.push(occurrence);

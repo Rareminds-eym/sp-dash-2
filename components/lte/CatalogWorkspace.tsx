@@ -8,11 +8,11 @@ import {
   GitBranch,
   RotateCcw,
   Edit,
-  ShieldAlert,
   RefreshCw,
+  Eye,
+  Download,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { DraftEditorModal } from './DraftEditorModal';
 import { FullCourseContentEditor } from './FullCourseContentEditor';
 import { RollbackModal } from './RollbackModal';
 
@@ -25,10 +25,27 @@ export const CatalogWorkspace: React.FC = () => {
   const [courseDetail, setCourseDetail] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'capabilities' | 'roles' | 'courses'>('courses');
   const [loading, setLoading] = useState<boolean>(true);
+  const [capabilitiesLoading, setCapabilitiesLoading] = useState<boolean>(false);
+  const [capabilitiesPage, setCapabilitiesPage] = useState<number>(1);
+  const [capabilitiesPagination, setCapabilitiesPagination] = useState({
+    page: 1,
+    limit: 25,
+    total: 0,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPreviousPage: false,
+  });
+  const [rolesLoading, setRolesLoading] = useState<boolean>(false);
+  const [rolesPage, setRolesPage] = useState<number>(1);
+  const [rolesPagination, setRolesPagination] = useState({
+    page: 1,
+    limit: 25,
+    total: 0,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPreviousPage: false,
+  });
 
-  // Modals
-  const [activeDraft, setActiveDraft] = useState<any>(null);
-  const [isDraftModalOpen, setIsDraftModalOpen] = useState<boolean>(false);
   const [isFullEditorOpen, setIsFullEditorOpen] = useState<boolean>(false);
   const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
   const [isRollbackModalOpen, setIsRollbackModalOpen] = useState<boolean>(false);
@@ -44,7 +61,23 @@ export const CatalogWorkspace: React.FC = () => {
       if (!res.ok || !data.success) throw new Error(data.error || 'Failed to load catalog workspace');
       setSummary(data.summary);
       setCapabilities(data.capabilities || []);
+      setCapabilitiesPagination((prev) => ({
+        ...prev,
+        page: 1,
+        total: data.summary?.capabilitiesCount || data.capabilities?.length || 0,
+        totalPages: Math.max(Math.ceil((data.summary?.capabilitiesCount || data.capabilities?.length || 0) / prev.limit), 1),
+        hasNextPage: (data.summary?.capabilitiesCount || data.capabilities?.length || 0) > prev.limit,
+        hasPreviousPage: false,
+      }));
       setRoles(data.roles || []);
+      setRolesPagination((prev) => ({
+        ...prev,
+        page: 1,
+        total: data.summary?.rolesCount || data.roles?.length || 0,
+        totalPages: Math.max(Math.ceil((data.summary?.rolesCount || data.roles?.length || 0) / prev.limit), 1),
+        hasNextPage: (data.summary?.rolesCount || data.roles?.length || 0) > prev.limit,
+        hasPreviousPage: false,
+      }));
       setCourses(data.courses || []);
     } catch (error: any) {
       toast({ title: 'Catalog Load Failed', description: error.message, variant: 'destructive' });
@@ -56,6 +89,49 @@ export const CatalogWorkspace: React.FC = () => {
   useEffect(() => {
     refreshAll();
   }, []);
+
+  const loadCapabilitiesPage = async (page: number) => {
+    setCapabilitiesLoading(true);
+    try {
+      const params = new URLSearchParams({ view: 'capabilities', page: String(page), limit: String(capabilitiesPagination.limit) });
+      const res = await fetch(`/api/admin/lte/workspace?${params}`, { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to load capabilities');
+      setCapabilities(data.capabilities || []);
+      setCapabilitiesPagination(data.pagination || capabilitiesPagination);
+      setCapabilitiesPage(data.pagination?.page || page);
+    } catch (error: any) {
+      toast({ title: 'Capabilities Load Failed', description: error.message, variant: 'destructive' });
+    } finally {
+      setCapabilitiesLoading(false);
+    }
+  };
+
+  const loadRolesPage = async (page: number) => {
+    setRolesLoading(true);
+    try {
+      const params = new URLSearchParams({ view: 'roles', page: String(page), limit: String(rolesPagination.limit) });
+      const res = await fetch(`/api/admin/lte/workspace?${params}`, { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to load roles');
+      setRoles(data.roles || []);
+      setRolesPagination(data.pagination || rolesPagination);
+      setRolesPage(data.pagination?.page || page);
+    } catch (error: any) {
+      toast({ title: 'Roles Load Failed', description: error.message, variant: 'destructive' });
+    } finally {
+      setRolesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'capabilities') {
+      loadCapabilitiesPage(capabilitiesPage);
+    }
+    if (activeTab === 'roles') {
+      loadRolesPage(rolesPage);
+    }
+  }, [activeTab]);
 
   const handleSelectCourse = async (course: any) => {
     setSelectedCourse(course);
@@ -73,101 +149,27 @@ export const CatalogWorkspace: React.FC = () => {
 
   const handleOpenDraft = async (course: any) => {
     if (course.sourceType !== 'course') return;
-    
-    // Open full content editor instead of simple draft modal
+
     setEditingCourseId(course.id);
     setIsFullEditorOpen(true);
   };
 
-  const handleRetireReactivate = async (course: any) => {
-    const action = course.lifecycle_status === 'RETIRED' ? 'REACTIVATE_COURSE' : 'RETIRE_COURSE';
-    try {
-      const res = await fetch('/api/admin/lte/lifecycle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, courseId: course.id }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast({
-          title: `Course ${action === 'RETIRE_COURSE' ? 'Retired' : 'Reactivated'}`,
-          description: `Course lifecycle status changed to ${data.lifecycleStatus}.`,
-        });
-        refreshAll();
-      } else {
-        toast({ title: 'Lifecycle Action Failed', description: data.error, variant: 'destructive' });
-      }
-    } catch (err: any) {
-      toast({ title: 'Action Error', description: err.message, variant: 'destructive' });
+  const handleViewCourse = (course: any) => {
+    if (!course) return;
+    setSelectedCourse(course);
+    handleSelectCourse(course);
+    if (course.sourceType === 'course') {
+      setEditingCourseId(course.id);
+      setIsFullEditorOpen(true);
     }
   };
 
-  const handleBatchMaterialize = async () => {
-    const levelsToMaterialize = courses.filter(c => c.sourceType === 'level');
-    if (levelsToMaterialize.length === 0) {
-      toast({ title: 'No Levels to Materialize', description: 'All courses are already materialized or are upload drafts.' });
-      return;
-    }
-
-    const confirmed = window.confirm(`Materialize ${levelsToMaterialize.length} level(s) to courses? This will create course records for all published levels.`);
-    if (!confirmed) return;
-
-    try {
-      const levelIds = levelsToMaterialize.map(l => l.id);
-      const res = await fetch('/api/admin/lte/materialize-batch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ levelIds }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast({
-          title: 'Batch Materialize Complete',
-          description: `${data.results.successful.length} created, ${data.results.skipped.length} skipped, ${data.results.failed.length} failed`,
-        });
-        refreshAll();
-      } else {
-        toast({ title: 'Batch Materialize Failed', description: data.error, variant: 'destructive' });
-      }
-    } catch (err: any) {
-      toast({ title: 'Batch Materialize Error', description: err.message, variant: 'destructive' });
-    }
-  };
-
-  const handleMaterialize = async (level: any) => {
-    try {
-      const res = await fetch('/api/admin/lte/materialize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ levelId: level.id }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast({
-          title: 'Level Materialized',
-          description: `Created course ${data.course.course_code} with initial version`,
-        });
-        refreshAll();
-        // Auto-select the newly created course
-        if (data.course) {
-          const newCourse = {
-            ...data.course,
-            sourceType: 'course',
-            rowKey: `course:${data.course.id}`,
-            sourceRecordId: data.course.id,
-            publishedVersionNo: 1,
-            assignableStatus: 'PENDING_ASSET_READINESS',
-          };
-          setSelectedCourse(newCourse);
-          handleSelectCourse(newCourse);
-        }
-      } else {
-        toast({ title: 'Materialization Failed', description: data.error, variant: 'destructive' });
-      }
-    } catch (err: any) {
-      toast({ title: 'Materialize Error', description: err.message, variant: 'destructive' });
-    }
-  };
+  const mappedCapabilities = selectedCourse && courseDetail?.mappedCapabilities
+    ? courseDetail.mappedCapabilities
+    : [];
+  const mappedRoles = selectedCourse && courseDetail?.mappedRoles
+    ? courseDetail.mappedRoles
+    : [];
 
   return (
     <div className="w-full space-y-6 text-slate-900 dark:text-slate-100">
@@ -181,19 +183,10 @@ export const CatalogWorkspace: React.FC = () => {
             </span>
           </h2>
           <p className="text-xs text-slate-500">
-            Real-time management of Capabilities, Roles, Courses, Versions, Mappings, and Asset Assignability
+            Real-time management of Capabilities, Roles, Course Levels, and Catalog Versions
           </p>
         </div>
         <div className="flex gap-2">
-          {courses.filter(c => c.sourceType === 'level').length > 0 && (
-            <button
-              onClick={handleBatchMaterialize}
-              className="px-3 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 flex items-center gap-1.5"
-            >
-              <Layers className="w-3.5 h-3.5" />
-              <span>Materialize All Levels ({courses.filter(c => c.sourceType === 'level').length})</span>
-            </button>
-          )}
           <button
             onClick={refreshAll}
             disabled={loading}
@@ -266,7 +259,7 @@ export const CatalogWorkspace: React.FC = () => {
           }`}
         >
           <Layers className="w-3.5 h-3.5" />
-          <span>Capabilities ({capabilities.length})</span>
+          <span>Capabilities ({summary?.capabilitiesCount ?? capabilities.length})</span>
         </button>
 
         <button
@@ -278,17 +271,17 @@ export const CatalogWorkspace: React.FC = () => {
           }`}
         >
           <Briefcase className="w-3.5 h-3.5" />
-          <span>Roles ({roles.length})</span>
+          <span>Roles ({summary?.rolesCount ?? roles.length})</span>
         </button>
       </div>
       <p className="-mt-4 text-xs text-slate-500 dark:text-slate-400">
         {activeTab === 'courses' && (
           <>
-            Courses are loaded only from the canonical courses table. Upload snapshots and ingested levels are not used as display fallbacks.
+            Existing levels are the canonical course records; versions are tracked through catalog_versions.
           </>
         )}
-        {activeTab === 'capabilities' && 'Capabilities are skills or knowledge areas that courses develop; they are not courses.'}
-        {activeTab === 'roles' && 'Roles group the capabilities expected for a job; they are not courses.'}
+        {activeTab === 'capabilities' && 'Capabilities with L1–L5 ingestion progress. Mapped capability for the selected course is shown in the Course Detail Inspector.'}
+        {activeTab === 'roles' && 'Roles with mapped capability counts. Roles for the selected course are shown in the Course Detail Inspector.'}
       </p>
 
       {/* COURSES TAB CONTENT */}
@@ -299,18 +292,27 @@ export const CatalogWorkspace: React.FC = () => {
             <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Courses List</h3>
             <p className="mb-3 mt-1 text-xs text-slate-500">Select a row for details. Only Published Course records support draft editing here.</p>
             <div className="space-y-3 md:hidden">
+              {courses.length === 0 && (
+                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center dark:border-slate-700 dark:bg-slate-800/50">
+                  <p className="text-sm font-bold text-slate-700 dark:text-slate-200">No catalog courses yet</p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Upload and publish a workbook to create course rows here.</p>
+                </div>
+              )}
               {courses.map((crs) => (
                 <article key={`mobile:${crs.rowKey}`} onClick={() => handleSelectCourse(crs)} className={`rounded-xl border p-3 ${selectedCourse?.rowKey === crs.rowKey ? 'border-indigo-400 bg-indigo-50/60 dark:bg-indigo-950/30' : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900'}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0"><p className="font-bold text-indigo-600 dark:text-indigo-400">{crs.course_code}</p><p className="mt-0.5 truncate text-xs font-medium text-slate-700 dark:text-slate-200">{crs.course_name}</p></div>
-                    <span className={`shrink-0 rounded border px-2 py-0.5 text-[10px] font-semibold ${crs.sourceType === 'course' ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' : crs.sourceType === 'level' ? 'border-blue-300 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300' : 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300'}`}>{crs.sourceType === 'course' ? 'Published Course' : crs.sourceType === 'level' ? 'Ingested Level' : 'Upload Draft'}</span>
+                    <span className={`shrink-0 rounded border px-2 py-0.5 text-[10px] font-semibold ${crs.sourceType === 'course' ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' : 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300'}`}>{crs.sourceType === 'course' ? 'Catalog Course' : 'Upload Draft'}</span>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-600 dark:text-slate-300"><span>Version: {crs.publishedVersionNo ? `V${crs.publishedVersionNo}` : 'None'}</span><span>{crs.assignableStatus === 'ASSIGNABLE' ? 'Assignable' : crs.sourceType === 'course' ? 'Pending assets' : 'Not materialized'}</span><span>Status: {crs.lifecycle_status}</span></div>
+                  <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-600 dark:text-slate-300"><span>Version: {crs.publishedVersionNo ? `V${crs.publishedVersionNo}` : 'None'}</span><span>{crs.assignableStatus === 'ASSIGNABLE' ? 'Assignable' : 'Not assignable'}</span><span>Status: {crs.lifecycle_status}</span></div>
                   <div className="mt-3 border-t border-slate-100 pt-2 dark:border-slate-800" onClick={(event) => event.stopPropagation()}>
                     {crs.sourceType === 'course' ? (
-                      <div className="flex flex-wrap gap-2"><button onClick={() => handleOpenDraft(crs)} className="rounded border border-indigo-200 px-2.5 py-1 text-[11px] font-semibold text-indigo-700 dark:border-indigo-800 dark:text-indigo-300">Edit draft</button><button onClick={() => { setSelectedCourse(crs); handleSelectCourse(crs); setRollbackCourse(crs); setIsRollbackModalOpen(true); }} className="rounded border border-purple-200 px-2.5 py-1 text-[11px] font-semibold text-purple-700 dark:border-purple-800 dark:text-purple-300">Rollback</button><button onClick={() => handleRetireReactivate(crs)} className="rounded border border-red-200 px-2.5 py-1 text-[11px] font-semibold text-red-600 dark:border-red-900 dark:text-red-300">{crs.lifecycle_status === 'RETIRED' ? 'Reactivate' : 'Retire'}</button></div>
-                    ) : crs.sourceType === 'level' ? (
-                      <button onClick={() => handleMaterialize(crs)} className="rounded border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">Materialize to Course</button>
+                      <div className="flex flex-wrap gap-2">
+                        <button onClick={() => handleViewCourse(crs)} className="flex items-center gap-1 rounded border border-indigo-200 bg-indigo-50/60 px-2.5 py-1 text-[11px] font-semibold text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300">
+                          <Eye className="h-3 w-3" /> View content
+                        </button>
+                        <button onClick={() => handleOpenDraft(crs)} className="rounded border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-300">Edit draft</button>
+                      </div>
                     ) : <p className="text-[11px] text-slate-600 dark:text-slate-300">Edit in Mapping & Review.</p>}
                   </div>
                 </article>
@@ -330,6 +332,16 @@ export const CatalogWorkspace: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {courses.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-12 text-center">
+                        <div className="mx-auto max-w-sm">
+                          <p className="text-sm font-bold text-slate-700 dark:text-slate-200">No catalog courses yet</p>
+                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Upload and publish a workbook to create course rows here.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                   {courses.map((crs) => (
                     <React.Fragment key={crs.rowKey || `${crs.sourceType}:${crs.id}:${crs.course_code}`}>
                     <tr
@@ -340,7 +352,7 @@ export const CatalogWorkspace: React.FC = () => {
                     >
                       <td className="p-2.5 font-bold text-indigo-600 dark:text-indigo-400">{crs.course_code}</td>
                       <td className="p-2.5 font-medium">{crs.course_name}</td>
-                      <td className="p-2.5"><span className={`whitespace-nowrap rounded border px-2 py-0.5 text-[10px] font-semibold ${crs.sourceType === 'course' ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' : crs.sourceType === 'level' ? 'border-blue-300 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300' : 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300'}`}>{crs.sourceType === 'course' ? 'Published Course' : crs.sourceType === 'level' ? 'Ingested Level' : 'Upload Draft'}</span></td>
+                      <td className="p-2.5"><span className={`whitespace-nowrap rounded border px-2 py-0.5 text-[10px] font-semibold ${crs.sourceType === 'course' ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' : 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300'}`}>{crs.sourceType === 'course' ? 'Catalog Course' : 'Upload Draft'}</span></td>
                       <td className="p-2.5">
                         {crs.publishedVersionNo ? (
                           <span className="px-2 py-0.5 text-[11px] font-semibold rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -357,7 +369,7 @@ export const CatalogWorkspace: React.FC = () => {
                           </span>
                         ) : (
                           <span className="px-2 py-0.5 text-[11px] font-semibold rounded bg-amber-100 text-amber-800">
-                            {crs.sourceType === 'course' ? 'Pending Assets' : 'Not materialized'}
+                            Not assignable
                           </span>
                         )}
                       </td>
@@ -372,57 +384,31 @@ export const CatalogWorkspace: React.FC = () => {
                           {crs.lifecycle_status}
                         </span>
                       </td>
-                      <td className="p-2.5 text-right space-x-1" onClick={(e) => e.stopPropagation()}>
-                        {crs.sourceType === 'level' ? (
-                          <button
-                            onClick={() => handleMaterialize(crs)}
-                            className="px-2.5 py-1 rounded border border-emerald-200 bg-emerald-50 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
-                            title="Create course record from this published level"
-                          >
-                            Materialize
-                          </button>
-                        ) : (
-                          <>
+                      <td className="p-2.5 text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="inline-flex items-center gap-1">
                             <button
                               disabled={crs.sourceType !== 'course'}
-                              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-indigo-600 disabled:cursor-not-allowed disabled:text-slate-300 dark:disabled:text-slate-700"
-                              title={crs.sourceType === 'course' ? 'Edit draft' : crs.sourceType === 'upload' ? 'Edit this in Mapping & Review' : 'Materialize this level first'}
+                              className="p-1 rounded text-indigo-600 transition-colors hover:bg-indigo-50 disabled:cursor-not-allowed disabled:text-slate-300 dark:text-indigo-400 dark:hover:bg-indigo-950/50 dark:disabled:text-slate-700"
+                              title={crs.sourceType === 'course' ? 'View full course content & 6E stages' : 'Open after publish'}
+                              onClick={() => handleViewCourse(crs)}
+                              aria-label={crs.sourceType === 'course' ? `View content for ${crs.course_code}` : `View content unavailable until ${crs.course_code} is published`}
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              disabled={crs.sourceType !== 'course'}
+                              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 disabled:cursor-not-allowed disabled:text-slate-300 dark:text-slate-400 dark:disabled:text-slate-700"
+                              title={crs.sourceType === 'course' ? 'Edit draft' : 'Edit this in Mapping & Review'}
                               onClick={() => handleOpenDraft(crs)}
-                              aria-label={crs.sourceType === 'course' ? `Edit ${crs.course_code}` : crs.sourceType === 'upload' ? `${crs.course_code} is editable in Mapping and Review` : `${crs.course_code} must be materialized first`}
+                              aria-label={crs.sourceType === 'course' ? `Edit ${crs.course_code}` : `${crs.course_code} is editable in Mapping and Review`}
                             >
                               <Edit className="w-3.5 h-3.5" />
                             </button>
-                            <button
-                              disabled={crs.sourceType !== 'course'}
-                              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-purple-600 disabled:cursor-not-allowed disabled:text-slate-300"
-                              title={crs.sourceType === 'course' ? 'Rollback version' : 'Rollback is available after materialization'}
-                              aria-label={crs.sourceType === 'course' ? `Rollback ${crs.course_code}` : `Rollback unavailable until ${crs.course_code} is materialized`}
-                              onClick={() => {
-                                setSelectedCourse(crs);
-                                handleSelectCourse(crs);
-                                setRollbackCourse(crs);
-                                setIsRollbackModalOpen(true);
-                              }}
-                            >
-                              <RotateCcw className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              disabled={crs.sourceType !== 'course'}
-                              className={`p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 ${
-                                crs.sourceType !== 'course' ? 'cursor-not-allowed text-slate-300' : crs.lifecycle_status === 'RETIRED' ? 'text-green-600' : 'text-red-500'
-                              }`}
-                              title={crs.sourceType !== 'course' ? 'Lifecycle actions are available for published courses only' : crs.lifecycle_status === 'RETIRED' ? 'Reactivate' : 'Retire'}
-                              aria-label={crs.sourceType === 'course' ? `${crs.lifecycle_status === 'RETIRED' ? 'Reactivate' : 'Retire'} ${crs.course_code}` : `Lifecycle actions unavailable until ${crs.course_code} is materialized`}
-                              onClick={() => handleRetireReactivate(crs)}
-                            >
-                              <ShieldAlert className="w-3.5 h-3.5" />
-                            </button>
-                          </>
-                        )}
+                          </div>
                       </td>
                     </tr>
                     {crs.sourceType !== 'course' && selectedCourse?.rowKey === crs.rowKey && (
-                      <tr className="bg-slate-50 dark:bg-slate-800/40"><td colSpan={7} className="px-3 py-2 text-[11px] text-slate-600 dark:text-slate-300">{crs.sourceType === 'upload' ? 'Edit this record in Mapping & Review.' : 'Click "Materialize" to create a course record from this published level, then you can edit, manage versions, and view full content.'}</td></tr>
+                      <tr className="bg-slate-50 dark:bg-slate-800/40"><td colSpan={7} className="px-3 py-2 text-[11px] text-slate-600 dark:text-slate-300">{crs.sourceType === 'upload' ? 'Edit this record in Mapping & Review.' : 'This record is managed directly from the existing levels catalog.'}</td></tr>
                     )}
                     </React.Fragment>
                   ))}
@@ -444,19 +430,6 @@ export const CatalogWorkspace: React.FC = () => {
 
             {selectedCourse && courseDetail ? (
               <div className="space-y-4 text-xs">
-                {courseDetail.sourceType === 'level' && (
-                  <div className="rounded-lg border-2 border-emerald-300 bg-emerald-50 p-4 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">
-                    <p className="font-bold text-sm mb-2">📋 Action Required: Materialize This Level</p>
-                    <p className="text-xs mb-3">{courseDetail.sourceMessage}</p>
-                    <button 
-                      onClick={() => handleMaterialize(selectedCourse)}
-                      className="w-full px-3 py-2 rounded-lg border-2 border-emerald-600 bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors"
-                    >
-                      ✨ Materialize Now
-                    </button>
-                  </div>
-                )}
-
                 {courseDetail.sourceType === 'upload' && courseDetail.sourceMessage && (
                   <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">{courseDetail.sourceMessage}</div>
                 )}
@@ -465,6 +438,32 @@ export const CatalogWorkspace: React.FC = () => {
                   <p className="font-bold text-sm text-slate-900 dark:text-slate-100">{courseDetail.course.course_name}</p>
                   <p className="text-slate-500">ID: {courseDetail.course.id}</p>
                   <p className="text-slate-500">Lifecycle Status: {courseDetail.course.lifecycle_status || 'ACTIVE'}</p>
+                  <p className="text-slate-500">
+                    Asset readiness:{' '}
+                    <span className={courseDetail.assetStatus === 'staged' || courseDetail.assetStatus === 'none' ? 'font-semibold text-emerald-700' : 'font-semibold text-amber-700'}>
+                      {courseDetail.assetStatus === 'staged' ? `Verified (${courseDetail.sourceAssets?.length || 0} assets)` : courseDetail.assetStatus === 'none' ? 'No linked assets' : 'Pending'}
+                    </span>
+                  </p>
+                  {selectedCourse?.sourceType === 'course' && (
+                    <div className="flex gap-2 border-t border-slate-200 pt-2 dark:border-slate-700">
+                      <button
+                        onClick={() => handleViewCourse(selectedCourse)}
+                        className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition-all hover:from-indigo-700 hover:to-purple-700"
+                        title="View full course structure, 6E stages, artifacts, and content"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        <span>View Course Content</span>
+                      </button>
+                      <button
+                        onClick={() => handleOpenDraft(selectedCourse)}
+                        className="flex items-center justify-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                        title="Edit course draft"
+                      >
+                        <Edit className="h-3.5 w-3.5" />
+                        <span>Edit</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {!courseDetail.sourceType && courseDetail.sourceMessage && (
@@ -476,6 +475,19 @@ export const CatalogWorkspace: React.FC = () => {
                   <h4 className="font-semibold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-1.5">
                     <GitBranch className="w-3.5 h-3.5 text-purple-600" />
                     <span>{courseDetail.sourceType ? 'Course Version History — available after materialization' : `Course Version History (${courseDetail.versions?.length || 0})`}</span>
+                    {courseDetail.versions?.some((v: any) => v.status === 'PUBLISHED') && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRollbackCourse(selectedCourse);
+                          setIsRollbackModalOpen(true);
+                        }}
+                        className="ml-auto inline-flex items-center gap-1 rounded border border-purple-200 bg-purple-50 px-2 py-1 text-[11px] font-semibold text-purple-700 hover:bg-purple-100 dark:border-purple-800 dark:bg-purple-950/40 dark:text-purple-300"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        Restore version
+                      </button>
+                    )}
                   </h4>
                   <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
                     {courseDetail.versions?.map((v: any) => (
@@ -499,8 +511,25 @@ export const CatalogWorkspace: React.FC = () => {
                             {v.change_reason || 'Published update'} • {new Date(v.created_at).toLocaleString()}
                           </p>
                         </div>
+                        {v.status === 'PUBLISHED' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRollbackCourse(selectedCourse);
+                              setIsRollbackModalOpen(true);
+                            }}
+                            className="rounded border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                          >
+                            Restore
+                          </button>
+                        )}
                       </div>
                     ))}
+                    {(!courseDetail.versions || courseDetail.versions.length === 0) && (
+                      <div className="rounded-lg border border-dashed border-slate-300 px-3 py-6 text-center text-[11px] text-slate-500 dark:border-slate-700">
+                        Publish this course again to create version history.
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -513,49 +542,140 @@ export const CatalogWorkspace: React.FC = () => {
 
       {/* CAPABILITIES TAB CONTENT */}
       {activeTab === 'capabilities' && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
-          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3">Capabilities & Coverage Status</h3>
-          <table className="w-full text-xs text-left text-slate-600 dark:text-slate-400">
-            <thead className="bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold border-b">
-              <tr>
-                <th className="p-2.5">Capability Code</th>
-                <th className="p-2.5">Name</th>
-                <th className="p-2.5">Actual Courses</th>
-                <th className="p-2.5">Planned Courses</th>
-                <th className="p-2.5">Coverage Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {capabilities.map((cap) => (
-                <tr key={cap.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                  <td className="p-2.5 font-bold text-blue-600">{cap.code}</td>
-                  <td className="p-2.5">{cap.name}</td>
-                  <td className="p-2.5 font-semibold">{cap.actualCourseCount}</td>
-                  <td className="p-2.5 font-semibold">{cap.plannedCourseCount !== null ? cap.plannedCourseCount : 'N/A'}</td>
-                  <td className="p-2.5">
-                    <span
-                      className={`px-2 py-0.5 text-[11px] font-semibold rounded ${
-                        cap.coverageStatus === 'COMPLETE'
-                          ? 'bg-emerald-600 text-white'
-                          : cap.coverageStatus === 'PARTIAL'
-                          ? 'bg-amber-500 text-white'
-                          : 'bg-slate-200 text-slate-700'
-                      }`}
-                    >
-                      {cap.coverageStatus}
-                    </span>
-                  </td>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Capabilities & Level Progression (L1 - L5)</h3>
+              <p className="text-xs text-slate-500">
+                Track level ingestion progress. Click any level badge (e.g. L2) to download a pre-filled Excel template for that capability level.
+                {selectedCourse ? ` Selected course maps to ${selectedCourse.course_code}.` : ''}
+              </p>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left text-slate-600 dark:text-slate-400">
+              <thead className="bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold border-b">
+                <tr>
+                  <th className="p-2.5 whitespace-nowrap">Capability Code</th>
+                  <th className="p-2.5">Name</th>
+                  <th className="p-2.5 whitespace-nowrap">Level Coverage (L1 - L5)</th>
+                  <th className="p-2.5 whitespace-nowrap">Ingested / Total</th>
+                  <th className="p-2.5 whitespace-nowrap">Coverage Status</th>
+                  <th className="p-2.5 text-right whitespace-nowrap">Download Pre-filled Template</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {capabilitiesLoading && (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-12 text-center text-xs text-slate-500">Loading capabilities…</td>
+                  </tr>
+                )}
+                {!capabilitiesLoading && capabilities.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-12 text-center">
+                      <p className="text-sm font-bold text-slate-700 dark:text-slate-200">No capabilities found</p>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Upload a workbook to populate the catalog.</p>
+                    </td>
+                  </tr>
+                )}
+                {!capabilitiesLoading && capabilities.map((cap: any) => {
+                  const levels = cap.levelsBreakdown || [1, 2, 3, 4, 5].map((levelNo: number) => ({
+                    levelNo,
+                    label: `L${levelNo}`,
+                    status: (cap.actualCourseCount || 0) >= levelNo ? 'PUBLISHED' : 'PENDING',
+                  }));
+                  const completed = cap.completedLevelsCount ?? levels.filter((l: any) => l.status !== 'PENDING').length;
+                  const total = cap.totalLevelsCount || 5;
+                  const percent = Math.round((completed / total) * 100);
+                  const nextPending = levels.find((l: any) => l.status === 'PENDING') || levels[0];
+                  return (
+                    <tr key={cap.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                      <td className="p-2.5 font-bold text-indigo-600 dark:text-indigo-400">{cap.code}</td>
+                      <td className="p-2.5 font-medium text-slate-800 dark:text-slate-200">{cap.name}</td>
+                      <td className="p-2.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {levels.map((lvl: any) => {
+                            const isPub = lvl.status === 'PUBLISHED';
+                            const isIng = lvl.status === 'INGESTED';
+                            return (
+                              <a
+                                key={lvl.levelNo}
+                                href={`/api/admin/lte/template?capabilityCode=${encodeURIComponent(cap.code)}&levelNo=${lvl.levelNo}`}
+                                download={`LTE_${cap.code}_L${lvl.levelNo}_Template.xlsx`}
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border transition-all cursor-pointer hover:scale-105 ${
+                                  isPub
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
+                                    : isIng
+                                    ? 'bg-blue-50 text-blue-800 border-blue-300 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800 hover:bg-blue-100'
+                                    : 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 hover:bg-amber-100'
+                                }`}
+                                title={`Download pre-filled Excel template for ${cap.code} Level ${lvl.levelNo}`}
+                              >
+                                <span>{isPub ? `✓ ${lvl.label}` : isIng ? `• ${lvl.label}` : `${lvl.label}`}</span>
+                                <Download className="w-2.5 h-2.5 opacity-70" />
+                              </a>
+                            );
+                          })}
+                        </div>
+                      </td>
+                      <td className="p-2.5">
+                        <div className="space-y-1 w-28">
+                          <div className="flex justify-between text-[11px] font-semibold">
+                            <span className="text-slate-700 dark:text-slate-300">{completed} / {total} Levels</span>
+                            <span className="text-indigo-600 dark:text-indigo-400">{percent}%</span>
+                          </div>
+                          <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-indigo-600 h-full rounded-full transition-all duration-500" style={{ width: `${percent}%` }} />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-2.5 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-1 text-[11px] font-bold rounded-full whitespace-nowrap ${completed === 5 ? 'bg-emerald-600 text-white' : completed > 0 ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}>
+                          {completed === 5 ? 'COMPLETE (L1–L5)' : completed > 0 ? `PARTIAL (${completed}/5)` : 'NOT STARTED'}
+                        </span>
+                      </td>
+                      <td className="p-2.5 text-right">
+                        <a
+                          href={`/api/admin/lte/template?capabilityCode=${encodeURIComponent(cap.code)}&levelNo=${nextPending.levelNo}`}
+                          download={`LTE_${cap.code}_L${nextPending.levelNo}_Template.xlsx`}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 shadow-2xs transition-colors"
+                          title={`Download pre-filled Excel template to create ${cap.code} Level ${nextPending.levelNo}`}
+                        >
+                          <Download className="w-3 h-3" />
+                          <span>L{nextPending.levelNo} Template</span>
+                        </a>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-slate-500">
+            <span>Page {capabilitiesPagination.page} of {capabilitiesPagination.totalPages} ({capabilitiesPagination.total} total)</span>
+            <div className="flex gap-2">
+              <button disabled={!capabilitiesPagination.hasPreviousPage || capabilitiesLoading} onClick={() => loadCapabilitiesPage(capabilitiesPage - 1)} className="px-2.5 py-1 rounded border border-slate-200 dark:border-slate-700 disabled:opacity-50">Previous</button>
+              <button disabled={!capabilitiesPagination.hasNextPage || capabilitiesLoading} onClick={() => loadCapabilitiesPage(capabilitiesPage + 1)} className="px-2.5 py-1 rounded border border-slate-200 dark:border-slate-700 disabled:opacity-50">Next</button>
+            </div>
+          </div>
+          {selectedCourse && mappedCapabilities.length > 0 && (
+            <p className="text-[11px] text-slate-500">Selected course {selectedCourse.course_code} maps to {mappedCapabilities[0]?.code}.</p>
+          )}
         </div>
       )}
 
       {/* ROLES TAB CONTENT */}
       {activeTab === 'roles' && (
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
-          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3">Roles & Mapped Capabilities</h3>
+          <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Roles & Mapped Capabilities</h3>
+              <p className="mt-1 text-xs text-slate-500">
+                Full role list with capability counts.
+                {selectedCourse ? ` Selected course maps to ${mappedRoles.length} role(s).` : ''}
+              </p>
+            </div>
+          </div>
           <table className="w-full text-xs text-left text-slate-600 dark:text-slate-400">
             <thead className="bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold border-b">
               <tr>
@@ -564,7 +684,20 @@ export const CatalogWorkspace: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {roles.map((r) => (
+              {rolesLoading && (
+                <tr>
+                  <td colSpan={2} className="px-4 py-12 text-center text-xs text-slate-500">Loading roles…</td>
+                </tr>
+              )}
+              {!rolesLoading && roles.length === 0 && (
+                <tr>
+                  <td colSpan={2} className="px-4 py-12 text-center">
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">No roles found</p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Roles populate from the reference tables.</p>
+                  </td>
+                </tr>
+              )}
+              {!rolesLoading && roles.map((r: any) => (
                 <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                   <td className="p-2.5 font-bold text-purple-600">{r.name || r.code}</td>
                   <td className="p-2.5 font-semibold">{r.activeCapabilityCount}</td>
@@ -572,16 +705,15 @@ export const CatalogWorkspace: React.FC = () => {
               ))}
             </tbody>
           </table>
+          <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500">
+            <span>Page {rolesPagination.page} of {rolesPagination.totalPages} ({rolesPagination.total} total)</span>
+            <div className="flex gap-2">
+              <button disabled={!rolesPagination.hasPreviousPage || rolesLoading} onClick={() => loadRolesPage(rolesPage - 1)} className="px-2.5 py-1 rounded border border-slate-200 dark:border-slate-700 disabled:opacity-50">Previous</button>
+              <button disabled={!rolesPagination.hasNextPage || rolesLoading} onClick={() => loadRolesPage(rolesPage + 1)} className="px-2.5 py-1 rounded border border-slate-200 dark:border-slate-700 disabled:opacity-50">Next</button>
+            </div>
+          </div>
         </div>
       )}
-
-      {/* Modals */}
-      <DraftEditorModal
-        isOpen={isDraftModalOpen}
-        onClose={() => setIsDraftModalOpen(false)}
-        draft={activeDraft}
-        onDraftSaved={refreshAll}
-      />
 
       <FullCourseContentEditor
         isOpen={isFullEditorOpen}
@@ -600,6 +732,7 @@ export const CatalogWorkspace: React.FC = () => {
         versions={courseDetail?.versions || []}
         onRollbackComplete={refreshAll}
       />
+
     </div>
   );
 };

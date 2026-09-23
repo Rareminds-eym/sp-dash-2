@@ -83,6 +83,8 @@ export const LTECatalogSpecificationStep: React.FC<LTECatalogSpecificationStepPr
     }
   }, [snapshot?.uploadId]);
 
+
+
   const loadReviewData = async () => {
     if (!snapshot?.uploadId) return;
 
@@ -163,6 +165,19 @@ export const LTECatalogSpecificationStep: React.FC<LTECatalogSpecificationStepPr
   
   // Sort modules by index (module_no) in ascending order
   const sortedModules = [...modules].sort((a, b) => a.index - b.index);
+  const artifactCounts = sortedModules.reduce(
+    (counts, module) => {
+      module.artifactPractices.forEach((artifact) => {
+        if (artifact.artifactType === 'final') {
+          counts.final += 1;
+        } else {
+          counts.practice += 1;
+        }
+      });
+      return counts;
+    },
+    { practice: 0, final: 0 }
+  );
 
   const handleInputChange = (field: keyof LTECourseMetadata, value: string) => {
     setLevelCourses((prev) => {
@@ -416,7 +431,7 @@ export const LTECatalogSpecificationStep: React.FC<LTECatalogSpecificationStepPr
               MODULE CURRICULUM BREAKDOWN (MODULES 0 TO {sortedModules.length - 1}) – TOTAL ({sortedModules.length})
             </h3>
             <p className="text-xs text-[#647b9c] dark:text-slate-400 mt-1.5">
-              Each module includes the 6 Es Framework (Engage, Explore, Explain, Express, Empower, Evolve) + 2 Artifact Practices.
+              Each module includes the 6 Es Framework (Engage, Explore, Explain, Express, Empower, Evolve). Practice artifacts: {artifactCounts.practice}; final artifacts: {artifactCounts.final}.
             </p>
           </div>
 
@@ -467,16 +482,30 @@ export const LTECatalogSpecificationStep: React.FC<LTECatalogSpecificationStepPr
                   })}
               </div>
 
-              {/* 2 Artifact Practices Pills */}
+              {/* Artifact Pills */}
               <div className="flex flex-wrap gap-2 pt-1">
-                {mod.artifactPractices.map((art) => (
-                  <span
-                    key={art.id}
-                    className="px-4 py-1.5 rounded-full text-xs font-medium bg-white dark:bg-slate-900 border border-[#cfdded] dark:border-slate-700 text-[#2c466c] dark:text-slate-300 shadow-2xs"
-                  >
-                    {art.title}
+                {mod.artifactPractices.map((art, artifactIndex) => {
+                  const isFinal = art.artifactType === 'final';
+                  const label = art.title || (isFinal ? `Final Artifact ${artifactIndex + 1}` : `Practice Artifact ${artifactIndex + 1}`);
+
+                  return (
+                    <span
+                      key={art.id}
+                      className={`px-4 py-1.5 rounded-full text-xs font-medium shadow-2xs ${
+                        isFinal
+                          ? 'bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200'
+                          : 'bg-white dark:bg-slate-900 border border-[#cfdded] dark:border-slate-700 text-[#2c466c] dark:text-slate-300'
+                      }`}
+                    >
+                      {isFinal ? `Final Artifact: ${label}` : label}
+                    </span>
+                  );
+                })}
+                {!mod.artifactPractices.some((art) => art.artifactType !== 'final') && (
+                  <span className="px-4 py-1.5 rounded-full text-xs font-medium bg-white dark:bg-slate-900 border border-[#cfdded] dark:border-slate-700 text-[#647b9c] dark:text-slate-400 shadow-2xs">
+                    No Practice Artifact
                   </span>
-                ))}
+                )}
               </div>
             </div>
           ))}

@@ -92,6 +92,43 @@ describe('asset download validation', () => {
     expect(asset.contentHash).toBe(createHash('sha256').update('pdf data').digest('hex'));
   });
 
+  it('downloads Google editor links through export URLs', async () => {
+    const mockedFetchMock = vi.fn(async (_input: Parameters<typeof fetch>[0], _init?: Parameters<typeof fetch>[1]) => new Response('deck data', {
+      status: 200,
+      headers: {
+        'content-type': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      },
+    }));
+    const mockedFetch = mockedFetchMock as unknown as typeof fetch;
+
+    const asset = await validateAndDownloadAsset('https://docs.google.com/presentation/d/deck-id/edit?usp=sharing', {
+      dependencies: dependencies(mockedFetch),
+    });
+
+    expect(String(mockedFetchMock.mock.calls[0][0])).toBe('https://docs.google.com/presentation/d/deck-id/export/pptx');
+    expect(asset.mimeType).toBe('application/vnd.openxmlformats-officedocument.presentationml.presentation');
+  });
+
+  it('falls back to Drive file-id downloads when the Google editor export returns HTML', async () => {
+    const mockedFetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('<html>login</html>', {
+        status: 200,
+        headers: { 'content-type': 'text/html' },
+      }))
+      .mockResolvedValueOnce(assetResponse('pdf fallback'));
+    const mockedFetch = mockedFetchMock as unknown as typeof fetch;
+
+    const asset = await validateAndDownloadAsset('https://docs.google.com/presentation/d/deck-id/edit', {
+      dependencies: dependencies(mockedFetch),
+    });
+
+    expect(String(mockedFetchMock.mock.calls[0][0])).toBe('https://docs.google.com/presentation/d/deck-id/export/pptx');
+    expect(String(mockedFetchMock.mock.calls[1][0])).toBe('https://drive.google.com/uc?export=download&id=deck-id');
+    expect(asset.mimeType).toBe('application/pdf');
+    expect(asset.contentHash).toBe(createHash('sha256').update('pdf fallback').digest('hex'));
+  });
+
   it('enforces per-asset timeouts', async () => {
     const neverFetch = vi.fn((_url, init) => new Promise<Response>((_resolve, reject) => {
       init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));

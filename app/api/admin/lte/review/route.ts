@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import Logger, { getErrorMessage } from '@/lib/logger';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { supabaseLTE } from '@/lib/supabase-lte';
-import { LTEIngestionSnapshot } from '@/types/lte-ingestion';
+import { LTEIngestionSnapshot, LTELevelCourse } from '@/types/lte-ingestion';
 import { formatText } from '@/lib/services/lte-ingestion/text-formatter';
+import { calculateHash } from '@/lib/services/lte-ingestion/snapshot-serializer';
 
 const logger = new Logger('LTEReviewAPI');
 
@@ -14,6 +15,8 @@ interface ReviewResponse {
   uploadId?: string;
   sourceName?: string;
   status?: string;
+  reviewedSnapshotHash?: string;
+  snapshot?: LTEIngestionSnapshot;
   validationReport?: any;
   courseSpecification?: any;
   modules?: any[];
@@ -50,41 +53,38 @@ export async function GET(request: NextRequest): Promise<NextResponse<ReviewResp
     const { searchParams } = new URL(request.url);
     const uploadId = searchParams.get('uploadId');
 
-    if (!uploadId) {
-      logger.warn('Missing uploadId parameter');
-      return NextResponse.json(
-        { success: false, error: 'Missing uploadId query parameter' },
-        { status: 400 }
-      );
-    }
+    logger.info('Fetching catalog version for review', { uploadId });
 
-    logger.info('Fetching upload record', { uploadId });
-
-    // Query lte_catalog_uploads table
-    const { data: uploadRecord, error: fetchError } = await supabaseLTE
-      .from('lte_catalog_uploads')
+    let versionQuery = supabaseLTE
+      .from('catalog_versions')
       .select('*')
-      .eq('id', uploadId)
-      .single();
+      .eq('entity_type', 'catalog');
+
+    versionQuery = uploadId
+      ? versionQuery.eq('id', uploadId)
+      : versionQuery.order('created_at', { ascending: false }).limit(1);
+
+    const { data: uploadRecord, error: fetchError } = await versionQuery.maybeSingle();
 
     if (fetchError) {
-      logger.error('Failed to fetch upload record', { error: fetchError });
+      logger.error('Failed to fetch catalog version', { error: fetchError });
       return NextResponse.json(
-        { success: false, error: 'Upload not found' },
+        { success: false, error: 'Catalog version not found' },
         { status: 404 }
       );
     }
 
     if (!uploadRecord) {
-      logger.warn('Upload record not found', { uploadId });
+      logger.warn('Catalog version not found', { uploadId });
       return NextResponse.json(
-        { success: false, error: 'Upload not found' },
+        { success: false, error: 'Catalog version not found' },
         { status: 404 }
       );
     }
 
-    // Verify upload belongs to current user or user has admin role
+    // Verify snapshot belongs to current user or user has admin role
     const hasAccess = 
+      !uploadRecord.created_by ||
       uploadRecord.created_by === user.userId ||
       ['admin', 'super_admin', 'platform_admin'].includes(user.role);
 
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<ReviewResp
       logger.warn('Unauthorized access to upload', { 
         uploadId, 
         userId: user.userId, 
-        ownerId: uploadRecord.created_by 
+        ownerId: uploadRecord.created_by
       });
       return NextResponse.json(
         { success: false, error: 'Unauthorized to access this upload' },
@@ -100,22 +100,28 @@ export async function GET(request: NextRequest): Promise<NextResponse<ReviewResp
       );
     }
 
-    logger.info('Upload record retrieved', { 
-      uploadId, 
+    logger.info('Catalog version retrieved', {
+      uploadId: uploadRecord.id,
       status: uploadRecord.status,
-      sourceName: uploadRecord.source_name 
+      versionNo: uploadRecord.version_no,
     });
 
-    // Extract snapshot from reviewed_snapshot or fallback normalized_snapshot JSONB column
-    const rawSnapshot = uploadRecord.reviewed_snapshot || uploadRecord.normalized_snapshot;
-    const reviewedHash = uploadRecord.reviewed_snapshot_hash || uploadRecord.snapshot_hash;
+    const rawSnapshot = uploadRecord.snapshot_data || uploadRecord.reviewed_snapshot || uploadRecord.normalized_snapshot;
+    const reviewedHash = uploadRecord.snapshot_hash || uploadRecord.reviewed_snapshot_hash;
+    const normalizedStatus = uploadRecord.status === 'PUBLISHED'
+      ? 'published'
+      : uploadRecord.status === 'VALIDATED' || uploadRecord.status === 'validated'
+        ? 'validated'
+        : uploadRecord.status === 'DRAFT' || uploadRecord.status === 'uploaded'
+          ? 'uploaded'
+          : 'validation_failed';
     
     const snapshot: LTEIngestionSnapshot = {
       ...(rawSnapshot as LTEIngestionSnapshot),
       uploadId: uploadRecord.id,
       reviewedSnapshotHash: reviewedHash,
       snapshotHash: reviewedHash,
-      status: uploadRecord.status,
+      status: normalizedStatus,
     };
 
     // Extract course specification from the snapshot
@@ -134,15 +140,16 @@ export async function GET(request: NextRequest): Promise<NextResponse<ReviewResp
     return NextResponse.json({
       success: true,
       uploadId: uploadRecord.id,
-      sourceName: uploadRecord.source_name,
-      status: uploadRecord.status,
+      sourceName: snapshot.sourceName,
+      status: snapshot.status,
       reviewedSnapshotHash: reviewedHash,
       snapshot,
-      validationReport: uploadRecord.validation_result,
+      validationReport: snapshot.validationReport,
       courseSpecification,
       modules,
       levelCourses: (snapshot.levelCourses || []).map((lc: any) => ({
         ...lc,
+        modules: (lc.modules || []).map((module: any) => normalizeReviewModule(module)),
         courseMetadata: lc?.courseMetadata ? {
           ...lc.courseMetadata,
           courseTitle: formatText(lc.courseMetadata.courseTitle, 'Untitled Course'),
@@ -162,6 +169,149 @@ export async function GET(request: NextRequest): Promise<NextResponse<ReviewResp
   } catch (err: unknown) {
     const errorMessage = getErrorMessage(err);
     logger.error('Failed to process LTE review request', { error: errorMessage });
+
+    return NextResponse.json(
+      { success: false, error: errorMessage },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request: NextRequest): Promise<NextResponse<ReviewResponse>> {
+  logger.info('Processing LTE review save request');
+
+  try {
+    const { user, error: authError } = await authenticateSSORequest(
+      request,
+      ['admin', 'super_admin', 'platform_admin']
+    );
+
+    if (authError || !user) {
+      logger.warn('Unauthorized review save attempt');
+      return authError || NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const uploadId = body?.uploadId;
+    const course = body?.course as LTELevelCourse | undefined;
+
+    if (!uploadId || !course) {
+      return NextResponse.json(
+        { success: false, error: 'Missing uploadId or course payload' },
+        { status: 400 }
+      );
+    }
+
+    const { data: uploadRecord, error: fetchError } = await supabaseLTE
+      .from('catalog_versions')
+      .select('*')
+      .eq('id', uploadId)
+      .eq('entity_type', 'catalog')
+      .maybeSingle();
+
+    if (fetchError || !uploadRecord) {
+      logger.error('Failed to fetch catalog version for save', { uploadId, error: fetchError });
+      return NextResponse.json(
+        { success: false, error: 'Catalog version not found' },
+        { status: 404 }
+      );
+    }
+
+    const hasAccess =
+      !uploadRecord.created_by ||
+      uploadRecord.created_by === user.userId ||
+      ['admin', 'super_admin', 'platform_admin'].includes(user.role);
+
+    if (!hasAccess) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized to update this upload' },
+        { status: 403 }
+      );
+    }
+
+    const rawSnapshot = (uploadRecord.snapshot_data || {}) as LTEIngestionSnapshot;
+    const existingLevelCourses = rawSnapshot.levelCourses || [];
+    const levelCourses = existingLevelCourses.length > 0
+      ? existingLevelCourses.map((levelCourse) =>
+          levelCourse.levelCode === course.levelCode || levelCourse.levelNo === course.levelNo
+            ? course
+            : levelCourse
+        )
+      : [course];
+
+    const updatedSnapshot: LTEIngestionSnapshot = {
+      ...rawSnapshot,
+      uploadId,
+      courseMetadata: course.courseMetadata,
+      modules: course.modules,
+      levelCourses,
+      status: 'validated',
+    };
+
+    // Push preview edits into the normalized tables as well — publish only
+    // upserts `tables`, so without this the edits would be silently dropped.
+    const { syncCourseEditsToTables } = await import('@/lib/services/lte-ingestion/review-sync');
+    const syncResult = syncCourseEditsToTables(
+      (updatedSnapshot.tables || {}) as Record<string, { columns: string[]; rows: any[][] }>,
+      course
+    );
+    if (syncResult.warnings.length > 0) {
+      logger.warn('Review table sync warnings', { uploadId, warnings: syncResult.warnings });
+    }
+
+    const reviewedHash = calculateHash({
+      tables: updatedSnapshot.tables || {},
+      metadata: updatedSnapshot.metadata || {},
+    });
+
+    const snapshotWithHash: LTEIngestionSnapshot = {
+      ...updatedSnapshot,
+      snapshotHash: reviewedHash,
+      reviewedSnapshotHash: reviewedHash,
+    };
+
+    const { error: updateError } = await supabaseLTE
+      .from('catalog_versions')
+      .update({
+        snapshot_data: snapshotWithHash,
+        snapshot_hash: reviewedHash,
+        status: 'VALIDATED',
+      })
+      .eq('id', uploadId)
+      .eq('entity_type', 'catalog');
+
+    if (updateError) {
+      logger.error('Failed to save reviewed LTE snapshot', { uploadId, error: updateError });
+      return NextResponse.json(
+        { success: false, error: 'Failed to save reviewed snapshot' },
+        { status: 500 }
+      );
+    }
+
+    logger.info('Reviewed LTE snapshot saved', {
+      uploadId,
+      reviewedHash,
+      levelCode: course.levelCode,
+    });
+
+    return NextResponse.json({
+      success: true,
+      uploadId,
+      status: snapshotWithHash.status,
+      reviewedSnapshotHash: reviewedHash,
+      snapshot: snapshotWithHash,
+      levelCourses,
+      modules: course.modules,
+      courseSpecification: extractCourseSpecification(snapshotWithHash),
+      tablesSynced: syncResult.applied,
+      syncWarnings: syncResult.warnings,
+    });
+  } catch (err: unknown) {
+    const errorMessage = getErrorMessage(err);
+    logger.error('Failed to save LTE review changes', { error: errorMessage });
 
     return NextResponse.json(
       { success: false, error: errorMessage },
@@ -211,14 +361,25 @@ function extractModulesWithStages(snapshot: LTEIngestionSnapshot): any[] {
 
   // Return modules from snapshot
   // The modules should already include stages and artifact practices
-  return snapshot.modules.map((module, index) => ({
+  return snapshot.modules.map((module, index) => normalizeReviewModule(module, index));
+}
+
+function normalizeReviewModule(module: any, index?: number): any {
+  return {
     index: module.index ?? index,
     title: module.title || `Module ${index}`,
     subtitle: module.subtitle || '',
     completionPercentage: module.completionPercentage ?? 0,
     status: module.status || 'not_started',
     contextDescription: module.contextDescription || '',
+    pressurePoints: module.pressurePoints || [],
+    userConfusion: module.userConfusion || [],
+    industryChallenge: module.industryChallenge || '',
+    prerequisites: module.prerequisites || [],
+    whatYoullLearn: module.whatYoullLearn || [],
+    whenToApply: module.whenToApply || '',
+    moduleProblemStatement: module.moduleProblemStatement || '',
     stages: module.stages || [],
     artifactPractices: module.artifactPractices || [],
-  }));
+  };
 }

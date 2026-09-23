@@ -25,17 +25,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       case 'summary':
         return await handleSummaryView();
       case 'capabilities':
-        return await handleCapabilitiesView();
+        return await handleCapabilitiesView(searchParams);
       case 'capability_detail':
         return await handleCapabilityDetailView(id);
       case 'roles':
-        return await handleRolesView();
+        return await handleRolesView(searchParams);
       case 'role_detail':
         return await handleRoleDetailView(id);
       case 'courses':
         return await handleCoursesView();
       case 'course_detail':
-        return await handleCourseDetailView(id, searchParams.get('source'));
+        return await handleCourseDetailView(id);
       default:
         return NextResponse.json({ success: false, error: `Invalid view parameter: ${view}` }, { status: 400 });
     }
@@ -46,280 +46,499 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 }
 
-/**
- * Load the complete workspace from canonical tables in one authenticated API
- * request. Queries are independent and run concurrently; no upload snapshots,
- * levels, or synthetic rows are used as course fallbacks.
- */
+function getLevelNoFromCode(levelCode: unknown): number | null {
+  const match = String(levelCode || '').toUpperCase().match(/_L(\d{1,2})\b/);
+  if (!match) return null;
+  const no = Number(match[1]);
+  return Number.isFinite(no) && no > 0 ? no : null;
+}
+
 async function handleDashboardView(): Promise<NextResponse> {
-  const [capsRes, rolesRes, coursesRes, versionsRes, mapsRes, plansRes, roleCapsRes, reviewRes] = await Promise.all([
-    supabaseLTE.from('capabilities').select('id, code, name').eq('is_active', true).order('code'),
-    supabaseLTE.from('roles').select('id, role_name').is('deleted_at', null).order('role_name'),
-    supabaseLTE.from('courses').select('id, course_code, course_name, lifecycle_status, current_published_version_id, current_assignable_version_id').order('course_code'),
-    supabaseLTE.from('course_versions').select('id, course_id, version_no, status'),
-    supabaseLTE.from('capability_course_map').select('capability_id, course_id').eq('is_active', true),
-    supabaseLTE.from('capability_course_plan').select('capability_id, course_id').eq('is_active', true),
-    supabaseLTE.from('role_capability_map').select('role_id, capability_id').eq('is_active', true),
-    supabaseLTE.from('lte_catalog_uploads').select('id', { count: 'exact', head: true }).eq('status', 'validated'),
+  // Scoped dashboard: only capabilities/roles linked to uploaded levels are
+  // shown. Reference tables hold 730+ capabilities / 2280+ roles, so global
+  // counts would drown the 4 uploaded courses. Never select snapshot_data
+  // for lists either — full snapshots stay in single-row lookups only.
+  // Phase 1: uploaded levels + counts (levels table is tiny).
+  const [
+    levelsRes,
+    levelsCountRes,
+    publishedCountRes,
+    publishedLevelVersionsRes,
+    needsReviewRes,
+    levelVersionsCountRes,
+    latestCatalogRes,
+  ] = await Promise.all([
+    supabaseLTE.from('levels').select('id, level_code, title, capability_id, status, version_no, is_active').eq('is_active', true).order('level_code'),
+    supabaseLTE.from('levels').select('id', { count: 'exact', head: true }).eq('is_active', true),
+    supabaseLTE.from('levels').select('id', { count: 'exact', head: true }).eq('is_active', true).ilike('status', 'published'),
+    supabaseLTE.from('catalog_versions').select('entity_id, version_no').eq('entity_type', 'level').eq('status', 'PUBLISHED'),
+    supabaseLTE.from('catalog_versions').select('id', { count: 'exact', head: true }).in('status', ['DRAFT', 'VALIDATED']),
+    supabaseLTE.from('catalog_versions').select('id', { count: 'exact', head: true }).eq('entity_type', 'level'),
+    supabaseLTE.from('catalog_versions').select('snapshot_data').eq('entity_type', 'catalog').eq('status', 'PUBLISHED').order('published_at', { ascending: false }).limit(1).maybeSingle(),
   ]);
 
-  const failures = [capsRes, rolesRes, coursesRes, versionsRes, mapsRes, plansRes, roleCapsRes, reviewRes]
-    .map((result, index) => result.error ? `query ${index + 1}: ${result.error.message}` : null)
-    .filter(Boolean);
-  if (failures.length > 0) throw new Error(`Failed to load catalog workspace: ${failures.join('; ')}`);
+  throwIfAnyError([levelsRes, levelsCountRes, publishedCountRes, publishedLevelVersionsRes, needsReviewRes, levelVersionsCountRes, latestCatalogRes]);
+
+  const levels = levelsRes.data || [];
+  const publishedLevelVersions = publishedLevelVersionsRes.data || [];
+
+  // Distinct capabilities that actually have uploaded levels.
+  const uploadedCapabilityIds = Array.from(
+    new Set((levels || []).map((level: any) => level.capability_id).filter(Boolean))
+  );
+
+  // Phase 2: only refs linked to uploads.
+  const [capsRes, roleCapsRes] = await Promise.all([
+    uploadedCapabilityIds.length > 0
+      ? supabaseLTE.from('capabilities').select('id, code, name').in('id', uploadedCapabilityIds).order('code').range(0, 24)
+      : Promise.resolve({ data: [], error: null } as any),
+    uploadedCapabilityIds.length > 0
+      ? supabaseLTE.from('role_capability_sequence').select('role_id, capability_id').in('capability_id', uploadedCapabilityIds)
+      : Promise.resolve({ data: [], error: null } as any),
+  ]);
+
+  throwIfAnyError([capsRes, roleCapsRes]);
 
   const capabilities = capsRes.data || [];
+  const roleCaps = roleCapsRes.data || [];
+  const uploadedRoleIds = Array.from(new Set((roleCaps || []).map((row: any) => row.role_id).filter(Boolean)));
+
+  const rolesRes = uploadedRoleIds.length > 0
+    ? await supabaseLTE.from('roles').select('id, role_name').in('id', uploadedRoleIds).is('deleted_at', null).order('role_name').range(0, 24)
+    : { data: [], error: null } as any;
+  throwIfAnyError([rolesRes]);
   const roles = rolesRes.data || [];
-  const courses = coursesRes.data || [];
-  const versions = versionsRes.data || [];
-  const activeCourseIds = new Set(courses.filter(course => course.lifecycle_status !== 'RETIRED').map(course => course.id));
-  const activeCapabilityIds = new Set(capabilities.map(capability => capability.id));
 
-  const actualCounts = new Map<string, number>();
-  for (const row of mapsRes.data || []) {
-    if (activeCourseIds.has(row.course_id)) actualCounts.set(row.capability_id, (actualCounts.get(row.capability_id) || 0) + 1);
+  const levelCountsByCapability = new Map<string, number>();
+  const levelsByCapability = new Map<string, Array<{ levelNo: number | null; status: unknown }>>();
+  for (const level of levels) {
+    levelCountsByCapability.set(level.capability_id, (levelCountsByCapability.get(level.capability_id) || 0) + 1);
+    const list = levelsByCapability.get(level.capability_id) || [];
+    list.push({ levelNo: getLevelNoFromCode(level.level_code), status: level.status });
+    levelsByCapability.set(level.capability_id, list);
   }
-  const plannedCounts = new Map<string, number>();
-  for (const row of plansRes.data || []) {
-    if (activeCourseIds.has(row.course_id)) plannedCounts.set(row.capability_id, (plannedCounts.get(row.capability_id) || 0) + 1);
-  }
+
+  const displayedRoleIds = new Set(roles.map((role) => role.id));
   const roleCapabilityCounts = new Map<string, number>();
-  for (const row of roleCapsRes.data || []) {
-    if (activeCapabilityIds.has(row.capability_id)) roleCapabilityCounts.set(row.role_id, (roleCapabilityCounts.get(row.role_id) || 0) + 1);
-  }
-  const versionById = new Map(versions.map(version => [version.id, version]));
-
-  const capabilityList = capabilities.map(capability => {
-    const actualCourseCount = actualCounts.get(capability.id) || 0;
-    const plannedCourseCount = plannedCounts.has(capability.id) ? plannedCounts.get(capability.id)! : null;
-    let coverageStatus = 'NONE';
-    if (plannedCourseCount !== null && plannedCourseCount > 0) {
-      coverageStatus = actualCourseCount === 0 ? 'NOT_STARTED'
-        : actualCourseCount < plannedCourseCount ? 'PARTIAL'
-        : actualCourseCount === plannedCourseCount ? 'COMPLETE'
-        : 'OVER_PLAN';
+  for (const row of roleCaps) {
+    if (displayedRoleIds.has(row.role_id)) {
+      roleCapabilityCounts.set(row.role_id, (roleCapabilityCounts.get(row.role_id) || 0) + 1);
     }
-    return { ...capability, actualCourseCount, plannedCourseCount, coverageStatus };
-  });
+  }
 
-  const courseList = courses.map(course => ({
-    ...course,
-    rowKey: `course:${course.id}`,
-    sourceRecordId: course.id,
-    sourceType: 'course',
-    course_name: formatText(course.course_name, 'Untitled Course'),
-    lifecycle_status: course.lifecycle_status || 'ACTIVE',
-    publishedVersionNo: course.current_published_version_id
-      ? versionById.get(course.current_published_version_id)?.version_no ?? null
-      : null,
-    assignableStatus: course.current_assignable_version_id ? 'ASSIGNABLE' : 'PENDING_ASSET_READINESS',
-  }));
+  const versionByEntityId = new Map(
+    publishedLevelVersions.map((version: any) => [version.entity_id, version])
+  );
+  const assetStatus = (latestCatalogRes.data as any)?.snapshot_data?.assetStatus || 'none';
+  const assetManifestCount = (latestCatalogRes.data as any)?.snapshot_data?.assetManifest?.length || 0;
+  const assetsReady = assetStatus === 'staged' || assetStatus === 'none';
+  const isPublished = (status: unknown) => String(status || '').toLowerCase() === 'published';
+
+  const publishedCount = publishedCountRes.count || 0;
+  const courses = levels.map((level) => {
+    const version = versionByEntityId.get(level.id);
+    return {
+      id: level.id,
+      rowKey: `course:${level.id}`,
+      sourceRecordId: level.id,
+      sourceType: 'course',
+      capability_id: level.capability_id,
+      course_code: level.level_code,
+      course_name: formatText(level.title, level.level_code),
+      lifecycle_status: level.is_active ? 'ACTIVE' : 'RETIRED',
+      publishedVersionNo: version?.version_no ?? level.version_no ?? null,
+      assetStatus,
+      assetManifestCount,
+      assignableStatus: isPublished(level.status) && assetsReady ? 'ASSIGNABLE' : 'PENDING_ASSET_READINESS',
+    };
+  });
 
   return NextResponse.json({
     success: true,
     summary: {
-      capabilitiesCount: capabilities.length,
-      rolesCount: roles.length,
-      coursesLogicalCount: courses.length,
-      publishedCoursesCount: courses.filter(course => Boolean(course.current_published_version_id)).length,
-      assignableCoursesCount: courses.filter(course => Boolean(course.current_assignable_version_id)).length,
-      needsReviewCount: reviewRes.count || 0,
-      optionalVersionsCount: versions.length,
+      capabilitiesCount: uploadedCapabilityIds.length,
+      rolesCount: uploadedRoleIds.length,
+      coursesLogicalCount: levelsCountRes.count || 0,
+      publishedCoursesCount: publishedCount,
+      assignableCoursesCount: assetsReady ? publishedCount : 0,
+      needsReviewCount: needsReviewRes.count || 0,
+      optionalVersionsCount: levelVersionsCountRes.count || 0,
     },
-    capabilities: capabilityList,
-    roles: roles.map(role => ({
+    capabilities: capabilities.map((capability) => {
+      const actualCourseCount = levelCountsByCapability.get(capability.id) || 0;
+      const rows = levelsByCapability.get(capability.id) || [];
+      const levelsBreakdown = [1, 2, 3, 4, 5].map((levelNo) => {
+        const match = rows.find((row) => row.levelNo === levelNo);
+        return {
+          levelNo,
+          label: `L${levelNo}`,
+          status: match && isPublished(match.status) ? 'PUBLISHED' : match ? 'INGESTED' : 'PENDING',
+        };
+      });
+      const completedLevelsCount = levelsBreakdown.filter((l) => l.status !== 'PENDING').length;
+      return {
+        ...capability,
+        actualCourseCount,
+        plannedCourseCount: null,
+        coverageStatus: actualCourseCount > 0 ? 'COMPLETE' : 'NONE',
+        levelsBreakdown,
+        completedLevelsCount,
+        totalLevelsCount: 5,
+      };
+    }),
+    roles: roles.map((role) => ({
       id: role.id,
       code: role.role_name || role.id,
       name: role.role_name,
       activeCapabilityCount: roleCapabilityCounts.get(role.id) || 0,
     })),
-    courses: courseList,
+    courses,
   });
 }
 
 async function handleSummaryView(): Promise<NextResponse> {
-  const [capsRes, rolesRes, coursesRes, publishedRes, assignableRes, reviewRes, versionsRes] = await Promise.all([
-    supabaseLTE.from('capabilities').select('id', { count: 'exact', head: true }).eq('is_active', true),
-    supabaseLTE.from('roles').select('id', { count: 'exact', head: true }).is('deleted_at', null),
-    supabaseLTE.from('courses').select('id', { count: 'exact', head: true }),
-    supabaseLTE.from('courses').select('id', { count: 'exact', head: true }).not('current_published_version_id', 'is', null),
-    supabaseLTE.from('courses').select('id', { count: 'exact', head: true }).not('current_assignable_version_id', 'is', null),
-    supabaseLTE.from('lte_catalog_uploads').select('id', { count: 'exact', head: true }).eq('status', 'validated'),
-    supabaseLTE.from('course_versions').select('id', { count: 'exact', head: true }),
+  const [levelsRes, publishedRes, versionsRes, reviewRes, latestCatalogRes] = await Promise.all([
+    supabaseLTE.from('levels').select('id, capability_id', { count: 'exact' }).eq('is_active', true),
+    supabaseLTE.from('levels').select('id', { count: 'exact', head: true }).eq('is_active', true).ilike('status', 'published'),
+    supabaseLTE.from('catalog_versions').select('id', { count: 'exact', head: true }).eq('entity_type', 'level'),
+    supabaseLTE.from('catalog_versions').select('id', { count: 'exact', head: true }).in('status', ['DRAFT', 'VALIDATED']),
+    supabaseLTE.from('catalog_versions').select('snapshot_data').eq('entity_type', 'catalog').eq('status', 'PUBLISHED').order('published_at', { ascending: false }).limit(1).maybeSingle(),
   ]);
+
+  throwIfAnyError([levelsRes, publishedRes, versionsRes, reviewRes, latestCatalogRes]);
+  const scopedCapIds = Array.from(
+    new Set(((levelsRes.data || []) as any[]).map((level: any) => level.capability_id).filter(Boolean))
+  );
+  const seqRes = scopedCapIds.length > 0
+    ? await supabaseLTE.from('role_capability_sequence').select('role_id').in('capability_id', scopedCapIds)
+    : { data: [], error: null } as any;
+  throwIfAnyError([seqRes]);
+  const scopedRoleCount = new Set(((seqRes.data || []) as any[]).map((row: any) => row.role_id).filter(Boolean)).size;
+  const assetStatus = (latestCatalogRes.data as any)?.snapshot_data?.assetStatus || 'none';
+  const assetsReady = assetStatus === 'staged' || assetStatus === 'none';
 
   return NextResponse.json({
     success: true,
     summary: {
-      capabilitiesCount: capsRes.count || 0,
-      rolesCount: rolesRes.count || 0,
-      coursesLogicalCount: coursesRes.count || 0,
+      capabilitiesCount: scopedCapIds.length,
+      rolesCount: scopedRoleCount,
+      coursesLogicalCount: levelsRes.count || 0,
       publishedCoursesCount: publishedRes.count || 0,
-      assignableCoursesCount: assignableRes.count || 0,
+      assignableCoursesCount: assetsReady ? publishedRes.count || 0 : 0,
       needsReviewCount: reviewRes.count || 0,
       optionalVersionsCount: versionsRes.count || 0,
     },
   });
 }
 
-async function handleCapabilitiesView(): Promise<NextResponse> {
-  const [capsResult, mapsResult, plansResult] = await Promise.all([
-    supabaseLTE.from('capabilities').select('*').eq('is_active', true).order('code', { ascending: true }),
-    supabaseLTE.from('capability_course_map').select('capability_id, course_id').eq('is_active', true),
-    supabaseLTE.from('capability_course_plan').select('capability_id, course_id').eq('is_active', true),
-  ]);
-  const { data: caps, error } = capsResult;
+async function handleCapabilitiesView(searchParams: URLSearchParams): Promise<NextResponse> {
+  const page = Math.max(Number(searchParams.get('page') || '1'), 1);
+  const limit = Math.min(Math.max(Number(searchParams.get('limit') || '25'), 1), 100);
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
 
-  if (error) {
-    throw new Error(`Failed to fetch capabilities: ${error.message}`);
+  const levelsResult = await supabaseLTE.from('levels').select('id, capability_id, level_code, status').eq('is_active', true);
+  throwIfAnyError([levelsResult]);
+  const scopedCapabilityIds = Array.from(
+    new Set(((levelsResult.data || []) as any[]).map((level: any) => level.capability_id).filter(Boolean))
+  );
+  if (scopedCapabilityIds.length === 0) {
+    return NextResponse.json({
+      success: true,
+      capabilities: [],
+      pagination: { page, limit, total: 0, totalPages: 1, hasNextPage: false, hasPreviousPage: false },
+    });
   }
 
-  if (mapsResult.error) throw new Error(`Failed to fetch actual course mappings: ${mapsResult.error.message}`);
-  if (plansResult.error) throw new Error(`Failed to fetch planned course mappings: ${plansResult.error.message}`);
-  const mapRows = mapsResult.data;
-  const planRows = plansResult.data;
+  const capsResult = await supabaseLTE
+    .from('capabilities')
+    .select('*', { count: 'exact' })
+    .eq('is_active', true)
+    .in('id', scopedCapabilityIds)
+    .order('code', { ascending: true })
+    .range(from, to);
+
+  throwIfAnyError([capsResult]);
 
   const actualMapCount = new Map<string, number>();
-  const planMapCount = new Map<string, number>();
-
-  (mapRows || []).forEach((r) => actualMapCount.set(r.capability_id, (actualMapCount.get(r.capability_id) || 0) + 1));
-  (planRows || []).forEach((r) => planMapCount.set(r.capability_id, (planMapCount.get(r.capability_id) || 0) + 1));
-
-  const list = (caps || []).map((c) => {
-    const actualCount = actualMapCount.get(c.id) || 0;
-    const plannedCount = planMapCount.get(c.id);
-
-    let coverageStatus = 'NONE';
-    if (plannedCount !== undefined && plannedCount > 0) {
-      if (actualCount === 0) coverageStatus = 'NOT_STARTED';
-      else if (actualCount < plannedCount) coverageStatus = 'PARTIAL';
-      else if (actualCount === plannedCount) coverageStatus = 'COMPLETE';
-      else coverageStatus = 'OVER_PLAN';
-    }
-
-    return {
-      id: c.id,
-      code: c.code,
-      name: c.name || c.code,
-      actualCourseCount: actualCount,
-      plannedCourseCount: plannedCount ?? null,
-      coverageStatus,
-    };
+  const levelsByCapability = new Map<string, Array<{ levelNo: number | null; status: unknown }>>();
+  (levelsResult.data || []).forEach((level: any) => {
+    actualMapCount.set(level.capability_id, (actualMapCount.get(level.capability_id) || 0) + 1);
+    const list = levelsByCapability.get(level.capability_id) || [];
+    list.push({ levelNo: getLevelNoFromCode(level.level_code), status: level.status });
+    levelsByCapability.set(level.capability_id, list);
   });
+  const isPublishedRow = (status: unknown) => String(status || '').toLowerCase() === 'published';
 
-  return NextResponse.json({ success: true, capabilities: list });
+  return NextResponse.json({
+    success: true,
+    capabilities: (capsResult.data || []).map((capability) => {
+      const actualCourseCount = actualMapCount.get(capability.id) || 0;
+      const rows = levelsByCapability.get(capability.id) || [];
+      const levelsBreakdown = [1, 2, 3, 4, 5].map((levelNo) => {
+        const match = rows.find((row) => row.levelNo === levelNo);
+        return {
+          levelNo,
+          label: `L${levelNo}`,
+          status: match && isPublishedRow(match.status) ? 'PUBLISHED' : match ? 'INGESTED' : 'PENDING',
+        };
+      });
+      return {
+        id: capability.id,
+        code: capability.code,
+        name: capability.name || capability.code,
+        actualCourseCount,
+        plannedCourseCount: null,
+        coverageStatus: actualCourseCount > 0 ? 'COMPLETE' : 'NONE',
+        levelsBreakdown,
+        completedLevelsCount: levelsBreakdown.filter((l) => l.status !== 'PENDING').length,
+        totalLevelsCount: 5,
+      };
+    }),
+    pagination: {
+      page,
+      limit,
+      total: capsResult.count || 0,
+      totalPages: Math.max(Math.ceil((capsResult.count || 0) / limit), 1),
+      hasNextPage: to + 1 < (capsResult.count || 0),
+      hasPreviousPage: page > 1,
+    },
+  });
 }
 
 async function handleCapabilityDetailView(id: string | null): Promise<NextResponse> {
   if (!id) return NextResponse.json({ success: false, error: 'Capability ID is required' }, { status: 400 });
 
-  const { data: cap, error } = await supabaseLTE.from('capabilities').select('*').eq('id', id).single();
-  if (error || !cap) return NextResponse.json({ success: false, error: 'Capability not found' }, { status: 404 });
+  const [capRes, levelsRes] = await Promise.all([
+    supabaseLTE.from('capabilities').select('*').eq('id', id).single(),
+    supabaseLTE.from('levels').select('*').eq('capability_id', id).eq('is_active', true).order('level_code'),
+  ]);
 
-  const { data: actualMaps } = await supabaseLTE
-    .from('capability_course_map')
-    .select('*, courses(*)')
-    .eq('capability_id', id)
-    .eq('is_active', true);
-
-  const { data: planMaps } = await supabaseLTE
-    .from('capability_course_plan')
-    .select('*, courses(*)')
-    .eq('capability_id', id)
-    .eq('is_active', true);
+  if (capRes.error || !capRes.data) return NextResponse.json({ success: false, error: 'Capability not found' }, { status: 404 });
+  if (levelsRes.error) throw new Error(`Failed to fetch capability levels: ${levelsRes.error.message}`);
 
   return NextResponse.json({
     success: true,
-    capability: cap,
-    actualMappedCourses: actualMaps || [],
-    plannedCourses: planMaps || [],
+    capability: capRes.data,
+    actualMappedCourses: levelsRes.data || [],
+    plannedCourses: [],
   });
 }
 
-async function handleRolesView(): Promise<NextResponse> {
-  const [rolesResult, roleCapsResult] = await Promise.all([
-    supabaseLTE.from('roles').select('*').is('deleted_at', null).order('role_name', { ascending: true }),
-    supabaseLTE.from('role_capability_map').select('role_id').eq('is_active', true),
-  ]);
-  const { data: roles, error } = rolesResult;
-  if (error) throw new Error(`Failed to fetch roles: ${error.message}`);
-  if (roleCapsResult.error) throw new Error(`Failed to fetch role capability mappings: ${roleCapsResult.error.message}`);
-  const roleCaps = roleCapsResult.data;
+async function handleRolesView(searchParams: URLSearchParams): Promise<NextResponse> {
+  const page = Math.max(Number(searchParams.get('page') || '1'), 1);
+  const limit = Math.min(Math.max(Number(searchParams.get('limit') || '25'), 1), 100);
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
+  // Scope roles to those mapped to uploaded capabilities only.
+  const levelsForRoles = await supabaseLTE.from('levels').select('capability_id').eq('is_active', true);
+  throwIfAnyError([levelsForRoles]);
+  const scopedCapIds = Array.from(
+    new Set(((levelsForRoles.data || []) as any[]).map((level: any) => level.capability_id).filter(Boolean))
+  );
+  const seqForRoles = scopedCapIds.length > 0
+    ? await supabaseLTE.from('role_capability_sequence').select('role_id').in('capability_id', scopedCapIds)
+    : { data: [], error: null } as any;
+  throwIfAnyError([seqForRoles]);
+  const scopedRoleIds = Array.from(
+    new Set(((seqForRoles.data || []) as any[]).map((row: any) => row.role_id).filter(Boolean))
+  );
+  if (scopedRoleIds.length === 0) {
+    return NextResponse.json({
+      success: true,
+      roles: [],
+      pagination: { page, limit, total: 0, totalPages: 1, hasNextPage: false, hasPreviousPage: false },
+    });
+  }
+
+  const rolesResult = await supabaseLTE
+    .from('roles')
+    .select('*', { count: 'exact' })
+    .is('deleted_at', null)
+    .in('id', scopedRoleIds)
+    .order('role_name', { ascending: true })
+    .range(from, to);
+
+  throwIfAnyError([rolesResult]);
+
+  const roles = rolesResult.data || [];
+  const roleIds = roles.map((role) => role.id).filter(Boolean);
+  const roleCapsResult = roleIds.length > 0
+    ? await supabaseLTE.from('role_capability_sequence').select('role_id').in('role_id', roleIds).in('capability_id', scopedCapIds)
+    : { data: [], error: null };
+
+  throwIfAnyError([roleCapsResult]);
+
   const capCount = new Map<string, number>();
-  (roleCaps || []).forEach((r) => capCount.set(r.role_id, (capCount.get(r.role_id) || 0) + 1));
+  (roleCapsResult.data || []).forEach((row: any) => capCount.set(row.role_id, (capCount.get(row.role_id) || 0) + 1));
+  const total = rolesResult.count || 0;
 
-  const list = (roles || []).map((r) => ({
-    id: r.id,
-    code: r.role_name || r.id,
-    name: r.role_name,
-    activeCapabilityCount: capCount.get(r.id) || 0,
-  }));
-
-  return NextResponse.json({ success: true, roles: list });
+  return NextResponse.json({
+    success: true,
+    roles: roles.map((role) => ({
+      id: role.id,
+      code: role.role_name || role.id,
+      name: role.role_name,
+      activeCapabilityCount: capCount.get(role.id) || 0,
+    })),
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.max(Math.ceil(total / limit), 1),
+      hasNextPage: to + 1 < total,
+      hasPreviousPage: page > 1,
+    },
+  });
 }
 
 async function handleRoleDetailView(id: string | null): Promise<NextResponse> {
   if (!id) return NextResponse.json({ success: false, error: 'Role ID is required' }, { status: 400 });
 
-  const { data: role, error } = await supabaseLTE.from('roles').select('*').eq('id', id).single();
-  if (error || !role) return NextResponse.json({ success: false, error: 'Role not found' }, { status: 404 });
+  const [roleRes, capsRes] = await Promise.all([
+    supabaseLTE.from('roles').select('*').eq('id', id).single(),
+    supabaseLTE
+      .from('role_capability_sequence')
+      .select('*, capabilities(*)')
+      .eq('role_id', id),
+  ]);
 
-  const { data: mappedCaps } = await supabaseLTE
-    .from('role_capability_map')
-    .select('*, capabilities(*)')
-    .eq('role_id', id)
-    .eq('is_active', true);
+  if (roleRes.error || !roleRes.data) return NextResponse.json({ success: false, error: 'Role not found' }, { status: 404 });
+  if (capsRes.error) throw new Error(`Failed to fetch role capabilities: ${capsRes.error.message}`);
 
   return NextResponse.json({
     success: true,
-    role,
-    mappedCapabilities: mappedCaps || [],
+    role: roleRes.data,
+    mappedCapabilities: capsRes.data || [],
   });
 }
 
 async function handleCoursesView(): Promise<NextResponse> {
-  const { data: courses, error } = await supabaseLTE
-      .from('courses')
-      .select('*, course_versions!current_published_version_id(version_no, status)')
-      .order('course_code', { ascending: true });
-  if (error) throw new Error(`Failed to fetch courses: ${error.message}`);
-  const courseList = (courses || []).map(c => ({
-            rowKey: `course:${c.id}`,
-            sourceRecordId: c.id,
-            sourceType: 'course',
-            id: c.id,
-            course_code: c.course_code,
-            course_name: formatText(c.course_name, 'Untitled Course'),
-            lifecycle_status: c.lifecycle_status || 'ACTIVE',
-            current_published_version_id: c.current_published_version_id,
-            current_assignable_version_id: c.current_assignable_version_id,
-            publishedVersionNo: c.course_versions?.version_no ?? null,
-            assignableStatus: c.current_assignable_version_id ? 'ASSIGNABLE' : 'PENDING_ASSET_READINESS',
-          }));
+  const [{ data, error }, latestVersionRes] = await Promise.all([
+    supabaseLTE
+    .from('levels')
+    .select('*')
+    .eq('is_active', true)
+      .order('level_code', { ascending: true }),
+    supabaseLTE
+      .from('catalog_versions')
+      .select('id, snapshot_data, published_at, status, entity_type')
+      .eq('entity_type', 'catalog')
+      .eq('status', 'PUBLISHED')
+      .order('published_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
-  return NextResponse.json({ success: true, courses: courseList });
+  if (error) throw new Error(`Failed to fetch levels: ${error.message}`);
+  if (latestVersionRes.error) throw new Error(`Failed to fetch published catalog manifest: ${latestVersionRes.error.message}`);
+
+  const assetStatus = latestVersionRes.data?.snapshot_data?.assetStatus || 'none';
+  const assetsReady = assetStatus === 'staged' || assetStatus === 'none';
+  const isPublished = (status: unknown) => String(status || '').toLowerCase() === 'published';
+
+  return NextResponse.json({
+    success: true,
+    courses: (data || []).map((level) => ({
+      rowKey: `course:${level.id}`,
+      sourceRecordId: level.id,
+      sourceType: 'course',
+      capability_id: level.capability_id,
+      id: level.id,
+      course_code: level.level_code,
+      course_name: formatText(level.title, level.level_code),
+      lifecycle_status: level.is_active ? 'ACTIVE' : 'RETIRED',
+      current_published_version_id: null,
+      current_assignable_version_id: null,
+      publishedVersionNo: level.version_no || null,
+      assetStatus,
+      assetManifestCount: latestVersionRes.data?.snapshot_data?.assetManifest?.length || 0,
+      assignableStatus: isPublished(level.status) && assetsReady ? 'ASSIGNABLE' : 'PENDING_ASSET_READINESS',
+    })),
+  });
 }
 
-async function handleCourseDetailView(id: string | null, source: string | null): Promise<NextResponse> {
+async function handleCourseDetailView(id: string | null): Promise<NextResponse> {
   if (!id) return NextResponse.json({ success: false, error: 'Course ID is required' }, { status: 400 });
 
-  if (source && source !== 'course') {
-    return NextResponse.json({ success: false, error: 'Only canonical course records are supported.' }, { status: 400 });
-  }
-  const { data: course, error: courseError } = await supabaseLTE.from('courses').select('*').eq('id', id).single();
-  if (courseError || !course) return NextResponse.json({ success: false, error: 'Course not found' }, { status: 404 });
-  const [versionsRes, assetsRes] = await Promise.all([
+  const [levelRes, versionsRes, latestCatalogRes] = await Promise.all([
+    supabaseLTE.from('levels').select('*').eq('id', id).single(),
     supabaseLTE
-        .from('course_versions')
-        .select('*')
-        .eq('course_id', id)
-        .order('version_no', { ascending: false }),
+      .from('catalog_versions')
+      .select('*')
+      .eq('entity_type', 'level')
+      .eq('entity_id', id)
+      .order('version_no', { ascending: false }),
     supabaseLTE
-        .from('version_source_assets')
-        .select('*')
-        .eq('course_id', id),
+      .from('catalog_versions')
+      .select('id, snapshot_data, published_at, status, entity_type')
+      .eq('entity_type', 'catalog')
+      .eq('status', 'PUBLISHED')
+      .order('published_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
-  if (versionsRes.error) throw new Error(`Failed to fetch course versions: ${versionsRes.error.message}`);
-  if (assetsRes.error) throw new Error(`Failed to fetch source assets: ${assetsRes.error.message}`);
-  return NextResponse.json({ success: true, course, versions: versionsRes.data || [], sourceAssets: assetsRes.data || [] });
+
+  if (levelRes.error || !levelRes.data) return NextResponse.json({ success: false, error: 'Course not found' }, { status: 404 });
+  if (versionsRes.error) throw new Error(`Failed to fetch catalog versions: ${versionsRes.error.message}`);
+  if (latestCatalogRes.error) throw new Error(`Failed to fetch published catalog manifest: ${latestCatalogRes.error.message}`);
+
+  const level = levelRes.data;
+  const [capabilityRes, roleCapsRes] = await Promise.all([
+    level.capability_id
+      ? supabaseLTE.from('capabilities').select('id, code, name').eq('id', level.capability_id).maybeSingle()
+      : { data: null, error: null },
+    level.capability_id
+      ? supabaseLTE.from('role_capability_sequence').select('role_id').eq('capability_id', level.capability_id)
+      : { data: [], error: null },
+  ]);
+
+  throwIfAnyError([capabilityRes, roleCapsRes]);
+
+  const mappedRoleIds = Array.from(new Set((roleCapsRes.data || []).map((row: any) => row.role_id).filter(Boolean)));
+  const mappedRolesRes = mappedRoleIds.length > 0
+    ? await supabaseLTE
+      .from('roles')
+      .select('id, role_name')
+      .in('id', mappedRoleIds)
+      .is('deleted_at', null)
+      .order('role_name', { ascending: true })
+    : { data: [], error: null };
+
+  throwIfAnyError([mappedRolesRes]);
+
+  return NextResponse.json({
+    success: true,
+    course: {
+      ...level,
+      current_published_version_id: (versionsRes.data || []).find((version: any) => version.status === 'PUBLISHED')?.id || null,
+    },
+    versions: versionsRes.data || [],
+    mappedCapabilities: capabilityRes.data
+      ? [{
+        id: capabilityRes.data.id,
+        code: capabilityRes.data.code,
+        name: capabilityRes.data.name || capabilityRes.data.code,
+        actualCourseCount: 1,
+        plannedCourseCount: null,
+        coverageStatus: 'MAPPED',
+      }]
+      : [],
+    mappedRoles: (mappedRolesRes.data || []).map((role: any) => ({
+      id: role.id,
+      code: role.role_name || role.id,
+      name: role.role_name,
+      activeCapabilityCount: 1,
+    })),
+    assetStatus: latestCatalogRes.data?.snapshot_data?.assetStatus || 'none',
+    sourceAssets: latestCatalogRes.data?.snapshot_data?.assetManifest || [],
+  });
+}
+
+function throwIfAnyError(results: Array<{ error: any }>): void {
+  const failures = results
+    .map((result, index) => result.error ? `query ${index + 1}: ${result.error.message}` : null)
+    .filter(Boolean);
+  if (failures.length > 0) throw new Error(`Failed to load catalog workspace: ${failures.join('; ')}`);
 }

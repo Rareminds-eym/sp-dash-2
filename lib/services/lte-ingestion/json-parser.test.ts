@@ -222,6 +222,15 @@ describe('parseArtifactInstructions() Unit Tests', () => {
     expect(result.critical_fail).toBe('fail');
   });
 
+  it('should parse workbook artifact instructions in required/pass_criteria/critical_fail format', () => {
+    const input = 'required: Complete the exact Express final workbook CIE-CAP-003_M0_Course_Readiness_Sheet_Evolve_Stage_Artifact.xlsx without replacing its required structure. Apply the module method independently and submit the final artifact. | pass_criteria: Complete the supplied Evolve workbook accurately, keep evidence traceable, preserve unresolved items, demonstrate independent transfer, and stay within the stated level authority boundary. | critical_fail: approval of baseline change, EOT/claim, client-ready release, invented owner, ignored negative float, or AI-generated artifact submission.';
+    const result = parseArtifactInstructions(input);
+
+    expect(result.required_fields).toContain('CIE-CAP-003_M0_Course_Readiness_Sheet_Evolve_Stage_Artifact.xlsx');
+    expect(result.pass_criteria).toContain('keep evidence traceable');
+    expect(result.critical_fail).toContain('AI-generated artifact submission');
+  });
+
   it('should use unmatched parts as required_fields if no required section found', () => {
     const input = 'Some unmatched text | Pass Criteria: criteria | Critical Fail: fail';
     const result = parseArtifactInstructions(input);

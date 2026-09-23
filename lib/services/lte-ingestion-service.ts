@@ -23,7 +23,7 @@ import {
   PIPE_JSON_COLUMNS,
   REQUIRED_LTE_TABLES,
 } from './lte-ingestion/constants';
-import { isJsonNullText, normalizeJsonValue } from './lte-ingestion/json-parser';
+import { isJsonNullText, normalizeJsonValue, parseArtifactInstructions } from './lte-ingestion/json-parser';
 import { formatText } from './lte-ingestion/text-formatter';
 
 const logger = new Logger('LTEIngestionService');
@@ -269,16 +269,15 @@ export class LTEIngestionService {
     const modulesContent = this.getTableRowsAsObjects(snapshot, 'modules_content');
     const eContent = this.getTableRowsAsObjects(snapshot, 'e_content');
     const moduleArtifacts = this.getTableRowsAsObjects(snapshot, 'module_artifacts');
+    const artifactQuestions = this.getTableRowsAsObjects(snapshot, 'artifact_questions');
+    const artifactTemplates = this.getTableRowsAsObjects(snapshot, 'artifact_templates');
 
     const primaryRole = roles[0] || {};
     const rowsToDisplay = levels.length > 0 ? levels : capabilities;
 
     return rowsToDisplay.map((levelRow: any, idx: number) => {
       const capability = this.findCapabilityForLevel(levelRow, capabilities) || capabilities[idx] || capabilities[0] || {};
-      const levelNo = this.toNumber(
-        levelRow.level_no ?? levelRow.proficiency_level ?? levelRow.level_id ?? idx + 1,
-        idx + 1
-      );
+      const levelNo = this.inferLevelNumber(levelRow, idx + 1);
       const levelCode = this.firstText(
         levelRow.level_code,
         levelRow.proficiency_level,
@@ -406,18 +405,98 @@ export class LTEIngestionService {
             prerequisites: this.metadataList(moduleContent?.curriculum_reference?.prerequisites),
             technicalConcepts: this.metadataList(moduleContent?.curriculum_reference?.technical_concepts),
             engineeringContext: this.firstText(moduleContent?.module_context, moduleContent?.curriculum_reference?.workplace_context, ''),
+            videoCtvContext: this.firstText(moduleContent?.curriculum_reference?.video_ctv_context, ''),
+            whenToUse: this.firstText(moduleContent?.curriculum_reference?.when_to_use, ''),
+            moduleContinuity: this.firstText(moduleContent?.curriculum_reference?.module_continuity, ''),
             assets: stageAssets,
           };
         });
 
         const matchedArtifacts = moduleArtifacts.filter((ma: any) => contentIds.has(String(ma.modules_content_id)));
         const artifactPractices: LTEArtifactPractice[] = matchedArtifacts.length > 0
-          ? matchedArtifacts.map((art: any, aIdx: number) => ({
-              id: art.id || `art_${modId || modIdx}_${aIdx}`,
-              moduleIndex: modNo,
-              practiceIndex: (aIdx === 0 ? 1 : 2) as 1 | 2,
-              title: this.firstText(art.title, art.name, art.artifact_title, `Artifact Practice ${aIdx + 1}`),
-            }))
+          ? matchedArtifacts.map((art: any, aIdx: number) => {
+              const artifactId = this.firstText(art.id, `art_${modId || modIdx}_${aIdx}`);
+              const artifactStageRow = modContentRows.find((mc: any) =>
+                this.valuesMatch(mc.id, art.modules_content_id)
+              );
+              const artifactStageName = this.firstText(
+                artifactStageRow?.stage_name,
+                artifactStageRow?.lte_6e_stage,
+                ''
+              ) as StageType6E | '';
+              const directQuestions = artifactQuestions.filter((question: any) =>
+                this.valuesMatch(question.artifact_id, artifactId)
+              );
+              const fallbackQuestions = directQuestions.length > 0
+                ? directQuestions
+                : artifactQuestions[aIdx]
+                  ? [artifactQuestions[aIdx]]
+                  : [];
+              const questions = fallbackQuestions
+                .map((question: any, questionIndex: number) => {
+                  const rawInstructions = this.firstText(question.instructions, '');
+                  let instructions: string | Record<string, string> = rawInstructions;
+                  if (rawInstructions.includes('|') || rawInstructions.includes(':')) {
+                    try {
+                      instructions = parseArtifactInstructions(rawInstructions);
+                    } catch {
+                      instructions = rawInstructions;
+                    }
+                  }
+
+                  return {
+                    id: this.firstText(question.id, `${artifactId}-question-${questionIndex}`),
+                    title: this.firstText(question.title, question.question_title, `Question ${questionIndex + 1}`),
+                    description: this.firstText(
+                      question.description,
+                      question.question_text,
+                      question.prompt,
+                      'Complete the artifact question.'
+                    ),
+                    instructions,
+                    responseType: this.firstText(question.response_type, 'file'),
+                    required: question.response_required ?? question.is_required ?? true,
+                  };
+                });
+              const questionIds = new Set(questions.map((question) => question.id));
+              const directTemplates = artifactTemplates.filter((template: any) =>
+                this.valuesMatch(template.artifact_id, artifactId) ||
+                questionIds.has(this.firstText(template.question_id, ''))
+              );
+              const fallbackTemplates = directTemplates.length > 0
+                ? directTemplates
+                : artifactTemplates[aIdx]
+                  ? [artifactTemplates[aIdx]]
+                  : [];
+              const templates = fallbackTemplates
+                .map((template: any, templateIndex: number) => ({
+                  id: this.firstText(template.id, `${artifactId}-template-${templateIndex}`),
+                  fileName: this.firstText(template.file_name, template.filename, template.title, 'Template'),
+                  fileUrl: this.firstText(template.file_url, template.template_file_url, template.url, ''),
+                  fileType: this.firstText(template.file_type, template.type, ''),
+                  questionId: this.firstText(template.question_id, ''),
+                }));
+
+              const artifactType = this.firstText(art.artifact_type, 'practice') === 'final' ? 'final' : 'practice';
+
+              return {
+                id: artifactId,
+                moduleIndex: modNo,
+                practiceIndex: (aIdx === 0 ? 1 : 2) as 1 | 2,
+                title: this.firstText(
+                  art.title,
+                  art.name,
+                  art.artifact_title,
+                  artifactType === 'final' ? `Final Artifact ${aIdx + 1}` : `Practice Artifact ${aIdx + 1}`
+                ),
+                artifactType,
+                stageName: artifactStageName || undefined,
+                totalScore: Number(art.total_score) || undefined,
+                passingScore: Number(art.passing_score) || undefined,
+                questions,
+                templates,
+              };
+            })
           : [
               {
                 id: `art_${modIdx}_1`,
@@ -441,7 +520,20 @@ export class LTEIngestionService {
           status: 'in_progress',
           stages,
           artifactPractices,
-          contextDescription: modRow.context_description || '',
+          contextDescription: this.firstText(
+            modRow.context_description,
+            modRow.module_context,
+            modRow.description,
+            modRow.industry_challenge,
+            ''
+          ),
+          pressurePoints: this.metadataList(modRow.pressure_points),
+          userConfusion: this.metadataList(modRow.user_confusion),
+          industryChallenge: this.firstText(modRow.industry_challenge, modRow.Industry_challenge, ''),
+          prerequisites: this.metadataList(modRow.prerequisites),
+          whatYoullLearn: this.metadataList(modRow.what_youll_learn),
+          whenToApply: this.firstText(modRow.when_to_apply, ''),
+          moduleProblemStatement: this.firstText(modRow.module_problem_statement, ''),
         };
       });
 
@@ -487,6 +579,25 @@ export class LTEIngestionService {
   private static toNumber(value: any, fallback: number): number {
     const match = String(value ?? '').match(/\d+/);
     return match ? Number(match[0]) : fallback;
+  }
+
+  private static inferLevelNumber(levelRow: any, fallback: number): number {
+    const candidates = [
+      levelRow.level_no,
+      levelRow.proficiency_level,
+      levelRow.level_code,
+      levelRow.course_code,
+      levelRow.level_name,
+    ];
+
+    for (const candidate of candidates) {
+      const numeric = this.toNumber(candidate, NaN);
+      if (Number.isFinite(numeric) && numeric > 0 && numeric <= 10) {
+        return numeric;
+      }
+    }
+
+    return fallback;
   }
 
   private static formatDuration(value: any): string {

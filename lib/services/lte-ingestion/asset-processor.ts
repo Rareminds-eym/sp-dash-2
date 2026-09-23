@@ -58,7 +58,15 @@ export async function processSnapshotAssets(
   await heartbeat?.();
   const failures = validation.filter((result) => !result.valid);
   if (failures.length > 0) {
-    const error = new Error(`ASSET_VALIDATION_FAILED: ${failures.map((item) => `${item.url} (${item.errorCode})`).join(', ')}`);
+    // Keep the message short: full per-file detail travels in `details` for
+    // logs, while toasts show only the first few failures plus a count.
+    const shown = failures.slice(0, 3).map((item) => {
+      const details = item.error ? `: ${item.error}` : '';
+      return `${item.url} (${item.errorCode}${details})`;
+    });
+    const hidden = failures.length - shown.length;
+    const summary = hidden > 0 ? `${shown.join(', ')}, and ${hidden} more file(s)` : shown.join(', ');
+    const error = new Error(`ASSET_VALIDATION_FAILED (${failures.length} file(s)): ${summary}`);
     (error as any).details = failures;
     throw error;
   }

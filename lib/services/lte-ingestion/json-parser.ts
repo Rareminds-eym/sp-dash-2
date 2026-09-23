@@ -88,11 +88,11 @@ export function parseArtifactInstructions(value: string): Record<string, string>
     const lowerText = text.toLowerCase();
     
     if (lowerText.startsWith('required:')) {
-      parsed.required_fields = text.split(':', 2)[1].trim();
+      parsed.required_fields = valueAfterFirstColon(text);
       continue;
     }
     if (lowerText.startsWith('required fields:')) {
-      parsed.required_fields = text.split(':', 2)[1].trim();
+      parsed.required_fields = valueAfterFirstColon(text);
       continue;
     }
     if (lowerText.startsWith('required fields include')) {
@@ -100,11 +100,11 @@ export function parseArtifactInstructions(value: string): Record<string, string>
       continue;
     }
     if (lowerText.startsWith('pass criteria:') || lowerText.startsWith('pass_criteria:')) {
-      parsed.pass_criteria = text.split(':', 2)[1].trim();
+      parsed.pass_criteria = valueAfterFirstColon(text);
       continue;
     }
     if (lowerText.startsWith('critical fail:') || lowerText.startsWith('critical_fail:')) {
-      parsed.critical_fail = text.split(':', 2)[1].trim();
+      parsed.critical_fail = valueAfterFirstColon(text);
       continue;
     }
     
@@ -117,6 +117,11 @@ export function parseArtifactInstructions(value: string): Record<string, string>
   }
   
   return parsed;
+}
+
+function valueAfterFirstColon(value: string): string {
+  const colonIndex = value.indexOf(':');
+  return colonIndex === -1 ? '' : value.slice(colonIndex + 1).trim();
 }
 
 /**

@@ -14,6 +14,9 @@ export interface LTEStage6E {
   prerequisites: string[];
   technicalConcepts: string[];
   engineeringContext: string;
+  videoCtvContext?: string;
+  whenToUse?: string;
+  moduleContinuity?: string;
   isCompleted?: boolean;
   assets?: LTELearningAsset[];
 }
@@ -31,6 +34,33 @@ export interface LTEArtifactPractice {
   moduleIndex: number;
   practiceIndex: 1 | 2;
   title: string;
+  artifactType?: 'practice' | 'final';
+  stageName?: StageType6E;
+  totalScore?: number;
+  passingScore?: number;
+  questions?: LTEArtifactQuestion[];
+  templates?: LTEArtifactTemplate[];
+}
+
+export interface LTEArtifactQuestion {
+  id: string;
+  title: string;
+  description: string;
+  instructions?: string | {
+    required_fields?: string;
+    pass_criteria?: string;
+    critical_fail?: string;
+  };
+  responseType?: string;
+  required?: boolean;
+}
+
+export interface LTEArtifactTemplate {
+  id: string;
+  fileName: string;
+  fileUrl?: string;
+  fileType?: string;
+  questionId?: string;
 }
 
 export interface LTEModule {
@@ -42,6 +72,13 @@ export interface LTEModule {
   stages: LTEStage6E[];
   artifactPractices: LTEArtifactPractice[];
   contextDescription: string;
+  pressurePoints?: string[];
+  userConfusion?: string[];
+  industryChallenge?: string;
+  prerequisites?: string[];
+  whatYoullLearn?: string[];
+  whenToApply?: string;
+  moduleProblemStatement?: string;
 }
 
 export interface LTECourseMetadata {

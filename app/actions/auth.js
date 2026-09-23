@@ -105,6 +105,23 @@ export async function loginAction(email, password) {
       return { success: false, error: errorMessage, status: statusCode }
     }
 
+    if (loginData?.kind === 'issued' && loginData.session?.accessToken) {
+      const identity = loginData.session.identity ?? {}
+      loginData = {
+        success: true,
+        access_token: loginData.session.accessToken,
+        refresh_token: loginData.session.refreshToken,
+        user: {
+          id: identity.subject,
+          email: identity.email,
+          roles: Array.from(identity.roles ?? []),
+          orgId: identity.organizationId ?? null,
+          isEmailVerified: identity.emailVerified ?? true,
+        },
+        expiresAt: Date.now() + (loginData.session.remainingLifetimeSeconds ?? 0) * 1000,
+      }
+    }
+
     if (!loginData || !loginData.success || loginData.error) {
       const statusCode = loginData.status ?? 401
       const errorMessage = loginData.error || 'Login failed'

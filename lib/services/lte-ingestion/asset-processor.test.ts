@@ -21,11 +21,11 @@ describe('processSnapshotAssets', () => {
 
   it('validates, uploads, replaces every duplicate occurrence, and builds the manifest', async () => {
     vi.mocked(validateAssetBatch).mockResolvedValue([{
-      url: 'https://source.example.com/file.pdf',
+      url: 'https://drive.google.com/file/d/file-id/view',
       valid: true,
       asset: {
-        originalUrl: 'https://source.example.com/file.pdf',
-        finalUrl: 'https://source.example.com/file.pdf',
+        originalUrl: 'https://drive.google.com/file/d/file-id/view',
+        finalUrl: 'https://drive.google.com/uc?export=download&id=file-id',
         contentHash: 'a'.repeat(64),
         mimeType: 'application/pdf',
         sizeBytes: 3,
@@ -39,14 +39,14 @@ describe('processSnapshotAssets', () => {
       tables: {
         artifact_questions: {
           columns: ['reference_url', 'solution_url'],
-          rows: [['https://source.example.com/file.pdf', 'https://source.example.com/file.pdf']],
+          rows: [['https://drive.google.com/file/d/file-id/view', 'https://drive.google.com/file/d/file-id/view']],
         },
       },
     };
 
     const result = await processSnapshotAssets(snapshot, 'upload-1', heartbeat);
 
-    expect(validateAssetBatch).toHaveBeenCalledWith(['https://source.example.com/file.pdf']);
+    expect(validateAssetBatch).toHaveBeenCalledWith(['https://drive.google.com/file/d/file-id/view']);
     expect(uploadAsset).toHaveBeenCalledWith(expect.objectContaining({
       uploadId: 'upload-1',
       capabilityCode: 'CAP',
@@ -73,7 +73,7 @@ describe('processSnapshotAssets', () => {
       tables: {
         artifact_questions: {
           columns: ['reference_url'],
-          rows: [['http://source.example.com/file.pdf']],
+          rows: [['https://drive.google.com/file/d/file-id/view']],
         },
       },
     };

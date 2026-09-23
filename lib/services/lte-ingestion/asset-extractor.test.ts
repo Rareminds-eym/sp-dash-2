@@ -11,14 +11,14 @@ describe('extractAssets', () => {
       tables: {
         module_artifacts: {
           columns: ['id', 'template_url'],
-          rows: [['1', 'https://cdn.example.com/template.pdf']],
+          rows: [['1', 'https://drive.google.com/file/d/template-id/view?usp=sharing']],
         },
       },
     });
 
     expect(assets).toHaveLength(1);
     expect(assets[0]).toMatchObject({
-      originalUrl: 'https://cdn.example.com/template.pdf',
+      originalUrl: 'https://drive.google.com/file/d/template-id/view?usp=sharing',
       tableName: 'module_artifacts',
       rowIndex: 0,
       fieldPath: 'tables.module_artifacts.rows.0.template_url',
@@ -30,7 +30,7 @@ describe('extractAssets', () => {
       tables: {
         e_content: {
           columns: ['learning_content'],
-          rows: [[{ context_link: 'https://learn.example.com/context.html' }]],
+          rows: [[{ context_link: 'https://docs.google.com/presentation/d/deck-id/edit' }]],
         },
       },
     });
@@ -44,8 +44,8 @@ describe('extractAssets', () => {
         artifact_questions: {
           columns: ['reference_url', 'solution_url'],
           rows: [
-            ['https://cdn.example.com/shared.pdf', 'https://cdn.example.com/shared.pdf'],
-            ['https://cdn.example.com/shared.pdf', null],
+            ['https://drive.google.com/file/d/shared-id/view', 'https://drive.google.com/file/d/shared-id/view'],
+            ['https://drive.google.com/file/d/shared-id/view', null],
           ],
         },
       },
@@ -59,5 +59,24 @@ describe('extractAssets', () => {
     expect(extractAssets({
       tables: { random_table: { columns: ['url'], rows: [['https://example.com/secret']] } },
     })).toEqual([]);
+  });
+
+  it('extracts artifact template file URLs but leaves non-Google external links alone', () => {
+    const assets = extractAssets({
+      tables: {
+        artifact_templates: {
+          columns: ['file_url'],
+          rows: [
+            ['https://docs.google.com/spreadsheets/d/sheet-id/edit'],
+            ['https://example.com/external-reference.html'],
+          ],
+        },
+      },
+    });
+
+    expect(assets.map((asset) => asset.originalUrl)).toEqual([
+      'https://docs.google.com/spreadsheets/d/sheet-id/edit',
+    ]);
+    expect(assets[0].fieldPath).toBe('tables.artifact_templates.rows.0.file_url');
   });
 });

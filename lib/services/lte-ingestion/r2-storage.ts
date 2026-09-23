@@ -34,6 +34,9 @@ export interface UploadAssetInput extends AssetKeyContext {
 
 const EXTENSION_BY_MIME: Record<string, string> = {
   'application/pdf': '.pdf',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
   'image/png': '.png',
   'image/jpeg': '.jpg',
   'image/gif': '.gif',

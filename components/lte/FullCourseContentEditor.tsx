@@ -83,8 +83,13 @@ export const FullCourseContentEditor: React.FC<FullCourseContentEditorProps> = (
 }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [activeDraft, setActiveDraft] = useState<any>(null);
   const [course, setCourse] = useState<any>(null);
   const [level, setLevel] = useState<any>(null);
+  const [capability, setCapability] = useState<any>(null);
+  const [levelScale, setLevelScale] = useState<any>(null);
+  const [versions, setVersions] = useState<any[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
   const [eContent, setEContent] = useState<any[]>([]);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
@@ -109,6 +114,10 @@ export const FullCourseContentEditor: React.FC<FullCourseContentEditorProps> = (
       if (data.success) {
         setCourse(data.course);
         setLevel(data.level || null);
+        setCapability(data.capability || data.course?.capability || null);
+        setLevelScale(data.levelScale || data.course?.level_scale || null);
+        setVersions(data.versions || []);
+        setActiveDraft(data.activeDraft || null);
         setModules(data.modules || []);
         setEContent(data.eContent || []);
         
@@ -134,6 +143,28 @@ export const FullCourseContentEditor: React.FC<FullCourseContentEditorProps> = (
     }
   };
 
+  const buildUpdates = () => ({
+    course: {
+      course_name: course.course_name,
+      short_name: course.short_name,
+      description: course.description,
+      observable_behavior: course.observable_behavior,
+      example_outputs: course.example_outputs,
+    },
+    modules: modules.map(m => ({
+      id: m.id,
+      title: m.title,
+      description: m.description,
+      learning_content: m.learning_content,
+      prerequisites: m.prerequisites,
+      what_youll_learn: m.what_youll_learn,
+      is_published: m.is_published,
+      content: m.content || [],
+      artifacts: m.artifacts || [],
+    })),
+    eContent,
+  });
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -142,39 +173,26 @@ export const FullCourseContentEditor: React.FC<FullCourseContentEditorProps> = (
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           courseId,
-          updates: {
-            course: {
-              course_name: course.course_name,
-              short_name: course.short_name,
-              description: course.description,
-            },
-            modules: modules.map(m => ({
-              id: m.id,
-              title: m.title,
-              description: m.description,
-              learning_content: m.learning_content,
-              prerequisites: m.prerequisites,
-              what_youll_learn: m.what_youll_learn,
-              is_published: m.is_published,
-              content: m.content || [],
-              artifacts: m.artifacts || [],
-            })),
-            eContent,
-          },
+          updates: buildUpdates(),
+          expectedDraftRevision: activeDraft?.draft_revision,
         }),
       });
 
       const data = await res.json();
 
       if (data.success) {
+        setActiveDraft({ id: data.draftId, draft_revision: data.draftRevision, version_no: data.versionNo });
         toast({
-          title: 'Content Saved',
-          description: 'Course content, 6Es stages, and artifacts updated successfully',
+          title: `Draft saved (revision ${data.draftRevision})`,
+          description: 'Live content is untouched until you publish this draft.',
         });
         onSaved();
-        onClose();
+        fetchCourseContent();
+      } else if (data.errorCode === 'DRAFT_CONFLICT') {
+        toast({ title: 'Draft Conflict', description: data.error, variant: 'destructive' });
+        fetchCourseContent();
       } else {
-        throw new Error(data.error || 'Failed to save');
+        throw new Error(data.error || 'Failed to save draft');
       }
     } catch (err: any) {
       toast({
@@ -184,6 +202,54 @@ export const FullCourseContentEditor: React.FC<FullCourseContentEditorProps> = (
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePublishDraft = async () => {
+    setPublishing(true);
+    try {
+      const res = await fetch('/api/admin/lte/course-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ courseId, expectedDraftRevision: activeDraft?.draft_revision }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({
+          title: `Published as Version ${data.newVersionNo}`,
+          description: 'Draft edits are now live. Previous versions stay immutable for rollback.',
+        });
+        setActiveDraft(null);
+        onSaved();
+        fetchCourseContent();
+      } else if (data.errorCode === 'DRAFT_CONFLICT') {
+        toast({ title: 'Draft Conflict', description: data.error, variant: 'destructive' });
+        fetchCourseContent();
+      } else {
+        throw new Error(data.error || 'Failed to publish draft');
+      }
+    } catch (err: any) {
+      toast({ title: 'Publish Failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const handleDiscardDraft = async () => {
+    if (!activeDraft) return;
+    try {
+      const res = await fetch(`/api/admin/lte/course-content?draftId=${activeDraft.id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: 'Draft Discarded', description: 'Live content was not touched.' });
+        setActiveDraft(null);
+        onSaved();
+        fetchCourseContent();
+      } else {
+        throw new Error(data.error || 'Failed to discard draft');
+      }
+    } catch (err: any) {
+      toast({ title: 'Discard Failed', description: err.message, variant: 'destructive' });
     }
   };
 
@@ -407,12 +473,12 @@ export const FullCourseContentEditor: React.FC<FullCourseContentEditorProps> = (
                   <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 space-y-5 shadow-sm">
                     <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                       <BookOpen className="w-4 h-4 text-indigo-600" />
-                      <span>Course Information</span>
+                      <span>Level Catalog Record</span>
                     </h3>
 
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Course Name
+                        Level Title
                       </label>
                       <input
                         type="text"
@@ -422,21 +488,40 @@ export const FullCourseContentEditor: React.FC<FullCourseContentEditorProps> = (
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Short Name
-                      </label>
-                      <input
-                        type="text"
-                        className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                        value={course.short_name || ''}
-                        onChange={(e) => setCourse({ ...course, short_name: e.target.value })}
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Level Code</label>
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 font-mono text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+                          {course.level_code || course.course_code || 'N/A'}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Capability (locked — editing never re-parents a course)</label>
+                        <div
+                          className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+                          title="Capability mapping is immutable from this editor"
+                        >
+                          <span className="font-semibold">{capability?.code || course.capability_id || 'N/A'}</span>
+                          {capability?.name ? <span className="text-slate-500"> - {capability.name}</span> : null}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Level Scale</label>
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+                          {levelScale ? `L${levelScale.level_no} - ${levelScale.level_label}` : course.level_id || 'N/A'}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Difficulty</label>
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+                          {course.difficulty_level || 'N/A'}
+                        </div>
+                      </div>
                     </div>
 
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Description / Problem Statement
+                        Description
                       </label>
                       <textarea
                         rows={5}
@@ -447,15 +532,37 @@ export const FullCourseContentEditor: React.FC<FullCourseContentEditorProps> = (
                       />
                     </div>
 
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Observable Behavior</label>
+                        <textarea
+                          rows={4}
+                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                          value={course.observable_behavior || ''}
+                          onChange={(e) => setCourse({ ...course, observable_behavior: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Example Outputs</label>
+                        <textarea
+                          rows={4}
+                          className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                          value={course.example_outputs || ''}
+                          onChange={(e) => setCourse({ ...course, example_outputs: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
                     <div className="bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl p-4">
                       <div className="flex items-start gap-3">
                         <AlertCircle className="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5" />
                         <div className="text-xs text-indigo-950 dark:text-indigo-200 space-y-1">
-                          <p className="font-bold">Catalog Record Metadata</p>
-                          <p>Course ID: <span className="font-mono">{course.id}</span></p>
-                          <p>Course Code: <span className="font-mono bg-indigo-100 dark:bg-indigo-900 px-2 py-0.5 rounded">{course.course_code}</span></p>
-                          <p>Lifecycle Status: <span className="font-semibold text-emerald-600 dark:text-emerald-400">{course.lifecycle_status || 'ACTIVE'}</span></p>
-                          <p>Created: {new Date(course.created_at).toLocaleString()}</p>
+                          <p className="font-bold">Catalog Status</p>
+                          <p>Level Code: <span className="font-mono bg-indigo-100 dark:bg-indigo-900 px-2 py-0.5 rounded">{course.level_code || course.course_code}</span></p>
+                          <p>Status: <span className="font-semibold text-emerald-600 dark:text-emerald-400">{course.status || 'N/A'}</span></p>
+                          <p>Version No: <span className="font-semibold">V{course.version_no || 1}</span> ({versions.length} stored versions)</p>
+                          <p>Duration: <span className="font-semibold">{course.duration_minutes ?? 0} mins</span></p>
+                          <p>Total XP: <span className="font-semibold">{course.total_xp ?? 0} XP</span></p>
                         </div>
                       </div>
                     </div>
@@ -469,9 +576,9 @@ export const FullCourseContentEditor: React.FC<FullCourseContentEditorProps> = (
                   {modules.length === 0 ? (
                     <div className="text-center py-16 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-8 shadow-sm">
                       <FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                      <h4 className="text-base font-bold text-slate-700 dark:text-slate-300">No Modules Linked directly in Database</h4>
+                      <h4 className="text-base font-bold text-slate-700 dark:text-slate-300">No modules linked to this catalog course</h4>
                       <p className="text-xs text-slate-500 mt-2 max-w-md mx-auto">
-                        If you uploaded a catalog snapshot, ensure you have clicked "Materialize" on the blue level row in Step 3 Catalog Workspace to create all initial module records.
+                        Check that the uploaded modules use this course level ID in the modules.level_id column.
                       </p>
                     </div>
                   ) : (
@@ -900,23 +1007,46 @@ export const FullCourseContentEditor: React.FC<FullCourseContentEditorProps> = (
         <div className="flex items-center justify-between border-t p-4 md:p-6 flex-shrink-0 bg-slate-50 dark:bg-slate-800/50">
           <div className="text-xs text-slate-500 hidden sm:block">
             Editing <span className="font-semibold text-slate-700 dark:text-slate-300">{course?.course_code || 'Course'}</span> ({modules.length} modules, {total6EsCount} 6Es stages, {totalArtifactsCount} artifacts)
+            {activeDraft && (
+              <span className="ml-2 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 font-semibold">
+                Draft V{activeDraft.version_no} · rev {activeDraft.draft_revision} — not live
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
-              disabled={saving}
+              disabled={saving || publishing}
               className="px-5 py-2 text-xs md:text-sm font-semibold rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors"
             >
               Cancel
             </button>
+            {activeDraft && (
+              <button
+                onClick={handleDiscardDraft}
+                disabled={saving || publishing}
+                className="px-4 py-2 text-xs md:text-sm font-semibold rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+              >
+                Discard Draft
+              </button>
+            )}
             <button
               onClick={handleSave}
-              disabled={saving || loading}
+              disabled={saving || loading || publishing}
               className="px-6 py-2 text-xs md:text-sm font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm"
             >
               <Save className="w-4 h-4" />
-              <span>{saving ? 'Saving Changes...' : 'Save Changes'}</span>
+              <span>{saving ? 'Saving Draft...' : 'Save Draft'}</span>
             </button>
+            {activeDraft && (
+              <button
+                onClick={handlePublishDraft}
+                disabled={saving || loading || publishing}
+                className="px-6 py-2 text-xs md:text-sm font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm"
+              >
+                <span>{publishing ? 'Publishing...' : `Publish V${activeDraft.version_no}`}</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

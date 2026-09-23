@@ -6,6 +6,7 @@ import {
   FileSpreadsheet,
   CheckCircle2,
   Upload,
+  Download,
   ArrowRight,
   Info,
   Loader2,
@@ -39,6 +40,10 @@ export const LTEIngestionStep: React.FC<LTEIngestionStepProps> = ({
   const [isTableSummaryExpanded, setIsTableSummaryExpanded] = useState<boolean>(false);
 
   const report: LTERelationalValidationReport | null = snapshot?.validationReport || null;
+
+  const handleDownloadTemplate = () => {
+    window.open('/api/admin/lte/template', '_blank', 'noopener,noreferrer');
+  };
 
   const handleFetchGoogleSheet = async () => {
     if (!googleSheetsUrl.trim()) {
@@ -199,9 +204,19 @@ export const LTEIngestionStep: React.FC<LTEIngestionStepProps> = ({
               Upload the approved LTE workbook to parse and validate the catalog tables.
             </p>
           </div>
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-300 border border-purple-200 dark:border-purple-800 w-fit">
-            Auto-Extracts 15 Database Tables
-          </span>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <button
+              type="button"
+              onClick={handleDownloadTemplate}
+              className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Download Template
+            </button>
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-300 border border-purple-200 dark:border-purple-800 w-fit">
+              Auto-Extracts 13 Catalog Sheets
+            </span>
+          </div>
         </div>
 
         {errorMsg && (
@@ -280,7 +295,7 @@ export const LTEIngestionStep: React.FC<LTEIngestionStepProps> = ({
                     <p className="text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300">
                       Validating {selectedFile?.name || 'file'}...
                     </p>
-                    <p className="text-[11px] text-slate-400">Parsing 15 tables and running validation checks</p>
+                    <p className="text-[11px] text-slate-400">Parsing 13 tables and running validation checks</p>
                   </>
                 ) : (
                   <>

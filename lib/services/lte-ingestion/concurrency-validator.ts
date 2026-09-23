@@ -35,8 +35,8 @@ export class ConcurrencyValidator {
 
     const courseIds = checks.map((c) => c.courseId);
     const { data: courses, error } = await this.supabase
-      .from('courses')
-      .select('id, current_published_version_id')
+      .from('levels')
+      .select('id, version_no')
       .in('id', courseIds);
 
     if (error) {
@@ -44,7 +44,7 @@ export class ConcurrencyValidator {
     }
 
     const courseMap = new Map<string, string | null>(
-      courses.map((c) => [c.id, c.current_published_version_id || null])
+      courses.map((c) => [c.id, c.version_no ? String(c.version_no) : null])
     );
 
     const mismatchedCourses: string[] = [];
@@ -80,9 +80,10 @@ export class ConcurrencyValidator {
 
     const capIds = checks.map((c) => c.capabilityId);
     const { data: revisions, error } = await this.supabase
-      .from('capability_revisions')
-      .select('capability_id, capability_revision')
-      .in('capability_id', capIds);
+      .from('catalog_versions')
+      .select('entity_id, version_no')
+      .eq('entity_type', 'capability')
+      .in('entity_id', capIds);
 
     if (error) {
       // If table does not exist or empty in dev, pass gracefully if no data returned
@@ -90,7 +91,7 @@ export class ConcurrencyValidator {
     }
 
     const revMap = new Map<string, number>(
-      revisions.map((r) => [r.capability_id, Number(r.capability_revision)])
+      revisions.map((r) => [r.entity_id, Number(r.version_no)])
     );
 
     const mismatchedCaps: string[] = [];
@@ -121,16 +122,18 @@ export class ConcurrencyValidator {
     expectedBaseCatalogRevision: number
   ): Promise<ConcurrencyValidationResult> {
     const { data: row, error } = await this.supabase
-      .from('catalog_revisions')
-      .select('catalog_revision')
-      .eq('id', 1)
-      .single();
+      .from('catalog_versions')
+      .select('version_no')
+      .eq('entity_type', 'catalog')
+      .order('version_no', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     if (error || !row) {
       return { isValid: true };
     }
 
-    const currentCatalogRev = Number(row.catalog_revision);
+    const currentCatalogRev = Number(row.version_no);
     if (currentCatalogRev !== expectedBaseCatalogRevision) {
       return {
         isValid: false,
@@ -150,9 +153,10 @@ export class ConcurrencyValidator {
     expectedDraftRevision: number
   ): Promise<ConcurrencyValidationResult> {
     const { data: version, error } = await this.supabase
-      .from('course_versions')
+      .from('catalog_versions')
       .select('id, draft_revision, status')
       .eq('id', draftId)
+      .eq('status', 'DRAFT')
       .single();
 
     if (error || !version) {
@@ -182,9 +186,10 @@ export class ConcurrencyValidator {
     confirmDiscardDraft: boolean = false
   ): Promise<ConcurrencyValidationResult> {
     const { data: activeDraft, error } = await this.supabase
-      .from('course_versions')
+      .from('catalog_versions')
       .select('id, draft_revision')
-      .eq('course_id', courseId)
+      .eq('entity_type', 'level')
+      .eq('entity_id', courseId)
       .eq('status', 'DRAFT')
       .maybeSingle();
 

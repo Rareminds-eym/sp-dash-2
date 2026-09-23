@@ -89,7 +89,13 @@ describe('LTEIngestionService.extractLevelCourses', () => {
         modules_content: {
           columns: ['id', 'module_id', 'stage_name', 'stage_description', 'curriculum_reference'],
           rows: [
-            ['content-engage', 'module-1', 'engage', 'Engage description', { prerequisites: 'Case pack', technical_concepts: 'Evidence IDs' }],
+            ['content-engage', 'module-1', 'engage', 'Engage description', {
+              prerequisites: 'Case pack',
+              technical_concepts: 'Evidence IDs',
+              video_ctv_context: 'Confirm Source Assets',
+              when_to_use: 'During engage',
+              module_continuity: 'Express preserves continuity',
+            }],
             ['content-explore', 'module-1', 'explore', 'Explore description', {}],
             ['content-explain', 'module-1', 'explain', 'Explain description', {}],
             ['content-express', 'module-1', 'express', 'Express description', {}],
@@ -135,6 +141,9 @@ describe('LTEIngestionService.extractLevelCourses', () => {
     expect(course.modules[0].stages[0].description).toBe('Engage file description');
     expect(course.modules[0].stages[0].estimatedDuration).toBe('5 mins');
     expect(course.modules[0].stages[0].prerequisites).toEqual(['Case pack']);
+    expect(course.modules[0].stages[0].videoCtvContext).toBe('Confirm Source Assets');
+    expect(course.modules[0].stages[0].whenToUse).toBe('During engage');
+    expect(course.modules[0].stages[0].moduleContinuity).toBe('Express preserves continuity');
     expect(course.modules[0].stages[5].subtitle).toBe('Evolve workbook title');
   });
 
@@ -157,5 +166,73 @@ describe('LTEIngestionService.extractLevelCourses', () => {
       expect.objectContaining({ url: 'https://example.test/intro.mp4', fileName: 'intro.mp4', contentType: 'video/mp4' }),
       expect.objectContaining({ url: 'https://example.test/deck.pdf', fileName: 'deck.pdf', contentType: 'application/pdf' }),
     ]);
+  });
+
+  it('uses level_code instead of UUID level_id for learner preview level labels', () => {
+    const snapshot: NormalizedSnapshot = {
+      tables: {
+        capabilities: {
+          columns: ['id', 'code', 'name'],
+          rows: [['66fb6d7e-8ea6-54a4-b3ac-fd9d8ab468aa', 'MEG_IND-CAP-19', 'Video/CTV Campaign Activation and QA Readiness']],
+        },
+        levels: {
+          columns: ['id', 'capability_id', 'level_id', 'level_code', 'title'],
+          rows: [[
+            '9e2a0c4a-1111-4111-8111-111111111111',
+            '66fb6d7e-8ea6-54a4-b3ac-fd9d8ab468aa',
+            'aa306704-c6b5-4ddc-8cf5-3fc20f293a03',
+            'MEG_CAP19_L1',
+            'Activation Readiness, Source and Criteria Recognition',
+          ]],
+        },
+      },
+      metadata: { sourceType: 'xlsx', sourceName: 'cap19.xlsx', tableCount: 2, totalRows: 2, parsedAt: '2026-09-21T00:00:00.000Z' },
+    };
+
+    const [course] = LTEIngestionService.extractLevelCourses(snapshot);
+
+    expect(course.levelNo).toBe(1);
+    expect(course.courseMetadata.capabilityLevel).toBe('Level 1');
+  });
+
+  it('maps module worksheet fields for learner preview side drawers', () => {
+    const snapshot: NormalizedSnapshot = {
+      tables: {
+        levels: {
+          columns: ['id', 'level_code', 'title'],
+          rows: [['level-1', 'MEG_CAP19_L1', 'Activation readiness']],
+        },
+        modules: {
+          columns: ['id', 'level_id', 'module_no', 'title', 'description', 'pressure_points', 'user_confusion', 'industry_challenge', 'prerequisites', 'what_youll_learn', 'when_to_apply', 'module_problem_statement'],
+          rows: [[
+            'module-1',
+            'level-1',
+            0,
+            'Confirm Source Assets',
+            'Module description',
+            ['Launch pressure', 'Incomplete evidence'],
+            ['May infer approval truth'],
+            'Video/CTV activation must stay evidence-led.',
+            ['Campaign brief'],
+            ['Trace evidence', 'Stay inside authority'],
+            'Use during activation readiness.',
+            'Confirm source/version/owner before action.',
+          ]],
+        },
+      },
+      metadata: { sourceType: 'xlsx', sourceName: 'cap19.xlsx', tableCount: 2, totalRows: 2, parsedAt: '2026-09-21T00:00:00.000Z' },
+    };
+
+    const [course] = LTEIngestionService.extractLevelCourses(snapshot);
+    const [module] = course.modules;
+
+    expect(module.contextDescription).toBe('Module description');
+    expect(module.pressurePoints).toEqual(['Launch pressure', 'Incomplete evidence']);
+    expect(module.userConfusion).toEqual(['May infer approval truth']);
+    expect(module.industryChallenge).toBe('Video/CTV activation must stay evidence-led.');
+    expect(module.prerequisites).toEqual(['Campaign brief']);
+    expect(module.whatYoullLearn).toEqual(['Trace evidence', 'Stay inside authority']);
+    expect(module.whenToApply).toBe('Use during activation readiness.');
+    expect(module.moduleProblemStatement).toBe('Confirm source/version/owner before action.');
   });
 });

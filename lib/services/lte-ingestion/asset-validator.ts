@@ -11,6 +11,9 @@ const BLOCKED_HOSTNAMES = new Set([
 
 const MIME_BY_EXTENSION: Record<string, string[]> = {
   pdf: ['application/pdf'],
+  pptx: ['application/vnd.openxmlformats-officedocument.presentationml.presentation'],
+  xlsx: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+  docx: ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
   png: ['image/png'],
   jpg: ['image/jpeg'],
   jpeg: ['image/jpeg'],
@@ -27,6 +30,9 @@ const DEFAULT_SIZE_LIMIT = 25 * 1024 * 1024;
 const SIZE_LIMITS: Record<string, number> = {
   'video/mp4': 100 * 1024 * 1024,
   'application/pdf': 50 * 1024 * 1024,
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': 50 * 1024 * 1024,
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 50 * 1024 * 1024,
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 50 * 1024 * 1024,
 };
 
 export type AssetValidationErrorCode =
@@ -40,7 +46,8 @@ export type AssetValidationErrorCode =
   | 'INVALID_MIME_TYPE'
   | 'FILE_TOO_LARGE'
   | 'DOWNLOAD_TIMEOUT'
-  | 'DOWNLOAD_FAILED';
+  | 'DOWNLOAD_FAILED'
+  | 'DRIVE_NOT_PUBLIC';
 
 export class AssetValidationError extends Error {
   constructor(public readonly code: AssetValidationErrorCode, message: string) {
@@ -75,6 +82,40 @@ const defaultDependencies: AssetValidatorDependencies = {
   fetch,
   resolve: async (hostname) => (await lookup(hostname, { all: true, verbatim: true })).map(({ address }) => address),
 };
+
+function googleFileId(url: URL): string | null {
+  const hostname = url.hostname.toLowerCase();
+  const docMatch = url.pathname.match(/^\/(?:presentation|spreadsheets|document)\/d\/([^/]+)/);
+  const driveMatch = url.pathname.match(/^\/file\/d\/([^/]+)/);
+  if (hostname === 'docs.google.com' && docMatch) return docMatch[1];
+  if (hostname === 'drive.google.com' && driveMatch) return driveMatch[1];
+  if (['drive.google.com', 'docs.google.com'].includes(hostname)) return url.searchParams.get('id');
+  return null;
+}
+
+function googleDownloadCandidates(url: URL): URL[] {
+  const fileId = googleFileId(url);
+  if (!fileId) return [url];
+
+  const candidates: URL[] = [];
+  if (url.hostname.toLowerCase() === 'docs.google.com') {
+    if (url.pathname.startsWith('/presentation/')) {
+      candidates.push(new URL(`https://docs.google.com/presentation/d/${fileId}/export/pptx`));
+    } else if (url.pathname.startsWith('/spreadsheets/')) {
+      candidates.push(new URL(`https://docs.google.com/spreadsheets/d/${fileId}/export?format=xlsx`));
+    } else if (url.pathname.startsWith('/document/')) {
+      candidates.push(new URL(`https://docs.google.com/document/d/${fileId}/export?format=docx`));
+    }
+  }
+
+  candidates.push(
+    new URL(`https://drive.google.com/uc?export=download&id=${fileId}`),
+    new URL(`https://drive.google.com/uc?id=${fileId}&export=download`),
+    new URL(`https://drive.google.com/file/d/${fileId}/export?format=pdf`)
+  );
+
+  return [...new Map(candidates.map((candidate) => [candidate.toString(), candidate])).values()];
+}
 
 function isPrivateIPv4(address: string): boolean {
   const octets = address.split('.').map(Number);
@@ -139,11 +180,18 @@ export async function validateAndDownloadAsset(
 ): Promise<ValidatedAsset> {
   const dependencies = options.dependencies || defaultDependencies;
   const timeout = timeoutSignal(options.timeoutMs ?? 30_000);
-  let currentUrl = originalUrl;
   const maxRedirects = options.maxRedirects ?? 3;
+  let lastError: AssetValidationError | null = null;
 
   try {
-    for (let redirects = 0; ; redirects += 1) {
+    const sourceUrl = await validateAssetDestination(originalUrl, dependencies);
+    const candidates = googleDownloadCandidates(sourceUrl);
+    let sharingBlocked = false;
+
+    for (const candidate of candidates) {
+      let currentUrl = candidate.toString();
+
+      for (let redirects = 0; ; redirects += 1) {
       const parsed = await validateAssetDestination(currentUrl, dependencies);
       let response: Response;
       try {
@@ -162,12 +210,29 @@ export async function validateAndDownloadAsset(
         currentUrl = new URL(location, parsed).toString();
         continue;
       }
-      if (!response.ok || !response.body) throw new AssetValidationError('HTTP_ERROR', `Asset server returned ${response.status}`);
+      if (!response.ok || !response.body) {
+        if ([401, 403, 404].includes(response.status)) sharingBlocked = true;
+        lastError = new AssetValidationError(
+          'HTTP_ERROR',
+          `Asset server returned ${response.status}${response.statusText ? ` ${response.statusText}` : ''} for ${parsed.toString()}`
+        );
+        break;
+      }
 
       const mimeType = (response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+      if (mimeType === 'text/html') {
+        // Drive serves the login/consent HTML page when the file is not public.
+        sharingBlocked = true;
+        lastError = new AssetValidationError(
+          'DOWNLOAD_FAILED',
+          `Google Drive returned an HTML page instead of the file for ${parsed.toString()}. Confirm the source file is directly downloadable without login.`
+        );
+        break;
+      }
       const expected = expectedMime(parsed);
       if (!mimeType || (expected && !expected.includes(mimeType))) {
-        throw new AssetValidationError('INVALID_MIME_TYPE', `Unexpected Content-Type: ${mimeType || 'missing'}`);
+        lastError = new AssetValidationError('INVALID_MIME_TYPE', `Unexpected Content-Type: ${mimeType || 'missing'} for ${parsed.toString()}`);
+        break;
       }
       const limit = SIZE_LIMITS[mimeType] || DEFAULT_SIZE_LIMIT;
       const declaredSize = Number(response.headers.get('content-length'));
@@ -194,7 +259,16 @@ export async function validateAndDownloadAsset(
       let offset = 0;
       for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
       return { originalUrl, finalUrl: parsed.toString(), contentHash: hash.digest('hex'), mimeType, sizeBytes, bytes };
+      }
     }
+
+    if (sharingBlocked) {
+      throw new AssetValidationError(
+        'DRIVE_NOT_PUBLIC',
+        `Google Drive file is not publicly downloadable: ${originalUrl}. Make it public (open the file → Share → General access → "Anyone with the link" as Viewer), then republish. Last error: ${lastError?.message || 'download failed'}`
+      );
+    }
+    throw lastError || new AssetValidationError('DOWNLOAD_FAILED', 'Asset download failed for every Google Drive candidate URL');
   } finally {
     timeout.clear();
   }
