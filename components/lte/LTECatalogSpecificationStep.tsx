@@ -8,6 +8,13 @@ import { formatText } from '@/lib/services/lte-ingestion/text-formatter';
 
 const logger = new Logger('LTECatalogSpecificationStep');
 
+const LOCKED_MAPPING_FIELDS = new Set<keyof LTECourseMetadata>([
+  'courseCode',
+  'domain',
+  'capabilityCode',
+  'capabilityLevel',
+]);
+
 interface LTECatalogSpecificationStepProps {
   snapshot: LTEIngestionSnapshot | null;
   onBack: () => void;
@@ -180,6 +187,8 @@ export const LTECatalogSpecificationStep: React.FC<LTECatalogSpecificationStepPr
   );
 
   const handleInputChange = (field: keyof LTECourseMetadata, value: string) => {
+    if (LOCKED_MAPPING_FIELDS.has(field)) return;
+
     setLevelCourses((prev) => {
       const copy = [...prev];
       if (copy[selectedLevelIndex]) {
@@ -330,8 +339,10 @@ export const LTECatalogSpecificationStep: React.FC<LTECatalogSpecificationStepPr
               <input
                 type="text"
                 value={formData.courseCode}
-                onChange={(e) => handleInputChange('courseCode', e.target.value)}
-                className="w-full bg-[#f5f8fc] dark:bg-slate-800/80 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-medium text-[#172743] dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#7545ff]/40 focus:border-[#7545ff] font-mono"
+                readOnly
+                aria-readonly="true"
+                title="Locked: course code comes from the approved level mapping"
+                className="w-full cursor-not-allowed bg-slate-100 dark:bg-slate-900/70 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-medium text-[#172743] dark:text-slate-300 focus:outline-none font-mono"
               />
             </div>
             <div>
@@ -341,8 +352,10 @@ export const LTECatalogSpecificationStep: React.FC<LTECatalogSpecificationStepPr
               <input
                 type="text"
                 value={formData.domain}
-                onChange={(e) => handleInputChange('domain', e.target.value)}
-                className="w-full bg-[#f5f8fc] dark:bg-slate-800/80 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-medium text-[#172743] dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#7545ff]/40 focus:border-[#7545ff]"
+                readOnly
+                aria-readonly="true"
+                title="Locked: domain/industry is inherited from the approved role/capability mapping"
+                className="w-full cursor-not-allowed bg-slate-100 dark:bg-slate-900/70 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-medium text-[#172743] dark:text-slate-300 focus:outline-none"
               />
             </div>
           </div>
@@ -356,8 +369,10 @@ export const LTECatalogSpecificationStep: React.FC<LTECatalogSpecificationStepPr
               <input
                 type="text"
                 value={formData.capabilityCode}
-                onChange={(e) => handleInputChange('capabilityCode', e.target.value)}
-                className="w-full bg-[#f5f8fc] dark:bg-slate-800/80 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-medium text-[#172743] dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#7545ff]/40 focus:border-[#7545ff]"
+                readOnly
+                aria-readonly="true"
+                title="Locked: capability code is validated against the approved capability table"
+                className="w-full cursor-not-allowed bg-slate-100 dark:bg-slate-900/70 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-medium text-[#172743] dark:text-slate-300 focus:outline-none"
               />
             </div>
             <div>
@@ -367,8 +382,10 @@ export const LTECatalogSpecificationStep: React.FC<LTECatalogSpecificationStepPr
               <input
                 type="text"
                 value={formData.capabilityLevel}
-                onChange={(e) => handleInputChange('capabilityLevel', e.target.value)}
-                className="w-full bg-[#f5f8fc] dark:bg-slate-800/80 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-medium text-[#172743] dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#7545ff]/40 focus:border-[#7545ff]"
+                readOnly
+                aria-readonly="true"
+                title="Locked: capability level comes from the approved level scale/mapping"
+                className="w-full cursor-not-allowed bg-slate-100 dark:bg-slate-900/70 border border-[#d5e1ef] dark:border-slate-700 rounded-[11px] px-3 py-2 text-xs md:text-sm font-medium text-[#172743] dark:text-slate-300 focus:outline-none"
               />
             </div>
             <div>

@@ -314,6 +314,10 @@ function normalizePublishRow(tableName: string, row: Record<string, any>): Recor
   if (tableName === 'levels') {
     normalized.total_xp = numberOrDefault(normalized.total_xp, 0);
     normalized.duration_minutes = numberOrDefault(normalized.duration_minutes, 0);
+    normalizeJsonArray(normalized, 'observable_behavior');
+    normalizeJsonArray(normalized, 'example_outputs');
+    normalized.status = 'published';
+    normalized.is_active = true;
   }
 
   if (tableName === 'modules') {

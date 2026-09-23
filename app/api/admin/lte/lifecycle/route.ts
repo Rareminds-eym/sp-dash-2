@@ -22,6 +22,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         return await setLevelActive(body.courseId, false, user.userId);
       case 'REACTIVATE_COURSE':
         return await setLevelActive(body.courseId, true, user.userId);
+      case 'PUBLISH_COURSE_LEVEL':
+        return await publishCourseLevel(body.courseId, user.userId);
       case 'ROLLBACK_COURSE_VERSION':
         return await restoreCourseVersion(body, user.userId);
       case 'RENAME_CANONICAL_CODE_WITH_ALIAS':
@@ -39,6 +41,32 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 }
 
+async function publishCourseLevel(courseId: string | undefined, userId: string): Promise<NextResponse> {
+  if (!courseId) return NextResponse.json({ success: false, error: 'courseId is required' }, { status: 400 });
+
+  const { data: level, error } = await supabaseLTE
+    .from('levels')
+    .update({
+      status: 'published',
+      is_active: true,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', courseId)
+    .select('id, level_code, status, is_active')
+    .single();
+
+  if (error || !level) throw new Error(`Failed to publish course level: ${error?.message}`);
+
+  logger.info('Course level published from workspace', { courseId, userId, levelCode: level.level_code });
+  return NextResponse.json({
+    success: true,
+    action: 'PUBLISH_COURSE_LEVEL',
+    courseId,
+    courseCode: level.level_code,
+    status: level.status,
+    lifecycleStatus: level.is_active ? 'ACTIVE' : 'RETIRED',
+  });
+}
 async function setLevelActive(courseId: string | undefined, isActive: boolean, userId: string): Promise<NextResponse> {
   if (!courseId) return NextResponse.json({ success: false, error: 'courseId is required' }, { status: 400 });
 

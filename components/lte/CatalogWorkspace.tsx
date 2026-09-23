@@ -11,6 +11,7 @@ import {
   RefreshCw,
   Eye,
   Download,
+  CheckCircle,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { FullCourseContentEditor } from './FullCourseContentEditor';
@@ -50,6 +51,8 @@ export const CatalogWorkspace: React.FC = () => {
   const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
   const [isRollbackModalOpen, setIsRollbackModalOpen] = useState<boolean>(false);
   const [rollbackCourse, setRollbackCourse] = useState<any>(null);
+  const [publishConfirmCourse, setPublishConfirmCourse] = useState<any>(null);
+  const [publishingCourseId, setPublishingCourseId] = useState<string | null>(null);
 
   const { toast } = useToast();
 
@@ -154,6 +157,36 @@ export const CatalogWorkspace: React.FC = () => {
     setIsFullEditorOpen(true);
   };
 
+  const openPublishConfirm = (course: any) => {
+    if (!course || course.sourceType !== 'course') return;
+    setPublishConfirmCourse(course);
+  };
+
+  const handlePublishCourse = async (course: any) => {
+    if (!course || course.sourceType !== 'course') return;
+
+    try {
+      setPublishingCourseId(course.id);
+      const res = await fetch('/api/admin/lte/lifecycle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'PUBLISH_COURSE_LEVEL', courseId: course.id }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to publish course');
+
+      toast({ title: 'Course Published', description: `${course.course_code} is now assignable.` });
+      await refreshAll();
+      if (selectedCourse?.id === course.id) {
+        await handleSelectCourse({ ...course, assignableStatus: 'ASSIGNABLE', lifecycle_status: data.lifecycleStatus || course.lifecycle_status });
+      }
+      setPublishConfirmCourse(null);
+    } catch (error: any) {
+      toast({ title: 'Publish Failed', description: error.message, variant: 'destructive' });
+    } finally {
+      setPublishingCourseId(null);
+    }
+  };
   const handleViewCourse = (course: any) => {
     if (!course) return;
     setSelectedCourse(course);
@@ -311,6 +344,11 @@ export const CatalogWorkspace: React.FC = () => {
                         <button onClick={() => handleViewCourse(crs)} className="flex items-center gap-1 rounded border border-indigo-200 bg-indigo-50/60 px-2.5 py-1 text-[11px] font-semibold text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300">
                           <Eye className="h-3 w-3" /> View content
                         </button>
+                                                {crs.assignableStatus !== 'ASSIGNABLE' && (
+                          <button onClick={() => openPublishConfirm(crs)} className="flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                            <CheckCircle className="h-3 w-3" /> Publish
+                          </button>
+                        )}
                         <button onClick={() => handleOpenDraft(crs)} className="rounded border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-300">Edit draft</button>
                       </div>
                     ) : <p className="text-[11px] text-slate-600 dark:text-slate-300">Edit in Mapping & Review.</p>}
@@ -395,6 +433,16 @@ export const CatalogWorkspace: React.FC = () => {
                             >
                               <Eye className="w-3.5 h-3.5" />
                             </button>
+                            {crs.sourceType === 'course' && crs.assignableStatus !== 'ASSIGNABLE' && (
+                              <button
+                                className="p-1 rounded text-emerald-700 transition-colors hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
+                                title="Publish course level"
+                                onClick={() => openPublishConfirm(crs)}
+                                aria-label={`Publish ${crs.course_code}`}
+                              >
+                                <CheckCircle className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                             <button
                               disabled={crs.sourceType !== 'course'}
                               className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 disabled:cursor-not-allowed disabled:text-slate-300 dark:text-slate-400 dark:disabled:text-slate-700"
@@ -454,6 +502,16 @@ export const CatalogWorkspace: React.FC = () => {
                         <Eye className="h-3.5 w-3.5" />
                         <span>View Course Content</span>
                       </button>
+                                            {selectedCourse.assignableStatus !== 'ASSIGNABLE' && (
+                        <button
+                          onClick={() => openPublishConfirm(selectedCourse)}
+                          className="flex items-center justify-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                          title="Publish course level"
+                        >
+                          <CheckCircle className="h-3.5 w-3.5" />
+                          <span>Publish</span>
+                        </button>
+                      )}
                       <button
                         onClick={() => handleOpenDraft(selectedCourse)}
                         className="flex items-center justify-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -725,6 +783,48 @@ export const CatalogWorkspace: React.FC = () => {
         onSaved={refreshAll}
       />
 
+      {publishConfirmCourse && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="publish-course-title">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-start gap-3">
+              <div className="rounded-xl bg-emerald-50 p-2 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                <CheckCircle className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 id="publish-course-title" className="text-base font-bold text-slate-900 dark:text-slate-100">Publish course level?</h3>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                  This will publish {publishConfirmCourse.course_code} and make it assignable in the learner catalog.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs dark:border-slate-800 dark:bg-slate-950/40">
+              <p className="font-semibold text-slate-900 dark:text-slate-100">{publishConfirmCourse.course_name}</p>
+              <p className="mt-1 text-slate-500 dark:text-slate-400">Version: {publishConfirmCourse.publishedVersionNo ? `V${publishConfirmCourse.publishedVersionNo}` : 'None'} | Status: {publishConfirmCourse.lifecycle_status}</p>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={publishingCourseId === publishConfirmCourse.id}
+                onClick={() => setPublishConfirmCourse(null)}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={publishingCourseId === publishConfirmCourse.id}
+                onClick={() => handlePublishCourse(publishConfirmCourse)}
+                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-70"
+              >
+                <CheckCircle className="h-4 w-4" />
+                {publishingCourseId === publishConfirmCourse.id ? 'Publishing...' : 'Confirm Publish'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <RollbackModal
         isOpen={isRollbackModalOpen}
         onClose={() => setIsRollbackModalOpen(false)}
