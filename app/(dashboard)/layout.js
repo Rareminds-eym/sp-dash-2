@@ -44,6 +44,7 @@ import {
   Settings,
   Shield,
   Trophy,
+  Upload,
   Users,
   X
 } from 'lucide-react'
@@ -60,6 +61,7 @@ const logger = new Logger('DashboardLayout');
 // Initial navigation structure without counts
 const initialNavigation = [
   { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
+  { name: 'LTE Course Upload', icon: Upload, href: '/lte-course-upload' },
   { name: 'Admin Management', icon: Shield, href: '/users' },
   { name: 'Course Management', icon: GraduationCap, href: '/course-management' },
   { name: 'Verification Center', icon: FileText, href: '/passports' },
