@@ -65,7 +65,7 @@ describe('R2StorageService', () => {
   it('uploads staged bytes with metadata and retries temporary failures', async () => {
     const bucket = new MemoryBucket();
     bucket.failures = 2;
-    const service = new R2StorageService(bucket, 'https://assets.example.com/');
+    const service = new R2StorageService(bucket);
     const result = await service.uploadAsset({
       ...context,
       bytes: new TextEncoder().encode('asset'),
@@ -73,7 +73,7 @@ describe('R2StorageService', () => {
     });
     const stored = bucket.objects.get(result.key)!;
 
-    expect(result.publicUrl).toBe(`https://assets.example.com/${result.key}`);
+    expect(result.publicUrl).toBe(`/api/admin/lte/assets?key=${encodeURIComponent(result.key)}`);
     expect(stored.options.httpMetadata).toEqual({ contentType: 'application/pdf' });
     expect(stored.options.customMetadata).toMatchObject({
       lifecycle: 'staged',
@@ -85,7 +85,7 @@ describe('R2StorageService', () => {
 
   it('activates staged objects and treats active objects idempotently', async () => {
     const bucket = new MemoryBucket();
-    const service = new R2StorageService(bucket, 'https://assets.example.com');
+    const service = new R2StorageService(bucket);
     const uploaded = await service.uploadAsset({ ...context, bytes: new Uint8Array([1]), uploadId: 'upload-1' });
 
     expect(await service.activateAssets([uploaded.key])).toEqual({ activated: 1, failedKeys: [] });
@@ -95,7 +95,7 @@ describe('R2StorageService', () => {
 
   it('deletes only staged objects and preserves active objects', async () => {
     const bucket = new MemoryBucket();
-    const service = new R2StorageService(bucket, 'https://assets.example.com');
+    const service = new R2StorageService(bucket);
     const staged = await service.uploadAsset({ ...context, bytes: new Uint8Array([1]), uploadId: 'one' });
     const active = await service.uploadAsset({ ...context, contentHash: 'b'.repeat(64), bytes: new Uint8Array([2]), uploadId: 'two' });
     await service.activateAssets([active.key]);

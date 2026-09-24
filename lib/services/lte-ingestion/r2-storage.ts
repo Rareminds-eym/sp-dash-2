@@ -76,7 +76,6 @@ export function generateStableAssetKey(context: AssetKeyContext): string {
 export class R2StorageService {
   constructor(
     private readonly bucket: R2BucketLike,
-    private readonly publicDomain: string,
   ) {}
 
   async uploadAsset(input: UploadAssetInput, maxAttempts = 3): Promise<{ key: string; publicUrl: string }> {
@@ -95,7 +94,7 @@ export class R2StorageService {
             lifecycle: 'staged',
           },
         });
-        return { key, publicUrl: `${this.publicDomain.replace(/\/$/, '')}/${key}` };
+        return { key, publicUrl: `/api/admin/lte/assets?key=${encodeURIComponent(key)}` };
       } catch (error) {
         lastError = error;
         if (attempt < maxAttempts) await new Promise((resolve) => setTimeout(resolve, 25 * 2 ** (attempt - 1)));
