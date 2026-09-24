@@ -13,7 +13,7 @@
 
 import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
-import { normalizeHeader, FRIENDLY_HEADER_ALIASES } from './header-normalizer';
+import { normalizeHeader, FRIENDLY_HEADER_ALIASES } from '@/lib/services/lte-ingestion/header-normalizer';
 
 describe('Header Normalization Property Tests', () => {
   

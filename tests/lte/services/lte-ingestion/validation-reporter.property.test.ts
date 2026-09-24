@@ -14,9 +14,9 @@ import {
   generateTableSummaries,
   ValidationError,
   ValidationWarning,
-} from './validation-reporter';
-import { DuplicateDetectionResult } from './duplicate-detector';
-import { ExistingRecordResult } from './existing-record-detector';
+} from '@/lib/services/lte-ingestion/validation-reporter';
+import { DuplicateDetectionResult } from '@/lib/services/lte-ingestion/duplicate-detector';
+import { ExistingRecordResult } from '@/lib/services/lte-ingestion/existing-record-detector';
 
 // Arbitraries for test data generation
 const validationErrorArb = fc.record({

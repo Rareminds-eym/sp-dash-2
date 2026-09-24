@@ -18,7 +18,7 @@ import {
   parseArtifactInstructions,
   pipeTextHasKeyValues,
   normalizeJsonValue 
-} from './json-parser';
+} from '@/lib/services/lte-ingestion/json-parser';
 
 describe('splitPipe() Unit Tests', () => {
   

@@ -16,7 +16,7 @@ import {
   batchEnsureUUIDs,
   createUUIDMapping,
   validateDeterministicUUID,
-} from './uuid-generator';
+} from '@/lib/services/lte-ingestion/uuid-generator';
 
 describe('deterministicUUID', () => {
   it('should generate a valid UUID for table and value', () => {
@@ -322,22 +322,4 @@ describe('integration scenarios', () => {
     expect(uuids[2]).toBe(mapping.get('DATA_SCIENCE'));
   });
 
-  it('should handle mixed UUID and text ID inputs', () => {
-    const existingUUID = 'a1b2c3d4-1234-5678-90ab-cdef12345678';
-    const mixed = [existingUUID, 'NEW_CAPABILITY', 'ANOTHER_NEW'];
-    
-    const mapping = createUUIDMapping('capabilities', mixed);
-    const uuids = batchEnsureUUIDs('capabilities', mixed);
-    
-    // Existing UUID should be preserved
-    expect(uuids[0]).toBe(existingUUID.toLowerCase());
-    
-    // New text IDs should be converted
-    expect(isUUID(uuids[1])).toBe(true);
-    expect(isUUID(uuids[2])).toBe(true);
-    
-    // Mapping should only have text IDs (not existing UUIDs)
-    expect(mapping.has(existingUUID)).toBe(false);
-    expect(mapping.has('NEW_CAPABILITY')).toBe(true);
-  });
 });

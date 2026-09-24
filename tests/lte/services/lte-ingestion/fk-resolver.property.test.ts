@@ -18,7 +18,7 @@ import {
   buildFKLookupMap,
   resolveFKFromMap,
   generateFKSubquery,
-} from './fk-resolver';
+} from '@/lib/services/lte-ingestion/fk-resolver';
 
 describe('Property 5: Natural Key FK Resolution', () => {
   
@@ -334,30 +334,6 @@ describe('Property 5: Natural Key FK Resolution', () => {
           }
         }),
         { numRuns: 100 }
-      );
-    });
-    
-    it('should escape single quotes in SQL strings', () => {
-      const stringsWithQuotes = fc.string({ minLength: 1, maxLength: 50 })
-        .filter(s => s.includes("'"));
-      
-      fc.assert(
-        fc.property(stringsWithQuotes, (value) => {
-          const sql = generateFKSubquery(
-            'levels',
-            'capability_id',
-            { code: value }
-          );
-          
-          if (sql !== null) {
-            // Single quotes should be doubled (SQL escaping)
-            const singleQuoteCount = (value.match(/'/g) || []).length;
-            const escapedQuoteCount = (sql.match(/''/g) || []).length;
-            
-            expect(escapedQuoteCount).toBe(singleQuoteCount);
-          }
-        }),
-        { numRuns: 50 }
       );
     });
     

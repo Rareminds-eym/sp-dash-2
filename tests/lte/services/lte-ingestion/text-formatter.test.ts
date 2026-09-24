@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatText } from './text-formatter';
+import { formatText } from '@/lib/services/lte-ingestion/text-formatter';
 
 describe('formatText()', () => {
   it('returns clean string when passed normal string', () => {

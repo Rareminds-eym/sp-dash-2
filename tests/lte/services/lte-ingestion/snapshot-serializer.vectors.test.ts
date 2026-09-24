@@ -3,7 +3,7 @@ import {
   CANONICAL_HASH_TEST_VECTORS,
   calculateHash,
   canonicalizeJSON,
-} from './snapshot-serializer';
+} from '@/lib/services/lte-ingestion/snapshot-serializer';
 
 describe('canonical hash cross-service vectors', () => {
   it('exports at least ten stable vectors', () => {

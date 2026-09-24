@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { LTEIngestionService } from './lte-ingestion-service';
-import { NormalizedSnapshot } from './lte-ingestion/snapshot-serializer';
+import { LTEIngestionService } from '@/lib/services/lte-ingestion-service';
+import { NormalizedSnapshot } from '@/lib/services/lte-ingestion/snapshot-serializer';
 
 describe('LTEIngestionService.extractLevelCourses', () => {
   it('extracts one review course per uploaded level row', () => {

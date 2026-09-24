@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { splitPipe, parseKeyValues } from './pipe-parser';
+import { splitPipe, parseKeyValues } from '@/lib/services/lte-ingestion/pipe-parser';
 
 describe('splitPipe', () => {
   describe('valid inputs', () => {

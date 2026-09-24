@@ -21,8 +21,8 @@ import {
   getUniqueKeyValue,
   countExistingRecords,
   type ExistingRecordResult,
-} from './existing-record-detector';
-import { DB_UNIQUE_LOOKUP_COLUMNS, EXISTING_REFERENCE_TABLES } from './constants';
+} from '@/lib/services/lte-ingestion/existing-record-detector';
+import { DB_UNIQUE_LOOKUP_COLUMNS, EXISTING_REFERENCE_TABLES } from '@/lib/services/lte-ingestion/constants';
 
 describe('Property 15: Existing Record Skip', () => {
   

@@ -7,7 +7,7 @@ import {
   validateAndDownloadAsset,
   validateAssetBatch,
   validateAssetDestination,
-} from './asset-validator';
+} from '@/lib/services/lte-ingestion/asset-validator';
 
 const publicResolve = vi.fn(async () => ['93.184.216.34']);
 

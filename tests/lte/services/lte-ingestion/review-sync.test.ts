@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { syncCourseEditsToTables } from './review-sync';
+import { syncCourseEditsToTables } from '@/lib/services/lte-ingestion/review-sync';
 import type { LTELevelCourse } from '@/types/lte-ingestion';
 
 function baseTables() {

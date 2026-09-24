@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ASSET_EXTRACTION_CONFIG, extractAssets } from './asset-extractor';
+import { ASSET_EXTRACTION_CONFIG, extractAssets } from '@/lib/services/lte-ingestion/asset-extractor';
 
 describe('extractAssets', () => {
   it('exports an explicit table/column configuration', () => {

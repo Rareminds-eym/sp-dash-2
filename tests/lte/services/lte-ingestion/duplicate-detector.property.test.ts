@@ -7,7 +7,7 @@
 
 import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
-import { detectDuplicates, getConflictAction } from './duplicate-detector';
+import { detectDuplicates, getConflictAction } from '@/lib/services/lte-ingestion/duplicate-detector';
 
 describe('Property 14: Duplicate Detection Accuracy', () => {
   it('should mark identical duplicates as SKIP', () => {

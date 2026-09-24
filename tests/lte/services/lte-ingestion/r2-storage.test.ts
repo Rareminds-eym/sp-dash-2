@@ -4,7 +4,7 @@ import {
   R2StorageService,
   type R2BucketLike,
   type R2ObjectLike,
-} from './r2-storage';
+} from '@/lib/services/lte-ingestion/r2-storage';
 
 const HASH = 'a'.repeat(64);
 const context = {

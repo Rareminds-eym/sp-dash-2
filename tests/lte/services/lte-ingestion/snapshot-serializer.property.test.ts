@@ -7,7 +7,7 @@
 
 import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
-import { createSnapshot, calculateHash, verifyHash, serializeSnapshot } from './snapshot-serializer';
+import { createSnapshot, calculateHash, verifyHash, serializeSnapshot } from '@/lib/services/lte-ingestion/snapshot-serializer';
 
 describe('Property 12: Snapshot Hash Verification', () => {
   it('should generate deterministic hashes', () => {

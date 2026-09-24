@@ -25,7 +25,7 @@ vi.mock('crypto', () => ({
 }));
 
 // Now import after mocks are set up
-import { POST } from './route';
+import { POST } from '@/app/api/admin/lte/upload/route';
 import { NextRequest } from 'next/server';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { supabaseLTE } from '@/lib/supabase-lte';

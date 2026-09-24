@@ -10,7 +10,7 @@ vi.mock('@/lib/supabase-lte', () => ({
   },
 }));
 
-import { GET } from './route';
+import { GET } from '@/app/api/admin/lte/review/route';
 import { NextRequest } from 'next/server';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { supabaseLTE } from '@/lib/supabase-lte';

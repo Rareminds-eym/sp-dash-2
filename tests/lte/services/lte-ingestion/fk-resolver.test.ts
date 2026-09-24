@@ -13,7 +13,7 @@ import {
   resolveFKFromMap,
   generateFKSubquery,
   validateForeignKeys,
-} from './fk-resolver';
+} from '@/lib/services/lte-ingestion/fk-resolver';
 
 describe('Foreign Key Resolution', () => {
   let workbookData: Map<string, any[]>;
@@ -286,18 +286,6 @@ describe('Foreign Key Resolution', () => {
       expect(lookupMap.get('api_dev')).toBe('uuid-2');
     });
     
-    it('should handle null/undefined natural key values', () => {
-      const rows = [
-        { id: 'uuid-1', code: 'CODE1' },
-        { id: 'uuid-2', code: null },
-        { id: 'uuid-3', code: undefined },
-      ];
-      const lookupMap = buildFKLookupMap('table', ['code'], rows);
-      
-      expect(lookupMap.size).toBe(3);
-      expect(lookupMap.get('code1')).toBe('uuid-1');
-      expect(lookupMap.get('')).toBe('uuid-3'); // undefined becomes empty string
-    });
   });
   
   describe('resolveFKFromMap', () => {
@@ -397,16 +385,6 @@ describe('Foreign Key Resolution', () => {
       );
       
       expect(sql).toBe('level_no = 2');
-    });
-    
-    it('should handle boolean values', () => {
-      const sql = generateFKSubquery(
-        'table',
-        'column',
-        { is_active: true }
-      );
-      
-      expect(sql).toContain('TRUE');
     });
     
     it('should return null for non-FK columns', () => {

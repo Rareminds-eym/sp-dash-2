@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('./asset-validator', () => ({ validateAssetBatch: vi.fn() }));
-vi.mock('./r2-runtime', () => ({ getR2StorageService: vi.fn() }));
+vi.mock('@/lib/services/lte-ingestion/asset-validator', () => ({ validateAssetBatch: vi.fn() }));
+vi.mock('@/lib/services/lte-ingestion/r2-runtime', () => ({ getR2StorageService: vi.fn() }));
 
-import { processSnapshotAssets } from './asset-processor';
-import { validateAssetBatch } from './asset-validator';
-import { getR2StorageService } from './r2-runtime';
+import { processSnapshotAssets } from '@/lib/services/lte-ingestion/asset-processor';
+import { validateAssetBatch } from '@/lib/services/lte-ingestion/asset-validator';
+import { getR2StorageService } from '@/lib/services/lte-ingestion/r2-runtime';
 
 describe('processSnapshotAssets', () => {
   const uploadAsset = vi.fn();

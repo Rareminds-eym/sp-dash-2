@@ -19,7 +19,7 @@ import {
   batchEnsureUUIDs,
   createUUIDMapping,
   validateDeterministicUUID,
-} from './uuid-generator';
+} from '@/lib/services/lte-ingestion/uuid-generator';
 
 describe('Property 4: Deterministic UUID Generation', () => {
   

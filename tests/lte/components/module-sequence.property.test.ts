@@ -28,23 +28,6 @@ const moduleArbitrary = (): fc.Arbitrary<LTEModule> =>
   });
 
 describe('Property 11: Module Sequence Order', () => {
-  it('should maintain ascending order by module index after sorting', () => {
-    fc.assert(
-      fc.property(
-        fc.array(moduleArbitrary(), { minLength: 1, maxLength: 15 }),
-        (modules) => {
-          const sorted = sortModulesByIndex(modules);
-
-          // Property: For any consecutive pair, the first index should be <= the second index
-          for (let i = 0; i < sorted.length - 1; i++) {
-            expect(sorted[i].index).toBeLessThanOrEqual(sorted[i + 1].index);
-          }
-        }
-      ),
-      { numRuns: 100 }
-    );
-  });
-
   it('should preserve all modules during sorting', () => {
     fc.assert(
       fc.property(

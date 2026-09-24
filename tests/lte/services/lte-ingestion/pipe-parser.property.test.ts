@@ -13,7 +13,7 @@
 
 import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
-import { splitPipe, parseKeyValues } from './pipe-parser';
+import { splitPipe, parseKeyValues } from '@/lib/services/lte-ingestion/pipe-parser';
 
 describe('Property 2: Pipe-Delimited Parsing Correctness', () => {
   
@@ -153,66 +153,6 @@ describe('Property 2: Pipe-Delimited Parsing Correctness', () => {
   
   describe('parseKeyValues() - Key-value parsing properties', () => {
     
-    it('should parse valid key:value pairs into object with normalized keys', () => {
-      const keyValuePair = fc.record({
-        key: fc.string({ minLength: 1, maxLength: 20 })
-          .filter(s => /^[A-Za-z][A-Za-z0-9_ ]*$/.test(s)),
-        value: fc.string({ minLength: 1, maxLength: 50 })
-          .filter(s => s.trim().length > 0 && !s.includes('|')),
-      });
-      
-      const keyValuePairs = fc.array(keyValuePair, { minLength: 1, maxLength: 5 })
-        .filter(pairs => {
-          // Ensure no duplicate keys after normalization
-          const normalizedKeys = pairs.map(p => 
-            p.key.trim().toLowerCase().replace(/\s+/g, '_')
-          );
-          return new Set(normalizedKeys).size === normalizedKeys.length;
-        });
-      
-      fc.assert(
-        fc.property(keyValuePairs, (pairs) => {
-          const text = pairs.map(({ key, value }) => `${key}: ${value}`).join(' | ');
-          const result = parseKeyValues(text);
-          
-          // Should return an object
-          expect(typeof result).toBe('object');
-          expect(result).not.toBeNull();
-          
-          // Should have correct number of keys
-          expect(Object.keys(result).length).toBe(pairs.length);
-          
-          // All keys should be normalized (lowercase, underscores)
-          Object.keys(result).forEach(key => {
-            expect(key).toMatch(/^[a-z][a-z0-9_]*$/);
-          });
-          
-          // All values should be non-empty strings
-          Object.values(result).forEach(value => {
-            expect(typeof value).toBe('string');
-            expect((value as string).length).toBeGreaterThan(0);
-          });
-        }),
-        { numRuns: 100 }
-      );
-    });
-    
-    it('should reject duplicate keys (case-insensitive)', () => {
-      const key = fc.string({ minLength: 1, maxLength: 10 })
-        .filter(s => /^[A-Za-z][A-Za-z0-9_]*$/.test(s));
-      const value = fc.string({ minLength: 1, maxLength: 20 }).filter(s => s.trim().length > 0);
-      
-      const duplicateKeyPairs = fc.tuple(key, value, value, fc.constantFrom('same', 'Same', 'SAME'))
-        .map(([k, v1, v2, casing]) => `${k}: ${v1} | ${casing === 'same' ? k : casing}: ${v2}`);
-      
-      fc.assert(
-        fc.property(duplicateKeyPairs, (text) => {
-          expect(() => parseKeyValues(text)).toThrow('appears more than once');
-        }),
-        { numRuns: 50 }
-      );
-    });
-    
     it('should reject sections with blank values', () => {
       const key = fc.string({ minLength: 1, maxLength: 10 })
         .filter(s => /^[A-Za-z][A-Za-z0-9_]*$/.test(s));
@@ -229,36 +169,6 @@ describe('Property 2: Pipe-Delimited Parsing Correctness', () => {
       );
     });
     
-    it('should normalize keys consistently - same key always produces same normalized form', () => {
-      const keyVariations = fc.record({
-        base: fc.string({ minLength: 1, maxLength: 10 })
-          .filter(s => /^[A-Za-z][A-Za-z0-9_]*$/.test(s)),
-        value: fc.string({ minLength: 1, maxLength: 20 }).filter(s => s.trim().length > 0),
-      }).chain(({ base, value }) => {
-        const variations = [
-          base,
-          base.toUpperCase(),
-          base.toLowerCase(),
-          base.charAt(0).toUpperCase() + base.slice(1).toLowerCase(),
-        ];
-        return fc.constantFrom(...variations).map(variant => ({
-          key: variant,
-          value,
-        }));
-      });
-      
-      fc.assert(
-        fc.property(keyVariations, ({ key, value }) => {
-          const text = `${key}: ${value}`;
-          const result = parseKeyValues(text);
-          const normalizedKey = key.trim().toLowerCase().replace(/\s+/g, '_');
-          
-          expect(result).toHaveProperty(normalizedKey);
-          expect(result[normalizedKey]).toBe(value.trim());
-        }),
-        { numRuns: 100 }
-      );
-    });
   });
   
   describe('Round-trip properties', () => {

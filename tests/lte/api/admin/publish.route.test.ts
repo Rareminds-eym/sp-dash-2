@@ -18,7 +18,7 @@ vi.mock('@/lib/services/lte-ingestion/asset-processor', () => ({
   processSnapshotAssets: vi.fn(),
 }));
 
-import { POST } from './route';
+import { POST } from '@/app/api/admin/lte/publish/route';
 import { NextRequest } from 'next/server';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { supabaseLTE } from '@/lib/supabase-lte';

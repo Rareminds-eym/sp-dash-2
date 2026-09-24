@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classifyPreviewAsset } from './asset-preview';
+import { classifyPreviewAsset } from '@/lib/services/lte-ingestion/asset-preview';
 
 describe('classifyPreviewAsset', () => {
   it.each([
