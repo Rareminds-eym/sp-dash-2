@@ -63,11 +63,15 @@ let fallbackBucket: LocalFallbackR2Bucket | null = null;
 
 export async function getR2StorageService(): Promise<R2StorageService> {
   let bucket: R2BucketLike | undefined;
+  let bindingPublicDomain: string | undefined;
 
   try {
     const { getCloudflareContext } = await import('@opennextjs/cloudflare');
-    const context = await getCloudflareContext({ async: true }) as unknown as { env: { LTE_ASSETS?: R2BucketLike } };
+    const context = await getCloudflareContext({ async: true }) as unknown as {
+      env: { LTE_ASSETS?: R2BucketLike; R2_PUBLIC_DOMAIN?: string };
+    };
     bucket = context?.env?.LTE_ASSETS;
+    bindingPublicDomain = context?.env?.R2_PUBLIC_DOMAIN;
   } catch (error) {
     // Cloudflare context unavailable in standard Node.js dev server
   }
@@ -79,6 +83,6 @@ export async function getR2StorageService(): Promise<R2StorageService> {
     bucket = fallbackBucket;
   }
 
-  const publicDomain = process.env.CLOUDFLARE_R2_PUBLIC_DOMAIN || process.env.NEXT_PUBLIC_R2_PUBLIC_DOMAIN || 'https://assets.rareminds.in';
+  const publicDomain = bindingPublicDomain || process.env.R2_PUBLIC_DOMAIN || 'https://bucket.lte.rareminds.in';
   return new R2StorageService(bucket, publicDomain);
 }

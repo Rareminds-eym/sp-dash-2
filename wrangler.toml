@@ -4,6 +4,7 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 NEXT_PUBLIC_BASE_URL = "https://dashboard.rareminds.com"
+R2_PUBLIC_DOMAIN = "https://bucket.lte.rareminds.in"
 
 [[services]]
 binding = "SSO"
