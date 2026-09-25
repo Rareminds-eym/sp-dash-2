@@ -4,7 +4,6 @@ import { NextResponse } from 'next/server';
 
 import Logger from '@/lib/logger';
 
-export const runtime = 'edge';
 
 // SECURITY NOTE: CSV export with proper sanitization
 // - All cell values sanitized via sanitizeCell() to prevent formula injection

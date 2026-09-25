@@ -1,7 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 
-export const runtime = 'edge';
 
 /**
  * GET /api/passports/universities - Get unique universities for filter dropdown

@@ -10,7 +10,6 @@ import { useState, useEffect } from 'react'
 import { resetPasswordAction } from '@/app/actions/auth'
 
 export const dynamic = 'force-dynamic'
-export const runtime = 'edge'
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState('')

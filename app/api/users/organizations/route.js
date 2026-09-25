@@ -2,7 +2,6 @@ import { handleError } from '@/lib/middleware/errorHandler';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 
-export const runtime = 'edge';
 
 /**
  * GET /api/users/organizations - Get unique organizations for filter dropdown

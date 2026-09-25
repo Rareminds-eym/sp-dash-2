@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 import { NextResponse } from 'next/server'
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth'
 

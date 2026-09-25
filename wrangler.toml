@@ -1,14 +1,25 @@
+main = ".open-next/worker.js"
 name = "sp-dash-2"
-compatibility_date = "2024-11-01"
-compatibility_flags = ["nodejs_compat"]
+compatibility_date = "2026-09-24"
+compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
 
 [vars]
 NEXT_PUBLIC_BASE_URL = "https://dashboard.rareminds.com"
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
 
 [[services]]
 binding = "SSO"
 service = "sso-api"
 entrypoint = "SsoWorker"
+
+# Self-reference service binding, required by OpenNext for cache revalidation.
+# The service name must match `name` above.
+[[services]]
+binding = "WORKER_SELF_REFERENCE"
+service = "sp-dash-2"
 
 [[queues.producers]]
 binding = "MAINTENANCE_EVENTS_QUEUE"

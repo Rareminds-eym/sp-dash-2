@@ -4,7 +4,6 @@ import { createCSVResponse } from '@/lib/services/exportService';
 import { handleError } from '@/lib/middleware/errorHandler';
 import { NextResponse } from 'next/server';
 
-export const runtime = 'edge';
 
 /**
  * GET /api/passports/export - Export passports to CSV

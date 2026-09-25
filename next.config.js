@@ -1,5 +1,12 @@
 const path = require('path');
 
+// Enables local `next dev` to access Cloudflare bindings (the SSO service
+// binding, KV, queues, R2) via getCloudflareContext(), simulating them
+// locally instead of requiring `wrangler pages dev`/`opennextjs-cloudflare preview`.
+// Must be called here, not inside an async function, per @opennextjs/cloudflare docs.
+const { initOpenNextCloudflareForDev } = require('@opennextjs/cloudflare');
+initOpenNextCloudflareForDev();
+
 const nextConfig = {
   outputFileTracingRoot: path.join(__dirname),
   typescript: {

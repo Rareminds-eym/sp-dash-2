@@ -4,7 +4,6 @@ import { NextResponse } from 'next/server';
 
 import Logger from '@/lib/logger';
 
-export const runtime = 'edge';
 
 // Skillpassport database admin client
 const skillpassportAdmin = supabaseAdmin;
