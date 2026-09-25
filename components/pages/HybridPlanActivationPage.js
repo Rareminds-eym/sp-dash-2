@@ -51,7 +51,7 @@ const ORG_TYPES = [
 ]
 const BILLING_CYCLES = [
     { value: 'monthly', label: 'Monthly' },
-    { value: 'annual', label: 'Annual' },
+    { value: 'yearly', label: 'Yearly' },
     { value: 'lifetime', label: 'Lifetime' },
 ]
 
@@ -67,7 +67,7 @@ const STATUS_BADGE = {
 const TERMS_INITIAL = {
     planAmount: '',
     seatCount: '',
-    billingCycle: 'annual',
+    billingCycle: 'yearly',
     features: '',
     notes: '',
 }
@@ -77,6 +77,7 @@ const NEW_ORG_INITIAL = {
     orgType: '',
     ownerName: '',
     ownerEmail: '',
+    ownerPhone: '',
     ownerPassword: '',
     ...TERMS_INITIAL,
 }
@@ -89,6 +90,26 @@ function formatCurrency(amount) {
 function formatDate(dateStr) {
     if (!dateStr) return '—'
     return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+const PASSWORD_MIN = 10
+const PASSWORD_MAX = 72
+
+// Same rule as skillpassport's signup form (UnifiedSignup.tsx) and
+// sso-worker's validatePassword — 10-72 chars, at least 3 of 4 character
+// classes. Keep this in sync with sso-worker/src/lib/validate.ts.
+function validatePassword(password) {
+    if (!password || password.length < PASSWORD_MIN) {
+        return `Password must be at least ${PASSWORD_MIN} characters`
+    }
+    if (password.length > PASSWORD_MAX) {
+        return `Password must be at most ${PASSWORD_MAX} characters`
+    }
+    const typesCount = [/[A-Z]/, /[a-z]/, /[0-9]/, /[^a-zA-Z0-9]/].filter((r) => r.test(password)).length
+    if (typesCount < 3) {
+        return 'Password must contain at least 3 of: uppercase letters, lowercase letters, numbers, special characters'
+    }
+    return null
 }
 
 export default function HybridPlanActivationPage({ currentUser }) {
@@ -220,9 +241,9 @@ export default function HybridPlanActivationPage({ currentUser }) {
             toast({ title: 'Check the form', description: 'Owner email is required', variant: 'destructive' })
             return
         }
-        if (!newOrgForm.ownerPassword || newOrgForm.ownerPassword.length < 8) {
-            toast({ title: 'Check the form', description: 'Owner password must be at least 8 characters', variant: 'destructive' })
-            return
+        const passwordError = validatePassword(newOrgForm.ownerPassword)
+        if (passwordError) {
+            toast({ title: 'Check the form', description: passwordError, variant: 'destructive' })
         }
         if (!Number.isFinite(amount) || amount < 0) {
             toast({ title: 'Check the form', description: 'Enter a valid negotiated price', variant: 'destructive' })
@@ -244,6 +265,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
                     org_type: newOrgForm.orgType,
                     owner_name: newOrgForm.ownerName || undefined,
                     owner_email: newOrgForm.ownerEmail.trim(),
+                    owner_phone: newOrgForm.ownerPhone.trim() || undefined,
                     owner_password: newOrgForm.ownerPassword,
                     plan_amount: amount,
                     seat_count: seats,
@@ -623,14 +645,26 @@ export default function HybridPlanActivationPage({ currentUser }) {
 
                         <div className="space-y-3 rounded-lg border p-3">
                             <p className="text-sm font-medium">Owner account</p>
-                            <div className="space-y-2">
-                                <Label htmlFor="new-owner-name">Owner name</Label>
-                                <Input
-                                    id="new-owner-name"
-                                    value={newOrgForm.ownerName}
-                                    onChange={(e) => setNewOrgForm((f) => ({ ...f, ownerName: e.target.value }))}
-                                    placeholder="e.g. Jane Doe"
-                                />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="new-owner-name">Owner name</Label>
+                                    <Input
+                                        id="new-owner-name"
+                                        value={newOrgForm.ownerName}
+                                        onChange={(e) => setNewOrgForm((f) => ({ ...f, ownerName: e.target.value }))}
+                                        placeholder="e.g. Jane Doe"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="new-owner-phone">Owner phone</Label>
+                                    <Input
+                                        id="new-owner-phone"
+                                        type="tel"
+                                        value={newOrgForm.ownerPhone}
+                                        onChange={(e) => setNewOrgForm((f) => ({ ...f, ownerPhone: e.target.value }))}
+                                        placeholder="e.g. +91 98765 43210"
+                                    />
+                                </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
@@ -650,7 +684,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
                                         type="password"
                                         value={newOrgForm.ownerPassword}
                                         onChange={(e) => setNewOrgForm((f) => ({ ...f, ownerPassword: e.target.value }))}
-                                        placeholder="At least 8 characters"
+                                        placeholder="10+ chars, 3 of: upper/lower/number/special"
                                     />
                                 </div>
                             </div>

@@ -45,7 +45,19 @@ const nextConfig = {
       };
     }
     if (dev) {
-      // Reduce CPU/memory from file watching
+      // Reduce inotify pressure (ENOSPC on big NTFS checkouts): don't watch
+      // build output/caches — source changes still trigger rebuilds.
+      config.watchOptions = {
+        ...config.watchOptions,
+        ignored: [
+          '**/node_modules/**',
+          '**/.git/**',
+          '**/.next/**',
+          '**/.open-next/**',
+          '**/.wrangler/**',
+          '**/graphify-out/**',
+        ],
+      };
     }
     return config;
   },

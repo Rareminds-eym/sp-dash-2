@@ -8,6 +8,27 @@ const logger = new Logger('OrganizationsSubscriptionsListAPI');
 const ADMIN_ROLES = ['super_admin', 'platform_admin', 'rm_admin'];
 const VALID_ORG_TYPES = ['school', 'college', 'university'];
 
+const PASSWORD_MIN = 10;
+const PASSWORD_MAX = 72;
+
+// Same rule as skillpassport's signup form and sso-worker's validatePassword
+// (sso-worker/src/lib/validate.ts) — 10-72 chars, at least 3 of 4 character
+// classes. sso-worker re-validates this too; this is just a fast client-facing
+// check so bad input doesn't round-trip through the RPC first.
+function validateOwnerPassword(password) {
+  if (!password || typeof password !== 'string' || password.length < PASSWORD_MIN) {
+    return `Password must be at least ${PASSWORD_MIN} characters`;
+  }
+  if (password.length > PASSWORD_MAX) {
+    return `Password must be at most ${PASSWORD_MAX} characters`;
+  }
+  const typesCount = [/[A-Z]/, /[a-z]/, /[0-9]/, /[^a-zA-Z0-9]/].filter((r) => r.test(password)).length;
+  if (typesCount < 3) {
+    return 'Password must contain at least 3 of: uppercase letters, lowercase letters, numbers, special characters';
+  }
+  return null;
+}
+
 /**
  * GET /api/organizations/subscriptions
  *
@@ -63,7 +84,7 @@ export async function GET(request) {
  * partial-failure story if subscription activation fails after org/owner
  * creation succeeds.
  *
- * Body: { org_name, org_type, owner_email, owner_password, owner_name?,
+ * Body: { org_name, org_type, owner_email, owner_password, owner_name?, owner_phone?,
  *         plan_amount, seat_count, billing_cycle?, features?, notes? }
  */
 export async function POST(request) {
@@ -79,7 +100,7 @@ export async function POST(request) {
     }
 
     const {
-      org_name, org_type, owner_email, owner_password, owner_name,
+      org_name, org_type, owner_email, owner_password, owner_name, owner_phone,
       plan_amount, seat_count, billing_cycle, features, notes,
     } = body || {};
 
@@ -92,8 +113,9 @@ export async function POST(request) {
     if (!owner_email || typeof owner_email !== 'string') {
       return NextResponse.json({ error: 'owner_email is required' }, { status: 400 });
     }
-    if (!owner_password || owner_password.length < 8) {
-      return NextResponse.json({ error: 'owner_password must be at least 8 characters' }, { status: 400 });
+    const passwordError = validateOwnerPassword(owner_password);
+    if (passwordError) {
+      return NextResponse.json({ error: passwordError }, { status: 400 });
     }
     if (typeof plan_amount !== 'number' || !Number.isFinite(plan_amount) || plan_amount < 0) {
       return NextResponse.json({ error: 'plan_amount must be a non-negative number' }, { status: 400 });
@@ -116,6 +138,7 @@ export async function POST(request) {
         owner_email,
         owner_password,
         owner_name: owner_name || undefined,
+        owner_phone: owner_phone || undefined,
         plan_amount,
         seat_count,
         billing_cycle: billing_cycle || undefined,
