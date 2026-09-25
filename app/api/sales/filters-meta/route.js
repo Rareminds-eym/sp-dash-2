@@ -1,7 +1,6 @@
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { NextResponse } from 'next/server';
 
-export const runtime = 'edge';
 
 export async function GET(request) {
   try {

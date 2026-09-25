@@ -1,5 +1,12 @@
 const path = require('path');
 
+// Enables local `next dev` to access Cloudflare bindings (the SSO service
+// binding, KV, queues, R2) via getCloudflareContext(), simulating them
+// locally instead of requiring `wrangler pages dev`/`opennextjs-cloudflare preview`.
+// Must be called here, not inside an async function, per @opennextjs/cloudflare docs.
+const { initOpenNextCloudflareForDev } = require('@opennextjs/cloudflare');
+initOpenNextCloudflareForDev();
+
 const nextConfig = {
   outputFileTracingRoot: path.join(__dirname),
   typescript: {
@@ -38,7 +45,19 @@ const nextConfig = {
       };
     }
     if (dev) {
-      // Reduce CPU/memory from file watching
+      // Reduce inotify pressure (ENOSPC on big NTFS checkouts): don't watch
+      // build output/caches — source changes still trigger rebuilds.
+      config.watchOptions = {
+        ...config.watchOptions,
+        ignored: [
+          '**/node_modules/**',
+          '**/.git/**',
+          '**/.next/**',
+          '**/.open-next/**',
+          '**/.wrangler/**',
+          '**/graphify-out/**',
+        ],
+      };
     }
     return config;
   },

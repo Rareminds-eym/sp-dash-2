@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { handleError } from '@/lib/middleware/errorHandler';
 
-export const runtime = 'edge';
 
 /**
  * PUT /api/recruiters/[id] - Update a recruiter

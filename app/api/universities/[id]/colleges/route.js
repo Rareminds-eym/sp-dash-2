@@ -2,7 +2,6 @@ import { addCacheHeaders } from '@/lib/services/cacheService';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 
-export const runtime = 'edge';
 
 // GET colleges for a specific university
 export async function GET(request, { params }) {

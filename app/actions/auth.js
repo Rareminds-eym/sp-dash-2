@@ -1,20 +1,20 @@
 'use server'
 
-import { cookies, headers } from 'next/headers'
-import { verifyJWT, extractUserFromJWT, getTokenExpiry, getTimeUntilExpiry } from '@/lib/jwt-utils'
+import { extractUserFromJWT, getTimeUntilExpiry, getTokenExpiry, verifyJWT } from '@/lib/jwt-utils'
+import { checkRateLimit } from '@/lib/rate-limit'
 import { createSSOServiceClient } from '@/lib/sso-service-client'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { cookies, headers } from 'next/headers'
 import { z } from 'zod'
-import { checkRateLimit } from '@/lib/rate-limit'
 
 /**
  * Cookie name helper — __Host- prefix requires Secure flag, which browsers
  * reject on plain HTTP (localhost dev). Fall back to unprefixed names in dev.
  */
 const isSecure = process.env.NODE_ENV === 'production'
-const COOKIE_ACCESS  = isSecure ? '__Host-sso_access_token'  : 'sso_access_token'
+const COOKIE_ACCESS = isSecure ? '__Host-sso_access_token' : 'sso_access_token'
 const COOKIE_REFRESH = isSecure ? '__Host-sso_refresh_token' : 'sso_refresh_token'
-const COOKIE_USER    = isSecure ? '__Host-sso_user'          : 'sso_user'
+const COOKIE_USER = isSecure ? '__Host-sso_user' : 'sso_user'
 
 /**
  * Retry helper for transient database errors
@@ -31,15 +31,15 @@ async function retryOnTransientError(fn, maxRetries = 2, delayMs = 1000) {
     } catch (error) {
       lastError = error
       const errorMsg = error.message || ''
-      const isTransient = errorMsg.includes('PGRST002') || 
-                          errorMsg.includes('503') || 
-                          errorMsg.includes('Could not query the database') ||
-                          errorMsg.includes('schema cache')
-      
+      const isTransient = errorMsg.includes('PGRST002') ||
+        errorMsg.includes('503') ||
+        errorMsg.includes('Could not query the database') ||
+        errorMsg.includes('schema cache')
+
       if (!isTransient || attempt === maxRetries) {
         throw error
       }
-      
+
       console.warn(`[Retry] Attempt ${attempt + 1}/${maxRetries + 1} failed with transient error, retrying in ${delayMs}ms...`)
       await new Promise(resolve => setTimeout(resolve, delayMs * (attempt + 1)))
     }
@@ -55,6 +55,33 @@ const loginSchema = z.object({
   password: z.string().min(1).max(128)
 })
 
+/**
+ * Translate a rejected/transient SessionIssueRpcOutcome into a
+ * { errorMessage, statusCode } pair for the caller.
+ */
+function describeSessionFailure(outcome) {
+  switch (outcome.kind) {
+    case 'rejected':
+      switch (outcome.code) {
+        case 'invalid_credentials':
+          return { errorMessage: 'Invalid email or password.', statusCode: 401 }
+        case 'account_blocked':
+          return { errorMessage: 'Account is disabled or requires verification.', statusCode: 403 }
+        default:
+          return { errorMessage: 'Login failed.', statusCode: 400 }
+      }
+    case 'rate_limited':
+      return { errorMessage: 'Too many login attempts. Please try again later.', statusCode: 429 }
+    case 'timeout':
+    case 'unavailable':
+      return { errorMessage: 'Login service is temporarily unavailable. Please try again.', statusCode: 503 }
+    case 'cancelled':
+      return { errorMessage: 'Login was cancelled. Please try again.', statusCode: 409 }
+    default:
+      return { errorMessage: 'Login failed.', statusCode: 500 }
+  }
+}
+
 export async function loginAction(email, password) {
   try {
     const parsed = loginSchema.safeParse({ email, password })
@@ -64,84 +91,55 @@ export async function loginAction(email, password) {
 
     const headersList = await headers()
     const ip = headersList.get('x-forwarded-for') || headersList.get('cf-connecting-ip') || '127.0.0.1'
-    const ua = headersList.get('user-agent') || 'sp-dash'
 
     if (!(await checkRateLimit(`login_${ip}_${parsed.data.email}`, 5, 60000))) {
       return { success: false, error: 'Too many login attempts. Please try again later.', status: 429 }
     }
 
     const ssoClient = await createSSOServiceClient()
-    
-    let loginData
+
+    let outcome
     try {
-      // Retry transient database errors automatically
-      loginData = await retryOnTransientError(async () => {
+      // Retry transient database errors automatically (upstream's helper,
+      // kept since sso-worker still surfaces PGRST002/503 style failures
+      // as thrown errors from the RPC call itself, not as a discriminated
+      // outcome kind).
+      outcome = await retryOnTransientError(async () => {
         return await ssoClient.login({
+          correlationId: crypto.randomUUID(),
           email: parsed.data.email,
           password: parsed.data.password,
-          ip,
-          ua
         })
       })
     } catch (err) {
       console.error('[SSO Login Action] RPC error:', err)
-      let errorMessage = err.message || 'Login failed'
-      let statusCode = 401
-      
-      if (errorMessage.includes('Too many') || errorMessage.includes('Rate limit')) {
-        statusCode = 429
-        errorMessage = 'Too many login attempts. Please try again later.'
-      } else if (errorMessage.includes('disabled') || errorMessage.includes('verification') || errorMessage.includes('blocked')) {
-        statusCode = 403
-        errorMessage = 'Account is disabled or requires verification.'
-      } else if (errorMessage.includes('PGRST002') || errorMessage.includes('503') || errorMessage.includes('Could not query the database')) {
-        statusCode = 503
-        errorMessage = 'The authentication service is temporarily unavailable. Please try again in a few moments.'
-      } else if (errorMessage.includes('network') || errorMessage.includes('timeout') || errorMessage.includes('ECONNREFUSED')) {
-        statusCode = 503
-        errorMessage = 'Unable to connect to the authentication service. Please check your connection and try again.'
-      }
-      
+      const errorMessage = err.message || 'Login failed'
+      const statusCode = /PGRST002|503|Could not query the database|schema cache|network|timeout|ECONNREFUSED/.test(errorMessage)
+        ? 503
+        : 500
+      return { success: false, error: statusCode === 503 ? 'The authentication service is temporarily unavailable. Please try again in a few moments.' : errorMessage, status: statusCode }
+    }
+
+    if (!outcome || outcome.kind !== 'issued') {
+      console.warn('[SSO Login Action] Login not issued:', outcome)
+      const { errorMessage, statusCode } = describeSessionFailure(outcome || {})
       return { success: false, error: errorMessage, status: statusCode }
     }
 
-    if (loginData?.kind === 'issued' && loginData.session?.accessToken) {
-      const identity = loginData.session.identity ?? {}
-      loginData = {
-        success: true,
-        access_token: loginData.session.accessToken,
-        refresh_token: loginData.session.refreshToken,
-        user: {
-          id: identity.subject,
-          email: identity.email,
-          roles: Array.from(identity.roles ?? []),
-          orgId: identity.organizationId ?? null,
-          isEmailVerified: identity.emailVerified ?? true,
-        },
-        expiresAt: Date.now() + (loginData.session.remainingLifetimeSeconds ?? 0) * 1000,
-      }
-    }
+    const accessToken = outcome.session?.accessToken
+    const refreshTokenValue = outcome.session?.refreshToken
 
-    if (!loginData || !loginData.success || loginData.error) {
-      const statusCode = loginData.status ?? 401
-      const errorMessage = loginData.error || 'Login failed'
-      console.warn('[SSO Login Action] Login failed:', { status: statusCode, error: errorMessage })
-      return { success: false, error: errorMessage, status: statusCode, requiresVerification: loginData.requiresVerification }
-    }
-
-    const accessToken = loginData.access_token
-
-    if (!loginData.user || !accessToken) {
-      console.error('[SSO Login Action] Missing data:', { 
-        hasUser: !!loginData.user, 
-        hasAccessToken: !!accessToken
+    if (!accessToken || !refreshTokenValue) {
+      console.error('[SSO Login Action] Missing session data:', {
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!refreshTokenValue,
       })
       return { success: false, error: 'Login failed - incomplete response from SSO worker', status: 500 }
     }
 
     // Verify the JWT token we received
     const verificationResult = await verifyJWT(accessToken)
-    
+
     if (!verificationResult.valid) {
       console.error('[SSO Login Action] JWT verification failed:', verificationResult.error)
       return { success: false, error: 'Login failed - invalid token received', status: 500 }
@@ -149,7 +147,7 @@ export async function loginAction(email, password) {
 
     // Extract user data from verified JWT payload
     const user = extractUserFromJWT(accessToken)
-    
+
     if (!user) {
       return { success: false, error: 'Login failed - invalid token payload', status: 500 }
     }
@@ -157,12 +155,12 @@ export async function loginAction(email, password) {
     // Check if user has super_admin or platform_admin role
     const allowedRoles = ['super_admin', 'platform_admin']
     const hasAdminRole = user.roles?.some(role => allowedRoles.includes(role)) ?? false
-    
+
     if (!hasAdminRole) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: 'Access denied. You are not authorized to access the admin dashboard.',
-        status: 403 
+        status: 403
       }
     }
 
@@ -174,19 +172,16 @@ export async function loginAction(email, password) {
     const cookieStore = await cookies()
     const tokenExpirySeconds = user.expiresAt - Math.floor(Date.now() / 1000)
     const cookieSecure = { httpOnly: true, secure: isSecure, sameSite: 'lax', path: '/' }
-    
+
     cookieStore.set(COOKIE_ACCESS, accessToken, {
       ...cookieSecure,
       maxAge: Math.max(tokenExpirySeconds, 60),
     })
 
-    const refreshToken = loginData.refresh_token
-    if (refreshToken) {
-      cookieStore.set(COOKIE_REFRESH, refreshToken, {
-        ...cookieSecure,
-        maxAge: 60 * 60 * 24 * 30, // 30 days
-      })
-    }
+    cookieStore.set(COOKIE_REFRESH, refreshTokenValue, {
+      ...cookieSecure,
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+    })
 
     cookieStore.set(COOKIE_USER, JSON.stringify({
       id: user.id,
@@ -236,20 +231,14 @@ export async function refreshAction() {
       return { success: false, error: 'No refresh token available', status: 401 }
     }
 
-    const headersList = await headers()
-    const ip = headersList.get('x-forwarded-for') || headersList.get('cf-connecting-ip') || 'unknown'
-    const ua = headersList.get('user-agent') || 'unknown'
-
     const ssoClient = await createSSOServiceClient()
-    
-    let refreshData
+    let outcome
     try {
-      // Retry transient database errors automatically
-      refreshData = await retryOnTransientError(async () => {
+      // Retry transient database errors automatically (see loginAction).
+      outcome = await retryOnTransientError(async () => {
         return await ssoClient.refresh({
-          refresh_token: refreshToken,
-          ip,
-          ua
+          correlationId: crypto.randomUUID(),
+          refreshToken,
         })
       })
     } catch (err) {
@@ -257,24 +246,24 @@ export async function refreshAction() {
       cookieStore.delete(COOKIE_REFRESH)
       cookieStore.delete(COOKIE_ACCESS)
       cookieStore.delete(COOKIE_USER)
-      
-      let errorMessage = err.message || 'Token refresh failed'
-      if (errorMessage.includes('PGRST002') || errorMessage.includes('503') || errorMessage.includes('Could not query the database')) {
-        errorMessage = 'Authentication service temporarily unavailable'
-      }
-      
+
+      const errorMessage = /PGRST002|503|Could not query the database|schema cache/.test(err.message || '')
+        ? 'Authentication service temporarily unavailable'
+        : (err.message || 'Token refresh failed')
       return { success: false, error: errorMessage, status: 503 }
     }
 
-    if (refreshData.error) {
+    if (!outcome || (outcome.kind !== 'rotated' && outcome.kind !== 'overlap')) {
       cookieStore.delete(COOKIE_REFRESH)
       cookieStore.delete(COOKIE_ACCESS)
       cookieStore.delete(COOKIE_USER)
-      return { success: false, error: refreshData.error || 'Token refresh failed', status: refreshData.status || 401 }
+      const statusCode = outcome?.kind === 'rate_limited' ? 429 : 401
+      const errorMessage = outcome?.kind === 'rejected' ? 'Session expired. Please log in again.' : 'Token refresh failed'
+      return { success: false, error: errorMessage, status: statusCode }
     }
 
-    const newAccessToken = refreshData.access_token
-    const newRefreshToken = refreshData.refresh_token
+    const newAccessToken = outcome.session?.accessToken
+    const newRefreshToken = outcome.session?.refreshToken
 
     if (!newAccessToken) {
       return { success: false, error: 'No access token in refresh response', status: 500 }
@@ -292,7 +281,7 @@ export async function refreshAction() {
 
     const tokenExpirySeconds = user.expiresAt - Math.floor(Date.now() / 1000)
     const cookieSecure = { httpOnly: true, secure: isSecure, sameSite: 'lax', path: '/' }
-    
+
     cookieStore.set(COOKIE_ACCESS, newAccessToken, {
       ...cookieSecure,
       maxAge: Math.max(tokenExpirySeconds, 60),
@@ -343,15 +332,11 @@ export async function logoutAction() {
 
     if (ssoRefreshToken) {
       try {
-        const headersList = await headers()
-        const ip = headersList.get('x-forwarded-for') || headersList.get('cf-connecting-ip') || 'unknown'
-        const ua = headersList.get('user-agent') || 'unknown'
-
         const ssoClient = await createSSOServiceClient()
         await ssoClient.logout({
-          refresh_token: ssoRefreshToken,
-          ip,
-          ua
+          correlationId: crypto.randomUUID(),
+          refreshToken: ssoRefreshToken,
+          scope: 'current',
         })
       } catch (error) {
         console.error('[Logout Action] SSO Worker logout RPC failed:', error)
@@ -373,7 +358,7 @@ export async function logoutAction() {
     return { success: true, message: 'Logged out successfully' }
   } catch (error) {
     console.error('[Logout Action] Error:', error)
-    
+
     // Attempt local cleanup anyway
     try {
       const cookieStore = await cookies()
@@ -387,7 +372,7 @@ export async function logoutAction() {
       cookieStore.set(COOKIE_ACCESS, '', cookieOptions)
       cookieStore.set(COOKIE_REFRESH, '', cookieOptions)
       cookieStore.set(COOKIE_USER, '', cookieOptions)
-    } catch (e) {}
+    } catch (e) { }
 
     return { success: false, error: 'Logout failed, but local session cleared', status: 500 }
   }
@@ -408,7 +393,7 @@ export async function getSessionAction() {
 
     const expiresAt = getTokenExpiry(ssoAccessToken)
     const timeUntilExpiry = getTimeUntilExpiry(ssoAccessToken)
-    
+
     if (timeUntilExpiry <= 0) {
       return { authenticated: false, user: null, error: 'Token expired' }
     }
@@ -479,32 +464,34 @@ export async function forgotPasswordAction(email) {
 
     const headersList = await headers()
     const ip = headersList.get('x-forwarded-for') || headersList.get('cf-connecting-ip') || '127.0.0.1'
-    
+
     if (!(await checkRateLimit(`forgot_${ip}_${parsed.data.email}`, 3, 300000))) { // 3 attempts per 5 minutes
       return { error: 'Too many password reset attempts. Please try again later.', status: 429 }
     }
 
-    const host = headersList.get('host') || 'localhost:3000'
-    const protocol = host.includes('localhost') ? 'http' : 'https'
-    const redirectUrl = `${protocol}://${host}/reset-password`
-
     const ssoClient = await createSSOServiceClient()
-    await ssoClient.forgotPassword({
+    // Redirect URL is resolved server-side by sso-worker from ALLOWED_APP_URLS,
+    // not passed by the caller — ForgotPasswordRpcInput has no such field.
+    const outcome = await ssoClient.forgotPassword({
+      correlationId: crypto.randomUUID(),
       email: parsed.data.email,
-      redirect_url: redirectUrl,
-    }, ip)
+    })
+
+    if (outcome && outcome.kind !== 'succeeded') {
+      console.warn('[Forgot Password Action] SSO Worker outcome:', outcome)
+    }
 
     // Always return success to prevent user enumeration
-    return { 
-      success: true, 
-      message: 'If this email exists in our system, you will receive a password reset link shortly.' 
+    return {
+      success: true,
+      message: 'If this email exists in our system, you will receive a password reset link shortly.'
     }
   } catch (error) {
     console.error('[Forgot Password Action] Error:', error)
     // Still return success message to prevent user enumeration
-    return { 
-      success: true, 
-      message: 'If this email exists in our system, you will receive a password reset link shortly.' 
+    return {
+      success: true,
+      message: 'If this email exists in our system, you will receive a password reset link shortly.'
     }
   }
 }
@@ -535,7 +522,6 @@ export async function resetPasswordAction(accessToken, password) {
 
     const headersList = await headers()
     const ip = headersList.get('x-forwarded-for') || headersList.get('cf-connecting-ip') || '127.0.0.1'
-    const ua = headersList.get('user-agent') || 'unknown'
 
     if (!(await checkRateLimit(`reset_${ip}`, 5, 300000))) { // 5 attempts per 5 minutes
       return { success: false, error: 'Too many password reset attempts. Please try again later.', status: 429 }
@@ -543,14 +529,16 @@ export async function resetPasswordAction(accessToken, password) {
 
     // Delegate token verification + password update entirely to SSO Worker
     const ssoClient = await createSSOServiceClient()
-    const result = await ssoClient.resetPassword({
-      token: accessToken,
+    const outcome = await ssoClient.resetPassword({
+      correlationId: crypto.randomUUID(),
+      resetToken: accessToken,
       password: parsed.data.password,
-    }, ip, ua)
+    })
 
-    if (result.error) {
-      console.warn('[Reset Password Action] SSO Worker error:', result.error)
-      return { success: false, error: result.error || 'Failed to reset password', status: result.status || 400 }
+    if (!outcome || (outcome.kind !== 'succeeded' && outcome.kind !== 'issued')) {
+      console.warn('[Reset Password Action] SSO Worker outcome:', outcome)
+      const statusCode = outcome?.kind === 'rate_limited' ? 429 : outcome?.kind === 'rejected' ? 400 : 500
+      return { success: false, error: 'Failed to reset password. The link may be invalid or expired.', status: statusCode }
     }
 
     // Clear current session cookies (force re-login)
@@ -608,14 +596,13 @@ export async function updatePasswordAction(currentPassword, newPassword) {
 
     // Verify current password by making a login request to the SSO worker
     const ssoClient = await createSSOServiceClient()
-    const loginData = await ssoClient.login({
+    const verifyOutcome = await ssoClient.login({
+      correlationId: crypto.randomUUID(),
       email: session.user.email,
       password: parsed.data.currentPassword,
-      ip,
-      ua
     })
 
-    if (loginData.error) {
+    if (!verifyOutcome || verifyOutcome.kind !== 'issued') {
       return { success: false, error: 'Current password is incorrect', status: 400 }
     }
 
