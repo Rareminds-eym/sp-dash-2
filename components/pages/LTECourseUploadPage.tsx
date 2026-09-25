@@ -1,0 +1,230 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import Logger, { getErrorMessage } from '@/lib/logger';
+import { LTEStepperHeader } from '@/components/lte/LTEStepperHeader';
+import { LTEIngestionStep } from '@/components/lte/LTEIngestionStep';
+import { LTECatalogSpecificationStep } from '@/components/lte/LTECatalogSpecificationStep';
+import { CatalogWorkspace } from '@/components/lte/CatalogWorkspace';
+import { LTELearnerViewModal } from '@/components/lte/LTELearnerViewModal';
+import { LTECourseMetadata, LTEIngestionSnapshot, LTELevelCourse } from '@/types/lte-ingestion';
+import { useToast } from '@/hooks/use-toast';
+
+const logger = new Logger('LTECourseUploadPage');
+
+export const LTECourseUploadPage: React.FC = () => {
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  const [snapshot, setSnapshot] = useState<LTEIngestionSnapshot | null>(null);
+  const [isLearnerModalOpen, setIsLearnerModalOpen] = useState<boolean>(false);
+  const [previewCourse, setPreviewCourse] = useState<LTELevelCourse | null>(null);
+  const [publishing, setPublishing] = useState<boolean>(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    logger.info('Initializing LTECourseUploadPage');
+    fetch('/api/admin/lte/review')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.snapshot) {
+          logger.info('Loaded default review snapshot');
+          setSnapshot(data.snapshot);
+        }
+      })
+      .catch((err) => {
+        logger.error('Failed to pre-fetch LTE review snapshot', {
+          error: getErrorMessage(err),
+        });
+      });
+  }, []);
+
+  const handleSnapshotUpdated = (newSnapshot: LTEIngestionSnapshot) => {
+    logger.info('LTE Ingestion snapshot updated', { uploadId: newSnapshot.uploadId });
+    setSnapshot(newSnapshot);
+  };
+
+  const handlePreviewCourseSaved = async (updatedCourse: LTELevelCourse) => {
+    logger.info('Learner preview content saved', {
+      levelCode: updatedCourse.levelCode,
+      courseTitle: updatedCourse.courseMetadata.courseTitle,
+    });
+
+    let savedSnapshot: LTEIngestionSnapshot | null = null;
+
+    if (snapshot?.uploadId) {
+      const res = await fetch('/api/admin/lte/review', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uploadId: snapshot.uploadId,
+          course: updatedCourse,
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        const message = data.error || 'Failed to save preview content changes.';
+        toast({
+          title: 'Save Failed',
+          description: message,
+          variant: 'destructive',
+        });
+        throw new Error(message);
+      }
+
+      savedSnapshot = data.snapshot;
+    }
+
+    setPreviewCourse(updatedCourse);
+    setSnapshot((current) => {
+      if (!current) return current;
+      if (savedSnapshot) return savedSnapshot;
+
+      const existingLevelCourses = current.levelCourses || [];
+      const levelCourses = existingLevelCourses.length > 0
+        ? existingLevelCourses.map((levelCourse) =>
+            levelCourse.levelCode === updatedCourse.levelCode ||
+            levelCourse.levelNo === updatedCourse.levelNo
+              ? updatedCourse
+              : levelCourse
+          )
+        : [updatedCourse];
+
+      return {
+        ...current,
+        courseMetadata: updatedCourse.courseMetadata,
+        modules: updatedCourse.modules,
+        levelCourses,
+      };
+    });
+
+    toast({
+      title: 'Preview Content Saved',
+      description: 'Your learner preview changes have been saved in the reviewed snapshot.',
+    });
+  };
+
+  const handlePublishCourse = async (updatedMetadata: LTECourseMetadata) => {
+    setPublishing(true);
+    logger.info('Initiating transactional course publish', {
+      courseCode: updatedMetadata.courseCode,
+    });
+
+    try {
+      const reviewedHash = snapshot?.reviewedSnapshotHash || snapshot?.snapshotHash || 'hash_default';
+      const res = await fetch('/api/admin/lte/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uploadId: snapshot?.uploadId || 'upload_default',
+          reviewedSnapshotHash: reviewedHash,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.status === 409) {
+        toast({
+          title: 'Version / Concurrency Conflict (409)',
+          description: data.error || 'The reviewed snapshot version or capability structure has changed. Please refresh and re-verify before publishing.',
+          variant: 'destructive',
+        });
+        throw new Error(data.error || 'SNAPSHOT_CHANGED');
+      }
+
+      if (res.status === 202) {
+        toast({
+          title: 'Publish in Progress (202)',
+          description: 'A catalog publication operation is currently running for this upload record.',
+        });
+        return;
+      }
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Publish transaction failed.');
+      }
+
+      logger.info('Publish operation succeeded', data);
+      toast({
+        title: 'Course Uploaded & Published Successfully!',
+        description: `Inserted ${data.inserted} catalog rows, skipped ${data.skipped} existing rows across tables.`,
+      });
+
+      if (snapshot) {
+        setSnapshot({ ...snapshot, status: 'published' });
+      }
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err);
+      logger.error('Course publish error', { error: msg });
+      if (msg.includes('ASSET_VALIDATION_FAILED')) {
+        const fileCount = msg.match(/\((\d+) file/)?.[1];
+        const notPublic = msg.includes('DRIVE_NOT_PUBLIC');
+        toast({
+          title: notPublic ? 'Google Drive Files Are Not Public' : 'Asset Download Failed',
+          description: notPublic
+            ? `Publish stopped: ${fileCount ? `${fileCount} linked Drive file(s)` : 'linked Drive files'} are not publicly downloadable. For each file: open it in Drive → Share → General access → "Anyone with the link" (Viewer) → republish.`
+            : `Publish stopped: ${fileCount ? `${fileCount} linked asset(s)` : 'linked assets'} could not be downloaded. Check the URLs in the workbook and republish.`,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Publish Failed',
+          description: msg.length > 300 ? `${msg.slice(0, 300)}…` : msg,
+          variant: 'destructive',
+        });
+      }
+      throw err;
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen w-full bg-[#f4f8ff] dark:bg-slate-950 p-3 md:p-4 lg:p-5 space-y-5">
+      {/* Stepper Header with 3 steps */}
+      <LTEStepperHeader
+        currentStep={currentStep}
+        onStepClick={(step) => {
+          logger.info(`Step clicked: ${step}`);
+          setCurrentStep(step);
+        }}
+      />
+
+      {/* Step 1: Upload & Validate */}
+      {currentStep === 1 && (
+        <LTEIngestionStep
+          snapshot={snapshot}
+          onSnapshotUpdated={handleSnapshotUpdated}
+          onProceedToStep2={() => setCurrentStep(2)}
+        />
+      )}
+
+      {/* Step 2: Mapping & Review */}
+      {currentStep === 2 && (
+        <LTECatalogSpecificationStep
+          snapshot={snapshot}
+          onBack={() => setCurrentStep(1)}
+          onOpenLearnerPreview={(course) => {
+            setPreviewCourse(course);
+            setIsLearnerModalOpen(true);
+          }}
+          onPublishCourse={handlePublishCourse}
+          publishing={publishing}
+        />
+      )}
+
+      {/* Step 3: Catalog Workspace (Full-screen page) */}
+      {currentStep === 3 && <CatalogWorkspace />}
+
+      {/* Learner View Preview Modal */}
+      <LTELearnerViewModal
+        isOpen={isLearnerModalOpen}
+        onClose={() => setIsLearnerModalOpen(false)}
+        snapshot={snapshot}
+        course={previewCourse}
+        onCourseSaved={handlePreviewCourseSaved}
+      />
+    </div>
+  );
+};
+
+export default LTECourseUploadPage;

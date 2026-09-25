@@ -1,0 +1,780 @@
+import Logger, { getErrorMessage } from '@/lib/logger';
+import {
+  LTEArtifactPractice,
+  LTECourseMetadata,
+  LTEIngestionSnapshot,
+  LTELevelCourse,
+  LTEModule,
+  LTERelationalValidationReport,
+  LTESchemaValidationItem,
+  LTEStage6E,
+  LTETableSummary,
+  StageType6E,
+} from '@/types/lte-ingestion';
+import { parseXLSX, validateRequiredTables, WorksheetData } from './lte-ingestion/xlsx-parser';
+import { normalizeHeaders } from './lte-ingestion/header-normalizer';
+import { createSnapshot, calculateHash, NormalizedSnapshot } from './lte-ingestion/snapshot-serializer';
+import { generateValidationReport, ValidationResult } from './lte-ingestion/validation-reporter';
+import { detectDuplicates } from './lte-ingestion/duplicate-detector';
+import {
+  EMPTY_JSON_ARRAY_COLUMNS,
+  EMPTY_JSON_OBJECT_COLUMNS,
+  EXPECTED_6E_STAGE_LABELS,
+  PIPE_JSON_COLUMNS,
+  REQUIRED_LTE_TABLES,
+} from './lte-ingestion/constants';
+import { isJsonNullText, normalizeJsonValue, parseArtifactInstructions } from './lte-ingestion/json-parser';
+import { formatText } from './lte-ingestion/text-formatter';
+
+const logger = new Logger('LTEIngestionService');
+
+export const REQUIRED_15_TABLES: readonly string[] = REQUIRED_LTE_TABLES;
+
+/**
+ * Convert validation result to LTE validation report format
+ */
+function convertValidationResult(
+  validationResult: ValidationResult,
+  totalRows: number
+): LTERelationalValidationReport {
+  // Convert table summaries
+  const tableSummaries: LTETableSummary[] = Object.entries(validationResult.tableSummary).map(
+    ([tableName, summary]) => ({
+      tableName,
+      rowCount: summary.rowCount,
+      status: summary.errorCount > 0 ? 'error' : summary.skipCount > 0 ? 'skipped' : 'ready',
+      details: `${summary.insertCount} to insert, ${summary.skipCount} to skip, ${summary.errorCount} errors`,
+    })
+  );
+
+  // Convert validation cards to schema validation items
+  const validationItems: LTESchemaValidationItem[] = validationResult.validationCards.map((card) => ({
+    id: card.id,
+    code: card.category,
+    title: card.title,
+    message: card.message,
+    category: card.category,
+    level: card.severity === 'ERROR' ? 'error' : card.severity === 'WARNING' ? 'warning' : 'info',
+    verified: card.severity === 'INFO',
+  }));
+
+  return {
+    verified: validationResult.publishReady,
+    tableSummaries,
+    validationItems,
+    totalRowsParsed: totalRows,
+    errors: validationResult.errors.map((e) => e.message),
+    warnings: validationResult.warnings.map((w) => w.message),
+  };
+}
+
+export class LTEIngestionService {
+  /**
+   * Parse and validate Google Sheets shareable URL or uploaded XLSX file
+   */
+  public static async processIngestionSource(
+    sourceType: 'google_sheets' | 'xlsx',
+    sourceIdentifier: string,
+    rawBuffer?: ArrayBuffer,
+    userId?: string
+  ): Promise<LTEIngestionSnapshot> {
+    // Temporary uploadId - will be replaced with database ID after insert
+    const uploadId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    logger.info(`Starting LTE ingestion process for ${sourceType}`, {
+      uploadId,
+      sourceIdentifier,
+      userId,
+      bufferSizeBytes: rawBuffer ? rawBuffer.byteLength : 0,
+    });
+
+    try {
+      // Validate file size for XLSX
+      if (sourceType === 'xlsx' && rawBuffer) {
+        if (rawBuffer.byteLength > 10 * 1024 * 1024) {
+          throw new Error('File size exceeds maximum allowed limit of 10 MB.');
+        }
+      }
+
+      // Parse the workbook
+      let worksheets: WorksheetData[];
+      let totalRows = 0;
+
+      if (sourceType === 'xlsx' && rawBuffer) {
+        const buffer = Buffer.from(rawBuffer);
+        const parsed = await parseXLSX(buffer, sourceIdentifier);
+        worksheets = parsed.worksheets;
+        totalRows = parsed.metadata.totalRows;
+
+        // Validate required tables
+        const missingTables = validateRequiredTables(worksheets);
+        if (missingTables.length > 0) {
+          throw new Error(
+            `Missing required worksheets: ${missingTables.join(', ')}. All 13 LTE catalog tables must be present.`
+          );
+        }
+
+        logger.info('XLSX file parsed successfully', {
+          uploadId,
+          sheetsCount: worksheets.length,
+          totalRows,
+        });
+      } else {
+        // Google Sheets ingestion not yet implemented
+        throw new Error('Google Sheets ingestion is not yet implemented.');
+      }
+
+      // Normalize headers for all worksheets
+      const normalizedWorksheets = worksheets.map(ws => ({
+        ...ws,
+        columns: normalizeHeaders(ws.columns),
+      }));
+
+      // Create workbook data map
+      const workbookData = new Map<string, any[]>();
+      const parsingErrors: ValidationResult['errors'] = [];
+      for (const worksheet of normalizedWorksheets) {
+        const rows = worksheet.rows.map((rowData, rowIndex) => {
+          const rowObject: any = {};
+          worksheet.columns.forEach((colName, colIndex) => {
+            const tableColumn = `${worksheet.tableName}|${colName}`;
+            const rawValue = rowData[colIndex];
+
+            try {
+              if (isJsonNullText(rawValue)) {
+                rowObject[colName] = null;
+              } else if (
+                (rawValue === null || rawValue === undefined || String(rawValue).trim() === '') &&
+                EMPTY_JSON_ARRAY_COLUMNS.has(tableColumn)
+              ) {
+                rowObject[colName] = [];
+              } else if (
+                (rawValue === null || rawValue === undefined || String(rawValue).trim() === '') &&
+                (EMPTY_JSON_OBJECT_COLUMNS.has(tableColumn) || colName === 'metadata')
+              ) {
+                rowObject[colName] = {};
+              } else if (PIPE_JSON_COLUMNS.has(tableColumn) || colName === 'metadata') {
+                rowObject[colName] = normalizeJsonValue(worksheet.tableName, colName, rawValue);
+              } else {
+                rowObject[colName] = rawValue;
+              }
+            } catch (err: unknown) {
+              rowObject[colName] = rawValue;
+              parsingErrors.push({
+                severity: 'ERROR',
+                code: 'INVALID_STRUCTURED_FIELD',
+                message: `${worksheet.tableName}.${colName} row ${rowIndex + 2}: ${getErrorMessage(err)}`,
+                table: worksheet.tableName,
+                row: rowIndex + 2,
+                column: colName,
+              });
+            }
+          });
+          return rowObject;
+        });
+        workbookData.set(worksheet.tableName, rows);
+      }
+
+      // Backfill DB NOT NULL defaults so publish RPC never hits null violations
+      this.backfillRequiredFields(workbookData);
+
+      // Detect duplicates within the upload
+      const duplicateResults = new Map();
+      for (const [tableName, rows] of workbookData.entries()) {
+        const result = detectDuplicates(tableName, rows);
+        duplicateResults.set(tableName, result);
+      }
+
+      // Detect existing records in database
+      // For now, use a stub implementation without DB queries
+      // This will be enhanced when database integration is added
+      const existingResult = {
+        existingUUIDs: new Set<string>(),
+        existingUniqueKeys: new Map<string, Set<string>>(),
+        referenceTableRecords: new Map<string, any[]>(),
+      };
+
+      // Generate validation report
+      const validationResult = generateValidationReport(
+        workbookData,
+        duplicateResults,
+        existingResult,
+        parsingErrors
+      );
+
+      // Create normalized snapshot
+      const normalizedSnapshot = createSnapshot(workbookData, sourceType, sourceIdentifier);
+      const snapshotHash = calculateHash(normalizedSnapshot);
+
+      logger.info('Normalized snapshot created', {
+        uploadId,
+        snapshotHash,
+        tableCount: normalizedSnapshot.metadata.tableCount,
+        totalRows: normalizedSnapshot.metadata.totalRows,
+      });
+
+      // Convert validation result to LTE format
+      const validationReport = convertValidationResult(validationResult, totalRows);
+
+      logger.info('Validation report generated', {
+        uploadId,
+        verified: validationReport.verified,
+        errorsCount: validationReport.errors.length,
+        warningsCount: validationReport.warnings.length,
+      });
+
+      // Extract course metadata and modules for each uploaded level/course row.
+      const levelCourses: LTELevelCourse[] = this.extractLevelCourses(normalizedSnapshot);
+      const courseMetadata: LTECourseMetadata = levelCourses[0]?.courseMetadata || this.extractCourseMetadata(normalizedSnapshot);
+      const modules: LTEModule[] = levelCourses[0]?.modules || this.extractModules(normalizedSnapshot);
+
+      const snapshot: LTEIngestionSnapshot = {
+        uploadId,
+        sourceType,
+        sourceName: sourceIdentifier,
+        snapshotHash,
+        tables: normalizedSnapshot.tables,
+        metadata: normalizedSnapshot.metadata,
+        courseMetadata,
+        modules,
+        levelCourses,
+        validationReport,
+        createdAt: new Date().toISOString(),
+        status: validationReport.verified ? 'validated' : 'validation_failed',
+      };
+
+      logger.info('LTE ingestion process completed successfully', {
+        uploadId,
+        snapshotHash,
+        status: snapshot.status,
+        totalRows: validationReport.totalRowsParsed,
+        levelCoursesCount: levelCourses.length,
+      });
+
+      return snapshot;
+    } catch (err: unknown) {
+      const errMsg = getErrorMessage(err);
+      logger.error('Error processing LTE ingestion source', { error: errMsg });
+      throw new Error(errMsg);
+    }
+  }
+
+  /**
+   * Extract each uploaded level/course row into a reviewable course tab.
+   */
+  public static extractLevelCourses(snapshot: NormalizedSnapshot): LTELevelCourse[] {
+    const capabilities = this.getTableRowsAsObjects(snapshot, 'capabilities');
+    const roles = this.getTableRowsAsObjects(snapshot, 'roles');
+    const levels = this.getTableRowsAsObjects(snapshot, 'levels');
+    const modules = this.getTableRowsAsObjects(snapshot, 'modules');
+    const modulesContent = this.getTableRowsAsObjects(snapshot, 'modules_content');
+    const eContent = this.getTableRowsAsObjects(snapshot, 'e_content');
+    const moduleArtifacts = this.getTableRowsAsObjects(snapshot, 'module_artifacts');
+    const artifactQuestions = this.getTableRowsAsObjects(snapshot, 'artifact_questions');
+    const artifactTemplates = this.getTableRowsAsObjects(snapshot, 'artifact_templates');
+
+    const primaryRole = roles[0] || {};
+    const rowsToDisplay = levels.length > 0 ? levels : capabilities;
+
+    return rowsToDisplay.map((levelRow: any, idx: number) => {
+      const capability = this.findCapabilityForLevel(levelRow, capabilities) || capabilities[idx] || capabilities[0] || {};
+      const levelNo = this.inferLevelNumber(levelRow, idx + 1);
+      const levelCode = this.firstText(
+        levelRow.level_code,
+        levelRow.proficiency_level,
+        rowsToDisplay === capabilities ? levelRow.code : undefined,
+        `L${levelNo}`
+      );
+      const capabilityCode = this.firstText(
+        levelRow.capability_code,
+        capability.code,
+        capability.capability_code,
+        'UNKNOWN'
+      );
+      const capabilityName = this.firstText(
+        capability.name,
+        capability.capability_name,
+        levelRow.capability_name,
+        levelRow.title,
+        'Course'
+      );
+      const domain = this.firstText(
+        levelRow.domain,
+        capability.domain,
+        primaryRole.domain_name,
+        'General'
+      );
+      const instructorLead = this.firstText(
+        levelRow.instructor_lead,
+        levelRow.instructor,
+        capability.instructor_lead,
+        primaryRole.instructor_lead,
+        'Unknown Instructor'
+      );
+      const courseTitle = this.firstText(
+        levelRow.course_title,
+        levelRow.course_name,
+        levelRow.title,
+        levelRow.name,
+        `${capabilityName} - ${levelCode}`
+      );
+      const courseCode = this.firstText(
+        levelRow.course_code,
+        levelRow.level_code,
+        `${capabilityCode}_${levelCode}`
+      );
+      const courseSummary = this.firstText(
+        levelRow.course_summary,
+        levelRow.summary,
+        levelRow.description,
+        ''
+      );
+      const problemStatement = this.firstText(levelRow.problem_statement, '');
+      const capstoneTitle = this.firstText(
+        levelRow.final_capstone_artifact_title,
+        levelRow.capstone_artifact_title,
+        levelRow.capstone_title,
+        ''
+      );
+
+      const courseMetadata: LTECourseMetadata = {
+        courseTitle,
+        courseCode,
+        domain,
+        capabilityCode,
+        capabilityLevel: `Level ${levelNo}`,
+        instructorLead,
+        courseSummary,
+        problemStatement,
+        capstoneTitle,
+      };
+
+      // Filter modules belonging to this level
+      const levelModulesRows = modules.filter((m: any) =>
+        this.moduleBelongsToLevel(m, levelRow, levelNo, levelCode)
+      );
+
+      const formattedModules: LTEModule[] = levelModulesRows.map((modRow: any, modIdx: number) => {
+        const modId = this.firstText(modRow.id, modRow.module_id, '');
+        const modNo = Number(modRow.module_no ?? modRow.index ?? modIdx);
+        const modTitle = this.firstText(
+          modRow.title,
+          modRow.module_title,
+          modRow.name,
+          `Module ${modNo}: Environment & Core Concepts`
+        );
+        const modSubtitle = this.firstText(
+          modRow.subtitle,
+          modRow.context_description,
+          `${levelCode} Module ${modNo}`
+        );
+
+        const modContentRows = modulesContent.filter((mc: any) => this.valuesMatch(mc.module_id, modId));
+        const contentIds = new Set(modContentRows.map((mc: any) => String(mc.id)).filter(Boolean));
+
+        const matchedEContent = eContent.filter((ec: any) => contentIds.has(String(ec.modules_content_id)));
+
+        const standard6Es: StageType6E[] = [...EXPECTED_6E_STAGE_LABELS];
+        const stages: LTEStage6E[] = standard6Es.map((stageName, sIdx) => {
+          const moduleContent = modContentRows.find((mc: any) =>
+            String(mc.stage_name || mc.lte_6e_stage || '').toLowerCase() === stageName.toLowerCase()
+          );
+          const match = matchedEContent.find((ec: any) =>
+            this.valuesMatch(ec.modules_content_id, moduleContent?.id)
+          );
+          const stageAssets = matchedEContent
+            .filter((ec: any) => this.valuesMatch(ec.modules_content_id, moduleContent?.id))
+            .map((ec: any, assetIndex: number) => ({
+              id: this.firstText(ec.id, `${moduleContent?.id || modId}-asset-${assetIndex}`),
+              url: this.firstText(ec.file_url, ec.content_url, ec.media_url, ec.url, ec.asset_url, ''),
+              title: this.firstText(ec.title, ec.name, ec.filename, ec.file_name, `Learning asset ${assetIndex + 1}`),
+              fileName: this.firstText(ec.filename, ec.file_name, ec.name, ''),
+              contentType: this.firstText(ec.mime_type, ec.content_type, ''),
+            }));
+
+          return {
+            id: match?.id || moduleContent?.id || `stage_${modId || modIdx}_${sIdx}`,
+            stageIndex: sIdx + 1,
+            name: stageName,
+            label: this.firstText(match?.stage_label, match?.label, stageName),
+            subtitle: this.firstText(match?.subtitle, match?.content_title, match?.title, moduleContent?.stage_description, `${stageName} phase`),
+            description: this.firstText(match?.description, match?.content_description, moduleContent?.stage_description, moduleContent?.module_context, `${stageName} activities for ${modTitle}`),
+            mediaType: (match?.content_type as any) || 'article',
+            estimatedDuration: this.formatDuration(match?.duration_seconds || match?.duration || match?.estimated_duration),
+            contentItemsCount: moduleContent ? Math.max(1, matchedEContent.filter((ec: any) => this.valuesMatch(ec.modules_content_id, moduleContent.id)).length) : 0,
+            xpReward: Number(match?.xp || match?.xp_reward) || 50,
+            prerequisites: this.metadataList(moduleContent?.curriculum_reference?.prerequisites),
+            technicalConcepts: this.metadataList(moduleContent?.curriculum_reference?.technical_concepts),
+            engineeringContext: this.firstText(moduleContent?.module_context, moduleContent?.curriculum_reference?.workplace_context, ''),
+            videoCtvContext: this.firstText(moduleContent?.curriculum_reference?.video_ctv_context, ''),
+            whenToUse: this.firstText(moduleContent?.curriculum_reference?.when_to_use, ''),
+            moduleContinuity: this.firstText(moduleContent?.curriculum_reference?.module_continuity, ''),
+            assets: stageAssets,
+          };
+        });
+
+        const matchedArtifacts = moduleArtifacts.filter((ma: any) => contentIds.has(String(ma.modules_content_id)));
+        const artifactPractices: LTEArtifactPractice[] = matchedArtifacts.length > 0
+          ? matchedArtifacts.map((art: any, aIdx: number) => {
+              const artifactId = this.firstText(art.id, `art_${modId || modIdx}_${aIdx}`);
+              const artifactStageRow = modContentRows.find((mc: any) =>
+                this.valuesMatch(mc.id, art.modules_content_id)
+              );
+              const artifactStageName = this.firstText(
+                artifactStageRow?.stage_name,
+                artifactStageRow?.lte_6e_stage,
+                ''
+              ) as StageType6E | '';
+              const directQuestions = artifactQuestions.filter((question: any) =>
+                this.valuesMatch(question.artifact_id, artifactId)
+              );
+              const fallbackQuestions = directQuestions.length > 0
+                ? directQuestions
+                : artifactQuestions[aIdx]
+                  ? [artifactQuestions[aIdx]]
+                  : [];
+              const questions = fallbackQuestions
+                .map((question: any, questionIndex: number) => {
+                  const rawInstructions = this.firstText(question.instructions, '');
+                  let instructions: string | Record<string, string> = rawInstructions;
+                  if (rawInstructions.includes('|') || rawInstructions.includes(':')) {
+                    try {
+                      instructions = parseArtifactInstructions(rawInstructions);
+                    } catch {
+                      instructions = rawInstructions;
+                    }
+                  }
+
+                  return {
+                    id: this.firstText(question.id, `${artifactId}-question-${questionIndex}`),
+                    title: this.firstText(question.title, question.question_title, `Question ${questionIndex + 1}`),
+                    description: this.firstText(
+                      question.description,
+                      question.question_text,
+                      question.prompt,
+                      'Complete the artifact question.'
+                    ),
+                    instructions,
+                    responseType: this.firstText(question.response_type, 'file'),
+                    required: question.response_required ?? question.is_required ?? true,
+                  };
+                });
+              const questionIds = new Set(questions.map((question) => question.id));
+              const directTemplates = artifactTemplates.filter((template: any) =>
+                this.valuesMatch(template.artifact_id, artifactId) ||
+                questionIds.has(this.firstText(template.question_id, ''))
+              );
+              const fallbackTemplates = directTemplates.length > 0
+                ? directTemplates
+                : artifactTemplates[aIdx]
+                  ? [artifactTemplates[aIdx]]
+                  : [];
+              const templates = fallbackTemplates
+                .map((template: any, templateIndex: number) => ({
+                  id: this.firstText(template.id, `${artifactId}-template-${templateIndex}`),
+                  fileName: this.firstText(template.file_name, template.filename, template.title, 'Template'),
+                  fileUrl: this.firstText(template.file_url, template.template_file_url, template.url, ''),
+                  fileType: this.firstText(template.file_type, template.type, ''),
+                  questionId: this.firstText(template.question_id, ''),
+                }));
+
+              const artifactType = this.firstText(art.artifact_type, 'practice') === 'final' ? 'final' : 'practice';
+
+              return {
+                id: artifactId,
+                moduleIndex: modNo,
+                practiceIndex: (aIdx === 0 ? 1 : 2) as 1 | 2,
+                title: this.firstText(
+                  art.title,
+                  art.name,
+                  art.artifact_title,
+                  artifactType === 'final' ? `Final Artifact ${aIdx + 1}` : `Practice Artifact ${aIdx + 1}`
+                ),
+                artifactType,
+                stageName: artifactStageName || undefined,
+                totalScore: Number(art.total_score) || undefined,
+                passingScore: Number(art.passing_score) || undefined,
+                questions,
+                templates,
+              };
+            })
+          : [
+              {
+                id: `art_${modIdx}_1`,
+                moduleIndex: modNo,
+                practiceIndex: 1,
+                title: `${modTitle} - Practice 1`,
+              },
+              {
+                id: `art_${modIdx}_2`,
+                moduleIndex: modNo,
+                practiceIndex: 2,
+                title: `${modTitle} - Practice 2`,
+              },
+            ];
+
+        return {
+          index: modNo,
+          title: modTitle,
+          subtitle: modSubtitle,
+          completionPercentage: 0,
+          status: 'in_progress',
+          stages,
+          artifactPractices,
+          contextDescription: this.firstText(
+            modRow.context_description,
+            modRow.module_context,
+            modRow.description,
+            modRow.industry_challenge,
+            ''
+          ),
+          pressurePoints: this.metadataList(modRow.pressure_points),
+          userConfusion: this.metadataList(modRow.user_confusion),
+          industryChallenge: this.firstText(modRow.industry_challenge, modRow.Industry_challenge, ''),
+          prerequisites: this.metadataList(modRow.prerequisites),
+          whatYoullLearn: this.metadataList(modRow.what_youll_learn),
+          whenToApply: this.firstText(modRow.when_to_apply, ''),
+          moduleProblemStatement: this.firstText(modRow.module_problem_statement, ''),
+        };
+      });
+
+      return {
+        levelCode,
+        levelNo,
+        levelName: this.firstText(levelRow.level_name, levelRow.proficiency_level, `Level ${levelNo}`),
+        courseMetadata,
+        modules: formattedModules,
+      };
+    });
+  }
+
+  private static findCapabilityForLevel(levelRow: any, capabilities: any[]): any | null {
+    return capabilities.find((cap: any) =>
+      this.valuesMatch(levelRow.capability_id, cap.id) ||
+      this.valuesMatch(levelRow.capability_code, cap.code) ||
+      this.valuesMatch(levelRow.capability_code, cap.capability_code)
+    ) || null;
+  }
+
+  private static moduleBelongsToLevel(moduleRow: any, levelRow: any, levelNo: number, levelCode: string): boolean {
+    return this.valuesMatch(moduleRow.level_id, levelRow.id) ||
+      this.valuesMatch(moduleRow.level_code, levelCode) ||
+      this.valuesMatch(moduleRow.level_no, levelNo);
+  }
+
+  private static valuesMatch(left: any, right: any): boolean {
+    if (left === null || left === undefined || right === null || right === undefined) return false;
+    return String(left).trim().toLowerCase() === String(right).trim().toLowerCase();
+  }
+
+  private static firstText(...values: any[]): string {
+    for (const value of values) {
+      const formatted = formatText(value);
+      if (formatted !== '') {
+        return formatted;
+      }
+    }
+    return '';
+  }
+
+  private static toNumber(value: any, fallback: number): number {
+    const match = String(value ?? '').match(/\d+/);
+    return match ? Number(match[0]) : fallback;
+  }
+
+  private static inferLevelNumber(levelRow: any, fallback: number): number {
+    const candidates = [
+      levelRow.level_no,
+      levelRow.proficiency_level,
+      levelRow.level_code,
+      levelRow.course_code,
+      levelRow.level_name,
+    ];
+
+    for (const candidate of candidates) {
+      const numeric = this.toNumber(candidate, NaN);
+      if (Number.isFinite(numeric) && numeric > 0 && numeric <= 10) {
+        return numeric;
+      }
+    }
+
+    return fallback;
+  }
+
+  private static formatDuration(value: any): string {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && numeric > 0) {
+      return `${Math.round(numeric / 60)} mins`;
+    }
+    return this.firstText(value, '15 mins');
+  }
+
+  private static metadataList(value: any): string[] {
+    if (Array.isArray(value)) {
+      return value.map(item => String(item)).filter(Boolean);
+    }
+    if (value === null || value === undefined || String(value).trim() === '') {
+      return [];
+    }
+    return [String(value).trim()];
+  }
+
+  private static backfillRequiredFields(workbookData: Map<string, any[]>): void {
+    const isEmpty = (v: any) => v === null || v === undefined || String(v).trim() === '';
+    const fill = (row: any, col: string, fallback: any) => {
+      if (!(col in row) || isEmpty(row[col])) row[col] = fallback;
+    };
+    const scaleByNo: Record<string, string> = { '1': '63fb8a2c-ee37-5143-9f81-554d2d7d9b96', '2': '0a63f10a-c626-5e20-81ea-d59df58df6d9', '3': '63526d31-3736-514c-8ab6-59a5583e1115', '4': '67d35213-1ba2-57de-b5a9-c1cce52b3a59', '5': '25d863fd-4211-5b12-9076-550cde32b71a' };
+    const labelByNo: Record<string, string> = { '1': 'Beginner', '2': 'Foundation', '3': 'Intermediate', '4': 'Advanced', '5': 'Expert' };
+    for (const [table, rows] of workbookData.entries()) {
+      rows.forEach((row: any, idx: number) => {
+        if (table === 'capabilities') {
+          fill(row, 'name', String(row.code || row.id || 'Capability'));
+          fill(row, 'description', String(row.name || row.code || 'Capability description'));
+        } else if (table === 'roles') {
+          fill(row, 'role_name', String((row as any).id || 'Role'));
+          fill(row, 'role_family_name', String(row.domain_name || 'General'));
+          fill(row, 'domain_name', String((row as any).role_family_name || 'General'));
+        } else if (table === 'level_scale') {
+          const no = String(row.level_no ?? '1');
+          fill(row, 'level_no', Number(no));
+          fill(row, 'level_label', labelByNo[no] || `Level ${no}`);
+          fill(row, 'generic_definition', String(row.level_label || `Level ${no} definition`));
+        } else if (table === 'role_capability_sequence') {
+          fill(row, 'sequence_step', Number(row.sequence_no ?? row.sequence_step ?? idx + 1));
+          if (!('sequence_no' in row) || isEmpty((row as any).sequence_no)) (row as any).sequence_no = (row as any).sequence_step;
+          fill(row, 'capability_priority', 'Core');
+          fill(row, 'required_level', 'L1');
+          fill(row, 'duration_weeks', 2);
+          fill(row, 'work_style_demands', 'General work readiness');
+        } else if (table === 'levels') {
+          const no = String(row.level_no ?? '1');
+          fill(row, 'title', String(row.course_title || row.level_name || row.level_code || 'Level'));
+          fill(row, 'description', String(row.course_title || row.title || 'Level description'));
+          fill(row, 'level_id', scaleByNo[no] || scaleByNo['1']);
+          fill(row, 'duration_minutes', 60);
+          fill(row, 'difficulty_level', 'beginner');
+          fill(row, 'status', 'draft');
+          fill(row, 'version_no', 1);
+          fill(row, 'is_active', true);
+        } else if (table === 'skills') {
+          fill(row, 'name', String(row.code || row.id || 'Skill'));
+          fill(row, 'description', String(row.name || row.code || 'Skill description'));
+        } else if (table === 'modules') {
+          fill(row, 'title', String(row.module_title || row.name || `Module ${row.module_no ?? ''}`.trim() || 'Module'));
+          fill(row, 'description', String(row.title || 'Module description'));
+        } else if (table === 'modules_content') {
+          fill(row, 'stage_order', idx + 1);
+          fill(row, 'stage_description', `${row.stage_name || 'Stage'} phase`);
+          fill(row, 'module_context', String(row.stage_description || 'Module context'));
+          fill(row, 'is_active', true);
+        } else if (table === 'e_content') {
+          const url = row.url || row.file_url || row.content_url || row.media_url || row.asset_url || '';
+          fill(row, 'url', String(url));
+          fill(row, 'content_type', 'article');
+          fill(row, 'title', String(row.name || row.filename || 'Learning content'));
+          fill(row, 'description', String(row.title || 'Learning content'));
+          fill(row, 'sort_order', 1);
+          fill(row, 'duration_seconds', 900);
+          fill(row, 'version', 1);
+          fill(row, 'status', 'draft');
+        } else if (table === 'module_artifacts') {
+          fill(row, 'artifact_type', 'practice');
+          fill(row, 'total_score', 10);
+          fill(row, 'passing_score', 6);
+          fill(row, 'is_active', true);
+        } else if (table === 'artifact_questions') {
+          fill(row, 'question_order', 1);
+          fill(row, 'title', 'Artifact question');
+          fill(row, 'description', String(row.title || 'Complete the artifact'));
+          fill(row, 'response_type', 'file');
+          fill(row, 'is_active', true);
+          fill(row, 'response_required', true);
+        } else if (table === 'artifact_templates') {
+          fill(row, 'file_name', String(row.filename || row.title || 'template.xlsx'));
+          fill(row, 'file_url', String(row.template_file_url || row.url || 'https://example.test/template.xlsx'));
+          fill(row, 'file_type', 'excel');
+          fill(row, 'version', 1);
+          fill(row, 'is_downloadable', true);
+        }
+      });
+    }
+  }
+
+  private static getTableRowsAsObjects(snapshot: NormalizedSnapshot, tableName: string): any[] {
+    const table = snapshot.tables[tableName];
+    if (!table || !table.rows || table.rows.length === 0) return [];
+    const columns = table.columns;
+    return table.rows.map((rowArray: any[]) => {
+      const obj: any = {};
+      columns.forEach((col, idx) => {
+        obj[col] = rowArray[idx];
+      });
+      return obj;
+    });
+  }
+
+  /**
+   * Extract course metadata from normalized snapshot
+   * (Fallback method for single metadata object)
+   */
+  private static extractCourseMetadata(snapshot: NormalizedSnapshot): LTECourseMetadata {
+    const coursesData = snapshot.tables['courses'] || snapshot.tables['levels'];
+    if (coursesData && coursesData.rows.length > 0) {
+      const firstCourse = coursesData.rows[0];
+      const columns = coursesData.columns;
+      
+      const courseObj: any = {};
+      columns.forEach((col, idx) => {
+        courseObj[col] = firstCourse[idx];
+      });
+
+      return {
+        courseTitle: this.firstText(courseObj.course_title, courseObj.title, 'Untitled Course'),
+        courseCode: this.firstText(courseObj.course_code, courseObj.code, 'UNKNOWN'),
+        domain: this.firstText(courseObj.domain, 'General'),
+        capabilityCode: this.firstText(courseObj.capability_code, 'UNKNOWN'),
+        capabilityLevel: this.firstText(courseObj.capability_level, 'Level 1'),
+        instructorLead: this.firstText(courseObj.instructor_lead, courseObj.instructor, 'Unknown Instructor'),
+        courseSummary: this.firstText(courseObj.course_summary, courseObj.summary, ''),
+        problemStatement: this.firstText(courseObj.problem_statement, ''),
+        capstoneTitle: this.firstText(courseObj.capstone_title, courseObj.capstone_artifact_title, ''),
+      };
+    }
+
+    return {
+      courseTitle: 'Course Title Not Found',
+      courseCode: 'UNKNOWN',
+      domain: 'General',
+      capabilityCode: 'UNKNOWN',
+      capabilityLevel: 'Level 1',
+      instructorLead: 'Unknown Instructor',
+      courseSummary: '',
+      problemStatement: '',
+      capstoneTitle: '',
+    };
+  }
+
+  /**
+   * Extract modules from normalized snapshot
+   * (Fallback method for single module array)
+   */
+  private static extractModules(snapshot: NormalizedSnapshot): LTEModule[] {
+    const modulesData = snapshot.tables['modules'];
+    if (!modulesData || modulesData.rows.length === 0) {
+      return [];
+    }
+
+    return [
+      {
+        index: 0,
+        title: 'Module 0: Environment Setup',
+        subtitle: 'Basic environment configuration',
+        completionPercentage: 0,
+        status: 'in_progress',
+        contextDescription: 'Setting up development environment',
+        stages: [],
+        artifactPractices: [],
+      },
+    ];
+  }
+}
