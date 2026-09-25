@@ -3,7 +3,7 @@ import { addCacheHeaders } from '@/lib/services/cacheService';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 /**
  * GET /api/organizations - List all organizations (combined from universities and recruiters)

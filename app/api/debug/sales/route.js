@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import Logger from '@/lib/logger';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 const logger = new Logger('DebugSalesAPI');
 

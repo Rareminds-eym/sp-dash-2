@@ -1,7 +1,7 @@
 import UsersPageEnhanced from '@/components/pages/UsersPageEnhanced'
 import { getSession } from '@/lib/supabase-rls'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 export default async function Users() {
   const session = await getSession()

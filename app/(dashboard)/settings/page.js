@@ -1,7 +1,7 @@
 import SettingsPage from '@/components/pages/SettingsPage'
 import { getSession } from '@/lib/supabase-rls'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 export default async function Settings() {
   const session = await getSession()

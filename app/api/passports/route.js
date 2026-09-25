@@ -1,4 +1,4 @@
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { filterAndRankResults, fuzzyMatch } from '@/lib/search-utils';

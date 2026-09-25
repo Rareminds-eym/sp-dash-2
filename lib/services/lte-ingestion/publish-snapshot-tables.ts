@@ -303,6 +303,13 @@ function resolvePublishRow(
 function normalizePublishRow(tableName: string, row: Record<string, any>): Record<string, any> {
   const normalized = { ...row };
 
+  // created_at/updated_at are NOT NULL DEFAULT now() on every publish table.
+  // Blank workbook cells arrive as explicit null, which would violate the
+  // constraint, so drop them and let the DB default apply. Non-empty values
+  // (original Excel timestamps) are preserved as-is.
+  dropBlankDefaulted(normalized, 'created_at');
+  dropBlankDefaulted(normalized, 'updated_at');
+
   if (tableName === 'skills' && !normalized.code && normalized.skill_code) {
     normalized.code = normalized.skill_code;
   }
@@ -322,6 +329,18 @@ function normalizePublishRow(tableName: string, row: Record<string, any>): Recor
 
   if (tableName === 'modules') {
     normalized.module_no = numberOrDefault(normalized.module_no, 0);
+    // modules.prerequisites / pressure_points / user_confusion / what_youll_learn /
+    // knowledge / learning_content / support / tools are all jsonb NOT NULL.
+    // Blank workbook cells arrive as null and would violate the constraint,
+    // so default them the same way levels.observable_behavior is handled.
+    normalizeJsonArray(normalized, 'pressure_points');
+    normalizeJsonArray(normalized, 'user_confusion');
+    normalizeJsonArray(normalized, 'prerequisites');
+    normalizeJsonArray(normalized, 'what_youll_learn');
+    normalizeJsonArray(normalized, 'knowledge');
+    normalizeJsonObject(normalized, 'learning_content');
+    normalizeJsonObject(normalized, 'support');
+    normalizeJsonObject(normalized, 'tools');
   }
 
   if (tableName === 'modules_content') {
@@ -343,6 +362,8 @@ function normalizePublishRow(tableName: string, row: Record<string, any>): Recor
   if (tableName === 'artifact_questions') {
     normalized.question_order = numberOrDefault(normalized.question_order, 1);
     normalizeTextArray(normalized, 'allowed_file_types');
+    // artifact_questions.instructions is jsonb NOT NULL.
+    normalizeJsonObject(normalized, 'instructions');
     deleteBlankOptional(normalized, 'max_file_size_mb');
   }
 
@@ -367,6 +388,15 @@ function deleteBlankOptional(row: Record<string, any>, column: string): void {
   }
 }
 
+/**
+ * Drop blank values for columns that have a DB DEFAULT (e.g. created_at /
+ * updated_at DEFAULT now()). Omitting the key lets Postgres apply the default;
+ * sending explicit null would violate the NOT NULL constraint.
+ */
+function dropBlankDefaulted(row: Record<string, any>, column: string): void {
+  deleteBlankOptional(row, column);
+}
+
 function normalizeTextArray(row: Record<string, any>, column: string): void {
   const values = parseListValue(row[column]);
   if (!values.length) {
@@ -386,7 +416,33 @@ function normalizeJsonArray(row: Record<string, any>, column: string): void {
     row[column] = value;
     return;
   }
+  // Plain objects are already valid jsonb (e.g. parsed key: value pipe cells).
+  // Passing them through avoids corrupting them into ["[object Object]"].
+  if (typeof value === 'object') {
+    row[column] = value;
+    return;
+  }
   row[column] = parseListValue(value);
+}
+
+/**
+ * Default empty values to {} for jsonb NOT NULL columns that hold objects
+ * (e.g. modules.learning_content/support/tools, artifact_questions.instructions).
+ * Non-empty values pass through untouched so parsed snapshot shapes are preserved.
+ */
+function normalizeJsonObject(row: Record<string, any>, column: string): void {
+  const value = row[column];
+  if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) {
+    row[column] = {};
+    return;
+  }
+  if (typeof value === 'string') {
+    try {
+      row[column] = JSON.parse(value);
+    } catch {
+      // Leave non-JSON strings untouched; validation reports them instead.
+    }
+  }
 }
 
 function parseListValue(value: unknown): string[] {

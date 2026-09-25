@@ -2,7 +2,7 @@ import { logAudit } from '@/lib/services/auditService';
 import { createRLSClient, getUserContext } from '@/lib/supabase-rls';
 import { NextResponse } from 'next/server';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 export async function POST(request) {
   try {

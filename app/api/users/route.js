@@ -1,4 +1,4 @@
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { handleError } from '@/lib/middleware/errorHandler';
 import { supabaseAdmin } from '@/lib/supabase-admin';

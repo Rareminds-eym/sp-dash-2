@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { filterAndRankResults } from '@/lib/search-utils';
 import { handleError } from '@/lib/middleware/errorHandler';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 /**
  * GET /api/audit-logs/export - Export audit logs to CSV

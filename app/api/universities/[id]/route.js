@@ -2,7 +2,7 @@ import { addCacheHeaders } from '@/lib/services/cacheService';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 export async function GET(request, { params }) {
   try {
