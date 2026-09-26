@@ -1,7 +1,9 @@
 main = ".open-next/worker.js"
 name = "sp-dash-2"
-compatibility_date = "2026-09-24"
+compatibility_date = "2026-09-25"
 compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
+workers_dev = false
+preview_urls = false
 
 [vars]
 NEXT_PUBLIC_BASE_URL = "https://dashboard.rareminds.com"
@@ -35,3 +37,30 @@ id = "a162f140e4464515a8d5a27b5ebc6c6b"
 [[r2_buckets]]
 binding = "LTE_ASSETS"
 bucket_name = "lte"
+
+[env.dev]
+name = "sp-dash-2"
+compatibility_date = "2026-09-24"
+workers_dev = true
+preview_urls = true
+
+[[env.dev.services]]
+binding = "SSO"
+service = "sso-api-dev"
+entrypoint = "SsoWorker"
+
+[[env.dev.services]]
+binding = "WORKER_SELF_REFERENCE"
+service = "sp-dash-2-dev"
+
+[[env.dev.queues.producers]]
+binding = "MAINTENANCE_EVENTS_QUEUE"
+queue = "realtime-events-queue-dev"
+
+[[env.dev.kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "00dd9c44924f413ca859ba9ad80b8aa7"
+
+[[env.dev.r2_buckets]]
+binding = "LTE_ASSETS"
+bucket_name = "lte-dev"
