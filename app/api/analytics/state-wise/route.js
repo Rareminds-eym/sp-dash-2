@@ -3,7 +3,6 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { addCacheHeaders } from '@/lib/services/cacheService';
 import { handleError } from '@/lib/middleware/errorHandler';
 
-export const runtime = 'edge';
 
 /**
  * GET /api/analytics/state-wise - State-wise distribution

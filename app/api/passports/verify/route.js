@@ -3,7 +3,6 @@ import { createRLSClient, getUserContext } from '@/lib/supabase-rls';
 import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 
-export const runtime = 'edge';
 
 export async function POST(request) {
   try {

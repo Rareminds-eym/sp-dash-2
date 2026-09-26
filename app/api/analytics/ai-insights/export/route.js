@@ -1,6 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
-export const runtime = 'edge';
 
 // Helper function to process AI insights data
 async function processAIInsightsData(skillsResult, universitiesResult, studentsResult, placementsResult) {

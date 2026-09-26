@@ -1,5 +1,6 @@
 'use client'
 
+import { ApprovalViewProvider } from '@/components/approvals/ApprovalViewContext'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -17,7 +18,10 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { useToast } from '@/hooks/use-toast'
+import { authClient } from '@/lib/auth-client'
+import Logger, { getErrorMessage } from '@/lib/logger'
 import { cn } from '@/lib/utils'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   ArrowLeft,
   BarChart3,
@@ -26,11 +30,11 @@ import {
   Briefcase,
   Building2,
   CheckCircle,
-  ChevronDown,
   ChevronRight,
   Download,
   FileText,
   GraduationCap,
+  Handshake,
   History,
   IndianRupee,
   LayoutDashboard,
@@ -51,10 +55,6 @@ import {
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { ApprovalViewProvider } from '@/components/approvals/ApprovalViewContext'
-import Logger, { getErrorMessage } from '@/lib/logger'
-import { authClient } from '@/lib/auth-client'
 
 const logger = new Logger('DashboardLayout');
 
@@ -100,6 +100,7 @@ const initialNavigation = [
     ]
   },
   { name: 'Sales Dashboard', icon: IndianRupee, href: '/sales-dashboard' },
+  { name: 'Activate Hybrid Plan', icon: Handshake, href: '/organizations/hybrid-plan' },
   { name: 'Audit Logs', icon: History, href: '/audit-logs' },
   { name: 'Integrations', icon: Plug, href: '/integrations' },
   { name: 'Settings', icon: Settings, href: '/settings' },

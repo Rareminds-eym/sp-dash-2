@@ -4,11 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0 --port 3000",
-    "dev:pages": "npm run build:cf && npx wrangler pages dev .vercel/output/static --port 3000 --compatibility-flags nodejs_compat",
-    "pages:dev": "npx wrangler pages dev .vercel/output/static --port 8789 --compatibility-flags nodejs_compat",
     "build": "next build",
-    "build:cf": "npx @cloudflare/next-on-pages",
-    "cf-build": "npm run build:cf",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "start": "next start",
     "test": "vitest",
     "test:run": "vitest run",
@@ -78,20 +78,20 @@
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^9.0.1",
     "vaul": "^1.1.2",
-    "zod": "^3.25.67"
-  },
-  "devDependencies": {
+    "zod": "^3.25.67",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
     "@types/node": "^26.2.0",
     "@types/react": "19.2.17",
-    "autoprefixer": "^10.4.19",
+    "typescript": "5.8.2",
+    "wrangler": "^4.128.0"
+  },
+  "devDependencies": {
     "fast-check": "^4.9.0",
     "globals": "^16.2.0",
-    "postcss": "^8",
     "supabase": "^2.54.11",
-    "tailwindcss": "^3.4.1",
-    "typescript": "5.8.2",
-    "vitest": "^4.1.10",
-    "wrangler": "^4.128.0"
+    "vitest": "^4.1.10"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }
