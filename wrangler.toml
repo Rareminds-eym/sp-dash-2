@@ -6,7 +6,10 @@ workers_dev = false
 preview_urls = false
 
 [vars]
-NEXT_PUBLIC_BASE_URL = "https://dashboard.rareminds.com"
+LTE_SUPABASE_URL = "https://jsifqriqlvkpedtoywsk.supabase.co"
+NEXT_PUBLIC_SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
+SKILLPASSPORT_SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
+SSO_WORKER_URL = "https://sso-api.dark-mode-d021.workers.dev"
 
 [assets]
 directory = ".open-next/assets"
@@ -43,6 +46,12 @@ name = "sp-dash-2"
 compatibility_date = "2026-09-24"
 workers_dev = true
 preview_urls = true
+
+[env.dev.vars]
+LTE_SUPABASE_URL = "https://yydcuumoerqjfuakhslj.supabase.co"
+NEXT_PUBLIC_SUPABASE_URL = "https://qjdmndjtibajwswufghf.supabase.co"
+SKILLPASSPORT_SUPABASE_URL = "https://qjdmndjtibajwswufghf.supabase.co"
+SSO_WORKER_URL = "https://sso-api-dev.subashini.workers.dev"
 
 [[env.dev.services]]
 binding = "SSO"
