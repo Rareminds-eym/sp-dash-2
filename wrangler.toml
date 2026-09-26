@@ -51,7 +51,7 @@ entrypoint = "SsoWorker"
 
 [[env.dev.services]]
 binding = "WORKER_SELF_REFERENCE"
-service = "sp-dash-2-dev"
+service = "sp-dash-2"
 
 [[env.dev.queues.producers]]
 binding = "MAINTENANCE_EVENTS_QUEUE"
