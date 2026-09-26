@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 import { NextResponse } from 'next/server'
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth'
 
@@ -81,8 +80,8 @@ export async function PUT(request) {
     const { error: authError } = await authenticateSSORequest(request, ['super_admin'])
     if (authError) return authError
 
-    const { getRequestContext } = await import('@cloudflare/next-on-pages')
-    const { env, ctx } = getRequestContext()
+    const { getCloudflareContext } = await import('@opennextjs/cloudflare')
+    const { env, ctx } = await getCloudflareContext({ async: true })
 
     if (!SUPABASE_URL || !SERVICE_KEY) {
       return NextResponse.json(
@@ -124,8 +123,8 @@ export async function POST(request) {
     const { error: authError } = await authenticateSSORequest(request, ['super_admin'])
     if (authError) return authError
 
-    const { getRequestContext } = await import('@cloudflare/next-on-pages')
-    const { env, ctx } = getRequestContext()
+    const { getCloudflareContext } = await import('@opennextjs/cloudflare')
+    const { env, ctx } = await getCloudflareContext({ async: true })
 
     if (!SUPABASE_URL || !SERVICE_KEY) {
       return NextResponse.json(

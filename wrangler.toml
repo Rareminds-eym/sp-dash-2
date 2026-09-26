@@ -1,14 +1,30 @@
+main = ".open-next/worker.js"
 name = "sp-dash-2"
-compatibility_date = "2024-11-01"
-compatibility_flags = ["nodejs_compat"]
+compatibility_date = "2026-09-25"
+compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
+workers_dev = false
+preview_urls = false
 
 [vars]
-NEXT_PUBLIC_BASE_URL = "https://dashboard.rareminds.com"
+LTE_SUPABASE_URL = "https://jsifqriqlvkpedtoywsk.supabase.co"
+NEXT_PUBLIC_SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
+SKILLPASSPORT_SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
+SSO_WORKER_URL = "https://sso-api.dark-mode-d021.workers.dev"
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
 
 [[services]]
 binding = "SSO"
 service = "sso-api"
 entrypoint = "SsoWorker"
+
+# Self-reference service binding, required by OpenNext for cache revalidation.
+# The service name must match `name` above.
+[[services]]
+binding = "WORKER_SELF_REFERENCE"
+service = "sp-dash-2"
 
 [[queues.producers]]
 binding = "MAINTENANCE_EVENTS_QUEUE"
@@ -20,3 +36,40 @@ queue = "realtime-events-queue"
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"
 id = "a162f140e4464515a8d5a27b5ebc6c6b"
+
+[[r2_buckets]]
+binding = "LTE_ASSETS"
+bucket_name = "lte"
+
+[env.dev]
+name = "sp-dash-2"
+compatibility_date = "2026-09-24"
+workers_dev = true
+preview_urls = true
+
+[env.dev.vars]
+LTE_SUPABASE_URL = "https://yydcuumoerqjfuakhslj.supabase.co"
+NEXT_PUBLIC_SUPABASE_URL = "https://qjdmndjtibajwswufghf.supabase.co"
+SKILLPASSPORT_SUPABASE_URL = "https://qjdmndjtibajwswufghf.supabase.co"
+SSO_WORKER_URL = "https://sso-api-dev.subashini.workers.dev"
+
+[[env.dev.services]]
+binding = "SSO"
+service = "sso-api-dev"
+entrypoint = "SsoWorker"
+
+[[env.dev.services]]
+binding = "WORKER_SELF_REFERENCE"
+service = "sp-dash-2"
+
+[[env.dev.queues.producers]]
+binding = "MAINTENANCE_EVENTS_QUEUE"
+queue = "realtime-events-queue-dev"
+
+[[env.dev.kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "00dd9c44924f413ca859ba9ad80b8aa7"
+
+[[env.dev.r2_buckets]]
+binding = "LTE_ASSETS"
+bucket_name = "lte-dev"

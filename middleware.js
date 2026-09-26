@@ -5,11 +5,11 @@ import { NextResponse } from 'next/server'
  * reject on plain HTTP (localhost dev). Fall back to unprefixed names in dev.
  */
 const isSecure = process.env.NODE_ENV === 'production'
-const COOKIE_ACCESS  = isSecure ? '__Host-sso_access_token'  : 'sso_access_token'
-const COOKIE_USER    = isSecure ? '__Host-sso_user'          : 'sso_user'
+const COOKIE_ACCESS = isSecure ? '__Host-sso_access_token' : 'sso_access_token'
+const COOKIE_USER = isSecure ? '__Host-sso_user' : 'sso_user'
 const COOKIE_REFRESH = isSecure ? '__Host-sso_refresh_token' : 'sso_refresh_token'
 
-const protectedRoutes = ['/dashboard', '/users', '/passports', '/recruiters', '/reports', '/audit-logs', '/integrations', '/settings', '/course-management', '/student-dashboard', '/sales-dashboard']
+const protectedRoutes = ['/dashboard', '/users', '/passports', '/recruiters', '/reports', '/audit-logs', '/integrations', '/settings', '/course-management', '/student-dashboard', '/sales-dashboard', '/lte-course-upload', '/organizations']
 const publicRoutes = ['/login', '/reset-password']
 
 /**

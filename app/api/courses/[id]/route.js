@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 import { logAudit } from '@/lib/services/auditService';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';

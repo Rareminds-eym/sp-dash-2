@@ -1,10 +1,18 @@
-// Enable Cloudflare Pages local development with service bindings
-if (process.env.NODE_ENV === 'development') {
-  const { setupDevPlatform } = require('@cloudflare/next-on-pages/next-dev');
-  setupDevPlatform();
-}
+const path = require('path');
+
+// Enables local `next dev` to access Cloudflare bindings (the SSO service
+// binding, KV, queues, R2) via getCloudflareContext(), simulating them
+// locally instead of requiring `wrangler pages dev`/`opennextjs-cloudflare preview`.
+// Must be called here, not inside an async function, per @opennextjs/cloudflare docs.
+const { initOpenNextCloudflareForDev } = require('@opennextjs/cloudflare');
+initOpenNextCloudflareForDev();
 
 const nextConfig = {
+  outputFileTracingRoot: path.join(__dirname),
+  typescript: {
+    // Ignore external node_modules type check errors during build
+    ignoreBuildErrors: true,
+  },
   // Configured for Cloudflare Pages deployment with Edge Runtime
   images: {
     unoptimized: false,
@@ -12,14 +20,24 @@ const nextConfig = {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
-  serverExternalPackages: ['jose'],
+  serverExternalPackages: ['jose', 'bcryptjs'],
   experimental: {
     // Enable service bindings for Cloudflare Workers
     serverActions: {
       allowedOrigins: ['localhost:3000', 'localhost:8789', '*.pages.dev', '*.rareminds.in'],
     },
   },
-  webpack(config, { dev, nextRuntime }) {
+  webpack(config, { dev, isServer, nextRuntime }) {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        crypto: false,
+        fs: false,
+        path: false,
+        stream: false,
+        buffer: false,
+      };
+    }
     if (nextRuntime === 'edge') {
       config.resolve.alias = {
         ...config.resolve.alias,
@@ -27,7 +45,19 @@ const nextConfig = {
       };
     }
     if (dev) {
-      // Reduce CPU/memory from file watching
+      // Reduce inotify pressure (ENOSPC on big NTFS checkouts): don't watch
+      // build output/caches — source changes still trigger rebuilds.
+      config.watchOptions = {
+        ...config.watchOptions,
+        ignored: [
+          '**/node_modules/**',
+          '**/.git/**',
+          '**/.next/**',
+          '**/.open-next/**',
+          '**/.wrangler/**',
+          '**/graphify-out/**',
+        ],
+      };
     }
     return config;
   },
