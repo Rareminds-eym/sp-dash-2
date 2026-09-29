@@ -79,7 +79,7 @@ export interface AssetValidatorDependencies {
 }
 
 const defaultDependencies: AssetValidatorDependencies = {
-  fetch,
+  fetch: (input, init) => fetch(input, init),
   resolve: async (hostname) => (await lookup(hostname, { all: true, verbatim: true })).map(({ address }) => address),
 };
 

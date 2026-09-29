@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import Logger, { getErrorMessage } from '@/lib/logger';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { supabaseLTE } from '@/lib/supabase-lte';
+import { validateAndDownloadAsset } from '@/lib/services/lte-ingestion/asset-validator';
+import { getR2StorageService } from '@/lib/services/lte-ingestion/r2-runtime';
 
 const logger = new Logger('LTECourseContentAPI');
 
@@ -336,6 +338,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const snap = (draft.snapshot_data || {}) as any;
     const updates = { course: snap.course, modules: snap.modules, eContent: snap.eContent };
     stripIdentityFields(updates);
+    await stageEditedAssetLinks(courseId, updates, draft.id);
     const writeErrors = await applyCourseContentWrites(courseId, updates);
     if (writeErrors.length > 0) {
       logger.error('Draft publish completed with write failures', { courseId, writeErrors });
@@ -413,6 +416,130 @@ function stripIdentityFields(updates: any): void {
     delete updates.course.level_code;
     delete updates.course.course_code;
     delete updates.course.capability;
+  }
+}
+
+async function stageEditedAssetLinks(courseId: string, updates: any, draftId: string): Promise<void> {
+  const editedLinks = collectEditedSourceLinks(updates);
+  if (editedLinks.length === 0) return;
+
+  const [levelResult, storage] = await Promise.all([
+    supabaseLTE
+      .from('levels')
+      .select('level_code, capability_id')
+      .eq('id', courseId)
+      .single(),
+    getR2StorageService(),
+  ]);
+
+  if (levelResult.error || !levelResult.data) {
+    throw new Error(`Failed to load course for asset staging: ${levelResult.error?.message || courseId}`);
+  }
+
+  let capabilityCode = 'WORKSPACE_EDIT';
+  if (levelResult.data.capability_id) {
+    const { data: capability } = await supabaseLTE
+      .from('capabilities')
+      .select('code')
+      .eq('id', levelResult.data.capability_id)
+      .maybeSingle();
+    capabilityCode = capability?.code || capabilityCode;
+  }
+
+  const levelCode = levelResult.data.level_code || courseId;
+  const staged = new Map<string, Promise<{ publicUrl: string; mimeType: string }>>();
+
+  const stageUrl = async (url: string, moduleNo: number, artifactType: 'final' | 'practice') => {
+    const cacheKey = `${artifactType}|${moduleNo}|${url}`;
+    if (!staged.has(cacheKey)) {
+      staged.set(cacheKey, (async () => {
+        const asset = await validateAndDownloadAsset(url);
+        const uploaded = await storage.uploadAsset({
+          capabilityCode,
+          levelCode,
+          moduleNo,
+          artifactType,
+          originalUrl: url,
+          contentHash: asset.contentHash,
+          mimeType: asset.mimeType,
+          bytes: asset.bytes,
+          uploadId: draftId,
+        });
+        return { publicUrl: uploaded.publicUrl, mimeType: asset.mimeType };
+      })());
+    }
+    return staged.get(cacheKey)!;
+  };
+
+  for (const module of updates.modules || []) {
+    const moduleNo = Number(module.module_no || 0);
+    for (const artifact of module.artifacts || []) {
+      const artifactType = String(artifact.artifact_type || '').toLowerCase().includes('final') ? 'final' : 'practice';
+      for (const template of artifact.templates || []) {
+        if (!template?.file_url || !isImportableWorkspaceSourceUrl(template.file_url)) continue;
+        const originalUrl = template.file_url;
+        const uploaded = await stageUrl(originalUrl, moduleNo, artifactType);
+        template.file_url = uploaded.publicUrl;
+        template.file_type = template.file_type || uploaded.mimeType;
+        template.metadata = {
+          ...(template.metadata || {}),
+          source_url: template.metadata?.source_url || originalUrl,
+          staged_from_workspace_edit: true,
+        };
+      }
+    }
+  }
+
+  const moduleNoByContentId = new Map<string, number>();
+  for (const module of updates.modules || []) {
+    for (const content of module.content || []) {
+      if (content?.id) moduleNoByContentId.set(content.id, Number(module.module_no || 0));
+    }
+  }
+
+  for (const item of updates.eContent || []) {
+    if (!item?.url || !isImportableWorkspaceSourceUrl(item.url)) continue;
+    const moduleNo = moduleNoByContentId.get(item.modules_content_id) || 0;
+    const uploaded = await stageUrl(item.url, moduleNo, 'practice');
+    const originalUrl = item.url;
+    item.url = uploaded.publicUrl;
+    item.mime_type = item.mime_type || uploaded.mimeType;
+    item.metadata = {
+      ...(item.metadata || {}),
+      source_url: item.metadata?.source_url || originalUrl,
+      staged_from_workspace_edit: true,
+    };
+  }
+
+  logger.info('Workspace edited asset links staged to R2', {
+    courseId,
+    draftId,
+    stagedCount: staged.size,
+  });
+}
+
+function collectEditedSourceLinks(updates: any): string[] {
+  const links: string[] = [];
+  for (const module of updates.modules || []) {
+    for (const artifact of module.artifacts || []) {
+      for (const template of artifact.templates || []) {
+        if (template?.file_url && isImportableWorkspaceSourceUrl(template.file_url)) links.push(template.file_url);
+      }
+    }
+  }
+  for (const item of updates.eContent || []) {
+    if (item?.url && isImportableWorkspaceSourceUrl(item.url)) links.push(item.url);
+  }
+  return links;
+}
+
+function isImportableWorkspaceSourceUrl(value: unknown): value is string {
+  if (typeof value !== 'string' || !value.trim()) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && ['docs.google.com', 'drive.google.com'].includes(url.hostname.toLowerCase());
+  } catch {
+    return false;
   }
 }
 

@@ -24,7 +24,7 @@ export interface AssetProcessingResult {
   hasAssets: boolean;
 }
 
-function replaceOccurrence(snapshot: any, occurrence: AssetOccurrence, replacement: string): void {
+export function replaceOccurrence(snapshot: any, occurrence: AssetOccurrence, replacement: string): void {
   const table = snapshot.tables?.[occurrence.tableName];
   const row = table?.rows?.[occurrence.rowIndex];
   if (!table || !row) throw new Error(`Asset field no longer exists: ${occurrence.fieldPath}`);

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Eye, UploadCloud, CheckCircle, Loader2 } from 'lucide-react';
 import Logger from '@/lib/logger';
-import { LTECourseMetadata, LTEIngestionSnapshot, LTELevelCourse, LTEModule } from '@/types/lte-ingestion';
+import { LTECourseMetadata, LTEIngestionSnapshot, LTELevelCourse, LTEPublishProgressState, LTEModule } from '@/types/lte-ingestion';
 import { formatText } from '@/lib/services/lte-ingestion/text-formatter';
 
 const logger = new Logger('LTECatalogSpecificationStep');
@@ -21,6 +21,7 @@ interface LTECatalogSpecificationStepProps {
   onOpenLearnerPreview: (course: LTELevelCourse) => void;
   onPublishCourse: (metadata: LTECourseMetadata) => Promise<void>;
   publishing: boolean;
+  publishProgress?: LTEPublishProgressState;
 }
 
 export const LTECatalogSpecificationStep: React.FC<LTECatalogSpecificationStepProps> = ({
@@ -29,6 +30,7 @@ export const LTECatalogSpecificationStep: React.FC<LTECatalogSpecificationStepPr
   onOpenLearnerPreview,
   onPublishCourse,
   publishing,
+  publishProgress,
 }) => {
   const [selectedLevelIndex, setSelectedLevelIndex] = useState<number>(0);
   const [levelCourses, setLevelCourses] = useState<LTELevelCourse[]>(() => {
@@ -185,6 +187,25 @@ export const LTECatalogSpecificationStep: React.FC<LTECatalogSpecificationStepPr
     },
     { practice: 0, final: 0 }
   );
+  const showPublishProgress = Boolean(publishProgress && publishProgress.status !== 'idle');
+  const progressTotal = publishProgress?.total || 0;
+  const progressValidated = publishProgress?.validated || 0;
+  const progressFailed = publishProgress?.failed || 0;
+  const progressPercent = progressTotal > 0
+    ? Math.min(100, Math.round(((progressValidated + progressFailed) / progressTotal) * 100))
+    : publishProgress?.status === 'published'
+      ? 100
+      : 0;
+  const progressTone = publishProgress?.status === 'failed'
+    ? 'border-red-200 bg-red-50 text-red-950 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200'
+    : publishProgress?.status === 'published'
+      ? 'border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200'
+      : 'border-blue-200 bg-blue-50 text-blue-950 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-200';
+  const progressBarTone = publishProgress?.status === 'failed'
+    ? 'bg-red-500'
+    : publishProgress?.status === 'published'
+      ? 'bg-emerald-500'
+      : 'bg-[#315cf4]';
 
   const handleInputChange = (field: keyof LTECourseMetadata, value: string) => {
     if (LOCKED_MAPPING_FIELDS.has(field)) return;
@@ -583,6 +604,46 @@ export const LTECatalogSpecificationStep: React.FC<LTECatalogSpecificationStepPr
             </button>
           </div>
         </div>
+
+        {showPublishProgress && (
+          <div className={`rounded-[14px] border p-4 ${progressTone}`}>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-start gap-3">
+                {publishProgress?.status === 'published' ? (
+                  <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-300" />
+                ) : publishProgress?.status === 'failed' ? (
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-red-300 text-xs font-bold text-red-600 dark:border-red-700 dark:text-red-300">!</span>
+                ) : (
+                  <Loader2 className="mt-0.5 h-5 w-5 shrink-0 animate-spin text-[#315cf4] dark:text-blue-300" />
+                )}
+                <div className="min-w-0">
+                  <p className="text-sm font-bold">
+                    {publishProgress?.label || 'Publishing course...'}
+                  </p>
+                  <p className="mt-1 text-xs opacity-80">
+                    {progressTotal > 0
+                      ? `${progressValidated} validated, ${progressFailed} failed, ${publishProgress?.pending ?? Math.max(0, progressTotal - progressValidated - progressFailed)} pending`
+                      : 'Preparing asset validation queue...'}
+                  </p>
+                  {publishProgress?.error && (
+                    <p className="mt-2 break-words text-xs font-semibold text-red-700 dark:text-red-200">
+                      {publishProgress.error.length > 220 ? `${publishProgress.error.slice(0, 220)}...` : publishProgress.error}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="text-sm font-bold tabular-nums">
+                {progressPercent}%
+              </div>
+            </div>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/70 dark:bg-slate-900/60">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${progressBarTone}`}
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
+        )}
       </div>
     )}
 

@@ -1,4 +1,4 @@
-main = ".open-next/worker.js"
+main = "workers/sp-dash-worker.js"
 name = "sp-dash-2"
 compatibility_date = "2026-09-25"
 compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
@@ -40,6 +40,17 @@ service = "sp-dash-2"
 binding = "MAINTENANCE_EVENTS_QUEUE"
 queue = "realtime-events-queue"
 
+[[queues.producers]]
+binding = "LTE_ASSET_VALIDATION_QUEUE"
+queue = "lte-asset-validation"
+
+[[queues.consumers]]
+queue = "lte-asset-validation"
+max_batch_size = 2
+max_batch_timeout = 1
+max_concurrency = 10
+max_retries = 3
+
 # Rate limiting KV namespace
 # Create with: wrangler kv namespace create RATE_LIMIT_KV
 # Then paste the ID below
@@ -75,6 +86,17 @@ service = "sp-dash-2"
 [[env.dev.queues.producers]]
 binding = "MAINTENANCE_EVENTS_QUEUE"
 queue = "realtime-events-queue-dev"
+
+[[env.dev.queues.producers]]
+binding = "LTE_ASSET_VALIDATION_QUEUE"
+queue = "lte-asset-validation-dev"
+
+[[env.dev.queues.consumers]]
+queue = "lte-asset-validation-dev"
+max_batch_size = 2
+max_batch_timeout = 1
+max_concurrency = 10
+max_retries = 3
 
 [[env.dev.kv_namespaces]]
 binding = "RATE_LIMIT_KV"

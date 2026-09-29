@@ -7,7 +7,7 @@ import { LTEIngestionStep } from '@/components/lte/LTEIngestionStep';
 import { LTECatalogSpecificationStep } from '@/components/lte/LTECatalogSpecificationStep';
 import { CatalogWorkspace } from '@/components/lte/CatalogWorkspace';
 import { LTELearnerViewModal } from '@/components/lte/LTELearnerViewModal';
-import { LTECourseMetadata, LTEIngestionSnapshot, LTELevelCourse } from '@/types/lte-ingestion';
+import { LTECourseMetadata, LTEIngestionSnapshot, LTELevelCourse, LTEPublishProgressState, LTEPublishResult } from '@/types/lte-ingestion';
 import { useToast } from '@/hooks/use-toast';
 
 const logger = new Logger('LTECourseUploadPage');
@@ -18,6 +18,10 @@ export const LTECourseUploadPage: React.FC = () => {
   const [isLearnerModalOpen, setIsLearnerModalOpen] = useState<boolean>(false);
   const [previewCourse, setPreviewCourse] = useState<LTELevelCourse | null>(null);
   const [publishing, setPublishing] = useState<boolean>(false);
+  const [publishProgress, setPublishProgress] = useState<LTEPublishProgressState>({
+    status: 'idle',
+    label: '',
+  });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -105,6 +109,10 @@ export const LTECourseUploadPage: React.FC = () => {
 
   const handlePublishCourse = async (updatedMetadata: LTECourseMetadata) => {
     setPublishing(true);
+    setPublishProgress({
+      status: 'queued',
+      label: 'Preparing publish job...',
+    });
     logger.info('Initiating transactional course publish', {
       courseCode: updatedMetadata.courseCode,
     });
@@ -132,6 +140,10 @@ export const LTECourseUploadPage: React.FC = () => {
       }
 
       if (res.status === 202) {
+        setPublishProgress({
+          status: 'validating',
+          label: 'A publish job is already running for this upload.',
+        });
         toast({
           title: 'Publish in Progress (202)',
           description: 'A catalog publication operation is currently running for this upload record.',
@@ -143,10 +155,21 @@ export const LTECourseUploadPage: React.FC = () => {
         throw new Error(data.error || 'Publish transaction failed.');
       }
 
-      logger.info('Publish operation succeeded', data);
+      const publishResult = data.status === 'validating_assets' && data.publishJobId
+        ? await waitForQueuedPublish(data.publishJobId)
+        : data as LTEPublishResult;
+
+      logger.info('Publish operation succeeded', publishResult);
+      setPublishProgress({
+        status: 'published',
+        label: 'Catalog published successfully.',
+        total: publishResult.assetValidation?.total,
+        validated: publishResult.assetValidation?.validated,
+        failed: publishResult.assetValidation?.failed,
+      });
       toast({
         title: 'Course Uploaded & Published Successfully!',
-        description: `Inserted ${data.inserted} catalog rows, skipped ${data.skipped} existing rows across tables.`,
+        description: `Inserted ${publishResult.inserted} catalog rows, skipped ${publishResult.skipped} existing rows across tables.`,
       });
 
       if (snapshot) {
@@ -154,6 +177,12 @@ export const LTECourseUploadPage: React.FC = () => {
       }
     } catch (err: unknown) {
       const msg = getErrorMessage(err);
+      setPublishProgress((current) => ({
+        ...current,
+        status: 'failed',
+        label: 'Publish failed.',
+        error: msg,
+      }));
       logger.error('Course publish error', { error: msg });
       if (msg.includes('ASSET_VALIDATION_FAILED')) {
         const fileCount = msg.match(/\((\d+) file/)?.[1];
@@ -176,6 +205,98 @@ export const LTECourseUploadPage: React.FC = () => {
     } finally {
       setPublishing(false);
     }
+  };
+
+  const waitForQueuedPublish = async (publishJobId: string): Promise<LTEPublishResult> => {
+    toast({
+      title: 'Asset Validation Started',
+      description: 'Linked files are being downloaded to R2 in the background.',
+    });
+    setPublishProgress({
+      status: 'validating',
+      label: 'Validating linked assets...',
+      total: 0,
+      validated: 0,
+      failed: 0,
+    });
+
+    const deadline = Date.now() + 90 * 60 * 1000;
+    let lastProgress = '';
+
+    while (Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+      const statusRes = await fetch(`/api/admin/lte/publish/${publishJobId}/status`, {
+        cache: 'no-store',
+      });
+      const statusData = await statusRes.json();
+
+      if (!statusRes.ok || !statusData.success) {
+        throw new Error(statusData.error || 'Failed to read publish job status.');
+      }
+
+      const progress = statusData.assetValidation
+        ? `${statusData.assetValidation.validated}/${statusData.assetValidation.total}`
+        : '';
+      if (statusData.assetValidation) {
+        const validation = statusData.assetValidation;
+        setPublishProgress({
+          status: statusData.status === 'PUBLISHING' ? 'publishing' : 'validating',
+          label: statusData.status === 'PUBLISHING'
+            ? 'Writing catalog tables...'
+            : `Validating linked assets ${validation.validated} / ${validation.total}`,
+          total: validation.total,
+          validated: validation.validated,
+          failed: validation.failed,
+          pending: validation.pending,
+        });
+      }
+      if (progress && progress !== lastProgress && statusData.status === 'VALIDATING') {
+        lastProgress = progress;
+        logger.info('LTE queued publish progress', {
+          publishJobId,
+          progress,
+        });
+      }
+
+      if (statusData.status === 'PUBLISHED') {
+        setPublishProgress({
+          status: 'published',
+          label: 'Catalog published successfully.',
+          total: statusData.assetValidation?.total,
+          validated: statusData.assetValidation?.validated,
+          failed: statusData.assetValidation?.failed,
+          pending: 0,
+        });
+        return {
+          success: true,
+          status: 'published',
+          inserted: statusData.inserted || 0,
+          skipped: statusData.skipped || 0,
+          tableSummary: statusData.tableSummary || {},
+          completedAt: statusData.completedAt || new Date().toISOString(),
+          catalogPublished: true,
+        };
+      }
+
+      if (['VALIDATION_FAILED', 'PUBLISH_FAILED'].includes(statusData.status)) {
+        const firstFailure = statusData.failedAssets?.[0];
+        const failureDetail = firstFailure
+          ? `${firstFailure.url}: ${firstFailure.error || firstFailure.errorCode || 'validation failed'}`
+          : statusData.error;
+        setPublishProgress({
+          status: 'failed',
+          label: statusData.status === 'VALIDATION_FAILED' ? 'Asset validation failed.' : 'Catalog publish failed.',
+          total: statusData.assetValidation?.total,
+          validated: statusData.assetValidation?.validated,
+          failed: statusData.assetValidation?.failed,
+          pending: statusData.assetValidation?.pending,
+          error: failureDetail || 'Queued publish failed.',
+        });
+        throw new Error(failureDetail || 'Queued publish failed.');
+      }
+    }
+
+    throw new Error('Publish is still running. Please refresh the catalog workspace to check status.');
   };
 
   return (
@@ -209,6 +330,7 @@ export const LTECourseUploadPage: React.FC = () => {
           }}
           onPublishCourse={handlePublishCourse}
           publishing={publishing}
+          publishProgress={publishProgress}
         />
       )}
 
