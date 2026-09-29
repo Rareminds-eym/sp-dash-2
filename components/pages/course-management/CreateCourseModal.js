@@ -155,8 +155,7 @@ export function CreateCourseModal({
   const handleSubmit = async () => {
     setLoading(true)
     try {
-      const educatorId = currentUser?.user?.id
-      const educatorName = 'Rareminds'
+      const educatorId = currentUser?.user?.id || null // Use null for local dev / platform courses
       // Combine duration value and unit into a single string (e.g., "12 weeks")
       const formattedDuration = courseData.duration ? `${courseData.duration} ${courseData.durationUnit}` : ''
       const payload = { 
@@ -167,7 +166,7 @@ export function CreateCourseModal({
       }
       
       if (editingCourse) await updateCourse(editingCourse.id, payload, educatorId)
-      else await createCourse(payload, educatorId, educatorName, null) // Platform courses have no school_id
+      else await createCourse(payload, educatorId, null) // Platform courses have no school_id
       
       onSuccess?.()
       handleClose()
