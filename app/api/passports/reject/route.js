@@ -3,7 +3,6 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createRLSClient, getUserContext } from '@/lib/supabase-rls';
 import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-export const runtime = 'edge';
 
 
 

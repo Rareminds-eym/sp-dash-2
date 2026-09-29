@@ -3,7 +3,6 @@ import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import Logger from '@/lib/logger';
-export const runtime = 'edge';
 
 
 

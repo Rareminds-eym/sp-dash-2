@@ -11,6 +11,16 @@ NEXT_PUBLIC_SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
 SKILLPASSPORT_SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
 SSO_WORKER_URL = "https://sso-api.dark-mode-d021.workers.dev"
 
+# ============================================================================
+# CRITICAL: MISSING SECRETS - These must be added as Cloudflare secrets!
+# ============================================================================
+# Run these commands to add the secrets:
+#   wrangler secret put LTE_SERVICE_ROLE_KEY
+#   wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+#   wrangler secret put NEXT_PUBLIC_SUPABASE_ANON_KEY
+#   wrangler secret put SKILLPASSPORT_SERVICE_ROLE_KEY (optional, falls back to SUPABASE_SERVICE_ROLE_KEY)
+# ============================================================================
+
 [assets]
 directory = ".open-next/assets"
 binding = "ASSETS"

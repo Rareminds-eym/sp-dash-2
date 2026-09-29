@@ -3,7 +3,6 @@ import { filterAndRankResults, fuzzyMatch } from '@/lib/search-utils';
 import { createCSVResponse } from '@/lib/services/exportService';
 import { handleError } from '@/lib/middleware/errorHandler';
 import { NextResponse } from 'next/server';
-export const runtime = 'edge';
 
 
 

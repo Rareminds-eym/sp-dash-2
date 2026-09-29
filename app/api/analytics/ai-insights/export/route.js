@@ -1,5 +1,4 @@
 import { supabaseAdmin } from '@/lib/supabase-admin';
-export const runtime = 'edge';
 
 
 

@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server';
 
 import Logger from '@/lib/logger';
 
-export const runtime = 'edge';
 
 const logger = new Logger('OrganizationDeletionAPI');
 
