@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 
 import Logger from '@/lib/logger';
 
+export const runtime = 'edge';
+
 const logger = new Logger('OrganizationDeletionAPI');
 
 const ADMIN_ROLES = ['super_admin', 'platform_admin', 'rm_admin'];
