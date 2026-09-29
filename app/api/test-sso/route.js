@@ -1,6 +1,4 @@
 import { NextResponse } from 'next/server';
-export const runtime = 'edge';
-
 
 /**
  * Test endpoint to verify SSO Worker RPC connection

@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
 import { addCacheHeaders } from '@/lib/services/cacheService';
-export const runtime = 'edge';
-
 
 
 /**
