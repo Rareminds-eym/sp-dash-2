@@ -148,7 +148,18 @@ export async function POST(request: NextRequest): Promise<NextResponse<LTEPublis
 
       for (let index = 0; index < messages.length; index += QUEUE_SEND_BATCH_LIMIT) {
         const chunk = messages.slice(index, index + QUEUE_SEND_BATCH_LIMIT);
-        await queue.sendBatch(chunk.map((message) => ({ body: message })));
+        const batchNumber = Math.floor(index / QUEUE_SEND_BATCH_LIMIT) + 1;
+        try {
+          await queue.sendBatch(chunk.map((message) => ({ body: message })));
+        } catch (error) {
+          logger.error('LTE asset validation queue batch failed', {
+            uploadId: body.uploadId,
+            batchNumber,
+            batchSize: chunk.length,
+            error: getErrorMessage(error),
+          });
+          throw error;
+        }
       }
 
       logger.info('LTE asset validation job queued', {
@@ -213,7 +224,10 @@ async function getAssetValidationQueue(): Promise<QueueLike<LTEAssetValidationMe
       env?: { LTE_ASSET_VALIDATION_QUEUE?: QueueLike<LTEAssetValidationMessage> };
     };
     return context?.env?.LTE_ASSET_VALIDATION_QUEUE || null;
-  } catch {
+  } catch (error) {
+    logger.warn('LTE_ASSET_VALIDATION_QUEUE binding unavailable', {
+      error: getErrorMessage(error),
+    });
     return null;
   }
 }

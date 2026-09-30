@@ -11,6 +11,9 @@ import { LTECourseMetadata, LTEIngestionSnapshot, LTELevelCourse, LTEPublishProg
 import { useToast } from '@/hooks/use-toast';
 
 const logger = new Logger('LTECourseUploadPage');
+const PUBLISH_STATUS_POLL_INTERVAL_MS = 2500;
+const PUBLISH_STATUS_TIMEOUT_MS = 90 * 60 * 1000;
+const PUBLISH_STATUS_MAX_TRANSIENT_ERRORS = 12;
 
 export const LTECourseUploadPage: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
@@ -220,18 +223,32 @@ export const LTECourseUploadPage: React.FC = () => {
       failed: 0,
     });
 
-    const deadline = Date.now() + 90 * 60 * 1000;
+    const deadline = Date.now() + PUBLISH_STATUS_TIMEOUT_MS;
     let lastProgress = '';
+    let transientErrors = 0;
 
     while (Date.now() < deadline) {
-      await new Promise((resolve) => setTimeout(resolve, 2500));
-      const statusRes = await fetch(`/api/admin/lte/publish/${publishJobId}/status`, {
-        cache: 'no-store',
-      });
-      const statusData = await statusRes.json();
+      await new Promise((resolve) => setTimeout(resolve, PUBLISH_STATUS_POLL_INTERVAL_MS));
+      let statusData: any;
+      try {
+        const statusRes = await fetch(`/api/admin/lte/publish/${publishJobId}/status`, {
+          cache: 'no-store',
+        });
+        statusData = await statusRes.json();
 
-      if (!statusRes.ok || !statusData.success) {
-        throw new Error(statusData.error || 'Failed to read publish job status.');
+        if (!statusRes.ok || !statusData.success) {
+          throw new Error(statusData.error || 'Failed to read publish job status.');
+        }
+        transientErrors = 0;
+      } catch (err) {
+        transientErrors += 1;
+        logger.warn('Transient LTE publish status polling failure', {
+          publishJobId,
+          attempt: transientErrors,
+          error: getErrorMessage(err),
+        });
+        if (transientErrors >= PUBLISH_STATUS_MAX_TRANSIENT_ERRORS) throw err;
+        continue;
       }
 
       const progress = statusData.assetValidation

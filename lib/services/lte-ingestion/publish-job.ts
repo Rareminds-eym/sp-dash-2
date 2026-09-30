@@ -481,11 +481,12 @@ async function createPublishedLevelVersions(
     const levelCode = codeIndex === -1 ? String(row[idIndex] || '') : String(row[codeIndex] || '');
     let entityId = toPublishUUID('levels', row[idIndex]);
     if (levelCode) {
-      const { data: existing } = await client
+      const { data: existing, error: existingError } = await client
         .from('levels')
         .select('id')
         .eq('level_code', levelCode)
         .maybeSingle();
+      if (existingError) throw new Error(`Failed to resolve level entity for ${levelCode}: ${existingError.message}`);
       if (existing?.id) entityId = existing.id;
     }
 

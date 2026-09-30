@@ -68,6 +68,13 @@ interface Module {
   artifacts: Artifact[];
 }
 
+interface LearningAsset {
+  id: string;
+  modules_content_id: string;
+  url?: string;
+  [key: string]: any;
+}
+
 interface FullCourseContentEditorProps {
   isOpen: boolean;
   onClose: () => void;
@@ -91,7 +98,7 @@ export const FullCourseContentEditor: React.FC<FullCourseContentEditorProps> = (
   const [levelScale, setLevelScale] = useState<any>(null);
   const [versions, setVersions] = useState<any[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
-  const [eContent, setEContent] = useState<any[]>([]);
+  const [eContent, setEContent] = useState<LearningAsset[]>([]);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set());
   const [expandedArtifacts, setExpandedArtifacts] = useState<Set<string>>(new Set());
@@ -364,7 +371,7 @@ export const FullCourseContentEditor: React.FC<FullCourseContentEditorProps> = (
     });
   };
 
-  const beginAssetReplacement = (asset: any) => {
+  const beginAssetReplacement = (asset: LearningAsset) => {
     if (!asset.id) return;
     setReplacingAssetId(asset.id);
     setAssetReplacementUrl('');
