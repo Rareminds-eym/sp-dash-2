@@ -75,6 +75,11 @@ interface LearningAsset {
   [key: string]: any;
 }
 
+interface LearningAssetGroup {
+  module: Module | null;
+  assets: Array<{ asset: LearningAsset; stage: ModuleContent6E | null }>;
+}
+
 interface FullCourseContentEditorProps {
   isOpen: boolean;
   onClose: () => void;
@@ -462,7 +467,7 @@ export const FullCourseContentEditor: React.FC<FullCourseContentEditorProps> = (
       }
     });
   });
-  const groupedLearningAssets = modules
+  const groupedLearningAssets: LearningAssetGroup[] = modules
     .map((module) => {
       const assets = eContent
         .filter((asset) => (module.content || []).some((stage) => stage.id === asset.modules_content_id))
@@ -1191,7 +1196,7 @@ export const FullCourseContentEditor: React.FC<FullCourseContentEditorProps> = (
                     </div>
                   ) : (
                     <div className="space-y-5">
-                      {[...groupedLearningAssets, ...(unmappedLearningAssets.length > 0 ? [{ module: null as any, assets: unmappedLearningAssets.map((asset) => ({ asset, stage: null })) }] : [])].map((group, groupIdx) => (
+                      {[...groupedLearningAssets, ...(unmappedLearningAssets.length > 0 ? [{ module: null, assets: unmappedLearningAssets.map((asset) => ({ asset, stage: null })) }] : [])].map((group, groupIdx) => (
                         <section key={group.module?.id || 'unmapped-assets'} className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-700 dark:bg-slate-800">
                           <div className="mb-4 flex flex-col gap-2 border-b border-slate-200 pb-3 dark:border-slate-700 md:flex-row md:items-center md:justify-between">
                             <div>
