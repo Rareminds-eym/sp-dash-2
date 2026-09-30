@@ -419,7 +419,9 @@ function stripIdentityFields(updates: any): void {
   }
 }
 
-async function stageEditedAssetLinks(courseId: string, updates: any, draftId: string): Promise<void> {
+async function stageEditedAssetLinks(courseId: string, updates: unknown, draftId: string): Promise<void> {
+  if (!isRecord(updates)) throw new Error('Invalid draft update payload.');
+
   const editedLinks = collectEditedSourceLinks(updates);
   if (editedLinks.length === 0) return;
 
@@ -471,11 +473,11 @@ async function stageEditedAssetLinks(courseId: string, updates: any, draftId: st
     return staged.get(cacheKey)!;
   };
 
-  for (const module of updates.modules || []) {
+  for (const module of asArray(updates.modules).filter(isRecord)) {
     const moduleNo = Number(module.module_no || 0);
-    for (const artifact of module.artifacts || []) {
+    for (const artifact of asArray(module.artifacts).filter(isRecord)) {
       const artifactType = String(artifact.artifact_type || '').toLowerCase().includes('final') ? 'final' : 'practice';
-      for (const template of artifact.templates || []) {
+      for (const template of asArray(artifact.templates).filter(isRecord)) {
         if (!template?.file_url || !isImportableWorkspaceSourceUrl(template.file_url)) continue;
         const originalUrl = template.file_url;
         const uploaded = await stageUrl(originalUrl, moduleNo, artifactType);
@@ -491,13 +493,13 @@ async function stageEditedAssetLinks(courseId: string, updates: any, draftId: st
   }
 
   const moduleNoByContentId = new Map<string, number>();
-  for (const module of updates.modules || []) {
-    for (const content of module.content || []) {
+  for (const module of asArray(updates.modules).filter(isRecord)) {
+    for (const content of asArray(module.content).filter(isRecord)) {
       if (content?.id) moduleNoByContentId.set(content.id, Number(module.module_no || 0));
     }
   }
 
-  for (const item of updates.eContent || []) {
+  for (const item of asArray(updates.eContent).filter(isRecord)) {
     if (!item?.url || !isImportableWorkspaceSourceUrl(item.url)) continue;
     const moduleNo = moduleNoByContentId.get(item.modules_content_id) || 0;
     const uploaded = await stageUrl(item.url, moduleNo, 'practice');
@@ -518,19 +520,29 @@ async function stageEditedAssetLinks(courseId: string, updates: any, draftId: st
   });
 }
 
-function collectEditedSourceLinks(updates: any): string[] {
+function collectEditedSourceLinks(updates: unknown): string[] {
+  if (!isRecord(updates)) return [];
+
   const links: string[] = [];
-  for (const module of updates.modules || []) {
-    for (const artifact of module.artifacts || []) {
-      for (const template of artifact.templates || []) {
+  for (const module of asArray(updates.modules).filter(isRecord)) {
+    for (const artifact of asArray(module.artifacts).filter(isRecord)) {
+      for (const template of asArray(artifact.templates).filter(isRecord)) {
         if (template?.file_url && isImportableWorkspaceSourceUrl(template.file_url)) links.push(template.file_url);
       }
     }
   }
-  for (const item of updates.eContent || []) {
+  for (const item of asArray(updates.eContent).filter(isRecord)) {
     if (item?.url && isImportableWorkspaceSourceUrl(item.url)) links.push(item.url);
   }
   return links;
+}
+
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function isRecord(value: unknown): value is Record<string, any> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
 function isImportableWorkspaceSourceUrl(value: unknown): value is string {
