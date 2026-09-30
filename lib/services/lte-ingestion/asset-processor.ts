@@ -1,5 +1,6 @@
 import Logger from '@/lib/logger';
 import { extractAssets, type AssetOccurrence } from './asset-extractor';
+import { resolveAssetStorageContext } from './asset-storage-context';
 import { validateAssetBatch } from './asset-validator';
 import { getR2StorageService } from './r2-runtime';
 import { calculateHash } from './snapshot-serializer';
@@ -79,8 +80,7 @@ export async function processSnapshotAssets(
     const uploaded = await storage.uploadAsset({
       capabilityCode: snapshot.courseMetadata?.capabilityCode || snapshot.metadata?.capabilityCode || 'CAPABILITY',
       levelCode: snapshot.levelCourses?.[0]?.levelCode || snapshot.metadata?.levelCode || 'LEVEL',
-      moduleNo: 0,
-      artifactType: reference.tableName === 'artifact_templates' ? 'final' : 'practice',
+      ...resolveAssetStorageContext(snapshot, reference),
       originalUrl: reference.originalUrl,
       contentHash: asset.contentHash,
       mimeType: asset.mimeType,

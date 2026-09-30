@@ -14,7 +14,7 @@ describe('processSnapshotAssets', () => {
     vi.clearAllMocks();
     vi.mocked(getR2StorageService).mockResolvedValue({ uploadAsset } as any);
     uploadAsset.mockResolvedValue({
-      key: 'lte/resources/capabilities/CAP/levels/L1/modules-0/artifacts/practice/file-hash.pdf',
+      key: 'resources/capabilities/CAP/levels/L1/modules-0/artifacts/practice/file-hash.pdf',
       publicUrl: 'https://assets.example.com/file-hash.pdf',
     });
   });

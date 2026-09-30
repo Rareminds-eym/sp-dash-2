@@ -451,16 +451,18 @@ async function stageEditedAssetLinks(courseId: string, updates: unknown, draftId
   const levelCode = levelResult.data.level_code || courseId;
   const staged = new Map<string, Promise<{ publicUrl: string; mimeType: string }>>();
 
-  const stageUrl = async (url: string, moduleNo: number, artifactType: 'final' | 'practice') => {
-    const cacheKey = `${artifactType}|${moduleNo}|${url}`;
+  const stageUrl = async (
+    url: string,
+    context: { moduleNo: number; category: 'content' | 'artifact'; artifactType?: string; artifactSubfolder?: 'templates' }
+  ) => {
+    const cacheKey = `${context.category}|${context.artifactType || ''}|${context.moduleNo}|${url}`;
     if (!staged.has(cacheKey)) {
       staged.set(cacheKey, (async () => {
         const asset = await validateAndDownloadAsset(url);
         const uploaded = await storage.uploadAsset({
           capabilityCode,
           levelCode,
-          moduleNo,
-          artifactType,
+          ...context,
           originalUrl: url,
           contentHash: asset.contentHash,
           mimeType: asset.mimeType,
@@ -476,11 +478,16 @@ async function stageEditedAssetLinks(courseId: string, updates: unknown, draftId
   for (const module of asArray(updates.modules).filter(isRecord)) {
     const moduleNo = Number(module.module_no || 0);
     for (const artifact of asArray(module.artifacts).filter(isRecord)) {
-      const artifactType = String(artifact.artifact_type || '').toLowerCase().includes('final') ? 'final' : 'practice';
+      const artifactType = String(artifact.artifact_type || 'artifact');
       for (const template of asArray(artifact.templates).filter(isRecord)) {
         if (!template?.file_url || !isImportableWorkspaceSourceUrl(template.file_url)) continue;
         const originalUrl = template.file_url;
-        const uploaded = await stageUrl(originalUrl, moduleNo, artifactType);
+        const uploaded = await stageUrl(originalUrl, {
+          moduleNo,
+          category: 'artifact',
+          artifactType,
+          artifactSubfolder: 'templates',
+        });
         template.file_url = uploaded.publicUrl;
         template.file_type = template.file_type || uploaded.mimeType;
         template.metadata = {
@@ -502,7 +509,7 @@ async function stageEditedAssetLinks(courseId: string, updates: unknown, draftId
   for (const item of asArray(updates.eContent).filter(isRecord)) {
     if (!item?.url || !isImportableWorkspaceSourceUrl(item.url)) continue;
     const moduleNo = moduleNoByContentId.get(item.modules_content_id) || 0;
-    const uploaded = await stageUrl(item.url, moduleNo, 'practice');
+    const uploaded = await stageUrl(item.url, { moduleNo, category: 'content' });
     const originalUrl = item.url;
     item.url = uploaded.publicUrl;
     item.mime_type = item.mime_type || uploaded.mimeType;

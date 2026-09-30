@@ -55,7 +55,24 @@ describe('R2StorageService', () => {
     const first = generateStableAssetKey(context);
     const second = generateStableAssetKey({ ...context });
     expect(first).toBe(second);
-    expect(first).toBe('lte/resources/capabilities/CIE-CAP/levels/L1/modules-2/artifacts/practice/My-Workbook-Final-aaaaaaaaaaaaaaaa.pdf');
+    expect(first).toBe('resources/capabilities/CIE-CAP/levels/L1/modules-2/artifacts/practice/My-Workbook-Final-aaaaaaaaaaaaaaaa.pdf');
+  });
+
+  it('stores learning content in the module content folder', () => {
+    expect(generateStableAssetKey({ ...context, category: 'content' })).toBe(
+      'resources/capabilities/CIE-CAP/levels/L1/modules-2/content/My-Workbook-Final-aaaaaaaaaaaaaaaa.pdf'
+    );
+  });
+
+  it('stores artifact templates under artifact type templates folder', () => {
+    expect(generateStableAssetKey({
+      ...context,
+      category: 'artifact',
+      artifactType: 'final',
+      artifactSubfolder: 'templates',
+    })).toBe(
+      'resources/capabilities/CIE-CAP/levels/L1/modules-2/artifacts/final/templates/My-Workbook-Final-aaaaaaaaaaaaaaaa.pdf'
+    );
   });
 
   it('requires a complete SHA-256 digest', () => {

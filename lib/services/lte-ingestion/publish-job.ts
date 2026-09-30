@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import Logger, { getErrorMessage } from '@/lib/logger';
 import { calculateHash } from './snapshot-serializer';
 import { extractAssets, type AssetOccurrence } from './asset-extractor';
+import { resolveAssetStorageContext, type AssetStorageContext } from './asset-storage-context';
 import { replaceOccurrence, type AssetManifestEntry } from './asset-processor';
 import { validateAndDownloadAsset, AssetValidationError } from './asset-validator';
 import { publishSnapshotTables } from './publish-snapshot-tables';
@@ -12,6 +13,7 @@ import { deterministicUUID, isUUID } from './uuid-generator';
 const logger = new Logger('LTEPublishJob');
 const PUBLISH_LOCK_RETRY_LIMIT = 8;
 const PUBLISH_LOCK_RETRY_BASE_MS = 75;
+const PUBLISHING_STALE_AFTER_MS = 5 * 60 * 1000;
 
 export interface LTEAssetValidationMessage {
   uploadId: string;
@@ -27,6 +29,7 @@ interface AssetState {
   url: string;
   status: 'PENDING' | 'VALIDATING' | 'VALID' | 'FAILED';
   tableName?: string;
+  storageContext?: AssetStorageContext;
   occurrences: AssetOccurrence[];
   r2Key?: string;
   r2Url?: string;
@@ -91,6 +94,7 @@ export async function createPublishJob(
         url: reference.originalUrl,
         status: 'PENDING',
         tableName: reference.tableName,
+        storageContext: resolveAssetStorageContext(snapshot, reference),
         occurrences: reference.occurrences,
       } satisfies AssetState,
     ])),
@@ -144,11 +148,15 @@ export async function processAssetValidationMessage(
 
   try {
     const asset = await validateAndDownloadAsset(message.assetUrl);
+    const storageContext = assetState.storageContext || {
+      moduleNo: 0,
+      category: assetState.tableName === 'artifact_templates' ? 'artifact' as const : 'content' as const,
+      artifactType: assetState.tableName === 'artifact_templates' ? 'final' : undefined,
+    };
     const uploaded = await storage.uploadAsset({
       capabilityCode: snapshot.courseMetadata?.capabilityCode || snapshot.metadata?.capabilityCode || 'CAPABILITY',
       levelCode: snapshot.levelCourses?.[0]?.levelCode || snapshot.metadata?.levelCode || 'LEVEL',
-      moduleNo: 0,
-      artifactType: assetState.tableName === 'artifact_templates' ? 'final' : 'practice',
+      ...storageContext,
       originalUrl: message.assetUrl,
       contentHash: asset.contentHash,
       mimeType: asset.mimeType,
@@ -302,6 +310,10 @@ export async function readPublishJobStatus(
   const client = await resolveSupabase(options.supabase);
   const version = await readCatalogVersion(client, uploadId);
   const state = version.snapshot_data?.assetValidation as AssetValidationState | undefined;
+  if (state && shouldRecoverPublishingState(version, state)) {
+    await finalizePublishJob(uploadId, undefined, options);
+    return readPublishJobStatus(uploadId, options);
+  }
   const job = stateToJob(version, state);
   return {
     job,
@@ -392,7 +404,8 @@ async function acquirePublishingSnapshot(
     const snapshot = structuredClone(version.snapshot_data || {});
     const state = ensureAssetValidationState(snapshot.assetValidation);
 
-    if (state.status === 'PUBLISHED' || state.status === 'PUBLISHING') return null;
+    if (state.status === 'PUBLISHED') return null;
+    if (state.status === 'PUBLISHING' && !shouldRecoverPublishingState(version, state)) return null;
     if (Object.values(state.assets).some((asset) => asset.status !== 'VALID')) return null;
 
     state.status = 'PUBLISHING';
@@ -425,6 +438,13 @@ function ensureAssetValidationState(value: unknown): AssetValidationState {
     throw new Error('Publish job state is missing from catalog snapshot.');
   }
   return value as AssetValidationState;
+}
+
+function shouldRecoverPublishingState(version: any, state: AssetValidationState): boolean {
+  if (version.status === 'PUBLISHED' || state.status !== 'PUBLISHING') return false;
+  if (Object.values(state.assets || {}).some((asset) => asset.status !== 'VALID')) return false;
+  const startedAt = Date.parse(state.completedAt || state.startedAt || version.updated_at || version.created_at || '');
+  return Number.isFinite(startedAt) && Date.now() - startedAt > PUBLISHING_STALE_AFTER_MS;
 }
 
 function recomputeState(state: AssetValidationState): AssetValidationState {
