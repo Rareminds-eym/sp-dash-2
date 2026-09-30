@@ -14,15 +14,10 @@ vi.mock('@/lib/services/lte-ingestion/snapshot-serializer', () => ({
   calculateHash: vi.fn(() => 'test-snapshot-hash'),
 }));
 
-vi.mock('@/lib/services/lte-ingestion/asset-processor', () => ({
-  processSnapshotAssets: vi.fn(),
-}));
-
 import { POST } from '@/app/api/admin/lte/publish/route';
 import { NextRequest } from 'next/server';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { supabaseLTE } from '@/lib/supabase-lte';
-import { processSnapshotAssets } from '@/lib/services/lte-ingestion/asset-processor';
 
 describe('POST /api/admin/lte/publish', () => {
   const mockUser = {
@@ -68,12 +63,7 @@ describe('POST /api/admin/lte/publish', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(authenticateSSORequest).mockResolvedValue({ user: mockUser, error: null });
-    vi.mocked(processSnapshotAssets).mockResolvedValue({
-      finalSnapshot: mockVersion.snapshot_data,
-      finalSnapshotHash: mockVersion.snapshot_hash,
-      assetManifest: [],
-      hasAssets: false,
-    });
+    let currentVersion = structuredClone(mockVersion);
 
     const chainable = (resolved: any) => {
       const chain: any = {
@@ -81,6 +71,7 @@ describe('POST /api/admin/lte/publish', () => {
         is: vi.fn().mockReturnThis(),
         order: vi.fn().mockReturnThis(),
         limit: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
         maybeSingle: vi.fn(),
         single: vi.fn(),
         then: (resolve: any, reject: any) => Promise.resolve(resolved).then(resolve, reject),
@@ -94,17 +85,20 @@ describe('POST /api/admin/lte/publish', () => {
       if (tableName === 'catalog_versions') {
         return {
           select: vi.fn().mockImplementation(() => {
-            const chain: any = chainable({ data: mockVersion, error: null });
+            const chain: any = chainable({ data: currentVersion, error: null });
             // Level-version lookup returns no existing version by default.
             chain.maybeSingle.mockImplementation(() =>
               Promise.resolve({ data: null, error: null })
             );
             // Keep single() for the catalog version fetch.
-            chain.single.mockResolvedValue({ data: mockVersion, error: null });
+            chain.single.mockImplementation(() => Promise.resolve({ data: currentVersion, error: null }));
             // Distinguish by call: fetch by id uses .single(), version lookup uses .maybeSingle().
             return chain;
           }),
-          update: vi.fn().mockReturnValue(chainable({ error: null })),
+          update: vi.fn().mockImplementation((payload) => {
+            currentVersion = { ...currentVersion, ...payload };
+            return chainable({ data: { id: currentVersion.id }, error: null });
+          }),
           insert: vi.fn().mockReturnValue(chainable({ error: null })),
         } as any;
       }
@@ -177,7 +171,6 @@ describe('POST /api/admin/lte/publish', () => {
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
     expect(data.status).toBe('published');
-    expect(processSnapshotAssets).toHaveBeenCalledWith(mockVersion.snapshot_data, 'version-123');
     expect(supabaseLTE.from).toHaveBeenCalledWith('catalog_versions');
     expect(supabaseLTE.from).toHaveBeenCalledWith('capabilities');
     expect(supabaseLTE.from).toHaveBeenCalledWith('level_scale');

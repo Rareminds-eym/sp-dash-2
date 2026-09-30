@@ -21,7 +21,9 @@ export interface AssetKeyContext {
   capabilityCode: string;
   levelCode: string;
   moduleNo: number;
-  artifactType: 'final' | 'practice';
+  category?: 'content' | 'artifact' | 'catalog';
+  artifactType?: string;
+  artifactSubfolder?: 'templates' | 'questions';
   originalUrl: string;
   contentHash: string;
   mimeType: string;
@@ -69,8 +71,16 @@ export function generateStableAssetKey(context: AssetKeyContext): string {
   const capability = safeSegment(context.capabilityCode, 'CAPABILITY');
   const level = safeSegment(context.levelCode, 'LEVEL');
   const moduleNo = Number.isInteger(context.moduleNo) && context.moduleNo >= 0 ? context.moduleNo : 0;
-  return `lte/resources/capabilities/${capability}/levels/${level}/modules-${moduleNo}` +
-    `/artifacts/${context.artifactType}/${safeFilename(context)}`;
+  const base = `resources/capabilities/${capability}/levels/${level}/modules-${moduleNo}`;
+  const category = context.category || 'artifact';
+
+  if (category === 'content') return `${base}/content/${safeFilename(context)}`;
+
+  if (category === 'catalog') return `resources/catalog-assets/${capability}/${safeFilename(context)}`;
+
+  const artifactType = safeSegment(context.artifactType || 'artifact', 'artifact');
+  const artifactPath = `${base}/artifacts/${artifactType}`;
+  return `${artifactPath}${context.artifactSubfolder ? `/${context.artifactSubfolder}` : ''}/${safeFilename(context)}`;
 }
 
 export class R2StorageService {
