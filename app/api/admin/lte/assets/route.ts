@@ -7,7 +7,7 @@ const logger = new Logger('LTEAssetsAPI');
 export const runtime = 'nodejs';
 
 function isAllowedAssetKey(key: string): boolean {
-  return key.startsWith('lte/resources/') && !key.includes('..') && !key.startsWith('/');
+  return key.startsWith('resources/') && !key.includes('..') && !key.startsWith('/');
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
