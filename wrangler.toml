@@ -95,7 +95,7 @@ queue = "lte-asset-validation-dev"
 queue = "lte-asset-validation-dev"
 max_batch_size = 2
 max_batch_timeout = 1
-max_concurrency = 10
+max_concurrency = 5
 max_retries = 3
 
 [[env.dev.kv_namespaces]]
