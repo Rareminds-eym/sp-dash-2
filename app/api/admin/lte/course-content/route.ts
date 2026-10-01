@@ -339,35 +339,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const updates = { course: snap.course, modules: snap.modules, eContent: snap.eContent };
     stripIdentityFields(updates);
     await stageEditedAssetLinks(courseId, updates, draft.id);
-    const writeErrors = await applyCourseContentWrites(courseId, updates);
-    if (writeErrors.length > 0) {
-      logger.error('Draft publish completed with write failures', { courseId, writeErrors });
-      return NextResponse.json(
-        { success: false, error: 'Some draft content could not be published.', details: writeErrors },
-        { status: 500 }
-      );
-    }
 
-    const publishedAt = new Date().toISOString();
-    const { error: flipError } = await supabaseLTE
-      .from('catalog_versions')
-      .update({
-        status: 'PUBLISHED',
-        snapshot_data: { ...snap, kind: 'workspace_edit', publishedBy: user.userId, publishedAt },
-        published_by: user.userId,
-        published_at: publishedAt,
+    const { data: publishedVersion, error: publishError } = await supabaseLTE
+      .rpc('publish_lte_course_content_draft', {
+        p_course_id: courseId,
+        p_draft_id: draft.id,
+        p_published_by: user.userId,
       })
-      .eq('id', draft.id)
-      .eq('status', 'DRAFT');
-    if (flipError) throw new Error(`Failed to mark draft as published: ${flipError.message}`);
+      .single();
+    if (publishError) throw new Error(`Failed to publish draft: ${publishError.message}`);
 
     logger.info('Draft published', { courseId, versionNo: draft.version_no, draftId: draft.id });
     return NextResponse.json({
       success: true,
       status: 'PUBLISHED',
-      message: `Draft published as version ${draft.version_no}`,
-      newVersionNo: draft.version_no,
-      newVersionId: draft.id,
+      message: `Draft published as version ${(publishedVersion as any)?.version_no || draft.version_no}`,
+      newVersionNo: (publishedVersion as any)?.version_no || draft.version_no,
+      newVersionId: (publishedVersion as any)?.version_id || draft.id,
     });
   } catch (err: unknown) {
     const errorMessage = getErrorMessage(err);
@@ -560,159 +548,4 @@ function isImportableWorkspaceSourceUrl(value: unknown): value is string {
   } catch {
     return false;
   }
-}
-
-async function applyCourseContentWrites(courseId: string, updates: any): Promise<string[]> {
-  const writeErrors: string[] = [];
-
-  // Update canonical level basic info.
-  if (updates.course) {
-    const { error: levelError } = await supabaseLTE
-      .from('levels')
-      .update({
-        title: updates.course.course_name,
-        description: updates.course.description,
-        observable_behavior: updates.course.observable_behavior,
-        example_outputs: updates.course.example_outputs,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', courseId);
-
-    if (levelError) {
-      throw new Error(`Failed to update level course: ${levelError.message}`);
-    }
-  }
-
-  // Update modules
-  if (updates.modules && Array.isArray(updates.modules)) {
-    for (const module of updates.modules) {
-      if (module.id) {
-        const { error: moduleError } = await supabaseLTE
-          .from('modules')
-          .update({
-            title: module.title,
-            description: module.description,
-            learning_content: module.learning_content,
-            prerequisites: module.prerequisites,
-            what_youll_learn: module.what_youll_learn,
-            is_published: module.is_published,
-          })
-          .eq('id', module.id);
-
-        if (moduleError) {
-          logger.error('Failed to update module', { moduleId: module.id, error: moduleError });
-          writeErrors.push(`Module ${module.id}: ${moduleError.message}`);
-        }
-
-        // Update 6Es content (modules_content)
-        if (module.content && Array.isArray(module.content)) {
-          for (const mc of module.content) {
-            if (mc.id) {
-              const { error: mcError } = await supabaseLTE
-                .from('modules_content')
-                .update({
-                  stage_description: mc.stage_description,
-                  module_context: mc.module_context,
-                  curriculum_reference: mc.curriculum_reference,
-                })
-                .eq('id', mc.id);
-
-              if (mcError) {
-                logger.error('Failed to update modules_content', { mcId: mc.id, error: mcError });
-                writeErrors.push(`6E stage ${mc.id}: ${mcError.message}`);
-              }
-            }
-          }
-        }
-
-        // Update artifacts (module_artifacts)
-        if (module.artifacts && Array.isArray(module.artifacts)) {
-          for (const art of module.artifacts) {
-            if (art.id) {
-              const { error: artError } = await supabaseLTE
-                .from('module_artifacts')
-                .update({
-                  artifact_type: art.artifact_type,
-                  total_score: art.total_score,
-                  passing_score: art.passing_score,
-                  is_active: art.is_active,
-                  metadata: {
-                    ...(art.metadata || {}),
-                    title: art.artifact_title,
-                  },
-                })
-                .eq('id', art.id);
-
-              if (artError) {
-                logger.error('Failed to update module_artifacts', { artifactId: art.id, error: artError });
-                writeErrors.push(`Artifact ${art.id}: ${artError.message}`);
-              }
-
-              for (const question of art.questions || []) {
-                if (!question.id) continue;
-                const { error: questionError } = await supabaseLTE
-                  .from('artifact_questions')
-                  .update({
-                    question_order: question.question_order,
-                    title: question.title,
-                    description: question.description,
-                    instructions: question.instructions,
-                    is_active: question.is_active,
-                    metadata: question.metadata,
-                  })
-                  .eq('id', question.id);
-                if (questionError) {
-                  writeErrors.push(`Artifact question ${question.id}: ${questionError.message}`);
-                }
-              }
-
-              for (const template of art.templates || []) {
-                if (!template.id) continue;
-                const { error: templateError } = await supabaseLTE
-                  .from('artifact_templates')
-                  .update({
-                    file_name: template.file_name,
-                    file_url: template.file_url,
-                    file_type: template.file_type,
-                    version: template.version,
-                    is_downloadable: template.is_downloadable,
-                    metadata: template.metadata,
-                  })
-                  .eq('id', template.id);
-                if (templateError) {
-                  writeErrors.push(`Artifact file ${template.id}: ${templateError.message}`);
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  if (Array.isArray(updates.eContent)) {
-    for (const item of updates.eContent) {
-      if (!item.id) continue;
-      const { error: contentError } = await supabaseLTE
-        .from('e_content')
-        .update({
-          content_type: item.content_type,
-          title: item.title,
-          description: item.description,
-          url: item.url,
-          sort_order: item.sort_order,
-          duration_seconds: item.duration_seconds,
-          xp_reward: item.xp_reward,
-          mime_type: item.mime_type || null,
-          status: item.status,
-          metadata: item.metadata,
-        })
-        .eq('id', item.id);
-      if (contentError) {
-        writeErrors.push(`Learning asset ${item.id}: ${contentError.message}`);
-      }
-    }
-  }
-
-  return writeErrors;
 }
