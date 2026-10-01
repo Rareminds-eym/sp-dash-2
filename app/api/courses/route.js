@@ -6,6 +6,7 @@ import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 
 
 
+
 /**
  * GET /api/courses - List all courses with pagination, search, and filters
  */

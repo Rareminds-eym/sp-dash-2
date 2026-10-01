@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { addCacheHeaders } from '@/lib/services/cacheService';
 
 
+
 /**
  * GET /api/analytics/recruiter-metrics
  * Returns metrics for recruiter engagement

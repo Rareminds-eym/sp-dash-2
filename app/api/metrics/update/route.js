@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 
 
+
 export async function POST(request) {
   try {
     const { supabase: rlsClient, user, error: authError } = await createRLSClient(request);

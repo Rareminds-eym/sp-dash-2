@@ -2,6 +2,7 @@
 
 import { useTheme } from 'next-themes'
 import { useEffect, useState, useRef } from 'react'
+import { flushSync } from 'react-dom'
 import { Expand } from '@theme-toggles/react'
 import '@theme-toggles/react/css/Expand.css'
 
@@ -48,24 +49,33 @@ export function ThemeToggle() {
       )
       document.head.appendChild(css)
 
-      const transition = document.startViewTransition(() => {
-        setTheme(newTheme)
-        setIsToggled(toggled)
-      })
-
-      // Apply circular reveal animation
-      await transition.ready
-
-      // Calculate the maximum distance from click point to corners
+      // Set reveal origin + radius BEFORE startViewTransition so the first
+      // animated frame already has the correct coordinates (setting them
+      // after `transition.ready` starts the clip-path from the fallback
+      // 50%/50% or stale coords, then jumps).
       const maxDistance = Math.hypot(
         Math.max(x, window.innerWidth - x),
         Math.max(y, window.innerHeight - y)
       )
-
-      // Add custom animation
       document.documentElement.style.setProperty('--x', `${x}px`)
       document.documentElement.style.setProperty('--y', `${y}px`)
       document.documentElement.style.setProperty('--r', `${maxDistance}px`)
+
+      const transition = document.startViewTransition(() => {
+        // Commit the theme synchronously inside the update callback so the
+        // "new" snapshot captures the new theme. next-themes' setTheme alone
+        // flows through React state (async), which can snapshot the old theme.
+        flushSync(() => {
+          setTheme(newTheme)
+          setIsToggled(toggled)
+        })
+        document.documentElement.classList.toggle('dark', toggled)
+        document.documentElement.style.colorScheme = newTheme
+      })
+
+      // Wait for the pseudo-element animations to be running before cleanup
+      // wiring; coordinates are already set above.
+      await transition.ready
 
       // Re-enable transitions after animation completes
       transition.finished.finally(() => {

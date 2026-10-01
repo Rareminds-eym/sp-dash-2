@@ -5,6 +5,7 @@ import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 
 
 
+
 /**
  * GET /api/analytics/trends - Employability trends
  */

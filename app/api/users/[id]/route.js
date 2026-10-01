@@ -3,6 +3,7 @@ import { createRLSClient, getUserContext } from '@/lib/supabase-rls';
 import { NextResponse } from 'next/server';
 
 
+
 export async function DELETE(request, { params }) {
   try {
     const { supabase: rlsClient, user, error: authError } = await createRLSClient(request);

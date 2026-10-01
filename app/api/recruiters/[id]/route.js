@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { handleError } from '@/lib/middleware/errorHandler';
 
 
+
 /**
  * PUT /api/recruiters/[id] - Update a recruiter
  */

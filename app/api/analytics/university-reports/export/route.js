@@ -2,6 +2,7 @@ import { createRLSClient } from '@/lib/supabase-rls';
 import { NextResponse } from 'next/server';
 
 
+
 export async function GET(request) {
   try {
     const { supabase: rlsClient } = await createRLSClient(request);

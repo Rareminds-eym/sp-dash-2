@@ -2,6 +2,7 @@ import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { NextResponse } from 'next/server';
 
 
+
 export async function GET(request) {
   try {
     const { error } = await authenticateSSORequest(request, ['super_admin', 'admin', 'rm_admin']);

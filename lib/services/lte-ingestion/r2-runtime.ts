@@ -82,6 +82,6 @@ export async function getR2Bucket(): Promise<R2BucketLike> {
   return bucket;
 }
 
-export async function getR2StorageService(): Promise<R2StorageService> {
-  return new R2StorageService(await getR2Bucket());
+export async function getR2StorageService(bucket?: R2BucketLike): Promise<R2StorageService> {
+  return new R2StorageService(bucket || await getR2Bucket());
 }
