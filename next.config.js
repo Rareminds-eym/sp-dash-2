@@ -66,12 +66,33 @@ const nextConfig = {
     pagesBufferLength: 2,
   },
   async headers() {
+    const isDev = process.env.NODE_ENV === 'development';
+    
+    // Derive Supabase origin from environment variable
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    let supabaseOrigin = '';
+    
+    try {
+      if (supabaseUrl) {
+        const url = new URL(supabaseUrl);
+        supabaseOrigin = url.origin;
+      }
+    } catch (e) {
+      console.warn('Invalid NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl);
+    }
+    
+    // Build CSP connect-src based on environment
+    const connectSrc = supabaseOrigin ? `'self' ${supabaseOrigin}` : `'self'`;
+    
     return [
       {
         source: "/(.*)",
         headers: [
           { key: "X-Frame-Options", value: "DENY" },
-          { key: "Content-Security-Policy", value: "default-src 'self'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';" },
+          { 
+            key: "Content-Security-Policy", 
+            value: `default-src 'self'; connect-src ${connectSrc}; frame-ancestors 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';` 
+          },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
