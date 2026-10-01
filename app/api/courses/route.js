@@ -182,78 +182,193 @@ export async function GET(request) {
  */
 export async function POST(request) {
     try {
-        const { error: authError, user } = await authenticateSSORequest(request, ['super_admin', 'admin', 'rm_admin']);
+        const { error: authError, user } = await authenticateSSORequest(request, [
+            'super_admin', 'admin', 'rm_admin', 'educator', 'college_admin', 'university_admin'
+        ]);
         if (authError) return authError;
 
         const body = await request.json();
-        const {
-            name,
-            course_code,
-            description,
-            university,
-            duration,
-            credits,
-            category,
-            thumbnail_url,
-            target_outcomes,
-            // optional fields that don't exist in schema are ignored
-        } = body;
+        
+        // Flexibly extract fields supporting both modal payload format and legacy API payload format
+        const title = body.title || body.name;
+        const code = body.code || body.course_code;
+        const description = body.description;
+        const thumbnail = body.thumbnail || body.thumbnail_url || null;
+        const duration = body.duration;
+        const credits = body.credits !== undefined && body.credits !== null && body.credits !== '' ? Number(body.credits) : null;
+        const university = body.university || null;
+        const category = body.category || null;
+        const target_outcomes = body.targetOutcomes || body.target_outcomes || [];
+        const status = body.status || 'Active';
+        const approval_status = body.approval_status || 'approved';
+        let educator_id = body.educatorId ?? body.educator_id ?? user?.id ?? null;
+        const school_id = body.schoolId ?? body.school_id ?? null;
+        const skillsCovered = body.skillsCovered || body.skills || [];
+        const linkedClasses = body.linkedClasses || [];
+        const modules = body.modules || [];
 
-        // Validate required fields
-        if (!name || !course_code || !description || !university || !duration || !credits || !category || !thumbnail_url || !target_outcomes) {
+        // Validate educator_id against admin_users table to prevent foreign key constraint violation (courses_educator_id_fkey)
+        if (educator_id) {
+            const { data: validAdmin } = await supabaseAdmin
+                .from('admin_users')
+                .select('id')
+                .eq('id', educator_id)
+                .maybeSingle();
+            if (!validAdmin) {
+                educator_id = null;
+            }
+        }
+
+        // Validate required core fields
+        if (!title || !code || !description || !duration) {
             return NextResponse.json(
-                { error: 'Missing required fields' },
+                { error: 'Missing required fields (title, code, description, duration)' },
                 { status: 400 }
             );
         }
 
-        // Insert course
-        const { data, error: insertError } = await supabaseAdmin
+        // Insert primary course record
+        const { data: courseRow, error: insertError } = await supabaseAdmin
             .from('courses')
             .insert([
                 {
-                    title: name,
-                    code: course_code,
+                    title,
+                    code,
                     description,
-                    university,
+                    thumbnail,
                     duration,
                     credits,
+                    university,
                     category,
-                    thumbnail: thumbnail_url,
                     target_outcomes,
-                    status: 'Draft', // default status for new courses
-                    approval_status: 'pending', // default approval status
-                    educator_id: user.id
+                    status,
+                    approval_status,
+                    skills_mapped: skillsCovered.length,
+                    total_skills: skillsCovered.length,
+                    educator_id,
+                    school_id
                 }
             ])
-            .select('course_id, title, code, description, university, duration, credits, category, thumbnail, target_outcomes, status, approval_status, created_at')
+            .select()
             .single();
 
         if (insertError) {
-            console.error('Error creating course:', insertError);
+            console.error('Error creating course in DB:', insertError);
             return NextResponse.json(
-                { error: insertError.message },
-                { status: 500 }
+                { error: insertError.message || 'Failed to create course' },
+                { status: 400 }
             );
         }
 
-        // Map inserted row to frontend shape
+        const courseId = courseRow.course_id;
+
+        // 1. Insert course_skills
+        if (skillsCovered.length > 0) {
+            const skillsToInsert = skillsCovered.map(skill => ({
+                course_id: courseId,
+                skill_name: skill
+            }));
+            const { error: skillsError } = await supabaseAdmin.from('course_skills').insert(skillsToInsert);
+            if (skillsError) {
+                console.warn('[Course API] Skills insert warning:', skillsError.message);
+            }
+        }
+
+        // 2. Insert course_classes (only if tied to a school)
+        if (school_id && linkedClasses.length > 0) {
+            const classesToInsert = linkedClasses.map(className => ({
+                course_id: courseId,
+                class_name: className
+            }));
+            const { error: classesError } = await supabaseAdmin.from('course_classes').insert(classesToInsert);
+            if (classesError) {
+                console.warn('[Course API] Classes insert warning:', classesError.message);
+            }
+        }
+
+        // 3. Insert course_modules, lessons, and lesson_resources
+        if (modules.length > 0) {
+            for (const mod of modules) {
+                const { data: moduleRow, error: moduleError } = await supabaseAdmin
+                    .from('course_modules')
+                    .insert({
+                        course_id: courseId,
+                        title: mod.title,
+                        description: mod.description || '',
+                        order_index: mod.order || 0,
+                        skill_tags: mod.skillTags || [],
+                        activities: mod.activities || []
+                    })
+                    .select()
+                    .single();
+
+                if (moduleError) {
+                    console.warn('[Course API] Module insert warning:', moduleError.message);
+                    continue;
+                }
+
+                if (mod.lessons?.length > 0) {
+                    for (const lesson of mod.lessons) {
+                        const { data: lessonRow, error: lessonError } = await supabaseAdmin
+                            .from('lessons')
+                            .insert({
+                                module_id: moduleRow.module_id,
+                                title: lesson.title,
+                                description: lesson.description || '',
+                                content: lesson.content || '',
+                                duration: lesson.duration || '',
+                                order_index: lesson.order || 0
+                            })
+                            .select()
+                            .single();
+
+                        if (lessonError) {
+                            console.warn('[Course API] Lesson insert warning:', lessonError.message);
+                            continue;
+                        }
+
+                        if (lesson.resources?.length > 0) {
+                            const resourcesToInsert = lesson.resources.map((res, index) => ({
+                                lesson_id: lessonRow.lesson_id,
+                                name: res.name,
+                                type: res.type,
+                                url: res.url,
+                                file_size: res.size,
+                                thumbnail_url: res.thumbnailUrl,
+                                embed_url: res.embedUrl,
+                                order_index: index
+                            }));
+                            await supabaseAdmin.from('lesson_resources').insert(resourcesToInsert);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Map inserted row to standard frontend response shape
         const mapped = {
-            id: data.course_id,
-            name: data.title,
-            course_code: data.code,
-            description: data.description,
-            university: data.university,
-            duration: data.duration,
-            credits: data.credits,
-            category: data.category,
-            thumbnail_url: data.thumbnail,
-            target_outcomes: data.target_outcomes,
-            approval_status: data.approval_status || 'pending',
-            status: data.status,
-            created_at: data.created_at
+            id: courseRow.course_id,
+            name: courseRow.title,
+            title: courseRow.title,
+            course_code: courseRow.code,
+            code: courseRow.code,
+            description: courseRow.description,
+            university: courseRow.university,
+            duration: courseRow.duration,
+            credits: courseRow.credits,
+            category: courseRow.category,
+            thumbnail_url: courseRow.thumbnail,
+            thumbnail: courseRow.thumbnail,
+            target_outcomes: courseRow.target_outcomes,
+            approval_status: courseRow.approval_status || 'approved',
+            status: courseRow.status || 'Active',
+            educator_id: courseRow.educator_id,
+            school_id: courseRow.school_id,
+            created_at: courseRow.created_at,
+            updated_at: courseRow.updated_at
         };
-        return NextResponse.json({ success: true, data: mapped });
+
+        return NextResponse.json({ success: true, data: mapped }, { status: 201 });
     } catch (error) {
         console.error('API Error:', error);
         return NextResponse.json(

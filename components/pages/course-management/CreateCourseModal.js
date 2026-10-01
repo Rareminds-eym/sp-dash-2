@@ -165,7 +165,8 @@ export function CreateCourseModal({
         credits: courseData.credits ? Number(courseData.credits) : null 
       }
       
-      if (editingCourse) await updateCourse(editingCourse.id, payload, educatorId)
+      const courseIdToUpdate = editingCourse?.id || editingCourse?.course_id
+      if (editingCourse) await updateCourse(courseIdToUpdate, payload, educatorId)
       else await createCourse(payload, educatorId, null) // Platform courses have no school_id
       
       onSuccess?.()

@@ -79,22 +79,20 @@ export async function PUT(request, { params }) {
             return NextResponse.json({ error: 'Course ID is required' }, { status: 400 });
         }
 
-        const {
-            name,
-            course_code,
-            description,
-            university,
-            duration,
-            credits,
-            category,
-            thumbnail_url,
-            target_outcomes
-        } = body;
+        const title = body.title || body.name;
+        const code = body.code || body.course_code;
+        const description = body.description;
+        const duration = body.duration;
+        const thumbnail = body.thumbnail || body.thumbnail_url || null;
+        const university = body.university || null;
+        const category = body.category || null;
+        const credits = body.credits !== undefined && body.credits !== null && body.credits !== '' ? Number(body.credits) : null;
+        const target_outcomes = body.targetOutcomes || body.target_outcomes || [];
 
         // Validate required fields
-        if (!name || !course_code || !description || !university || !duration || !credits || !category || !thumbnail_url || !target_outcomes) {
+        if (!title || !code || !description || !duration) {
             return NextResponse.json(
-                { error: 'Missing required fields' },
+                { error: 'Missing required fields (title, code, description, duration)' },
                 { status: 400 }
             );
         }
@@ -103,14 +101,14 @@ export async function PUT(request, { params }) {
         const { data, error: updateError } = await supabaseAdmin
             .from('courses')
             .update({
-                title: name,
-                code: course_code,
+                title,
+                code,
                 description,
                 university,
                 duration,
-                credits: Number(credits),
+                credits,
                 category,
-                thumbnail: thumbnail_url,
+                thumbnail,
                 target_outcomes,
                 updated_at: new Date().toISOString()
             })
