@@ -4,6 +4,7 @@ import { createRLSClient, getUserContext } from '@/lib/supabase-rls';
 import { NextResponse } from 'next/server';
 
 
+
 export async function POST(request) {
   try {
     const { supabase: rlsClient, user, error: authError } = await createRLSClient(request);

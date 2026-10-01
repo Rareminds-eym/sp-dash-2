@@ -166,6 +166,19 @@ export interface LTEPublishResult {
   inserted: number;
   skipped: number;
   completedAt: string;
+  publishJobId?: string;
+  assetValidation?: {
+    total: number;
+    validated: number;
+    failed: number;
+    pending?: number;
+  };
+  failedAssets?: Array<{
+    url: string;
+    errorCode?: string;
+    error?: string;
+    attempts?: number;
+  }>;
   assetStatus?: string;
   catalogPublished?: boolean;
   assetsActive?: boolean;
@@ -173,6 +186,16 @@ export interface LTEPublishResult {
   errorCode?: string;
   error?: string;
   tableSummary?: Record<string, { inserted: number; skipped: number }>;
+}
+
+export interface LTEPublishProgressState {
+  status: 'idle' | 'queued' | 'validating' | 'publishing' | 'published' | 'failed';
+  label: string;
+  total?: number;
+  validated?: number;
+  failed?: number;
+  pending?: number;
+  error?: string;
 }
 
 export interface LearnerStageInfo {

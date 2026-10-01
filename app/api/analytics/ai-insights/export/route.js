@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
 
+
 // Helper function to process AI insights data
 async function processAIInsightsData(skillsResult, universitiesResult, studentsResult, placementsResult) {
   if (skillsResult.error) throw skillsResult.error;

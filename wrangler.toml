@@ -1,4 +1,4 @@
-main = ".open-next/worker.js"
+main = "workers/sp-dash-worker.js"
 name = "sp-dash-2"
 compatibility_date = "2026-09-25"
 compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
@@ -10,6 +10,16 @@ LTE_SUPABASE_URL = "https://jsifqriqlvkpedtoywsk.supabase.co"
 NEXT_PUBLIC_SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
 SKILLPASSPORT_SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
 SSO_WORKER_URL = "https://sso-api.dark-mode-d021.workers.dev"
+
+# ============================================================================
+# CRITICAL: MISSING SECRETS - These must be added as Cloudflare secrets!
+# ============================================================================
+# Run these commands to add the secrets:
+#   wrangler secret put LTE_SERVICE_ROLE_KEY
+#   wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+#   wrangler secret put NEXT_PUBLIC_SUPABASE_ANON_KEY
+#   wrangler secret put SKILLPASSPORT_SERVICE_ROLE_KEY (optional, falls back to SUPABASE_SERVICE_ROLE_KEY)
+# ============================================================================
 
 [assets]
 directory = ".open-next/assets"
@@ -29,6 +39,17 @@ service = "sp-dash-2"
 [[queues.producers]]
 binding = "MAINTENANCE_EVENTS_QUEUE"
 queue = "realtime-events-queue"
+
+[[queues.producers]]
+binding = "LTE_ASSET_VALIDATION_QUEUE"
+queue = "lte-asset-validation"
+
+[[queues.consumers]]
+queue = "lte-asset-validation"
+max_batch_size = 2
+max_batch_timeout = 1
+max_concurrency = 10
+max_retries = 3
 
 # Rate limiting KV namespace
 # Create with: wrangler kv namespace create RATE_LIMIT_KV
@@ -65,6 +86,17 @@ service = "sp-dash-2"
 [[env.dev.queues.producers]]
 binding = "MAINTENANCE_EVENTS_QUEUE"
 queue = "realtime-events-queue-dev"
+
+[[env.dev.queues.producers]]
+binding = "LTE_ASSET_VALIDATION_QUEUE"
+queue = "lte-asset-validation-dev"
+
+[[env.dev.queues.consumers]]
+queue = "lte-asset-validation-dev"
+max_batch_size = 2
+max_batch_timeout = 1
+max_concurrency = 5
+max_retries = 3
 
 [[env.dev.kv_namespaces]]
 binding = "RATE_LIMIT_KV"

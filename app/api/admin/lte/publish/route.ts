@@ -4,11 +4,10 @@ import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { supabaseLTE } from '@/lib/supabase-lte';
 import { LTEPublishResult } from '@/types/lte-ingestion';
 import { calculateHash } from '@/lib/services/lte-ingestion/snapshot-serializer';
-import { processSnapshotAssets } from '@/lib/services/lte-ingestion/asset-processor';
-import { publishSnapshotTables } from '@/lib/services/lte-ingestion/publish-snapshot-tables';
-import { deterministicUUID, isUUID } from '@/lib/services/lte-ingestion/uuid-generator';
+import { createPublishJob, type LTEAssetValidationMessage } from '@/lib/services/lte-ingestion/publish-job';
 
 const logger = new Logger('LTEPublishAPI');
+const QUEUE_SEND_BATCH_LIMIT = 100;
 
 export const runtime = 'nodejs';
 
@@ -17,7 +16,9 @@ interface PublishRequest {
   reviewedSnapshotHash: string;
 }
 
-
+interface QueueLike<T> {
+  sendBatch(messages: Array<{ body: T }>): Promise<void>;
+}
 
 export async function POST(request: NextRequest): Promise<NextResponse<LTEPublishResult>> {
   logger.info('Received LTE publish request');
@@ -137,48 +138,66 @@ export async function POST(request: NextRequest): Promise<NextResponse<LTEPublis
       );
     }
 
-    const assetProcessing = await processSnapshotAssets(snapshot, body.uploadId);
-    const publishSnapshot = {
-      ...assetProcessing.finalSnapshot,
-      snapshotHash: assetProcessing.finalSnapshotHash,
-      reviewedSnapshotHash: assetProcessing.finalSnapshotHash,
-      assetManifest: assetProcessing.assetManifest,
-      assetStatus: assetProcessing.hasAssets ? 'staged' : 'none',
-    };
+    const { job, messages } = await createPublishJob(version, user.userId);
 
-    const { inserted, skipped, tableSummary } = await publishSnapshotTables(publishSnapshot?.tables || {});
-    const completedAt = new Date().toISOString();
-    await createPublishedLevelVersions(publishSnapshot, user.userId, completedAt);
+    if (messages.length > 0) {
+      const queue = await getAssetValidationQueue();
+      if (!queue) {
+        throw new Error('LTE_ASSET_VALIDATION_QUEUE is not configured. Add the queue producer binding before publishing assets.');
+      }
 
-    const { error: updateError } = await supabaseLTE
-      .from('catalog_versions')
-      .update({
-        status: 'PUBLISHED',
-        snapshot_hash: assetProcessing.finalSnapshotHash,
-        snapshot_data: publishSnapshot,
-        published_by: user.userId,
-        published_at: completedAt,
-      })
-      .eq('id', body.uploadId);
+      for (let index = 0; index < messages.length; index += QUEUE_SEND_BATCH_LIMIT) {
+        const chunk = messages.slice(index, index + QUEUE_SEND_BATCH_LIMIT);
+        const batchNumber = Math.floor(index / QUEUE_SEND_BATCH_LIMIT) + 1;
+        try {
+          await queue.sendBatch(chunk.map((message) => ({ body: message })));
+        } catch (error) {
+          logger.error('LTE asset validation queue batch failed', {
+            uploadId: body.uploadId,
+            batchNumber,
+            batchSize: chunk.length,
+            error: getErrorMessage(error),
+          });
+          throw error;
+        }
+      }
 
-    if (updateError) {
-      throw new Error(`Failed to mark catalog version as published: ${updateError.message}`);
+      logger.info('LTE asset validation job queued', {
+        uploadId: body.uploadId,
+        publishJobId: job.id,
+        totalAssets: messages.length,
+      });
+
+      return NextResponse.json({
+        success: true,
+        status: 'validating_assets',
+        inserted: 0,
+        skipped: 0,
+        completedAt: new Date().toISOString(),
+        assetStatus: 'validation_pending',
+        publishJobId: job.id,
+        assetValidation: {
+          total: job.total_assets || messages.length,
+          validated: job.validated_assets || 0,
+          failed: job.failed_assets || 0,
+        },
+      } as LTEPublishResult & Record<string, unknown>);
     }
 
     logger.info('LTE catalog version published successfully', {
       uploadId: body.uploadId,
-      inserted,
-      skipped,
+      inserted: job.inserted_count || 0,
+      skipped: job.skipped_count || 0,
     });
 
     return NextResponse.json({
       success: true,
       status: 'published',
       catalogPublished: true,
-      inserted,
-      skipped,
-      tableSummary,
-      completedAt,
+      inserted: job.inserted_count || 0,
+      skipped: job.skipped_count || 0,
+      tableSummary: job.table_summary || {},
+      completedAt: job.completed_at || new Date().toISOString(),
     });
   } catch (err: unknown) {
     const errorMessage = getErrorMessage(err);
@@ -198,80 +217,17 @@ export async function POST(request: NextRequest): Promise<NextResponse<LTEPublis
   }
 }
 
-async function createPublishedLevelVersions(
-  snapshot: any,
-  userId: string,
-  publishedAt: string
-): Promise<void> {
-  const levelTable = snapshot?.tables?.levels;
-  if (!levelTable?.columns?.length || !levelTable?.rows?.length) return;
-
-  const idIndex = levelTable.columns.indexOf('id');
-  const codeIndex = levelTable.columns.indexOf('level_code');
-  if (idIndex === -1) return;
-
-  for (const row of levelTable.rows) {
-    const levelCode = codeIndex === -1 ? String(row[idIndex] || '') : String(row[codeIndex] || '');
-    // Incremental re-upload: if this level_code already exists, version the
-    // existing level row instead of forking a new entity id.
-    let entityId = toPublishUUID('levels', row[idIndex]);
-    if (levelCode) {
-      const { data: existing } = await supabaseLTE
-        .from('levels')
-        .select('id')
-        .eq('level_code', levelCode)
-        .maybeSingle();
-      if (existing?.id) entityId = existing.id;
-    }
-
-    const { data: latestVersion, error: latestError } = await supabaseLTE
-      .from('catalog_versions')
-      .select('id, version_no')
-      .eq('entity_type', 'level')
-      .eq('entity_id', entityId)
-      .order('version_no', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (latestError) {
-      throw new Error(`Failed to read level version for ${levelCode}: ${latestError.message}`);
-    }
-
-    const nextVersionNo = (latestVersion?.version_no || 0) + 1;
-    const levelSnapshot = {
-      ...snapshot,
-      entityType: 'level',
-      entityId,
-      levelCode,
-      versionNo: nextVersionNo,
+async function getAssetValidationQueue(): Promise<QueueLike<LTEAssetValidationMessage> | null> {
+  try {
+    const { getCloudflareContext } = await import('@opennextjs/cloudflare');
+    const context = await getCloudflareContext({ async: true }) as unknown as {
+      env?: { LTE_ASSET_VALIDATION_QUEUE?: QueueLike<LTEAssetValidationMessage> };
     };
-
-    const { error: insertError } = await supabaseLTE
-      .from('catalog_versions')
-      .insert({
-        entity_type: 'level',
-        entity_id: entityId,
-        version_no: nextVersionNo,
-        status: 'PUBLISHED',
-        base_version_id: latestVersion?.id || null,
-        snapshot_hash: calculateHash(levelSnapshot),
-        snapshot_data: levelSnapshot,
-        change_reason: 'CATALOG_PUBLISH',
-        created_by: userId,
-        published_by: userId,
-        published_at: publishedAt,
-      });
-
-    if (insertError) {
-      throw new Error(`Failed to create level version for ${levelCode}: ${insertError.message}`);
-    }
+    return context?.env?.LTE_ASSET_VALIDATION_QUEUE || null;
+  } catch (error) {
+    logger.warn('LTE_ASSET_VALIDATION_QUEUE binding unavailable', {
+      error: getErrorMessage(error),
+    });
+    return null;
   }
-}
-
-function toPublishUUID(tableName: string, value: unknown): string {
-  const text = String(value || '').trim();
-  if (!text) {
-    throw new Error(`${tableName}.id is required before publish`);
-  }
-  return isUUID(text) ? text.toLowerCase() : deterministicUUID(tableName, text);
 }

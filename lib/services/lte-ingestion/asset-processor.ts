@@ -1,5 +1,6 @@
 import Logger from '@/lib/logger';
 import { extractAssets, type AssetOccurrence } from './asset-extractor';
+import { resolveAssetStorageContext } from './asset-storage-context';
 import { validateAssetBatch } from './asset-validator';
 import { getR2StorageService } from './r2-runtime';
 import { calculateHash } from './snapshot-serializer';
@@ -24,7 +25,7 @@ export interface AssetProcessingResult {
   hasAssets: boolean;
 }
 
-function replaceOccurrence(snapshot: any, occurrence: AssetOccurrence, replacement: string): void {
+export function replaceOccurrence(snapshot: any, occurrence: AssetOccurrence, replacement: string): void {
   const table = snapshot.tables?.[occurrence.tableName];
   const row = table?.rows?.[occurrence.rowIndex];
   if (!table || !row) throw new Error(`Asset field no longer exists: ${occurrence.fieldPath}`);
@@ -79,8 +80,7 @@ export async function processSnapshotAssets(
     const uploaded = await storage.uploadAsset({
       capabilityCode: snapshot.courseMetadata?.capabilityCode || snapshot.metadata?.capabilityCode || 'CAPABILITY',
       levelCode: snapshot.levelCourses?.[0]?.levelCode || snapshot.metadata?.levelCode || 'LEVEL',
-      moduleNo: 0,
-      artifactType: reference.tableName === 'artifact_templates' ? 'final' : 'practice',
+      ...resolveAssetStorageContext(snapshot, reference),
       originalUrl: reference.originalUrl,
       contentHash: asset.contentHash,
       mimeType: asset.mimeType,

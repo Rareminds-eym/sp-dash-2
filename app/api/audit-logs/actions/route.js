@@ -2,6 +2,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 
 
+
 /**
  * GET /api/audit-logs/actions - Get unique action types
  */

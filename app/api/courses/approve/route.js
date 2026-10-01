@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 
 
 
+
 export async function POST(request) {
     try {
         const { error: authError, user } = await authenticateSSORequest(request, ['super_admin', 'admin']);

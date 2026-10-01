@@ -6,6 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 
 
 
+
 /**
  * GET /api/passports - List all skill passports with pagination, search, and filters
  */

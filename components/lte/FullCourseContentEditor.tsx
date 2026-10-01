@@ -68,6 +68,18 @@ interface Module {
   artifacts: Artifact[];
 }
 
+interface LearningAsset {
+  id: string;
+  modules_content_id: string;
+  url?: string;
+  [key: string]: any;
+}
+
+interface LearningAssetGroup {
+  module: Module | null;
+  assets: Array<{ asset: LearningAsset; stage: ModuleContent6E | null }>;
+}
+
 interface FullCourseContentEditorProps {
   isOpen: boolean;
   onClose: () => void;
@@ -91,10 +103,14 @@ export const FullCourseContentEditor: React.FC<FullCourseContentEditorProps> = (
   const [levelScale, setLevelScale] = useState<any>(null);
   const [versions, setVersions] = useState<any[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
-  const [eContent, setEContent] = useState<any[]>([]);
+  const [eContent, setEContent] = useState<LearningAsset[]>([]);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set());
   const [expandedArtifacts, setExpandedArtifacts] = useState<Set<string>>(new Set());
+  const [replacingTemplateId, setReplacingTemplateId] = useState<string | null>(null);
+  const [replacementUrl, setReplacementUrl] = useState('');
+  const [replacingAssetId, setReplacingAssetId] = useState<string | null>(null);
+  const [assetReplacementUrl, setAssetReplacementUrl] = useState('');
   const [activeTab, setActiveTab] = useState<'overview' | 'modules' | '6es' | 'artifacts' | 'econtent'>('overview');
   
   const { toast } = useToast();
@@ -329,6 +345,68 @@ export const FullCourseContentEditor: React.FC<FullCourseContentEditorProps> = (
     }));
   };
 
+  const beginTemplateReplacement = (template: ArtifactTemplate) => {
+    if (!template.id) return;
+    setReplacingTemplateId(template.id);
+    setReplacementUrl('');
+  };
+
+  const cancelTemplateReplacement = () => {
+    setReplacingTemplateId(null);
+    setReplacementUrl('');
+  };
+
+  const applyTemplateReplacement = (moduleId: string, artifactId: string, templateId?: string) => {
+    const nextUrl = replacementUrl.trim();
+    if (!templateId || !nextUrl) {
+      toast({
+        title: 'Replacement Link Required',
+        description: 'Paste a Google Drive, Docs, Sheets, Slides, or public file URL first.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    updateArtifactTemplate(moduleId, artifactId, templateId, 'file_url', nextUrl);
+    setReplacingTemplateId(null);
+    setReplacementUrl('');
+    toast({
+      title: 'Replacement Applied',
+      description: 'Save the draft to keep this file link change.',
+    });
+  };
+
+  const beginAssetReplacement = (asset: LearningAsset) => {
+    if (!asset.id) return;
+    setReplacingAssetId(asset.id);
+    setAssetReplacementUrl('');
+  };
+
+  const cancelAssetReplacement = () => {
+    setReplacingAssetId(null);
+    setAssetReplacementUrl('');
+  };
+
+  const applyAssetReplacement = (assetId?: string) => {
+    const nextUrl = assetReplacementUrl.trim();
+    if (!assetId || !nextUrl) {
+      toast({
+        title: 'Replacement Link Required',
+        description: 'Paste a Google Drive, Docs, Sheets, Slides, or public file URL first.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    updateEContent(assetId, 'url', nextUrl);
+    setReplacingAssetId(null);
+    setAssetReplacementUrl('');
+    toast({
+      title: 'Replacement Applied',
+      description: 'Save the draft to keep this learning asset link change.',
+    });
+  };
+
   const updateEContent = (contentId: string, field: string, value: any) => {
     setEContent(eContent.map(item => item.id === contentId ? { ...item, [field]: value } : item));
   };
@@ -339,6 +417,40 @@ export const FullCourseContentEditor: React.FC<FullCourseContentEditorProps> = (
     return instructions.raw_text || instructions.pass_criteria || JSON.stringify(instructions);
   };
 
+  const fieldLabel = (key: string): string =>
+    key
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+
+  const curriculumReferenceFields = (value: any): Record<string, string> => {
+    if (!value) return {};
+    if (Array.isArray(value)) {
+      return Object.fromEntries(value.map((item, index) => [`reference_${index + 1}`, String(item ?? '')]));
+    }
+    if (typeof value === 'object') {
+      return Object.fromEntries(
+        Object.entries(value).map(([key, item]) => [
+          key,
+          typeof item === 'string' ? item : JSON.stringify(item ?? ''),
+        ])
+      );
+    }
+    return { reference: String(value) };
+  };
+
+  const updateCurriculumReferenceField = (
+    moduleId: string,
+    stageId: string,
+    currentValue: any,
+    field: string,
+    value: string
+  ) => {
+    updateModuleStage(moduleId, stageId, 'curriculum_reference', {
+      ...curriculumReferenceFields(currentValue),
+      [field]: value,
+    });
+  };
+
   if (!isOpen) return null;
 
   // Calculate summary metrics
@@ -347,6 +459,26 @@ export const FullCourseContentEditor: React.FC<FullCourseContentEditorProps> = (
   const totalQuestionsCount = modules.reduce((acc, m) => 
     acc + (m.artifacts?.reduce((qAcc, art) => qAcc + (art.questions?.length || 0), 0) || 0), 0
   );
+  const contentStageById = new Map<string, { module: Module; stage: ModuleContent6E }>();
+  modules.forEach((module) => {
+    (module.content || []).forEach((stage) => {
+      if (stage.id) {
+        contentStageById.set(stage.id, { module, stage });
+      }
+    });
+  });
+  const groupedLearningAssets: LearningAssetGroup[] = modules
+    .map((module) => {
+      const assets = eContent
+        .filter((asset) => (module.content || []).some((stage) => stage.id === asset.modules_content_id))
+        .map((asset) => ({
+          asset,
+          stage: (module.content || []).find((stage) => stage.id === asset.modules_content_id) || null,
+        }));
+      return { module, assets };
+    })
+    .filter((group) => group.assets.length > 0);
+  const unmappedLearningAssets = eContent.filter((asset) => !contentStageById.has(asset.modules_content_id));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 md:p-6 backdrop-blur-sm animate-in fade-in">
@@ -810,23 +942,64 @@ export const FullCourseContentEditor: React.FC<FullCourseContentEditorProps> = (
 
                       {m.content && m.content.length > 0 ? (
                         <div className="grid grid-cols-1 gap-3">
-                          {m.content.map((st, idx) => (
-                            <div key={st.id || idx} className="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="font-bold text-xs px-2.5 py-1 rounded bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
-                                  Stage {st.stage_order || idx + 1}: {st.stage_name || st.lte_6e_stage || '6E Stage'}
-                                </span>
+                          {m.content.map((st, idx) => {
+                            const curriculumFields = curriculumReferenceFields(st.curriculum_reference);
+                            const curriculumEntries = Object.entries(curriculumFields);
+
+                            return (
+                              <div key={st.id || idx} className="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-bold text-xs px-2.5 py-1 rounded bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
+                                    Stage {st.stage_order || idx + 1}: {st.stage_name || st.lte_6e_stage || '6E Stage'}
+                                  </span>
+                                </div>
+                                <label className="block">
+                                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Stage Description</span>
+                                  <textarea
+                                    rows={3}
+                                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none transition focus:border-purple-400 focus:ring-2 focus:ring-purple-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-purple-500 dark:focus:ring-purple-950"
+                                    value={st.stage_description || ''}
+                                    onChange={(event) => updateModuleStage(m.id, st.id, 'stage_description', event.target.value)}
+                                    placeholder="Describe what the learner does in this 6E stage"
+                                  />
+                                </label>
+                                <label className="block">
+                                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Module Context</span>
+                                  <textarea
+                                    rows={3}
+                                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none transition focus:border-purple-400 focus:ring-2 focus:ring-purple-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-purple-500 dark:focus:ring-purple-950"
+                                    value={st.module_context || ''}
+                                    onChange={(event) => updateModuleStage(m.id, st.id, 'module_context', event.target.value)}
+                                    placeholder="Add stage context, case framing, or evidence guidance"
+                                  />
+                                </label>
+                                <div className="space-y-2">
+                                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Curriculum Reference</span>
+                                  {curriculumEntries.length > 0 ? (
+                                    <div className="grid grid-cols-1 gap-2">
+                                      {curriculumEntries.map(([key, value]) => (
+                                        <label key={key} className="block">
+                                          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                                            {fieldLabel(key)}
+                                          </span>
+                                          <textarea
+                                            rows={2}
+                                            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none transition focus:border-purple-400 focus:ring-2 focus:ring-purple-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-purple-500 dark:focus:ring-purple-950"
+                                            value={value}
+                                            onChange={(event) => updateCurriculumReferenceField(m.id, st.id, st.curriculum_reference, key, event.target.value)}
+                                          />
+                                        </label>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <p className="rounded-lg border border-dashed border-slate-200 bg-white px-3 py-2 text-xs text-slate-400 dark:border-slate-700 dark:bg-slate-950">
+                                      No curriculum reference fields stored for this stage.
+                                    </p>
+                                  )}
+                                </div>
                               </div>
-                              <p className="text-xs text-slate-700 dark:text-slate-300 mt-1">
-                                {st.stage_description || 'No stage description provided.'}
-                              </p>
-                              {st.module_context && (
-                                <p className="text-xs text-slate-500 mt-1 bg-white dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800">
-                                  <span className="font-semibold text-slate-700 dark:text-slate-300">Context:</span> {st.module_context}
-                                </p>
-                              )}
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       ) : (
                         <p className="text-xs text-slate-400 italic">No 6Es stages defined for this module.</p>
@@ -914,12 +1087,75 @@ export const FullCourseContentEditor: React.FC<FullCourseContentEditorProps> = (
                                 <div className="space-y-2 pt-2 border-t">
                                   <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Files ({art.templates.length})</p>
                                   {art.templates.map((template, templateIdx) => (
-                                    <div key={template.id || templateIdx} className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-2 p-3 bg-white dark:bg-slate-900 rounded-lg border">
-                                      <input className="px-3 py-2 rounded border bg-white dark:bg-slate-950 text-xs" value={template.file_name || ''} onChange={(e) => template.id && updateArtifactTemplate(m.id, art.id, template.id, 'file_name', e.target.value)} placeholder="File name" />
-                                      <div className="flex gap-2">
-                                        <input className="min-w-0 flex-1 px-3 py-2 rounded border bg-white dark:bg-slate-950 text-xs font-mono" value={template.file_url || ''} onChange={(e) => template.id && updateArtifactTemplate(m.id, art.id, template.id, 'file_url', e.target.value)} placeholder="https://..." />
-                                        {template.file_url && <a href={template.file_url} target="_blank" rel="noreferrer" className="p-2 text-indigo-600" title="Open file"><ExternalLink className="w-4 h-4" /></a>}
+                                    <div key={template.id || templateIdx} className="space-y-3 p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
+                                      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                                        <div className="min-w-0">
+                                          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                            Current File
+                                          </p>
+                                          <p className="mt-1 truncate text-xs font-semibold text-slate-800 dark:text-slate-100">
+                                            {template.file_name || `File ${templateIdx + 1}`}
+                                          </p>
+                                          {template.file_url && (
+                                            <p className="mt-1 truncate font-mono text-[11px] text-slate-500 dark:text-slate-400">
+                                              {template.file_url}
+                                            </p>
+                                          )}
+                                        </div>
+                                        <div className="flex shrink-0 items-center gap-2">
+                                          {template.file_url && (
+                                            <a
+                                              href={template.file_url}
+                                              target="_blank"
+                                              rel="noreferrer"
+                                              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-indigo-200 px-3 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50 dark:border-indigo-900 dark:hover:bg-indigo-950"
+                                              title="Open file"
+                                            >
+                                              <ExternalLink className="w-4 h-4" />
+                                              <span>Open</span>
+                                            </a>
+                                          )}
+                                          <button
+                                            type="button"
+                                            onClick={() => beginTemplateReplacement(template)}
+                                            disabled={!template.id}
+                                            className="inline-flex h-9 items-center rounded-lg border border-emerald-200 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-900 dark:text-emerald-300 dark:hover:bg-emerald-950"
+                                          >
+                                            Replace Link
+                                          </button>
+                                        </div>
                                       </div>
+
+                                      {template.id && replacingTemplateId === template.id && (
+                                        <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-3 dark:border-emerald-900 dark:bg-emerald-950/30">
+                                          <label className="text-[11px] font-semibold text-emerald-900 dark:text-emerald-100">
+                                            New Google Drive / Docs / Sheets / Slides URL
+                                            <input
+                                              autoFocus
+                                              className="mt-1 w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 font-mono text-xs text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-emerald-900 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-950"
+                                              value={replacementUrl}
+                                              onChange={(event) => setReplacementUrl(event.target.value)}
+                                              placeholder="Paste new Google or public file URL"
+                                            />
+                                          </label>
+                                          <div className="mt-3 flex items-center justify-end gap-2">
+                                            <button
+                                              type="button"
+                                              onClick={cancelTemplateReplacement}
+                                              className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-white dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900"
+                                            >
+                                              Cancel
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => applyTemplateReplacement(m.id, art.id, template.id)}
+                                              className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700"
+                                            >
+                                              Apply Replacement
+                                            </button>
+                                          </div>
+                                        </div>
+                                      )}
                                     </div>
                                   ))}
                                 </div>
@@ -959,41 +1195,125 @@ export const FullCourseContentEditor: React.FC<FullCourseContentEditorProps> = (
                       <p className="text-xs text-slate-500">No media assets directly registered in e_content table for this level.</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {eContent.map((asset, idx) => (
-                        <div key={asset.id || idx} className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3 shadow-xs">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate max-w-[200px]">
-                              {asset.title || asset.filename || `Asset ${idx + 1}`}
-                            </span>
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
-                              {asset.content_type || asset.mime_type || 'Resource'}
-                            </span>
-                          </div>
-                          <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                            Title
-                            <input className="mt-1 w-full px-3 py-2 rounded-lg border bg-white dark:bg-slate-900 text-xs" value={asset.title || ''} onChange={(e) => updateEContent(asset.id, 'title', e.target.value)} />
-                          </label>
-                          <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                            Description
-                            <textarea rows={2} className="mt-1 w-full px-3 py-2 rounded-lg border bg-white dark:bg-slate-900 text-xs" value={asset.description || ''} onChange={(e) => updateEContent(asset.id, 'description', e.target.value)} />
-                          </label>
-                          <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                            File or content URL
-                            <div className="mt-1 flex gap-2">
-                              <input className="min-w-0 flex-1 px-3 py-2 rounded-lg border bg-white dark:bg-slate-900 text-xs font-mono" value={asset.url || ''} onChange={(e) => updateEContent(asset.id, 'url', e.target.value)} placeholder="https://..." />
-                              {asset.url && <a href={asset.url} target="_blank" rel="noreferrer" className="p-2 text-indigo-600" title="Open asset"><ExternalLink className="w-4 h-4" /></a>}
+                    <div className="space-y-5">
+                      {[...groupedLearningAssets, ...(unmappedLearningAssets.length > 0 ? [{ module: null, assets: unmappedLearningAssets.map((asset) => ({ asset, stage: null })) }] : [])].map((group, groupIdx) => (
+                        <section key={group.module?.id || 'unmapped-assets'} className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-700 dark:bg-slate-800">
+                          <div className="mb-4 flex flex-col gap-2 border-b border-slate-200 pb-3 dark:border-slate-700 md:flex-row md:items-center md:justify-between">
+                            <div>
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-300">
+                                {group.module ? `Module ${group.module.module_no}` : 'Unmapped Assets'}
+                              </p>
+                              <h5 className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
+                                {group.module?.title || 'Assets without a matching module/stage'}
+                              </h5>
                             </div>
-                          </label>
-                          <div className="grid grid-cols-2 gap-3">
-                            <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Duration (seconds)
-                              <input type="number" min={0} className="mt-1 w-full px-3 py-2 rounded-lg border bg-white dark:bg-slate-900 text-xs" value={asset.duration_seconds ?? ''} onChange={(e) => updateEContent(asset.id, 'duration_seconds', e.target.value === '' ? null : Number(e.target.value))} />
-                            </label>
-                            <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">XP reward
-                              <input type="number" min={0} className="mt-1 w-full px-3 py-2 rounded-lg border bg-white dark:bg-slate-900 text-xs" value={asset.xp_reward ?? ''} onChange={(e) => updateEContent(asset.id, 'xp_reward', e.target.value === '' ? null : Number(e.target.value))} />
-                            </label>
+                            <span className="w-fit rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                              {group.assets.length} Assets
+                            </span>
                           </div>
-                        </div>
+
+                          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            {group.assets.map(({ asset, stage }, idx) => (
+                              <div key={asset.id || `${groupIdx}-${idx}`} className="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                      {group.module ? `Module ${group.module.module_no}` : 'Unmapped'} {stage ? `- Stage ${stage.stage_order || idx + 1}` : ''}
+                                    </p>
+                                    <p className="mt-1 truncate text-sm font-bold text-slate-900 dark:text-slate-100">
+                                      {stage?.stage_name || stage?.lte_6e_stage || asset.title || asset.filename || `Asset ${idx + 1}`}
+                                    </p>
+                                  </div>
+                                  <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
+                                    {asset.content_type || asset.mime_type || 'Resource'}
+                                  </span>
+                                </div>
+
+                                <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                                  Title
+                                  <input className="mt-1 w-full px-3 py-2 rounded-lg border bg-white dark:bg-slate-900 text-xs" value={asset.title || ''} onChange={(e) => updateEContent(asset.id, 'title', e.target.value)} />
+                                </label>
+                                <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                                  Description
+                                  <textarea rows={2} className="mt-1 w-full px-3 py-2 rounded-lg border bg-white dark:bg-slate-900 text-xs" value={asset.description || ''} onChange={(e) => updateEContent(asset.id, 'description', e.target.value)} />
+                                </label>
+                                <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-950">
+                                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                                    <div className="min-w-0">
+                                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                        Current Asset Link
+                                      </p>
+                                      <p className="mt-1 truncate font-mono text-xs text-slate-700 dark:text-slate-200">
+                                        {asset.url || 'No URL stored'}
+                                      </p>
+                                    </div>
+                                    <div className="flex shrink-0 items-center gap-2">
+                                      {asset.url && (
+                                        <a
+                                          href={asset.url}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-indigo-200 px-3 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50 dark:border-indigo-900 dark:hover:bg-indigo-950"
+                                          title="Open asset"
+                                        >
+                                          <ExternalLink className="w-4 h-4" />
+                                          <span>Open</span>
+                                        </a>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() => beginAssetReplacement(asset)}
+                                        disabled={!asset.id}
+                                        className="inline-flex h-9 items-center rounded-lg border border-blue-200 px-3 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950"
+                                      >
+                                        Replace Link
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {asset.id && replacingAssetId === asset.id && (
+                                    <div className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 dark:border-blue-900 dark:bg-blue-950/30">
+                                      <label className="text-[11px] font-semibold text-blue-900 dark:text-blue-100">
+                                        New Google Drive / Docs / Sheets / Slides URL
+                                        <input
+                                          autoFocus
+                                          className="mt-1 w-full rounded-lg border border-blue-200 bg-white px-3 py-2 font-mono text-xs text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-blue-900 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-blue-950"
+                                          value={assetReplacementUrl}
+                                          onChange={(event) => setAssetReplacementUrl(event.target.value)}
+                                          placeholder="Paste new Google or public file URL"
+                                        />
+                                      </label>
+                                      <div className="mt-3 flex items-center justify-end gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={cancelAssetReplacement}
+                                          className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-white dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900"
+                                        >
+                                          Cancel
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => applyAssetReplacement(asset.id)}
+                                          className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700"
+                                        >
+                                          Apply Replacement
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Duration (seconds)
+                                    <input type="number" min={0} className="mt-1 w-full px-3 py-2 rounded-lg border bg-white dark:bg-slate-900 text-xs" value={asset.duration_seconds ?? ''} onChange={(e) => updateEContent(asset.id, 'duration_seconds', e.target.value === '' ? null : Number(e.target.value))} />
+                                  </label>
+                                  <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">XP reward
+                                    <input type="number" min={0} className="mt-1 w-full px-3 py-2 rounded-lg border bg-white dark:bg-slate-900 text-xs" value={asset.xp_reward ?? ''} onChange={(e) => updateEContent(asset.id, 'xp_reward', e.target.value === '' ? null : Number(e.target.value))} />
+                                  </label>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </section>
                       ))}
                     </div>
                   )}

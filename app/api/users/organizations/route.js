@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 
 
+
 /**
  * GET /api/users/organizations - Get unique organizations for filter dropdown
  */

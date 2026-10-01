@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 
 
+
 /**
  * GET /api/organizations - List all organizations (combined from universities and recruiters)
  */

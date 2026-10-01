@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 
 
 
+
 /**
  * GET /api/courses/[id] - Fetch a single course by ID
  */

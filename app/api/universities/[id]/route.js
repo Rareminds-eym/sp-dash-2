@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 
 
+
 export async function GET(request, { params }) {
   try {
     const universityId = params.id;
