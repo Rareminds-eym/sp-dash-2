@@ -82,9 +82,7 @@ const nextConfig = {
     }
     
     // Build CSP connect-src based on environment
-    const connectSrc = isDev
-      ? `'self' ${supabaseOrigin}` // Local dev: allow configured Supabase origin only
-      : `'self' ${supabaseOrigin}`; // Production: same pattern
+    const connectSrc = supabaseOrigin ? `'self' ${supabaseOrigin}` : `'self'`;
     
     return [
       {

@@ -3,8 +3,25 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { addCacheHeaders } from '@/lib/services/cacheService';
 import { handleError } from '@/lib/middleware/errorHandler';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
+import { z } from 'zod';
 
-
+const CourseSchema = z.object({
+    title: z.string({ required_error: 'Title is required' }).trim().min(1, 'Title is required'),
+    code: z.string({ required_error: 'Code is required' }).trim().min(1, 'Code is required'),
+    description: z.string({ required_error: 'Description is required' }).trim().min(1, 'Description is required'),
+    duration: z.string({ required_error: 'Duration is required' }).trim().min(1, 'Duration is required'),
+    credits: z.preprocess(
+        (val) => (val === '' || val === null || val === undefined ? null : Number(val)),
+        z.number().finite('Credits must be a valid number').min(0, 'Credits cannot be negative').nullable().optional()
+    ),
+    thumbnail: z.string().nullable().optional(),
+    university: z.string().nullable().optional(),
+    category: z.string().nullable().optional(),
+    target_outcomes: z.array(z.string()).optional().default([]),
+    skillsCovered: z.array(z.string()).optional().default([]),
+    linkedClasses: z.array(z.string()).optional().default([]),
+    modules: z.array(z.any()).optional().default([])
+});
 
 /**
  * GET /api/courses - List all courses with pagination, search, and filters
@@ -189,42 +206,84 @@ export async function POST(request) {
 
         const body = await request.json();
         
-        // Flexibly extract fields supporting both modal payload format and legacy API payload format
-        const title = body.title || body.name;
-        const code = body.code || body.course_code;
-        const description = body.description;
-        const thumbnail = body.thumbnail || body.thumbnail_url || null;
-        const duration = body.duration;
-        const credits = body.credits !== undefined && body.credits !== null && body.credits !== '' ? Number(body.credits) : null;
-        const university = body.university || null;
-        const category = body.category || null;
-        const target_outcomes = body.targetOutcomes || body.target_outcomes || [];
-        const status = body.status || 'Active';
-        const approval_status = body.approval_status || 'approved';
-        let educator_id = body.educatorId ?? body.educator_id ?? user?.id ?? null;
-        const school_id = body.schoolId ?? body.school_id ?? null;
-        const skillsCovered = body.skillsCovered || body.skills || [];
-        const linkedClasses = body.linkedClasses || [];
-        const modules = body.modules || [];
+        // Normalize target outcomes
+        const rawTargetOutcomes = body.targetOutcomes ?? body.target_outcomes ?? [];
+        const target_outcomes = Array.isArray(rawTargetOutcomes)
+            ? rawTargetOutcomes.filter(o => typeof o === 'string' && o.trim() !== '')
+            : typeof rawTargetOutcomes === 'string' && rawTargetOutcomes.trim() !== ''
+                ? [rawTargetOutcomes.trim()]
+                : [];
+
+        // Prepare normalized payload for Zod validation
+        const normalizedData = {
+            title: (body.title || body.name || '').trim(),
+            code: (body.code || body.course_code || '').trim(),
+            description: (body.description || '').trim(),
+            duration: (body.duration || '').trim(),
+            credits: body.credits,
+            thumbnail: body.thumbnail || body.thumbnail_url || null,
+            university: body.university || null,
+            category: body.category || null,
+            target_outcomes,
+            skillsCovered: Array.isArray(body.skillsCovered || body.skills) ? (body.skillsCovered || body.skills) : [],
+            linkedClasses: Array.isArray(body.linkedClasses) ? body.linkedClasses : [],
+            modules: Array.isArray(body.modules) ? body.modules : []
+        };
+
+        const validationResult = CourseSchema.safeParse(normalizedData);
+        if (!validationResult.success) {
+            const errorDetails = validationResult.error.errors
+                .map(e => `${e.path.join('.')}: ${e.message}`)
+                .join('; ');
+            return NextResponse.json(
+                { error: 'Validation failed', details: errorDetails },
+                { status: 400 }
+            );
+        }
+
+        const {
+            title, code, description, duration, credits,
+            thumbnail, university, category,
+            skillsCovered, linkedClasses, modules
+        } = validationResult.data;
+
+        // Role-based privilege separation
+        const userRole = user?.role || (user?.roles && user.roles[0]) || '';
+        const isAdmin = ['super_admin', 'admin', 'rm_admin'].includes(userRole);
+
+        // Admins can specify custom status, approval_status, educator_id, school_id.
+        // Non-admins are restricted to pending / Draft / caller's ID and caller scope.
+        const approval_status = isAdmin ? (body.approval_status ?? 'approved') : 'pending';
+        const status = isAdmin ? (body.status ?? 'Active') : 'Draft';
+        let educator_id = isAdmin
+            ? (body.educatorId ?? body.educator_id ?? user?.id ?? null)
+            : (user?.id ?? null);
+        const school_id = isAdmin
+            ? (body.schoolId ?? body.school_id ?? null)
+            : (user?.orgId || user?.schoolId || user?.school_id || null);
 
         // Validate educator_id against admin_users table to prevent foreign key constraint violation (courses_educator_id_fkey)
         if (educator_id) {
-            const { data: validAdmin } = await supabaseAdmin
+            const { data: validAdmin, error: lookupError } = await supabaseAdmin
                 .from('admin_users')
                 .select('id')
                 .eq('id', educator_id)
                 .maybeSingle();
+
+            if (lookupError) {
+                console.error('[Course API] Error validating educator_id:', lookupError);
+                return NextResponse.json(
+                    { error: 'Failed to validate educator', details: lookupError.message },
+                    { status: 500 }
+                );
+            }
+
             if (!validAdmin) {
+                // SSO user IDs are valid for authentication, but not in legacy admin_users table.
+                // Nullify educator_id to satisfy database foreign key constraint (courses_educator_id_fkey).
+                console.info(`[Course API] educator_id '${educator_id}' not in admin_users; setting to null to satisfy foreign key constraint.`);
                 educator_id = null;
             }
-        }
-
-        // Validate required core fields
-        if (!title || !code || !description || !duration) {
-            return NextResponse.json(
-                { error: 'Missing required fields (title, code, description, duration)' },
-                { status: 400 }
-            );
         }
 
         // Insert primary course record
@@ -262,6 +321,15 @@ export async function POST(request) {
 
         const courseId = courseRow.course_id;
 
+        // Cleanup helper to delete primary course record if any child inserts fail (maintaining atomicity)
+        const rollbackCourse = async (id) => {
+            try {
+                await supabaseAdmin.from('courses').delete().eq('course_id', id);
+            } catch (cleanupErr) {
+                console.error('[Course API] Failed to rollback course on error:', cleanupErr);
+            }
+        };
+
         // 1. Insert course_skills
         if (skillsCovered.length > 0) {
             const skillsToInsert = skillsCovered.map(skill => ({
@@ -270,7 +338,12 @@ export async function POST(request) {
             }));
             const { error: skillsError } = await supabaseAdmin.from('course_skills').insert(skillsToInsert);
             if (skillsError) {
-                console.warn('[Course API] Skills insert warning:', skillsError.message);
+                console.error('[Course API] Skills insert error:', skillsError);
+                await rollbackCourse(courseId);
+                return NextResponse.json(
+                    { error: 'Failed to insert course skills', details: skillsError.message },
+                    { status: 500 }
+                );
             }
         }
 
@@ -282,7 +355,12 @@ export async function POST(request) {
             }));
             const { error: classesError } = await supabaseAdmin.from('course_classes').insert(classesToInsert);
             if (classesError) {
-                console.warn('[Course API] Classes insert warning:', classesError.message);
+                console.error('[Course API] Classes insert error:', classesError);
+                await rollbackCourse(courseId);
+                return NextResponse.json(
+                    { error: 'Failed to insert course classes', details: classesError.message },
+                    { status: 500 }
+                );
             }
         }
 
@@ -302,9 +380,13 @@ export async function POST(request) {
                     .select()
                     .single();
 
-                if (moduleError) {
-                    console.warn('[Course API] Module insert warning:', moduleError.message);
-                    continue;
+                if (moduleError || !moduleRow) {
+                    console.error('[Course API] Module insert error:', moduleError);
+                    await rollbackCourse(courseId);
+                    return NextResponse.json(
+                        { error: 'Failed to insert course module', details: moduleError?.message },
+                        { status: 500 }
+                    );
                 }
 
                 if (mod.lessons?.length > 0) {
@@ -322,9 +404,13 @@ export async function POST(request) {
                             .select()
                             .single();
 
-                        if (lessonError) {
-                            console.warn('[Course API] Lesson insert warning:', lessonError.message);
-                            continue;
+                        if (lessonError || !lessonRow) {
+                            console.error('[Course API] Lesson insert error:', lessonError);
+                            await rollbackCourse(courseId);
+                            return NextResponse.json(
+                                { error: 'Failed to insert lesson', details: lessonError?.message },
+                                { status: 500 }
+                            );
                         }
 
                         if (lesson.resources?.length > 0) {
@@ -338,7 +424,15 @@ export async function POST(request) {
                                 embed_url: res.embedUrl,
                                 order_index: index
                             }));
-                            await supabaseAdmin.from('lesson_resources').insert(resourcesToInsert);
+                            const { error: resourceError } = await supabaseAdmin.from('lesson_resources').insert(resourcesToInsert);
+                            if (resourceError) {
+                                console.error('[Course API] Lesson resources insert error:', resourceError);
+                                await rollbackCourse(courseId);
+                                return NextResponse.json(
+                                    { error: 'Failed to insert lesson resources', details: resourceError.message },
+                                    { status: 500 }
+                                );
+                            }
                         }
                     }
                 }
