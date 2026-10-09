@@ -35,7 +35,7 @@ async function fetchEducatorLearners() {
       .range(from, from + SP_PAGE_SIZE - 1);
 
     if (error) throw error;
-    (data || []).forEach(row => educators.push({ id: row.user_id, name: row.name || '' }));
+    (data || []).forEach(row => { educators.push({ id: row.user_id, name: row.name || '' }); });
     if (!data || data.length < SP_PAGE_SIZE) break;
   }
   return educators;
