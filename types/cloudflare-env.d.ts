@@ -14,6 +14,7 @@ declare global {
     MAINTENANCE_EVENTS_QUEUE: Queue;
     LTE_ASSET_VALIDATION_QUEUE: Queue<LTEAssetValidationMessage>;
     LTE_ASSETS: R2Bucket;
+    COURSE_ASSETS: R2Bucket;
     RATE_LIMIT_KV: KVNamespace;
   }
 }

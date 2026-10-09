@@ -12,7 +12,8 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { 
   X, Plus, Check, ChevronLeft, ChevronRight, Upload, Image as ImageIcon,
   BookOpen, Loader2, Trash2, Target, Layers, GraduationCap, Clock, Hash, 
-  CheckCircle2, PlayCircle, Briefcase, Globe, Palette, Search, BookMarked
+  CheckCircle2, PlayCircle, Briefcase, Globe, Palette, Search, BookMarked,
+  FileText, Video, Link2, ExternalLink, FileUp
 } from 'lucide-react'
 import { 
   SKILL_CATEGORIES, 
@@ -21,6 +22,12 @@ import {
   createCourse,
   updateCourse
 } from '@/lib/services/coursesService'
+import { normalizeCourseHierarchy } from '@/lib/services/course-hierarchy'
+import {
+  COURSE_RESOURCE_TYPES,
+  getAcceptedFileTypes,
+  isUrlResourceType,
+} from '@/lib/services/course-resource-validation'
 
 const STEPS = [
   { id: 0, title: 'Course Source' },
@@ -29,6 +36,22 @@ const STEPS = [
   { id: 3, title: 'Course Structure' },
   { id: 4, title: 'Confirmation' }
 ]
+
+const RESOURCE_TYPE_ICONS = {
+  pdf: FileText,
+  video: Video,
+  document: FileText,
+  image: ImageIcon,
+  youtube: PlayCircle,
+  link: Link2,
+  drive: ExternalLink,
+}
+
+const RESOURCE_TYPES = COURSE_RESOURCE_TYPES.map(t => ({
+  id: t.type,
+  label: t.label,
+  icon: RESOURCE_TYPE_ICONS[t.type] || FileText,
+}))
 
 export function CreateCourseModal({
   open,
@@ -48,15 +71,62 @@ export function CreateCourseModal({
     skillsCovered: [], targetOutcomes: [''], modules: []
   })
 
-  const [newModule, setNewModule] = useState({ title: '', description: '', skillTags: [] })
+  const [newModule, setNewModule] = useState({ title: '', description: '', skillTags: [], lessons: [] })
+  const [newLesson, setNewLesson] = useState({ title: '', description: '', duration: '', resources: [] })
+  const [newResource, setNewResource] = useState({ name: '', type: 'pdf', url: '', size: '', thumbnailUrl: '', embedUrl: '', r2Key: '' })
+  const [selectedModuleIndex, setSelectedModuleIndex] = useState(null)
+  const [uploadingResource, setUploadingResource] = useState(false)
   const [loading, setLoading] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [errors, setErrors] = useState({})
+  // P0 hierarchy load contract: the Update action stays disabled until the
+  // existing hierarchy loads successfully. Submit is blocked while loading
+  // or after a failed load (Retry required) so an empty modules array can
+  // never wipe existing modules/lessons/resources.
+  const [hierarchyStatus, setHierarchyStatus] = useState('idle') // idle | loading | loaded | error
+  const [hierarchyError, setHierarchyError] = useState('')
   const fileInputRef = useRef(null)
+  const resourceFileInputRef = useRef(null)
+  const hierarchyAbortRef = useRef(null)
+  const hierarchyRequestIdRef = useRef(0)
+
+  const editingCourseId = editingCourse?.id || editingCourse?.course_id || null
+
+  const loadHierarchy = (courseId, requestId, signal) => {
+    fetch(`/api/courses/${courseId}/resources`, { cache: 'no-store', signal })
+      .then(async response => {
+        const data = await response.json()
+        if (!response.ok) throw new Error(data.error || 'Failed to load course resources')
+        if (hierarchyRequestIdRef.current !== requestId) return // stale request
+        setCourseData(previous => ({
+          ...previous,
+          modules: normalizeCourseHierarchy(data.data || [])
+        }))
+        setHierarchyStatus('loaded')
+        setHierarchyError('')
+        setErrors(previous => ({ ...previous, hierarchy: undefined }))
+      })
+      .catch(error => {
+        if (error?.name === 'AbortError') return
+        if (hierarchyRequestIdRef.current !== requestId) return // stale request
+        setHierarchyStatus('error')
+        setHierarchyError(error.message || 'Failed to load course resources')
+        setErrors(previous => ({
+          ...previous,
+          hierarchy: error.message || 'Failed to load course resources'
+        }))
+      })
+  }
 
   // Initialize form when editing
   useEffect(() => {
     if (editingCourse && open) {
+      // Cancel any in-flight hierarchy request before starting a new one.
+      hierarchyAbortRef.current?.abort()
+      const controller = new AbortController()
+      hierarchyAbortRef.current = controller
+      const requestId = hierarchyRequestIdRef.current + 1
+      hierarchyRequestIdRef.current = requestId
       // Parse duration string to extract value and unit (e.g., "12 weeks" -> { duration: "12", durationUnit: "weeks" })
       const durationStr = editingCourse.duration || ''
       const durationMatch = durationStr.match(/^(\d+)\s*(hours?|days?|weeks?|months?)$/i)
@@ -72,7 +142,7 @@ export function CreateCourseModal({
         thumbnail: editingCourse.thumbnail_url || '',
         status: editingCourse.status || 'Active',
         credits: editingCourse.credits?.toString() || '',
-        skillsCovered: [],
+        skillsCovered: Array.isArray(editingCourse.skillsCovered) ? editingCourse.skillsCovered : [],
         targetOutcomes: editingCourse.target_outcomes 
           ? (Array.isArray(editingCourse.target_outcomes) ? editingCourse.target_outcomes : [editingCourse.target_outcomes])
           : [''],
@@ -80,8 +150,22 @@ export function CreateCourseModal({
       })
       setCurrentStep(1)
       setCourseSource('create')
+      setHierarchyStatus('loading')
+      setHierarchyError('')
+      setErrors(previous => ({ ...previous, hierarchy: undefined }))
+
+      const courseId = editingCourse.id || editingCourse.course_id
+      loadHierarchy(courseId, requestId, controller.signal)
+      return () => controller.abort()
     }
-  }, [editingCourse, open])
+    if (!editingCourse && open) {
+      // Create mode: no hierarchy to load; mark ready so submit is allowed.
+      hierarchyAbortRef.current?.abort()
+      hierarchyRequestIdRef.current += 1
+      setHierarchyStatus('loaded')
+      setHierarchyError('')
+    }
+  }, [editingCourseId, open])
 
   const resetForm = () => {
     setCurrentStep(editingCourse ? 1 : 0)
@@ -93,16 +177,22 @@ export function CreateCourseModal({
       status: 'Active', credits: '',
       skillsCovered: [], targetOutcomes: [''], modules: []
     })
-    setNewModule({ title: '', description: '', skillTags: [] })
+    setNewModule({ title: '', description: '', skillTags: [], lessons: [] })
+    setNewLesson({ title: '', description: '', duration: '', resources: [] })
+    setNewResource({ name: '', type: 'pdf', url: '', size: '', thumbnailUrl: '', embedUrl: '', r2Key: '' })
+    setSelectedModuleIndex(null)
     setErrors({})
   }
 
-  // Reset form when dialog closes
+  // Reset form when dialog closes. Abort in-flight hierarchy fetches first so
+  // a stale response can never repopulate state after close/reopen.
   useEffect(() => {
     if (!open) {
-      // Small delay to let close animation complete before resetting
-      const timer = setTimeout(resetForm, 200)
-      return () => clearTimeout(timer)
+      hierarchyAbortRef.current?.abort()
+      hierarchyRequestIdRef.current += 1
+      resetForm()
+      setHierarchyStatus('idle')
+      setHierarchyError('')
     }
   }, [open])
 
@@ -141,10 +231,92 @@ export function CreateCourseModal({
   const updateOutcome = (i, v) => setCourseData(prev => ({ ...prev, targetOutcomes: prev.targetOutcomes.map((o, idx) => idx === i ? v : o) }))
   const removeOutcome = (i) => courseData.targetOutcomes.length > 1 && setCourseData(prev => ({ ...prev, targetOutcomes: prev.targetOutcomes.filter((_, idx) => idx !== i) }))
 
+  const handleResourceFileUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!newResource.name.trim()) {
+      setErrors(prev => ({ ...prev, resource: 'Enter a resource name before uploading a file' }))
+      if (resourceFileInputRef.current) resourceFileInputRef.current.value = ''
+      return
+    }
+    setUploadingResource(true)
+    setErrors(prev => ({ ...prev, resource: undefined }))
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('resourceType', newResource.type)
+      formData.append('resourceName', newResource.name.trim())
+      const res = await fetch('/api/courses/resource-upload', { method: 'POST', body: formData })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.success) throw new Error(data.error || `Upload failed (Status ${res.status})`)
+      setNewResource(prev => ({ ...prev, url: data.r2Url, size: data.fileSize, r2Key: data.r2Key }))
+    } catch (err) {
+      setErrors(prev => ({ ...prev, resource: err.message || 'Failed to upload resource' }))
+    } finally {
+      setUploadingResource(false)
+      if (resourceFileInputRef.current) resourceFileInputRef.current.value = ''
+    }
+  }
+
+  const addResourceToLesson = () => {
+    if (!newResource.name.trim()) {
+      setErrors(prev => ({ ...prev, resource: 'Resource name is required' }))
+      return
+    }
+    if (!newResource.url.trim()) {
+      setErrors(prev => ({ ...prev, resource: 'Upload a file or enter a URL first' }))
+      return
+    }
+    setNewLesson(prev => ({ ...prev, resources: [...prev.resources, { ...newResource, name: newResource.name.trim(), url: newResource.url.trim() }] }))
+    setNewResource({ name: '', type: 'pdf', url: '', size: '', thumbnailUrl: '', embedUrl: '', r2Key: '' })
+    setErrors(prev => ({ ...prev, resource: undefined }))
+  }
+
+  const removeResourceFromLesson = (index) => {
+    setNewLesson(prev => ({ ...prev, resources: prev.resources.filter((_, idx) => idx !== index) }))
+  }
+
+  const addLessonToModule = () => {
+    if (!newLesson.title.trim()) return
+
+    if (selectedModuleIndex !== null && courseData.modules[selectedModuleIndex]) {
+      setCourseData(prev => ({
+        ...prev,
+        modules: prev.modules.map((module, index) => index === selectedModuleIndex
+          ? { ...module, lessons: [...(module.lessons || []), { ...newLesson, title: newLesson.title.trim() }] }
+          : module)
+      }))
+    } else {
+      setNewModule(prev => ({ ...prev, lessons: [...(prev.lessons || []), { ...newLesson, title: newLesson.title.trim() }] }))
+    }
+
+    setNewLesson({ title: '', description: '', duration: '', resources: [] })
+    setNewResource({ name: '', type: 'pdf', url: '', size: '', thumbnailUrl: '', embedUrl: '', r2Key: '' })
+    setSelectedModuleIndex(null)
+  }
+
+  const removeLessonFromModule = (moduleIndex, lessonIndex) => {
+    setCourseData(prev => ({
+      ...prev,
+      modules: prev.modules.map((module, index) => index === moduleIndex
+        ? { ...module, lessons: (module.lessons || []).filter((_, idx) => idx !== lessonIndex) }
+        : module)
+    }))
+  }
+
+  const removeNewLesson = (lessonIndex) => {
+    setNewModule(prev => ({
+      ...prev,
+      lessons: (prev.lessons || []).filter((_, index) => index !== lessonIndex)
+    }))
+  }
+
   const addModule = () => {
     if (!newModule.title) return
-    setCourseData(prev => ({ ...prev, modules: [...prev.modules, { ...newModule, id: Date.now().toString() }] }))
-    setNewModule({ title: '', description: '', skillTags: [] })
+    setCourseData(prev => ({ ...prev, modules: [...prev.modules, { ...newModule, id: Date.now().toString(), lessons: newModule.lessons || [] }] }))
+    setNewModule({ title: '', description: '', skillTags: [], lessons: [] })
+    setNewLesson({ title: '', description: '', duration: '', resources: [] })
+    setSelectedModuleIndex(null)
   }
 
   const removeModule = (i) => setCourseData(prev => ({ ...prev, modules: prev.modules.filter((_, idx) => idx !== i) }))
@@ -153,6 +325,15 @@ export function CreateCourseModal({
   }))
 
   const handleSubmit = async () => {
+    // P0 guard: never submit hierarchy state that hasn't fully loaded.
+    if (editingCourse && hierarchyStatus !== 'loaded') {
+      setErrors({
+        submit: hierarchyStatus === 'loading'
+          ? 'Course content is still loading. Please wait before saving.'
+          : 'Course content failed to load. Retry loading before saving so existing modules are not lost.',
+      })
+      return
+    }
     setLoading(true)
     try {
       const educatorId = currentUser?.user?.id || null // Use null for local dev / platform courses
@@ -166,7 +347,14 @@ export function CreateCourseModal({
       }
       
       const courseIdToUpdate = editingCourse?.id || editingCourse?.course_id
-      if (editingCourse) await updateCourse(courseIdToUpdate, payload, educatorId)
+      // Explicit hierarchy-replace intent: the backend only syncs modules when
+      // this flag accompanies a fully loaded array. Metadata-only edits still
+      // send the loaded hierarchy (preserving IDs); unloaded state is blocked above.
+      if (editingCourse) {
+        payload.updateHierarchy = true
+        if (editingCourse.updated_at) payload.expectedUpdatedAt = editingCourse.updated_at
+        await updateCourse(courseIdToUpdate, payload, educatorId)
+      }
       else await createCourse(payload, educatorId, null) // Platform courses have no school_id
       
       onSuccess?.()
@@ -178,6 +366,24 @@ export function CreateCourseModal({
 
   const goNext = () => canProceed() && setCurrentStep(prev => currentStep === 2 && courseSource === 'import' ? 4 : Math.min(prev + 1, 4))
   const goBack = () => setCurrentStep(prev => currentStep === 4 && courseSource === 'import' ? 2 : Math.max(prev - 1, editingCourse ? 1 : 0))
+
+  const retryHierarchyLoad = () => {
+    const courseId = editingCourse?.id || editingCourse?.course_id
+    if (!courseId) return
+    hierarchyAbortRef.current?.abort()
+    const controller = new AbortController()
+    hierarchyAbortRef.current = controller
+    const requestId = hierarchyRequestIdRef.current + 1
+    hierarchyRequestIdRef.current = requestId
+    setHierarchyStatus('loading')
+    setHierarchyError('')
+    setErrors(previous => ({ ...previous, hierarchy: undefined, submit: undefined }))
+    loadHierarchy(courseId, requestId, controller.signal)
+  }
+
+  // Update is only safe once the existing hierarchy has loaded; create mode
+  // marks hierarchy loaded immediately (no fetch needed).
+  const isHierarchyReady = !editingCourse || hierarchyStatus === 'loaded'
 
   const visibleSteps = editingCourse ? STEPS.slice(1) : STEPS
 
@@ -438,9 +644,23 @@ export function CreateCourseModal({
     </div>
   )
 
-  // Step 3: Course Structure
+  // Step 3: Course Structure (modules -> lessons -> resources)
   const renderStructureStep = () => (
     <div className="p-6 space-y-6">
+      {editingCourse && hierarchyStatus === 'loading' && (
+        <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+          <p className="text-sm text-blue-700 dark:text-blue-300">Loading existing course content… Saving is disabled until loading finishes.</p>
+        </div>
+      )}
+      {editingCourse && hierarchyStatus === 'error' && (
+        <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-sm text-red-600 dark:text-red-400">Failed to load course content: {hierarchyError || errors.hierarchy}</p>
+          <Button type="button" variant="outline" size="sm" onClick={retryHierarchyLoad} className="mt-2">
+            Retry loading
+          </Button>
+        </div>
+      )}
       <div className="flex items-center gap-2 pb-2 border-b border-gray-200 dark:border-gray-700">
         <Layers className="h-4 w-4 text-indigo-500" />
         <h3 className="font-semibold text-gray-900 dark:text-white">Course Modules</h3>
@@ -449,7 +669,10 @@ export function CreateCourseModal({
 
       {courseData.modules.length > 0 && (
         <div className="space-y-2">
-          {courseData.modules.map((mod, i) => (
+          {courseData.modules.map((mod, i) => {
+            const lessonCount = (mod.lessons || []).length
+            const resourceCount = (mod.lessons || []).reduce((acc, l) => acc + (l.resources || []).length, 0)
+            return (
             <div key={mod.id} className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 group">
               <div className="w-7 h-7 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg flex items-center justify-center text-xs font-bold text-indigo-600 shrink-0">
                 {i + 1}
@@ -457,17 +680,35 @@ export function CreateCourseModal({
               <div className="flex-1 min-w-0">
                 <h4 className="font-medium text-gray-900 dark:text-white text-sm">{mod.title}</h4>
                 {mod.description && <p className="text-xs text-gray-500 mt-0.5 truncate">{mod.description}</p>}
+                <p className="text-xs text-gray-500 mt-1">{lessonCount} lesson(s) • {resourceCount} resource(s)</p>
+                {(mod.lessons || []).map((lesson, li) => (
+                  <div key={li} className="mt-1.5 ml-1 p-2 bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700">
+                    <p className="text-xs font-medium text-gray-800 dark:text-gray-200">{lesson.title}{lesson.duration ? ` • ${lesson.duration}` : ''}</p>
+                    {(lesson.resources || []).map((res, ri) => (
+                      <p key={ri} className="text-xs text-gray-500 truncate">• [{res.type}] {res.name}</p>
+                    ))}
+                    <Button type="button" variant="ghost" size="sm" onClick={() => removeLessonFromModule(i, li)} className="mt-1 h-6 text-red-500 hover:text-red-700">
+                      Remove lesson
+                    </Button>
+                  </div>
+                ))}
                 {mod.skillTags.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-1.5">
                     {mod.skillTags.map(tag => <Badge key={tag} variant="outline" className="text-xs py-0">{tag}</Badge>)}
                   </div>
                 )}
               </div>
-              <Button type="button" variant="ghost" size="icon" onClick={() => removeModule(i)} className="opacity-0 group-hover:opacity-100 h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50">
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
+              <div className="flex flex-col gap-1">
+                <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedModuleIndex(i)} className="h-7 text-xs text-indigo-600 hover:bg-indigo-50">
+                  Add lesson
+                </Button>
+                <Button type="button" variant="ghost" size="icon" onClick={() => removeModule(i)} className="opacity-0 group-hover:opacity-100 h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
@@ -497,8 +738,150 @@ export function CreateCourseModal({
             </div>
           </div>
         )}
+
+        {/* Lessons builder */}
+        <div className="space-y-3 p-3 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-indigo-500" />
+              <h5 className="font-medium text-sm text-gray-800 dark:text-gray-200">Lesson & Resource Builder</h5>
+            </div>
+            <Badge variant="outline" className="text-xs">{selectedModuleIndex !== null ? `Target: Module ${selectedModuleIndex + 1}` : 'Target: New Module'}</Badge>
+          </div>
+          <p className="text-xs text-gray-500">
+            Add the lesson title, then add resources to that lesson. The lesson and resources are saved together with the selected module.
+          </p>
+
+          {(newModule.lessons || []).length > 0 && (
+            <div className="space-y-1.5">
+              {(newModule.lessons || []).map((lesson, li) => (
+                <div key={li} className="flex items-start gap-2 p-2 bg-gray-50 dark:bg-gray-800/50 rounded-md border border-gray-200 dark:border-gray-700 group">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-gray-800 dark:text-gray-200">{lesson.title}{lesson.duration ? ` • ${lesson.duration}` : ''}</p>
+                    <p className="text-xs text-gray-500">{(lesson.resources || []).length} resource(s)</p>
+                  </div>
+                  <Button type="button" variant="ghost" size="icon" onClick={() => removeNewLesson(li)} className="h-6 w-6 text-red-500 hover:bg-red-50">
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="grid grid-cols-3 gap-2">
+            <div className="col-span-2 space-y-1.5">
+              <Label className="text-xs">Lesson Title</Label>
+              <Input value={newLesson.title} onChange={(e) => setNewLesson(prev => ({ ...prev, title: e.target.value }))} placeholder="e.g., Variables & Data Types" className="text-sm" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Duration</Label>
+              <Input value={newLesson.duration} onChange={(e) => setNewLesson(prev => ({ ...prev, duration: e.target.value }))} placeholder="e.g., 30 mins" className="text-sm" />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Lesson Description (optional)</Label>
+            <Input value={newLesson.description} onChange={(e) => setNewLesson(prev => ({ ...prev, description: e.target.value }))} placeholder="Brief lesson overview..." className="text-sm" />
+          </div>
+
+          {/* Resources builder */}
+          <div className="space-y-2 p-2.5 bg-gray-50 dark:bg-gray-800/50 rounded-md border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-2">
+              <FileUp className="h-3.5 w-3.5 text-indigo-500" />
+              <h6 className="font-medium text-xs text-gray-700 dark:text-gray-300">Lesson Resources {newLesson.resources.length > 0 && `(${newLesson.resources.length})`}</h6>
+            </div>
+
+            {newLesson.resources.length > 0 && (
+              <div className="space-y-1">
+                {newLesson.resources.map((res, ri) => (
+                  <div key={ri} className="flex items-center gap-2 p-1.5 bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
+                    <Badge variant="outline" className="text-xs shrink-0">{res.type}</Badge>
+                    <span className="text-xs text-gray-700 dark:text-gray-300 truncate flex-1">{res.name}</span>
+                    {res.size && <span className="text-xs text-gray-400 shrink-0">{res.size}</span>}
+                    <Button type="button" variant="ghost" size="icon" onClick={() => removeResourceFromLesson(ri)} className="h-6 w-6 text-red-500 hover:bg-red-50 shrink-0">
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs">Resource Name</Label>
+                <Input value={newResource.name} onChange={(e) => setNewResource(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g., Lecture Slides" className="text-xs h-8" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Type</Label>
+                <Select value={newResource.type} onValueChange={(v) => setNewResource(prev => ({ ...prev, type: v, url: '', thumbnailUrl: '', embedUrl: '', r2Key: '', size: '' }))}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RESOURCE_TYPES.map(t => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">Resource URL <span className="text-gray-400">(required unless a file is uploaded)</span></Label>
+              <Input value={newResource.url} onChange={(e) => setNewResource(prev => ({ ...prev, url: e.target.value }))} placeholder={isUrlResourceType(newResource.type) ? 'https://youtube.com/watch?v=...' : 'https://... or direct resource URL'} className="text-xs h-8" />
+            </div>
+
+            {!isUrlResourceType(newResource.type) && (
+              <div className="space-y-1">
+                <Label className="text-xs">File Upload <span className="text-gray-400">(optional when Resource URL is filled)</span></Label>
+                <div className="flex items-center gap-2">
+                  <input ref={resourceFileInputRef} type="file" accept={getAcceptedFileTypes(newResource.type)} onChange={handleResourceFileUpload} className="hidden" id="resource-file-input" />
+                  <Button type="button" variant="outline" size="sm" onClick={() => resourceFileInputRef.current?.click()} disabled={uploadingResource} className="text-xs h-8">
+                    {uploadingResource ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Uploading...</> : <><Upload className="h-3 w-3 mr-1" /> Choose File</>}
+                  </Button>
+                  {newResource.url && (
+                    <span className="text-xs text-emerald-600 flex items-center gap-1 truncate"><Check className="h-3 w-3 shrink-0" /> Saved{newResource.size ? ` (${newResource.size})` : ''}</span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-400">Accepted: {getAcceptedFileTypes(newResource.type) || 'any'}</p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs">Thumbnail URL <span className="text-gray-400">(optional)</span></Label>
+                <Input value={newResource.thumbnailUrl} onChange={(e) => setNewResource(prev => ({ ...prev, thumbnailUrl: e.target.value }))} placeholder="https://.../thumbnail.jpg" className="text-xs h-8" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Embed URL <span className="text-gray-400">(optional)</span></Label>
+                <Input value={newResource.embedUrl} onChange={(e) => setNewResource(prev => ({ ...prev, embedUrl: e.target.value }))} placeholder="https://.../embed" className="text-xs h-8" />
+              </div>
+            </div>
+
+            {errors.resource && <p className="text-xs text-red-500">{errors.resource}</p>}
+
+            <Button type="button" variant="outline" size="sm" onClick={addResourceToLesson} className="w-full text-xs h-8">
+              <Plus className="h-3 w-3 mr-1" /> Add Resource to Current Lesson
+            </Button>
+          </div>
+
+          <Button type="button" variant="outline" size="sm" onClick={addLessonToModule} disabled={!newLesson.title.trim()} className="w-full text-xs">
+            <Plus className="h-3 w-3 mr-1" />
+            {selectedModuleIndex !== null
+              ? `Add Lesson & Resources to Module ${selectedModuleIndex + 1}`
+              : 'Add Lesson & Resources to New Module'}
+          </Button>
+          {selectedModuleIndex !== null && (
+            <p className="text-center text-xs text-indigo-600 dark:text-indigo-400">
+              Saving to “{courseData.modules[selectedModuleIndex]?.title || 'Selected module'}”
+            </p>
+          )}
+          <p className="text-center text-xs text-gray-500">
+            {newLesson.resources.length > 0
+              ? `${newLesson.resources.length} resource${newLesson.resources.length === 1 ? '' : 's'} attached to this lesson`
+              : 'No resources attached yet'}
+          </p>
+        </div>
+
         <Button type="button" onClick={addModule} disabled={!newModule.title} size="sm" className="w-full">
-          <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Module
+          <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Module {(newModule.lessons || []).length > 0 && `(${(newModule.lessons || []).length} lessons)`}
         </Button>
       </div>
     </div>
@@ -518,6 +901,18 @@ export function CreateCourseModal({
       {errors.submit && (
         <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
           <p className="text-sm text-red-600 dark:text-red-400">{errors.submit}</p>
+        </div>
+      )}
+      {editingCourse && !isHierarchyReady && (
+        <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+          <p className="text-sm text-amber-700 dark:text-amber-300">
+            {hierarchyStatus === 'loading'
+              ? 'Course content is still loading — review will unlock once loading finishes.'
+              : 'Course content failed to load. '}
+            {hierarchyStatus === 'error' && (
+              <button type="button" onClick={retryHierarchyLoad} className="underline font-medium">Retry loading</button>
+            )}
+          </p>
         </div>
       )}
 
@@ -560,6 +955,9 @@ export function CreateCourseModal({
           <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
             <p className="text-xs text-purple-600 dark:text-purple-400 font-medium mb-1">Modules</p>
             <p className="text-lg font-bold text-purple-700 dark:text-purple-300">{courseData.modules.length}</p>
+            <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+              {courseData.modules.reduce((acc, m) => acc + (m.lessons || []).length, 0)} lessons • {courseData.modules.reduce((acc, m) => acc + (m.lessons || []).reduce((a, l) => a + (l.resources || []).length, 0), 0)} resources
+            </p>
           </div>
         </div>
       </div>
@@ -657,7 +1055,7 @@ export function CreateCourseModal({
               <span className="text-xs text-amber-600 dark:text-amber-400">Please complete required fields</span>
             )}
             {currentStep === 4 ? (
-              <Button onClick={handleSubmit} disabled={loading} className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white min-w-[140px]">
+              <Button onClick={handleSubmit} disabled={loading || !isHierarchyReady} className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white min-w-[140px]">
                 {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</> : <><Check className="h-4 w-4 mr-2" /> {editingCourse ? 'Update' : 'Create'} Course</>}
               </Button>
             ) : (

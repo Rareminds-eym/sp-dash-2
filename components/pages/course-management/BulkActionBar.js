@@ -12,7 +12,7 @@ import {
     AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 
-export function BulkActionBar({ selectedCount, onClearSelection, onDelete, isDeleting, totalCourses, onSelectAll }) {
+export function BulkActionBar({ selectedCount, onClearSelection, onDelete, isDeleting, isSelecting, totalCourses, onSelectAll }) {
     if (selectedCount === 0) return null
 
     return (
@@ -34,9 +34,17 @@ export function BulkActionBar({ selectedCount, onClearSelection, onDelete, isDel
                             variant="ghost"
                             size="sm"
                             onClick={onSelectAll}
-                            className="text-white hover:bg-blue-700"
+                            disabled={isSelecting}
+                            className="text-white hover:bg-blue-700 disabled:opacity-70"
                         >
-                            Select All ({totalCourses})
+                            {isSelecting ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Selecting all...
+                                </>
+                            ) : (
+                                `Select All (${totalCourses})`
+                            )}
                         </Button>
                     )}
                 </div>
