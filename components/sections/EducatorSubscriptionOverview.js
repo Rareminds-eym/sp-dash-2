@@ -84,6 +84,8 @@ export function EducatorSubscriptionOverview() {
   const [isLoading, setIsLoading] = useState(true)
   const [isExporting, setIsExporting] = useState(false)
   const [error, setError] = useState(null)
+  // Bumped by the Retry button so the effect below re-runs (and cancels any older request).
+  const [retryCount, setRetryCount] = useState(0)
 
   // One request per page/filter change; the backend returns only that page.
   const fetchEducators = useCallback(async (signal) => {
@@ -104,17 +106,18 @@ export function EducatorSubscriptionOverview() {
       setEducators(Array.isArray(result.data) ? result.data : [])
       setPagination(result.pagination || { page, limit: pageSize, total: 0, totalPages: 0 })
     } catch (err) {
-      if (err.name !== 'AbortError') setError(err.message)
+      if (!signal?.aborted && err.name !== 'AbortError') setError(err.message)
     } finally {
       if (!signal?.aborted) setIsLoading(false)
     }
   }, [filters, page])
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: retryCount only re-runs the fetch when Retry is clicked
   useEffect(() => {
     const controller = new AbortController()
     fetchEducators(controller.signal)
     return () => controller.abort()
-  }, [fetchEducators])
+  }, [fetchEducators, retryCount])
 
   const totalPages = Math.max(1, pagination.totalPages)
 
@@ -172,7 +175,7 @@ export function EducatorSubscriptionOverview() {
             <p className="font-medium">Error loading educator subscriptions</p>
             <p className="text-sm">{error}</p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => fetchEducators()}>Retry</Button>
+          <Button variant="outline" size="sm" onClick={() => setRetryCount((count) => count + 1)}>Retry</Button>
         </div>
       )}
 
