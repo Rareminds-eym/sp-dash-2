@@ -3,6 +3,12 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { addCacheHeaders } from '@/lib/services/cacheService';
 import { handleError } from '@/lib/middleware/errorHandler';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
+import {
+    buildCourseSearchOrFilter,
+    FETCH_ALL_MAX_IDS,
+    parsePositiveInt,
+    validateHierarchyPayload,
+} from '@/lib/services/course-resource-validation';
 import { z } from 'zod';
 
 const CourseSchema = z.object({
@@ -34,10 +40,11 @@ export async function GET(request) {
 
         const url = new URL(request.url);
 
-        // Pagination parameters
-        const page = parseInt(url.searchParams.get('page') || '1');
-        const limit = parseInt(url.searchParams.get('limit') || '20');
+        // Pagination parameters (validated: positive ints, bounded limit)
+        const page = parsePositiveInt(url.searchParams.get('page'), 1);
+        const limit = Math.min(parsePositiveInt(url.searchParams.get('limit'), 20), 100);
         const offset = (page - 1) * limit;
+        const fetchAll = url.searchParams.get('all') === 'true';
 
         // Filter parameters (using existing column names)
         const statusFilter = url.searchParams.get('approval_status'); // maps to status column
@@ -50,8 +57,9 @@ export async function GET(request) {
             .from('courses')
             .select(`
                 course_id, title, code, description, thumbnail, status, approval_status, 
-                duration, university, category, credits, target_outcomes, educator_id, 
+                duration, university, category, credits, target_outcomes, skills_mapped, educator_id, 
                 created_at, updated_at,
+                course_skills (skill_name),
                 admin_users (
                     id,
                     users (
@@ -79,7 +87,7 @@ export async function GET(request) {
         }
 
         if (searchTerm) {
-            query = query.or(`title.ilike.%${searchTerm}%,code.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+            query = query.or(buildCourseSearchOrFilter(searchTerm));
         }
 
         // Apply sorting using existing columns
@@ -105,8 +113,10 @@ export async function GET(request) {
                 break;
         }
 
-        // Apply pagination
-        query = query.range(offset, offset + limit - 1);
+        // Add pagination after the filters and sorting have been applied.
+        if (!fetchAll) {
+            query = query.range(offset, offset + limit - 1);
+        }
 
         const { data: courses, error, count } = await query;
 
@@ -128,7 +138,7 @@ export async function GET(request) {
         }
 
         // If offset is beyond total count, return empty result
-        if (count !== null && offset >= count) {
+        if (!fetchAll && count !== null && offset >= count) {
             const response = NextResponse.json({
                 data: [],
                 pagination: {
@@ -138,7 +148,7 @@ export async function GET(request) {
                     totalPages: Math.ceil(count / limit)
                 }
             });
-            return addCacheHeaders(response, 'static');
+            return addCacheHeaders(response, 'private');
         }
 
         // Deduplicate courses by course_id
@@ -170,6 +180,7 @@ export async function GET(request) {
                 category: c.category,
                 thumbnail_url: c.thumbnail,
                 target_outcomes: c.target_outcomes,
+                skillsCovered: (c.course_skills || []).map(skill => skill.skill_name).filter(Boolean),
                 approval_status: c.approval_status || 'pending',
                 status: c.status,
                 educator_id: c.educator_id,
@@ -179,17 +190,86 @@ export async function GET(request) {
             };
         });
 
+        const pagination = {
+            page,
+            limit,
+            total: count || 0,
+            totalPages: Math.ceil((count || 0) / limit)
+        };
+
+        if (fetchAll) {
+            // Bounded ID-only selection for bulk-select flows. Never loads full
+            // course objects + educator joins; hard-capped so the UI must
+            // narrow filters instead of downloading the whole catalog.
+            if (count !== null && count > FETCH_ALL_MAX_IDS) {
+                return NextResponse.json(
+                    {
+                        error: `Selection too large (${count} courses). Narrow filters to under ${FETCH_ALL_MAX_IDS} courses.`,
+                        total: count,
+                    },
+                    { status: 400 }
+                );
+            }
+            const idPageSize = 1000;
+            const totalPages = Math.ceil((count || 0) / idPageSize);
+            const allCourses = [];
+
+            for (let currentPage = 1; currentPage <= totalPages; currentPage += 1) {
+                let idQuery = supabaseAdmin
+                    .from('courses')
+                    .select('course_id, title', { count: 'exact' })
+                    .is('deleted_at', null)
+                    .range((currentPage - 1) * idPageSize, currentPage * idPageSize - 1);
+
+                if (statusFilter) idQuery = idQuery.eq('approval_status', statusFilter);
+                if (universityFilter && universityFilter !== 'all') idQuery = idQuery.eq('university', universityFilter);
+                if (categoryFilter && categoryFilter !== 'all') idQuery = idQuery.eq('category', categoryFilter);
+                if (searchTerm) idQuery = idQuery.or(buildCourseSearchOrFilter(searchTerm));
+
+                switch (sortBy) {
+                    case 'name-asc': idQuery = idQuery.order('title', { ascending: true }); break;
+                    case 'name-desc': idQuery = idQuery.order('title', { ascending: false }); break;
+                    case 'university-asc': idQuery = idQuery.order('university', { ascending: true }); break;
+                    case 'credits-desc': idQuery = idQuery.order('credits', { ascending: false, nullsFirst: false }); break;
+                    case 'date-oldest': idQuery = idQuery.order('created_at', { ascending: true }); break;
+                    case 'date-newest':
+                    default: idQuery = idQuery.order('created_at', { ascending: false }); break;
+                }
+
+                const { data: pageCourses, error: pageError } = await idQuery;
+                if (pageError) {
+                    console.error('Error fetching all courses:', pageError);
+                    return NextResponse.json({ error: 'Failed to fetch courses', details: pageError.message }, { status: 500 });
+                }
+
+                for (const course of pageCourses || []) {
+                    allCourses.push({ id: course.course_id, name: course.title });
+                    if (allCourses.length > FETCH_ALL_MAX_IDS) {
+                        return NextResponse.json(
+                            {
+                                error: `Selection too large. Narrow filters to under ${FETCH_ALL_MAX_IDS} courses.`,
+                                total: count,
+                            },
+                            { status: 400 }
+                        );
+                    }
+                }
+            }
+
+            return addCacheHeaders(NextResponse.json({
+                data: allCourses,
+                pagination: { ...pagination, limit: idPageSize, totalPages },
+            }), 'private');
+        }
+
         const response = NextResponse.json({
             data: mapped,
-            pagination: {
-                page,
-                limit,
-                total: count || 0,
-                totalPages: Math.ceil((count || 0) / limit)
-            }
+            pagination
         });
 
-        return addCacheHeaders(response, 'static');
+        // Authenticated, user-specific listing: private cache only so one
+        // user's course data can never be served to another via shared caches.
+        return addCacheHeaders(response, 'private');
     } catch (error) {
         return handleError(error, 'Courses');
     }
@@ -247,6 +327,19 @@ export async function POST(request) {
             thumbnail, university, category,
             skillsCovered, linkedClasses, modules
         } = validationResult.data;
+
+        // Same canonical hierarchy contract as PUT/bulk: reject malformed or
+        // unsafe nested payloads before any insert (create differences allowed
+        // via explicit payload, never via skipped validation).
+        if (modules.length > 0) {
+            const hierarchyError = validateHierarchyPayload(modules);
+            if (hierarchyError) {
+                return NextResponse.json(
+                    { error: 'Invalid course hierarchy', details: hierarchyError },
+                    { status: 400 }
+                );
+            }
+        }
 
         // Role-based privilege separation
         const userRole = user?.role || (user?.roles && user.roles[0]) || '';
@@ -374,7 +467,7 @@ export async function POST(request) {
                         course_id: courseId,
                         title: mod.title,
                         description: mod.description || '',
-                        order_index: mod.order || 0,
+                        order_index: mod.order ?? mod.orderIndex ?? 0,
                         skill_tags: mod.skillTags || [],
                         activities: mod.activities || []
                     })
@@ -400,7 +493,7 @@ export async function POST(request) {
                                 description: lesson.description || '',
                                 content: lesson.content || '',
                                 duration: lesson.duration || '',
-                                order_index: lesson.order || 0
+                                order_index: lesson.order ?? lesson.orderIndex ?? 0
                             })
                             .select()
                             .single();
@@ -420,10 +513,10 @@ export async function POST(request) {
                                 name: res.name,
                                 type: res.type,
                                 url: res.url,
-                                file_size: res.size,
-                                thumbnail_url: res.thumbnailUrl,
-                                embed_url: res.embedUrl,
-                                order_index: index
+                                file_size: res.size ?? res.fileSize ?? null,
+                                thumbnail_url: res.thumbnailUrl ?? res.thumbnail_url ?? null,
+                                embed_url: res.embedUrl ?? res.embed_url ?? null,
+                                order_index: res.order ?? res.orderIndex ?? index
                             }));
                             const { error: resourceError } = await supabaseAdmin.from('lesson_resources').insert(resourcesToInsert);
                             if (resourceError) {

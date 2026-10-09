@@ -2,16 +2,24 @@
 
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
-import { GraduationCap, Plus, Download } from 'lucide-react'
+import { GraduationCap, Plus, Download, FileUp, ChevronDown, FileSpreadsheet, BookOpen } from 'lucide-react'
 
 import { useState, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
 
 // Import modular components
 import { BulkActionBar } from './course-management/BulkActionBar'
 import { CourseFilters } from './course-management/CourseFilters'
 import { CourseList } from './course-management/CourseList'
 import { CreateCourseModal } from './course-management/CreateCourseModal'
+import { BulkResourceUpdateModal } from './course-management/BulkResourceUpdateModal'
+import { BulkCourseUploadModal } from './course-management/BulkCourseUploadModal'
 import { DeleteConfirmationDialog } from './course-management/DeleteConfirmationDialog'
 import { CourseDetailsDialog } from './course-management/CourseDetailsDialog'
 
@@ -47,6 +55,7 @@ export default function CourseManagementPage() {
     // Phase 2: Bulk operations
     const [selectedCourses, setSelectedCourses] = useState(new Set())
     const [bulkDeleting, setBulkDeleting] = useState(false)
+    const [selectingAll, setSelectingAll] = useState(false)
 
     // Universities state
     const [universities, setUniversities] = useState([])
@@ -61,6 +70,18 @@ export default function CourseManagementPage() {
     // Create course modal state
     const [showCreateModal, setShowCreateModal] = useState(false)
 
+    // Bulk resource update modal state
+    const [showBulkResourcesModal, setShowBulkResourcesModal] = useState(false)
+    const [bulkModalStep, setBulkModalStep] = useState(1)
+
+    // Bulk course upload modal state
+    const [showBulkCourseModal, setShowBulkCourseModal] = useState(false)
+
+    const openBulkModal = (step = 1) => {
+        setBulkModalStep(step)
+        setShowBulkResourcesModal(true)
+    }
+
     // === Helper Functions ===
 
     // Export to CSV
@@ -69,10 +90,14 @@ export default function CourseManagementPage() {
             // Create CSV header
             const headers = ['Course Name', 'Course Code', 'University', 'Category', 'Status', 'Duration', 'Credits', 'Created Date', 'Description']
 
-            // Helper to escape CSV fields
+            // Helper to escape CSV fields + neutralize formula injection.
+            // Spreadsheet apps evaluate cells starting with = + - @ (plus
+            // leading whitespace/control chars) as formulas; prefix with a
+            // single quote so user-controlled values stay inert text.
             const escapeCsv = (field) => {
                 if (field === null || field === undefined) return ''
-                const stringField = String(field)
+                let stringField = String(field).replace(/^[\s\u0000-\u0020]+/, '')
+                if (/^[=+\-@]/.test(stringField)) stringField = `'${stringField}`
                 return `"${stringField.replace(/"/g, '""')}"`
             }
 
@@ -129,10 +154,47 @@ export default function CourseManagementPage() {
         })
     }
 
-    // Select all courses
-    const handleSelectAll = () => {
-        const allCourseIds = new Set(courses.map(course => course.id))
-        setSelectedCourses(allCourseIds)
+    // Select all courses across every page of the current filtered result
+    const handleSelectAll = async () => {
+        setSelectingAll(true)
+
+        try {
+            const params = new URLSearchParams({
+            all: 'true',
+            limit: '1000',
+            sort: sortBy,
+            t: Date.now().toString()
+        })
+
+        if (debouncedSearchQuery) params.append('search', debouncedSearchQuery)
+        if (filterUniversity !== 'all') params.append('university', filterUniversity)
+        if (filterCategory !== 'all') params.append('category', filterCategory)
+        if (filterStatus !== 'all') params.append('approval_status', filterStatus)
+
+            const response = await fetch(`/api/courses?${params.toString()}`, { cache: 'no-store' })
+            const data = await response.json()
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to load all courses for selection')
+            }
+            if (!Array.isArray(data.data)) {
+                throw new Error(data.error || 'Failed to load all courses for selection')
+            }
+
+            setSelectedCourses(new Set(data.data.map(course => course.id)))
+            toast({
+                title: 'Selection complete',
+                description: `Selected ${data.data.length} course(s) across all pages.`
+            })
+        } catch (error) {
+            toast({
+                title: 'Selection failed',
+                description: error.message || 'Failed to select all courses',
+                variant: 'destructive'
+            })
+        } finally {
+            setSelectingAll(false)
+        }
     }
 
     // Bulk delete
@@ -350,6 +412,7 @@ export default function CourseManagementPage() {
                 onClearSelection={() => setSelectedCourses(new Set())}
                 onDelete={handleBulkDelete}
                 isDeleting={bulkDeleting}
+                isSelecting={selectingAll}
                 totalCourses={totalCourses}
                 onSelectAll={handleSelectAll}
             />
@@ -380,6 +443,62 @@ export default function CourseManagementPage() {
                         <Download className="h-4 w-4 mr-2" />
                         Export CSV
                     </Button>
+
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="outline"
+                                className="gap-2"
+                                title="Bulk resource actions"
+                            >
+                                <FileUp className="h-4 w-4" />
+                                Bulk Resources
+                                <ChevronDown className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-72 p-2">
+                            <DropdownMenuItem
+                                onClick={() => openBulkModal(1)}
+                                disabled={selectedCourses.size === 0}
+                                className="flex flex-col items-start gap-1 rounded-lg px-4 py-3"
+                            >
+                                <span className="flex items-center gap-2 font-medium">
+                                    <FileSpreadsheet className="h-4 w-4" />
+                                    Bulk Resources
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                    {selectedCourses.size > 0
+                                        ? `Add resources to ${selectedCourses.size} selected course(s)`
+                                        : 'Select courses first'}
+                                </span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={() => openBulkModal(3)}
+                                className="flex flex-col items-start gap-1 rounded-lg px-4 py-3"
+                            >
+                                <span className="flex items-center gap-2 font-medium">
+                                    <FileUp className="h-4 w-4" />
+                                    Import Template
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                    Import a filled workbook using its embedded IDs
+                                </span>
+                            </DropdownMenuItem>
+                            <div className="h-px bg-gray-200 dark:bg-gray-700 my-1" />
+                            <DropdownMenuItem
+                                onClick={() => setShowBulkCourseModal(true)}
+                                className="flex flex-col items-start gap-1 rounded-lg px-4 py-3"
+                            >
+                                <span className="flex items-center gap-2 font-medium">
+                                    <BookOpen className="h-4 w-4" />
+                                    Import New Courses
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                    Create brand new courses with modules and lessons
+                                </span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
 
                     <Button
                         onClick={() => {
@@ -445,6 +564,25 @@ export default function CourseManagementPage() {
                 open={!!deletingCourse}
                 onOpenChange={() => setDeletingCourse(null)}
                 onConfirm={handleDelete}
+            />
+
+            <BulkResourceUpdateModal
+                open={showBulkResourcesModal}
+                onOpenChange={setShowBulkResourcesModal}
+                initialStep={bulkModalStep}
+                selectedCourses={Array.from(selectedCourses).map(id => ({ id }))}
+                onSuccess={() => {
+                    setSelectedCourses(new Set())
+                    fetchCourses(1, false)
+                }}
+            />
+
+            <BulkCourseUploadModal
+                open={showBulkCourseModal}
+                onOpenChange={setShowBulkCourseModal}
+                onSuccess={() => {
+                    fetchCourses(1, false)
+                }}
             />
 
             <CourseDetailsDialog

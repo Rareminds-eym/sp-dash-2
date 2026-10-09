@@ -62,6 +62,10 @@ id = "a162f140e4464515a8d5a27b5ebc6c6b"
 binding = "LTE_ASSETS"
 bucket_name = "lte"
 
+[[r2_buckets]]
+binding = "COURSE_ASSETS"
+bucket_name = "course-assets"
+
 [env.dev]
 name = "sp-dash-2"
 compatibility_date = "2026-09-24"
@@ -105,3 +109,7 @@ id = "00dd9c44924f413ca859ba9ad80b8aa7"
 [[env.dev.r2_buckets]]
 binding = "LTE_ASSETS"
 bucket_name = "lte-dev"
+
+[[env.dev.r2_buckets]]
+binding = "COURSE_ASSETS"
+bucket_name = "course-assets-dev"
