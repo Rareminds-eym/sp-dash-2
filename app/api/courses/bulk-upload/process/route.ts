@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createHash } from 'crypto';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getCourseAssetsBucket, CourseAssetsBindingError } from '@/lib/services/course-assets-r2';
@@ -10,17 +9,9 @@ import {
 } from '@/lib/services/queue-bulk-course-job';
 import {
   BULK_MAX_COURSES_PER_BATCH,
-  buildCourseAssetKey,
   chunkArray,
-  extensionOf,
-  formatFileSize,
   isUrlResourceType,
-  mimeTypeFor,
-  sanitizeFileName,
   SUPABASE_IN_CHUNK_SIZE,
-  validateExtensionForType,
-  validateFileSignature,
-  validateFileSize,
   validateResourceType,
   validateResourceUrl,
 } from '@/lib/services/course-resource-validation';
@@ -234,7 +225,11 @@ export async function POST(request: NextRequest) {
         throw error;
       }
     }
-    const fileByName = new Map<string, File>();
+    // Processing jobs carry JSON only (queue-bulk-course-job stages
+    // payload.json). Resource bytes are never inline here: the frontend
+    // pre-queues files via queueResourceFiles (/api/courses/resource-upload
+    // → worker → R2) and the payload must already contain the resulting
+    // resource_url. There is intentionally no second upload path.
 
     // ---- Centralized pre-validation (no writes before this point) ----
     const rowErrors: Array<{ course: string; row?: number; error: string }> = [];
@@ -318,6 +313,9 @@ export async function POST(request: NextRequest) {
     for (const courseData of courses) {
       const courseCode = String(courseData.course_code).trim();
       let courseId: string | null = null;
+      // Retained for rollbackCourse signature: process creates no R2 objects
+      // itself (pre-queued assets live outside this route), so this stays
+      // empty and rollback only removes DB rows created by this course.
       const uploadedKeys: string[] = [];
       try {
         const { data: newCourse, error: courseError } = await supabaseAdmin
@@ -386,63 +384,32 @@ export async function POST(request: NextRequest) {
             totalLessons++;
 
             for (const resourceData of lessonData.resources) {
-              let uploadedKey: string | null = null;
               try {
                 const type = String(resourceData.resource_type || '').toLowerCase();
                 const typeError = validateResourceType(type);
                 if (typeError) throw new Error(typeError);
                 if (!String(resourceData.resource_name || '').trim()) throw new Error('resource_name is required');
 
-                let url = (resourceData.resource_url || '').trim();
-                let fileSize = resourceData.file_size || '';
+                const url = (resourceData.resource_url || '').trim();
+                const fileSize = resourceData.file_size || '';
 
+                // File-based rows must arrive with a previously queued R2
+                // reference. queueResourceFiles uploads bytes before process
+                // and stamps resource_url; process never accepts inline file
+                // bytes (payloads are JSON via payload.json staging).
                 if (!url && resourceData.file_path) {
                   if (isUrlResourceType(type)) {
                     throw new Error(`Resource type '${type}' requires resource_url, not file_path`);
                   }
-                  const baseName = resourceData.file_path.split('/').pop() || resourceData.file_path;
-                  const file = fileByName.get(resourceData.file_path) || fileByName.get(baseName);
-                  if (!file) throw new Error(`Uploaded file not found for file_path '${resourceData.file_path}'`);
-
-                  const sizeError = validateFileSize(file.size, type);
-                  if (sizeError) throw new Error(sizeError);
-                  const originalName = sanitizeFileName(file.name);
-                  const extError = validateExtensionForType(originalName, type);
-                  if (extError) throw new Error(extError);
-
-                  const bytes = new Uint8Array(await file.arrayBuffer());
-                  if (bytes.byteLength !== file.size) {
-                    throw new Error(`Upload '${originalName}' was truncated, please retry`);
-                  }
-                  const signatureError = validateFileSignature(bytes, originalName);
-                  if (signatureError) throw new Error(signatureError);
-
-                  const contentHash = createHash('sha256').update(bytes).digest('hex');
-                  const ext = extensionOf(originalName);
-                  const stem = (ext ? originalName.slice(0, -ext.length) : originalName) || 'file';
-                  const now = new Date();
-                  uploadedKey = buildCourseAssetKey(stem, contentHash, ext, now);
-                  const mimeType = mimeTypeFor(originalName, file.type);
-
-                  await bucket.put(uploadedKey, bytes, {
-                    httpMetadata: { contentType: mimeType },
-                    customMetadata: {
-                      originalFileName: originalName,
-                      uploadedBy: uploaderId,
-                      uploadedAt: now.toISOString(),
-                      resourceType: type,
-                      resourceName: String(resourceData.resource_name).slice(0, 255),
-                      contentHash,
-                    },
-                  });
-                  uploadedKeys.push(uploadedKey);
-
-                  url = `/api/courses/assets?key=${encodeURIComponent(uploadedKey)}`;
-                  fileSize = formatFileSize(file.size);
+                  throw new Error(
+                    `Uploaded file not found for file_path '${resourceData.file_path}'. Upload resource files through the Course Management queue before processing.`
+                  );
                 }
 
-                if (!url) throw new Error('Either resource_url or a matching uploaded file is required');
+                if (!url) throw new Error('Either resource_url or a previously queued file reference is required');
                 // Re-validate the FINAL URL (preview may have passed with file_path).
+                // Only https:// external URLs and app-controlled
+                // /api/courses/assets?key=... references are accepted.
                 const urlError = validateResourceUrl(url, type);
                 if (urlError) throw new Error(urlError);
 
@@ -457,16 +424,8 @@ export async function POST(request: NextRequest) {
                 if (insertError) throw new Error(insertError.message);
                 totalResourcesInserted++;
               } catch (err) {
-                if (uploadedKey) {
-                  try {
-                    await bucket.delete(uploadedKey);
-                  } catch (cleanupError) {
-                    logger.warn('Failed to clean up orphaned R2 object', { uploadedKey, cleanupError });
-                  }
-                  const idx = uploadedKeys.indexOf(uploadedKey);
-                  if (idx >= 0) uploadedKeys.splice(idx, 1);
-                }
-                // Per-row failure reason (course continues; row reported).
+                // Per-row failure: nothing is persisted for this row and the
+                // reason is reported (course continues; row reported).
                 errors.push({ course: courseCode, error: (err as Error).message });
                 logger.warn(`Resource creation failed for lesson ${lessonData.lesson_title}`, { error: err });
               }
