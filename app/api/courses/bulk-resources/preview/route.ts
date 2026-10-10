@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as ExcelJS from 'exceljs';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
+import { isCourseUploadWorkerRequest } from '@/lib/services/course-upload-runtime';
+import {
+  CourseManagementQueueUnavailableError,
+  queueBulkCourseManagementJob,
+} from '@/lib/services/queue-bulk-course-job';
 import {
   ParsedBulkResource,
   saveBulkPreview,
@@ -8,6 +13,7 @@ import {
 import {
   BULK_PREVIEW_MAX_BYTES,
   BULK_PREVIEW_MAX_ROWS,
+  BULK_MAX_FILES_PER_REQUEST,
   CANONICAL_RESOURCE_TYPE_IDS,
   validateResourceType,
   validateResourceUrl,
@@ -35,13 +41,19 @@ function cellValue(cell: ExcelJS.Cell): string {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { user, error: authError } = await authenticateSSORequest(request, [
-      'admin',
-      'super_admin',
-      'rm_admin',
-    ]);
-    if (authError || !user) {
-      return authError || NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    const isInternal = await isCourseUploadWorkerRequest(request);
+    let uploaderId = '';
+    if (!isInternal && process.env.NODE_ENV !== 'development') {
+      const { user, error: authError } = await authenticateSSORequest(request, [
+        'admin',
+        'super_admin',
+        'rm_admin',
+      ]);
+      if (authError || !user) {
+        return authError || NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+      }
+      uploaderId = String((user as { userId?: string; id?: string }).userId ||
+        (user as { id?: string }).id || 'unknown');
     }
 
     const formData = await request.formData();
@@ -51,7 +63,32 @@ export async function POST(request: NextRequest) {
     }
 
     const uploadedFiles: File[] = formData.getAll('files').filter((f): f is File => f instanceof File);
-    const uploadedNames = new Set(uploadedFiles.map((f) => f.name));
+    let suppliedFileNames: string[] = [];
+    const fileNamesRaw = formData.get('fileNames');
+    if (typeof fileNamesRaw === 'string') {
+      try {
+        const fileNames = JSON.parse(fileNamesRaw);
+        if (!Array.isArray(fileNames) || fileNames.some((name) => typeof name !== 'string')) {
+          throw new Error('fileNames must be a JSON array of file names.');
+        }
+        suppliedFileNames = fileNames;
+      } catch (error) {
+        return NextResponse.json(
+          { success: false, error: error instanceof Error ? error.message : 'fileNames must be valid JSON.' },
+          { status: 400 },
+        );
+      }
+    }
+    if (uploadedFiles.length + suppliedFileNames.length > BULK_MAX_FILES_PER_REQUEST) {
+      return NextResponse.json(
+        { success: false, error: `Maximum ${BULK_MAX_FILES_PER_REQUEST} resource files per import.` },
+        { status: 400 },
+      );
+    }
+    const uploadedNames = new Set([
+      ...uploadedFiles.map((file) => file.name),
+      ...suppliedFileNames,
+    ]);
 
     // Reject oversized workbooks before expensive parsing (Worker memory bound).
     if (template.size > BULK_PREVIEW_MAX_BYTES) {
@@ -59,6 +96,27 @@ export async function POST(request: NextRequest) {
         { success: false, error: `Template exceeds ${(BULK_PREVIEW_MAX_BYTES / 1024 / 1024).toFixed(0)} MB. Split the workbook and retry.` },
         { status: 413 }
       );
+    }
+
+    if (!isInternal && process.env.NODE_ENV !== 'development') {
+      try {
+        const jobId = await queueBulkCourseManagementJob({
+          kind: 'bulk-resource-preview',
+          ownerId: uploaderId,
+          fileName: template.name,
+          fileNames: Array.from(uploadedNames),
+          template,
+        });
+        return NextResponse.json(
+          { success: true, jobId, status: 'queued' },
+          { status: 202 },
+        );
+      } catch (error) {
+        if (error instanceof CourseManagementQueueUnavailableError) {
+          return NextResponse.json({ success: false, error: error.message }, { status: 503 });
+        }
+        throw error;
+      }
     }
 
     const arrayBuffer = await template.arrayBuffer();
@@ -187,7 +245,7 @@ export async function POST(request: NextRequest) {
 
     if (resources.length === 0) {
       const errorSummary = errors.length > 0
-        ? (filePathRows > 0 && uploadedFiles.length === 0
+        ? (filePathRows > 0 && uploadedNames.size === 0
           ? `No resource files were uploaded. ${filePathRows} row(s) use file_path and require matching files in the Resource Files selection.`
           : `All ${errors.length} row(s) have errors. First 5: ${errors.slice(0, 5).map(e => `Row ${e.row}: ${e.error}`).join('; ')}`)
         : 'Template has no filled rows. Please fill in resource_name, resource_type, and resource_url or file_path for each lesson.';

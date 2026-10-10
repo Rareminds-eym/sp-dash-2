@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/hooks/use-toast'
+import { queueResourceFiles } from './queue-resource-files'
+import { waitForCourseUploadJob } from '@/lib/services/course-upload-client'
 import {
   Download, FileSpreadsheet, Upload, CheckCircle2, Loader2,
   ChevronLeft, ChevronRight, X, FileUp, AlertCircle
@@ -113,13 +115,20 @@ export function BulkResourceUpdateModal({ open, onOpenChange, selectedCourses = 
     try {
       const formData = new FormData()
       formData.append('template', uploadedFile)
-      for (const f of uploadedFiles) formData.append('files', f)
+      formData.append('fileNames', JSON.stringify(uploadedFiles.map((file) => file.name)))
       const res = await fetch('/api/courses/bulk-resources/preview', { method: 'POST', body: formData })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok || !data.success) {
+      const responseData = await res.json().catch(() => ({}))
+      if (!res.ok || !responseData.success) {
+        const data = responseData
         setPreviewErrors(Array.isArray(data.errors) ? data.errors : [])
         const details = data.details || data.errors?.map((error) => `Row ${error.row}: ${error.error}`).join('; ')
         throw new Error(details || data.error || `Preview failed (Status ${res.status})`)
+      }
+      const data = responseData.jobId
+        ? await waitForCourseUploadJob(responseData.jobId, 'resource workbook preview')
+        : responseData
+      if (responseData.jobId) {
+        toast({ title: 'Preview queued', description: 'The workbook is being parsed in the background.' })
       }
       setPreviewData({ ...data, allResources: data.resources || data.preview || [] })
       toast({ title: 'Template parsed', description: `${data.totalResources} resource(s) found across ${data.affectedCourses} course(s)` })
@@ -148,12 +157,21 @@ export function BulkResourceUpdateModal({ open, onOpenChange, selectedCourses = 
     const resources = previewData.allResources?.length > 0 ? previewData.allResources : previewData.preview
     setLoading(true)
     try {
+      const queuedResources = await queueResourceFiles(resources, uploadedFiles)
       const formData = new FormData()
-      formData.append('payload', JSON.stringify({ previewId: previewData.previewId, resources }))
-      for (const f of uploadedFiles) formData.append('files', f)
+      formData.append('payload', JSON.stringify({ previewId: previewData.previewId, resources: queuedResources }))
       const res = await fetch('/api/courses/bulk-resources/process', { method: 'POST', body: formData })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok || !data.success) throw new Error(data.error || data.details || `Processing failed (Status ${res.status})`)
+      const queued = await res.json().catch(() => ({}))
+      if (!res.ok || !queued.success) {
+        throw new Error(queued.error || queued.details || `Processing failed (Status ${res.status})`)
+      }
+      const data = queued.jobId
+        ? await waitForCourseUploadJob(queued.jobId, 'course resource update')
+        : queued
+      if (queued.jobId) {
+        toast({ title: 'Resource update queued', description: 'Course resources are being updated in the background.' })
+      }
+      if (!data.success) throw new Error(data.error || data.details || 'Course resource update failed.')
       const parts = [`${data.processedResources} resource(s) added`]
       if (data.skippedDuplicates > 0) parts.push(`${data.skippedDuplicates} duplicate(s) skipped`)
       if (data.errors?.length) parts.push(`${data.errors.length} failed`)

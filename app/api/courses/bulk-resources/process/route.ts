@@ -4,8 +4,12 @@ import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getCourseAssetsBucket, CourseAssetsBindingError } from '@/lib/services/course-assets-r2';
 import { getBulkPreview } from '@/lib/services/bulk-preview-store';
+import { isCourseUploadWorkerRequest } from '@/lib/services/course-upload-runtime';
 import {
-  BULK_MAX_FILES_PER_REQUEST,
+  CourseManagementQueueUnavailableError,
+  queueBulkCourseManagementJob,
+} from '@/lib/services/queue-bulk-course-job';
+import {
   BULK_MAX_RESOURCES_PER_BATCH,
   buildCourseAssetKey,
   chunkArray,
@@ -44,8 +48,8 @@ interface IncomingResource {
 }
 
 /**
- * POST /api/courses/bulk-resources/process - Upload files to R2 and insert lesson_resources.
- * multipart/form-data: payload (JSON { previewId, resources }), files (File[], optional)
+ * POST /api/courses/bulk-resources/process - Queue resource validation and lesson_resources inserts.
+ * multipart/form-data: payload (JSON { previewId, resources }); files are queued separately.
  *
  * Consistency: applies the SAME canonical validation as preview + single upload.
  * Safety: bounded batches, chunked lesson validation, per-file errors, orphan
@@ -54,24 +58,43 @@ interface IncomingResource {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { user, error: authError } = await authenticateSSORequest(request, [
-      'admin',
-      'super_admin',
-      'rm_admin',
-    ]);
-    if (authError || !user) {
-      return authError || NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const formData = await request.formData();
-    const payloadRaw = formData.get('payload');
-    if (!payloadRaw || typeof payloadRaw !== 'string') {
-      return NextResponse.json({ success: false, error: 'payload JSON field is required' }, { status: 400 });
+    const isInternal = await isCourseUploadWorkerRequest(request);
+    let uploaderId = '';
+    let formData: FormData | null = null;
+    if (isInternal) {
+      uploaderId = request.headers.get('x-course-upload-uploader-id') || 'unknown';
+    } else {
+      const { user, error: authError } = await authenticateSSORequest(request, [
+        'admin',
+        'super_admin',
+        'rm_admin',
+      ]);
+      if (authError || !user) {
+        return authError || NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+      }
+      uploaderId = String((user as { userId?: string; id?: string }).userId ||
+        (user as { id?: string }).id || 'unknown');
+      formData = await request.formData();
     }
 
     let payload: { previewId?: string; resources?: IncomingResource[] };
     try {
-      payload = JSON.parse(payloadRaw);
+      if (isInternal) {
+        payload = await request.json();
+      } else {
+        const payloadRaw = formData?.get('payload');
+        if (!payloadRaw || typeof payloadRaw !== 'string') {
+          return NextResponse.json({ success: false, error: 'payload JSON field is required' }, { status: 400 });
+        }
+        payload = JSON.parse(payloadRaw);
+        const files = formData?.getAll('files').filter((f): f is File => f instanceof File) || [];
+        if (files.length > 0) {
+          return NextResponse.json(
+            { success: false, error: 'Course resource files must be uploaded through the Course Management queue before processing.' },
+            { status: 400 },
+          );
+        }
+      }
     } catch {
       return NextResponse.json({ success: false, error: 'payload must be valid JSON' }, { status: 400 });
     }
@@ -96,19 +119,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const files = formData.getAll('files').filter((f): f is File => f instanceof File);
-    if (files.length > BULK_MAX_FILES_PER_REQUEST) {
-      return NextResponse.json(
-        { success: false, error: `Maximum ${BULK_MAX_FILES_PER_REQUEST} files per request. Split the upload and retry.` },
-        { status: 400 }
-      );
+    if (!isInternal && process.env.NODE_ENV !== 'development') {
+      try {
+        const jobId = await queueBulkCourseManagementJob({
+          kind: 'bulk-resource-process',
+          ownerId: uploaderId,
+          fileName: 'Course resource update',
+          payload,
+        });
+        return NextResponse.json(
+          { success: true, jobId, status: 'queued' },
+          { status: 202 },
+        );
+      } catch (error) {
+        if (error instanceof CourseManagementQueueUnavailableError) {
+          return NextResponse.json({ success: false, error: error.message }, { status: 503 });
+        }
+        throw error;
+      }
     }
     const fileByName = new Map<string, File>();
-    for (const f of files) {
-      fileByName.set(f.name, f);
-      const base = f.name.split('/').pop() || f.name;
-      if (!fileByName.has(base)) fileByName.set(base, f);
-    }
 
     const bucket = await getCourseAssetsBucket().catch((err) => {
       if (err instanceof CourseAssetsBindingError) return null;
@@ -120,8 +150,6 @@ export async function POST(request: NextRequest) {
         { status: 503 }
       );
     }
-    const uploaderId = String((user as { userId?: string; id?: string }).userId || (user as { id?: string }).id || 'unknown');
-
     // Validate all lesson_ids exist up-front (chunked to respect URL limits)
     const lessonIds = Array.from(new Set(resources.map((r) => r.lesson_id).filter(Boolean)));
     const validLessonIds = new Set<string>();
