@@ -3,9 +3,13 @@ import { createHash } from 'crypto';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getCourseAssetsBucket, CourseAssetsBindingError } from '@/lib/services/course-assets-r2';
+import { isCourseUploadWorkerRequest } from '@/lib/services/course-upload-runtime';
+import {
+  CourseManagementQueueUnavailableError,
+  queueBulkCourseManagementJob,
+} from '@/lib/services/queue-bulk-course-job';
 import {
   BULK_MAX_COURSES_PER_BATCH,
-  BULK_MAX_FILES_PER_REQUEST,
   buildCourseAssetKey,
   chunkArray,
   extensionOf,
@@ -61,6 +65,7 @@ interface IncomingResource {
   resource_name: string;
   resource_type: string;
   resource_url?: string;
+  file_size?: string;
   file_path?: string;
   rowNumber?: number;
 }
@@ -159,24 +164,42 @@ async function rollbackCourse(courseId: string, uploadedKeys: string[], bucket: 
 
 export async function POST(request: NextRequest) {
   try {
-    const { user, error: authError } = await authenticateSSORequest(request, [
-      'admin',
-      'super_admin',
-      'rm_admin',
-    ]);
-    if (authError || !user) {
-      return authError || NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const formData = await request.formData();
-    const payloadRaw = formData.get('payload');
-    if (!payloadRaw || typeof payloadRaw !== 'string') {
-      return NextResponse.json({ success: false, error: 'payload JSON field is required' }, { status: 400 });
+    const isInternal = await isCourseUploadWorkerRequest(request);
+    let uploaderId = '';
+    if (isInternal) {
+      uploaderId = request.headers.get('x-course-upload-uploader-id') || 'unknown';
+    } else {
+      const { user, error: authError } = await authenticateSSORequest(request, [
+        'admin',
+        'super_admin',
+        'rm_admin',
+      ]);
+      if (authError || !user) {
+        return authError || NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+      }
+      uploaderId = String((user as { userId?: string; id?: string }).userId ||
+        (user as { id?: string }).id || 'unknown');
     }
 
     let payload: { previewId?: string; courses?: IncomingCourse[] };
     try {
-      payload = JSON.parse(payloadRaw);
+      if (isInternal) {
+        payload = await request.json();
+      } else {
+        const formData = await request.formData();
+        const payloadRaw = formData.get('payload');
+        if (!payloadRaw || typeof payloadRaw !== 'string') {
+          return NextResponse.json({ success: false, error: 'payload JSON field is required' }, { status: 400 });
+        }
+        payload = JSON.parse(payloadRaw);
+        const files = formData.getAll('files').filter((f): f is File => f instanceof File);
+        if (files.length > 0) {
+          return NextResponse.json(
+            { success: false, error: 'Course resource files must be uploaded through the Course Management queue before processing.' },
+            { status: 400 },
+          );
+        }
+      }
     } catch {
       return NextResponse.json({ success: false, error: 'payload must be valid JSON' }, { status: 400 });
     }
@@ -192,19 +215,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const files = formData.getAll('files').filter((f): f is File => f instanceof File);
-    if (files.length > BULK_MAX_FILES_PER_REQUEST) {
-      return NextResponse.json(
-        { success: false, error: `Maximum ${BULK_MAX_FILES_PER_REQUEST} files per request. Split the upload and retry.` },
-        { status: 400 }
-      );
+    if (!isInternal && process.env.NODE_ENV !== 'development') {
+      try {
+        const jobId = await queueBulkCourseManagementJob({
+          kind: 'bulk-course-process',
+          ownerId: uploaderId,
+          fileName: 'Course import',
+          payload,
+        });
+        return NextResponse.json(
+          { success: true, jobId, status: 'queued' },
+          { status: 202 },
+        );
+      } catch (error) {
+        if (error instanceof CourseManagementQueueUnavailableError) {
+          return NextResponse.json({ success: false, error: error.message }, { status: 503 });
+        }
+        throw error;
+      }
     }
     const fileByName = new Map<string, File>();
-    for (const f of files) {
-      fileByName.set(f.name, f);
-      const base = f.name.split('/').pop() || f.name;
-      if (!fileByName.has(base)) fileByName.set(base, f);
-    }
 
     // ---- Centralized pre-validation (no writes before this point) ----
     const rowErrors: Array<{ course: string; row?: number; error: string }> = [];
@@ -279,8 +309,6 @@ export async function POST(request: NextRequest) {
         { status: 503 }
       );
     }
-    const uploaderId = String((user as { userId?: string; id?: string }).userId || (user as { id?: string }).id || 'unknown');
-
     let processedCourses = 0;
     let totalModules = 0;
     let totalLessons = 0;
@@ -366,7 +394,7 @@ export async function POST(request: NextRequest) {
                 if (!String(resourceData.resource_name || '').trim()) throw new Error('resource_name is required');
 
                 let url = (resourceData.resource_url || '').trim();
-                let fileSize = '';
+                let fileSize = resourceData.file_size || '';
 
                 if (!url && resourceData.file_path) {
                   if (isUrlResourceType(type)) {

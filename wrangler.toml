@@ -17,8 +17,11 @@ SSO_WORKER_URL = "https://sso-api.dark-mode-d021.workers.dev"
 # Run these commands to add the secrets:
 #   wrangler secret put LTE_SERVICE_ROLE_KEY
 #   wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+#   wrangler secret put COURSE_UPLOAD_WORKER_TOKEN
 #   wrangler secret put NEXT_PUBLIC_SUPABASE_ANON_KEY
 #   wrangler secret put SKILLPASSPORT_SERVICE_ROLE_KEY (optional, falls back to SUPABASE_SERVICE_ROLE_KEY)
+#   wrangler queues create course-management-uploads
+#   wrangler queues create course-management-uploads-dev
 # ============================================================================
 
 [assets]
@@ -44,11 +47,22 @@ queue = "realtime-events-queue"
 binding = "LTE_ASSET_VALIDATION_QUEUE"
 queue = "lte-asset-validation"
 
+[[queues.producers]]
+binding = "COURSE_MANAGEMENT_UPLOAD_QUEUE"
+queue = "course-management-uploads"
+
 [[queues.consumers]]
 queue = "lte-asset-validation"
 max_batch_size = 2
 max_batch_timeout = 1
 max_concurrency = 10
+max_retries = 3
+
+[[queues.consumers]]
+queue = "course-management-uploads"
+max_batch_size = 5
+max_batch_timeout = 1
+max_concurrency = 5
 max_retries = 3
 
 # Rate limiting KV namespace
@@ -95,9 +109,20 @@ queue = "realtime-events-queue-dev"
 binding = "LTE_ASSET_VALIDATION_QUEUE"
 queue = "lte-asset-validation-dev"
 
+[[env.dev.queues.producers]]
+binding = "COURSE_MANAGEMENT_UPLOAD_QUEUE"
+queue = "course-management-uploads-dev"
+
 [[env.dev.queues.consumers]]
 queue = "lte-asset-validation-dev"
 max_batch_size = 2
+max_batch_timeout = 1
+max_concurrency = 5
+max_retries = 3
+
+[[env.dev.queues.consumers]]
+queue = "course-management-uploads-dev"
+max_batch_size = 5
 max_batch_timeout = 1
 max_concurrency = 5
 max_retries = 3

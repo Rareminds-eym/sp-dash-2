@@ -23,6 +23,7 @@ import {
   updateCourse
 } from '@/lib/services/coursesService'
 import { normalizeCourseHierarchy } from '@/lib/services/course-hierarchy'
+import { queueCourseFileUpload } from '@/lib/services/course-upload-client'
 import {
   COURSE_RESOURCE_TYPES,
   getAcceptedFileTypes,
@@ -242,13 +243,7 @@ export function CreateCourseModal({
     setUploadingResource(true)
     setErrors(prev => ({ ...prev, resource: undefined }))
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('resourceType', newResource.type)
-      formData.append('resourceName', newResource.name.trim())
-      const res = await fetch('/api/courses/resource-upload', { method: 'POST', body: formData })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok || !data.success) throw new Error(data.error || `Upload failed (Status ${res.status})`)
+      const data = await queueCourseFileUpload(file, newResource.type, newResource.name.trim())
       setNewResource(prev => ({ ...prev, url: data.r2Url, size: data.fileSize, r2Key: data.r2Key }))
     } catch (err) {
       setErrors(prev => ({ ...prev, resource: err.message || 'Failed to upload resource' }))
