@@ -44,6 +44,10 @@ binding = "MAINTENANCE_EVENTS_QUEUE"
 queue = "realtime-events-queue"
 
 [[queues.producers]]
+binding = "EMAIL_QUEUE"
+queue = "email-queue"
+
+[[queues.producers]]
 binding = "LTE_ASSET_VALIDATION_QUEUE"
 queue = "lte-asset-validation"
 
@@ -104,6 +108,10 @@ service = "sp-dash-2"
 [[env.dev.queues.producers]]
 binding = "MAINTENANCE_EVENTS_QUEUE"
 queue = "realtime-events-queue-dev"
+
+[[env.dev.queues.producers]]
+binding = "EMAIL_QUEUE"
+queue = "email-queue-dev"
 
 [[env.dev.queues.producers]]
 binding = "LTE_ASSET_VALIDATION_QUEUE"
