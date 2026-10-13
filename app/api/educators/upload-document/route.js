@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
 import { uploadEducatorDocument } from '@/lib/services/r2-educator-storage';
+import { requireEducatorAdmin } from '@/lib/educator-admin';
 
 /**
  * POST /api/educators/upload-document
  * Upload educator documents to R2 bucket
  */
 export async function POST(request) {
+  const auth = await requireEducatorAdmin(request);
+  if (auth.error) return auth.error;
   console.log('📤 [UPLOAD API] POST /api/educators/upload-document started')
   
   try {

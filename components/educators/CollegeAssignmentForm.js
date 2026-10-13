@@ -55,8 +55,7 @@ export default function CollegeAssignmentForm({
     if (form.departmentId) {
       fetchPrograms(form.departmentId)
       fetchCourses(form.departmentId) // Fetch courses for this department
-      // Clear assigned courses when department changes
-      setForm(prev => ({ ...prev, assignedCourses: [] }))
+
     } else {
       setPrograms([])
       setSections([])
@@ -220,23 +219,23 @@ export default function CollegeAssignmentForm({
 
         <div className="space-y-2">
           <Label htmlFor="programId">
-            Select Program (Optional)
+            Select Program *
           </Label>
           <Select
-            value={form.programId}
+            value={form.programId || 'all'}
             onValueChange={(value) => setForm(prev => ({ 
               ...prev, 
-              programId: value,
+              programId: value === 'all' ? '' : value,
               specializationId: '', // Reset specialization when program changes
               sectionId: ''
             }))}
             disabled={!form.departmentId}
           >
             <SelectTrigger>
-              <SelectValue placeholder={form.departmentId ? "Select Program (Optional)" : "Select Department First"} />
+              <SelectValue placeholder={form.departmentId ? "Select Program *" : "Select Department First"} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Programs</SelectItem>
+              <SelectItem value="all" disabled>Select Program</SelectItem>
               {programs.map(program => (
                 <SelectItem key={program.id} value={program.id}>
                   {program.name} ({program.code})
@@ -252,8 +251,8 @@ export default function CollegeAssignmentForm({
             Select Specialization (Optional)
           </Label>
           <Select
-            value={form.specializationId || ''}
-            onValueChange={(value) => setForm(prev => ({ ...prev, specializationId: value }))}
+            value={form.specializationId || 'all'}
+            onValueChange={(value) => setForm(prev => ({ ...prev, specializationId: value === 'all' ? '' : value }))}
             disabled={!form.programId || specializations.length === 0}
           >
             <SelectTrigger>
@@ -266,7 +265,7 @@ export default function CollegeAssignmentForm({
               } />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Specializations</SelectItem>
+              <SelectItem value="all">All Specializations</SelectItem>
               {specializations.map((spec, index) => (
                 <SelectItem key={index} value={spec}>
                   {spec}
@@ -278,21 +277,21 @@ export default function CollegeAssignmentForm({
 
         <div className="space-y-2">
           <Label htmlFor="sectionId">
-            Select Section (Optional)
+            Select Section *
           </Label>
           <Select
-            value={form.sectionId}
-            onValueChange={(value) => setForm(prev => ({ ...prev, sectionId: value }))}
+            value={form.sectionId || 'all'}
+            onValueChange={(value) => setForm(prev => ({ ...prev, sectionId: value === 'all' ? '' : value }))}
             disabled={!form.programId}
           >
             <SelectTrigger>
-              <SelectValue placeholder={form.programId ? "Select Section (Optional)" : "Select Program First"} />
+              <SelectValue placeholder={form.programId ? "Select Section *" : "Select Program First"} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Sections</SelectItem>
+              <SelectItem value="all" disabled>Select Section</SelectItem>
               {sections.map(section => (
                 <SelectItem key={section.id} value={section.id}>
-                  Section {section.section} - Semester {section.semester}
+                  Section {section.section} - Semester {section.semester} - {section.academic_year}
                 </SelectItem>
               ))}
             </SelectContent>

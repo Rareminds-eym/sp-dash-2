@@ -1,4 +1,5 @@
 'use client'
+import EducatorTeachingManager from '@/components/educators/EducatorTeachingManager';
 
 import {
   AlertDialog,
@@ -51,6 +52,7 @@ import {
 import { useEffect, useRef, useState } from 'react'
 
 export default function EducatorManagementPage({ currentUser }) {
+  const [managedEducator,setManagedEducator]=useState(null)
   const [educators, setEducators] = useState([])
   const [loading, setLoading] = useState(true)
   const [actionDialog, setActionDialog] = useState({ open: false, educator: null, action: null })
@@ -58,6 +60,8 @@ export default function EducatorManagementPage({ currentUser }) {
   const [addEducatorLoading, setAddEducatorLoading] = useState(false)
   const [currentStep, setCurrentStep] = useState(1) // Step 1: Trainer Info, Step 2: College Assignment
   const [createdTrainerId, setCreatedTrainerId] = useState(null) // Store trainer ID after Step 1
+  const [onboardingResult, setOnboardingResult] = useState(null)
+  const creationRequestId = useRef(null)
   const { toast } = useToast()
   
   // Form state with all fields from the Faculty Onboarding UI
@@ -300,30 +304,10 @@ export default function EducatorManagementPage({ currentUser }) {
   const confirmAction = async () => {
     const { educator, action } = actionDialog
     try {
-      // TODO: Implement actual API calls
-      let endpoint = ''
-      let body = {}
-
-      if (action === 'delete') {
-        endpoint = '/api/educators/delete'
-        body = { educatorId: educator.id }
-      } else if (action === 'activate') {
-        endpoint = '/api/educators/activate'
-        body = { educatorId: educator.id }
-      } else if (action === 'deactivate') {
-        endpoint = '/api/educators/deactivate'
-        body = { educatorId: educator.id }
-      }
-
-      // const response = await fetch(endpoint, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(body)
-      // })
-
-      // const data = await response.json()
-
-      // if (data.success) {
+      const reason=window.prompt('Reason for deactivating this educator');
+      if(!reason)return;
+      const response=await fetch('/api/educators/teaching',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'deactivate_staff',payload:{staffId:educator.id,reason}})});
+      const data=await response.json();if(!response.ok)throw new Error(data.error||'Deactivation failed');
         toast({
           title: 'Success',
           description: `Educator ${action}d successfully`
@@ -336,7 +320,7 @@ export default function EducatorManagementPage({ currentUser }) {
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Action failed',
+        description: error.message || 'Action failed',
         variant: 'destructive'
       })
     } finally {
@@ -536,6 +520,7 @@ export default function EducatorManagementPage({ currentUser }) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+          requestId: creationRequestId.current || (creationRequestId.current = crypto.randomUUID()),
           email: educatorForm.email,
           // NO password here - backend generates it!
           org_id: educatorForm.organizationId === 'none' ? null : educatorForm.organizationId,
@@ -545,24 +530,17 @@ export default function EducatorManagementPage({ currentUser }) {
 
       if (!ssoResponse.ok) {
         const errorData = await ssoResponse.json()
-        console.error('❌ Create educator API error:', errorData)
         throw new Error(errorData.details || errorData.error || 'Failed to create educator')
       }
 
       const ssoData = await ssoResponse.json()
-      console.log('✅ API response:', ssoData)
-
-      console.log('=== EDUCATOR ONBOARDING COMPLETED ===')
-      console.log('✅ User created in auth.users')
-      console.log('✅ User profile created in public.users')
-      console.log('✅ Verification email sent')
-      console.log('Educator ID:', ssoData.data?.session?.identity?.subject || ssoData.data?.user?.id)
-
-      const trainerId = ssoData.data?.session?.identity?.subject || ssoData.data?.user?.id || ssoData.data?.authUserId
+      const trainerId = ssoData.data?.authUserId
+      if (!trainerId || !ssoData.data?.staffId) throw new Error('Staff profile is not ready. Retry creation.')
+      setOnboardingResult(ssoData.data)
 
       toast({
         title: 'Success',
-        description: `Trainer ${educatorForm.firstName} ${educatorForm.lastName} created! Now assign them to colleges.`,
+        description: ssoData.data.message,
         duration: 5000
       })
       
@@ -594,10 +572,10 @@ export default function EducatorManagementPage({ currentUser }) {
     
     // Validate required fields
     if (!collegeAssignmentForm.collegeId || !collegeAssignmentForm.departmentId || 
-        collegeAssignmentForm.assignedCourses.length === 0 || !collegeAssignmentForm.startDate) {
+        !collegeAssignmentForm.programId || !collegeAssignmentForm.sectionId || collegeAssignmentForm.assignedCourses.length === 0 || !collegeAssignmentForm.startDate) {
       toast({
         title: 'Validation Error',
-        description: 'Please fill in College, Department, Courses, and Start Date',
+        description: 'Please fill in College, Department, Program, Section, Courses, and Start Date',
         variant: 'destructive'
       })
       return
@@ -649,6 +627,10 @@ export default function EducatorManagementPage({ currentUser }) {
   }
 
   const resetForm = () => {
+    setOnboardingResult(null)
+    setCreatedTrainerId(null)
+    setCurrentStep(1)
+    creationRequestId.current = null
     setEducatorForm({
       firstName: '',
       lastName: '',
@@ -690,6 +672,7 @@ export default function EducatorManagementPage({ currentUser }) {
   return (
     <div className="space-y-6">
 
+      {managedEducator&&<EducatorTeachingManager educator={managedEducator} onClose={()=>setManagedEducator(null)} onSaved={fetchEducators}/>}
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card className="neu-card bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/20 border-blue-200 dark:border-blue-800">
@@ -931,10 +914,12 @@ export default function EducatorManagementPage({ currentUser }) {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 ml-4">
+                        <Button variant="outline" size="sm" onClick={()=>setManagedEducator(educator)}>Manage teaching</Button>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleAction(educator, 'delete')}
+                          onClick={() => handleAction(educator, 'deactivate')}
+                          aria-label={`Deactivate ${educator.firstName}`}
                           className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -1058,7 +1043,11 @@ export default function EducatorManagementPage({ currentUser }) {
       </AlertDialog>
 
       {/* Add Educator Dialog */}
-      <Dialog open={addEducatorDialog} onOpenChange={setAddEducatorDialog}>
+      <Dialog open={addEducatorDialog} onOpenChange={(open) => {
+        if (addEducatorLoading) return
+        if (!open) resetForm()
+        setAddEducatorDialog(open)
+      }}>
         <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">
@@ -1391,6 +1380,36 @@ export default function EducatorManagementPage({ currentUser }) {
               </>
             ) : (
               // STEP 2: College Assignment Form
+              <>
+              {onboardingResult && (
+                <div className="mb-4 space-y-2 rounded-lg border p-4" role="status">
+                  <h3 className="font-semibold">Educator login details</h3>
+                  <p className="text-sm">Email: {onboardingResult.email}</p>
+                  <p className="break-all text-sm">SkillPassport: {onboardingResult.loginUrl}</p>
+                  <p className="text-sm">Invitation: {onboardingResult.emailStatus === 'queued'
+                    ? 'Credentials email queued; inbox delivery is not yet confirmed.'
+                    : onboardingResult.emailStatus === 'reset_requested'
+                      ? 'Password reset requested. The original temporary password cannot be recovered.'
+                      : 'Email was not queued. Share the one-time login details or use password recovery.'}</p>
+                  {onboardingResult.temporaryPassword && (
+                    <div>
+                      <Label htmlFor="educator-temporary-password">One-time temporary password</Label>
+                      <Input id="educator-temporary-password" type="password" readOnly
+                        value={onboardingResult.temporaryPassword} autoComplete="off" />
+                      <Button type="button" variant="outline" className="mt-2" onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(onboardingResult.temporaryPassword)
+                          toast({ title: 'Temporary password copied' })
+                        } catch { toast({ title: 'Copy unavailable', description: 'Use the credentials email or password recovery.', variant: 'destructive' }) }
+                      }}>Copy temporary password</Button>
+                      <p className="mt-1 text-sm">This password is cleared when this dialog closes.</p>
+                    </div>
+                  )}
+                  <p className="text-sm">{onboardingResult.teachingAccessStatus==='granted'
+                    ? 'Assigned teaching access granted. Complete course/class mapping below.'
+                    : 'Teaching access needs administrator provisioning.'}</p>
+                </div>
+              )}
               <CollegeAssignmentForm
                 form={collegeAssignmentForm}
                 setForm={setCollegeAssignmentForm}
@@ -1398,6 +1417,7 @@ export default function EducatorManagementPage({ currentUser }) {
                 onSubmit={handleCollegeAssignment}
                 isLoading={addEducatorLoading}
               />
+              </>
             )}
           </div>
 
@@ -1427,7 +1447,7 @@ export default function EducatorManagementPage({ currentUser }) {
                 <Button
                   variant="outline"
                   onClick={() => setCurrentStep(1)}
-                  disabled={addEducatorLoading}
+                  disabled={addEducatorLoading || Boolean(createdTrainerId)}
                 >
                   ← Back
                 </Button>
