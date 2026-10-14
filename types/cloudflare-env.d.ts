@@ -17,7 +17,7 @@ declare global {
     LTE_ASSET_VALIDATION_QUEUE: Queue<LTEAssetValidationMessage>;
     COURSE_MANAGEMENT_UPLOAD_QUEUE: Queue<CourseManagementQueueMessage>;
     LTE_ASSETS: R2Bucket;
-    COURSE_ASSETS: R2Bucket;
+    SKILLPASSPORT_ASSETS: R2Bucket;
     RATE_LIMIT_KV: KVNamespace;
     COURSE_UPLOAD_WORKER_TOKEN: string;
   }

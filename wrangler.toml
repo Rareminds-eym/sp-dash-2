@@ -81,8 +81,8 @@ binding = "LTE_ASSETS"
 bucket_name = "lte"
 
 [[r2_buckets]]
-binding = "COURSE_ASSETS"
-bucket_name = "course-assets"
+binding = "SKILLPASSPORT_ASSETS"
+bucket_name = "skill-echosystem"
 
 [env.dev]
 name = "sp-dash-2"
@@ -144,5 +144,5 @@ binding = "LTE_ASSETS"
 bucket_name = "lte-dev"
 
 [[env.dev.r2_buckets]]
-binding = "COURSE_ASSETS"
-bucket_name = "course-assets-dev"
+binding = "SKILLPASSPORT_ASSETS"
+bucket_name = "skill-echosystem-demo"

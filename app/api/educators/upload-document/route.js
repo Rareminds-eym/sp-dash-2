@@ -78,7 +78,7 @@ export async function POST(request) {
     console.log('✅ [UPLOAD API] Validation passed, calling R2 upload service...')
     
     // Upload to R2
-    const result = await uploadEducatorDocument(file, educatorId, documentType);
+    const result = await uploadEducatorDocument(file, educatorId, documentType, request.url);
 
     console.log('📤 [UPLOAD API] R2 upload result:', result)
 
