@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as ExcelJS from 'exceljs';
 import Logger, { getErrorMessage } from '@/lib/logger';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
-import { supabaseLTE } from '@/lib/supabase-lte';
+import { callLTE } from '@/lib/lte-api';
 import { REQUIRED_LTE_TABLES } from '@/lib/services/lte-ingestion/constants';
-import { deterministicUUID } from '@/lib/services/lte-ingestion/uuid-generator';
 
 const logger = new Logger('LTETemplateAPI');
 
@@ -41,10 +40,6 @@ function toLevelCodeCapabilityPart(capabilityCode: string): string {
   return capabilityCode.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'CATALOG';
 }
 
-function buildLevelCode(capabilityCode: string, levelNo: number): string {
-  return `LTE_${toLevelCodeCapabilityPart(capabilityCode)}_L${levelNo}`;
-}
-
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const { user, error: authError } = await authenticateSSORequest(request, ['admin', 'super_admin', 'platform_admin']);
@@ -60,7 +55,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     workbook.created = new Date();
     workbook.modified = new Date();
 
-    const exportRows = await buildTemplateRows(sampleLevelCode, capabilityCode, levelNoParam);
+    const result = await callLTE(request, 'template-data');
+    if (!result.ok) return new NextResponse(result.body, { status: result.status, headers: result.headers });
+    const exportRows: ExportRows = await result.json();
 
     addInstructionSheets(workbook);
 
@@ -116,146 +113,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 }
 
-async function buildTemplateRows(sampleLevelCode?: string, capabilityCode?: string, levelNoParam?: string): Promise<ExportRows> {
-  const [roles, capabilities, levelScale, roleCapabilitySequence] = await Promise.all([
-    fetchRows('roles', 'role_name'),
-    fetchRows('capabilities', 'master_sequence'),
-    fetchRows('level_scale', 'level_no'),
-    fetchRows('role_capability_sequence', 'sequence_step'),
-  ]);
-
-  const normalizedCapability = (capabilityCode || '').trim().toUpperCase();
-  const requestedLevelNo = levelNoParam ? Number(levelNoParam) : NaN;
-  const capability = normalizedCapability
-    ? capabilities.find((row) => String(row.code || '').toUpperCase() === normalizedCapability)
-    : undefined;
-  const resolvedLevelCode = sampleLevelCode
-    || (capability && Number.isFinite(requestedLevelNo)
-      ? buildLevelCode(capability.code, requestedLevelNo)
-      : undefined);
-
-  let sampleLevel = await fetchSampleLevel(resolvedLevelCode, capability?.id);
-  if (!sampleLevel && capability && Number.isFinite(requestedLevelNo)) {
-    // Pre-fill a stub row for the requested next level (e.g. L2/L3) so L&D can
-    // fill a fresh level without cloning L1 ids. Publish treats it as insert
-    // because the level_code is new; re-uploaded codes update instead.
-    const levelScaleRow = levelScale.find((row) => Number(row.level_no) === requestedLevelNo);
-    const levelCode = buildLevelCode(capability.code, requestedLevelNo);
-    sampleLevel = {
-      id: deterministicUUID('levels', levelCode),
-      level_code: levelCode,
-      capability_id: capability.id,
-      level_id: levelScaleRow?.id || null,
-      title: '',
-      description: '',
-      observable_behavior: null,
-      example_outputs: null,
-      problem_statement: null,
-      duration_minutes: null,
-      difficulty_level: null,
-      total_xp: null,
-    };
-  }
-  if (!sampleLevel) {
-    return {
-      roles,
-      capabilities,
-      level_scale: levelScale,
-      role_capability_sequence: roleCapabilitySequence,
-      skills: [],
-      levels: [],
-      level_skills: [],
-      modules: [],
-      modules_content: [],
-      e_content: [],
-      module_artifacts: [],
-      artifact_questions: [],
-      artifact_templates: [],
-    };
-  }
-
-  const modules = await fetchRowsByValues('modules', 'level_id', [sampleLevel.id], 'module_no');
-  const moduleIds = modules.map((row) => row.id);
-  const modulesContent = await fetchRowsByValues('modules_content', 'module_id', moduleIds, 'stage_order');
-  const moduleContentIds = modulesContent.map((row) => row.id);
-  const eContent = await fetchRowsByValues('e_content', 'modules_content_id', moduleContentIds, 'sort_order');
-  const moduleArtifacts = await fetchRowsByValues('module_artifacts', 'modules_content_id', moduleContentIds, 'artifact_type');
-  const artifactIds = moduleArtifacts.map((row) => row.id);
-  const artifactQuestions = await fetchRowsByValues('artifact_questions', 'artifact_id', artifactIds, 'question_order');
-  const artifactTemplates = await fetchRowsByValues('artifact_templates', 'artifact_id', artifactIds, 'file_name');
-  const levelSkills = await fetchRowsByValues('level_skills', 'level_id', [sampleLevel.id], 'created_at');
-  const skillIds = levelSkills.map((row) => row.skill_id);
-  const skills = await fetchRowsByValues('skills', 'id', skillIds, 'code');
-
-  return {
-    roles,
-    capabilities,
-    level_scale: levelScale,
-    role_capability_sequence: roleCapabilitySequence,
-    skills,
-    levels: [sampleLevel],
-    level_skills: levelSkills,
-    modules,
-    modules_content: modulesContent,
-    e_content: eContent,
-    module_artifacts: moduleArtifacts,
-    artifact_questions: artifactQuestions,
-    artifact_templates: artifactTemplates,
-  };
-}
-
-async function fetchRows(tableName: string, orderColumn: string): Promise<any[]> {
-  const columns = getSelectColumns(tableName);
-  const { data, error } = await supabaseLTE
-    .from(tableName)
-    .select(columns.join(','))
-    .order(orderColumn, { ascending: true });
-
-  if (error) throw new Error(`Failed to export ${tableName}: ${error.message}`);
-  return data || [];
-}
-
-async function fetchRowsByValues(
-  tableName: string,
-  filterColumn: string,
-  values: string[],
-  orderColumn: string
-): Promise<any[]> {
-  if (values.length === 0) return [];
-
-  const columns = getSelectColumns(tableName);
-  const { data, error } = await supabaseLTE
-    .from(tableName)
-    .select(columns.join(','))
-    .in(filterColumn, values)
-    .order(orderColumn, { ascending: true });
-
-  if (error) throw new Error(`Failed to export ${tableName}: ${error.message}`);
-  return data || [];
-}
-
-async function fetchSampleLevel(levelCode?: string, capabilityId?: string): Promise<any | null> {
-  const columns = getSelectColumns('levels');
-  let query = supabaseLTE
-    .from('levels')
-    .select(columns.join(','))
-    .eq('is_active', true);
-
-  if (levelCode) {
-    query = query.eq('level_code', levelCode);
-  } else if (capabilityId) {
-    query = query.eq('capability_id', capabilityId);
-  }
-
-  const { data, error } = await query
-    .order('level_code', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) throw new Error(`Failed to export sample level: ${error.message}`);
-  return data;
-}
-
 function addInstructionSheets(workbook: ExcelJS.Workbook): void {
   const enumSheet = workbook.addWorksheet('ENUMS_AND_RULES');
   enumSheet.addRow(['field', 'allowed_values_or_rule']);
@@ -303,14 +160,6 @@ function addInstructionSheets(workbook: ExcelJS.Workbook): void {
   examplesSheet.views = [{ state: 'frozen', ySplit: 1 }];
   examplesSheet.getRow(1).font = { bold: true };
   examplesSheet.columns = [{ width: 28 }, { width: 80 }, { width: 56 }];
-}
-
-function getSelectColumns(tableName: string): string[] {
-  return Array.from(new Set(
-    EXPORT_COLUMN_DEFS[tableName]
-      .map((column) => column.source === null ? null : (column.source || column.header))
-      .filter((source): source is string => Boolean(source))
-  ));
 }
 
 function serializeCell(value: unknown, column?: TemplateColumn): unknown {

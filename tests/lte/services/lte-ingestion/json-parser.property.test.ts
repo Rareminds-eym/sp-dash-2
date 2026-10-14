@@ -39,7 +39,8 @@ describe('Property 3: JSON Field Round-Trip', () => {
           const reserialized = JSON.stringify(parsed);
           const reparsed = JSON.parse(reserialized);
           
-          expect(reparsed).toEqual(obj);
+          // Compare JSON values: stringify intentionally normalizes JavaScript -0 to 0.
+          expect(reparsed).toEqual(JSON.parse(jsonString));
         }),
         { numRuns: 100 }
       );
@@ -64,7 +65,7 @@ describe('Property 3: JSON Field Round-Trip', () => {
           const reserialized = JSON.stringify(parsed);
           const reparsed = JSON.parse(reserialized);
           
-          expect(reparsed).toEqual(arr);
+          expect(reparsed).toEqual(JSON.parse(jsonString));
         }),
         { numRuns: 100 }
       );

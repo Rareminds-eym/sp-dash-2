@@ -46,7 +46,7 @@ npm run preview
 
 **Public Variables**:
 ```
-LTE_SUPABASE_URL=https://jsifqriqlvkpedtoywsk.supabase.co
+LTE_API_BASE_URL=https://lte.rareminds.in
 NEXT_PUBLIC_SUPABASE_URL=https://dpooleduinyyzxgrcwko.supabase.co
 SKILLPASSPORT_SUPABASE_URL=https://dpooleduinyyzxgrcwko.supabase.co
 SSO_WORKER_URL=https://sso-api.dark-mode-d021.workers.dev
@@ -54,7 +54,7 @@ SSO_WORKER_URL=https://sso-api.dark-mode-d021.workers.dev
 
 **Secrets** (use `wrangler secret put`):
 ```bash
-wrangler secret put LTE_SERVICE_ROLE_KEY --env production
+wrangler secret put LTE_CATALOG_SYNC_SECRET
 wrangler secret put SUPABASE_SERVICE_ROLE_KEY --env production
 wrangler secret put NEXT_PUBLIC_SUPABASE_ANON_KEY --env production
 wrangler secret put SKILLPASSPORT_SERVICE_ROLE_KEY --env production
@@ -70,7 +70,7 @@ wrangler secret put SKILLPASSPORT_SERVICE_ROLE_KEY --env production
 
 | Binding | Bucket Name |
 |---------|-------------|
-| `LTE_ASSETS` | `lte` |
+| `COURSE_ASSETS` | `course-assets` |
 
 ### Queues
 
@@ -262,3 +262,42 @@ wrangler tail sp-dash-2 --status ok
 **Issues**: Create ticket in project management system  
 **Emergency**: Contact DevOps team  
 **Documentation**: See `.kiro/summaries/` for detailed fix reports
+
+## LTE catalog API cutover
+
+Deploy LTE Pages Functions before the dashboard. LTE keeps its existing
+SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and STORAGE_BUCKET binding. Configure
+LTE_CATALOG_SYNC_SECRET (at least 32 characters) on LTE Pages and sp-dash with
+the same value; this also preserves the existing SkillPassport recovery export.
+Set LTE_API_BASE_URL to the production or preview LTE origin in the matching
+dashboard environment. Local development uses http://localhost:8789.
+
+Local Wrangler and the OpenNext development bridge read `.dev.vars`; `.env`
+files are not used by the LTE transport. Set `LTE_API_BASE_URL` and the shared
+`LTE_CATALOG_SYNC_SECRET` there. Keep the secret out of source control. See
+`.dev.vars.example` for the two server-only settings. Restart local processes
+after changing bindings. Node development defaults to the local LTE origin and
+does not inherit a production URL from top-level Wrangler deployment vars.
+
+The current Next.js browser build and SkillPassport server client also use
+`.env.local` / `.env.production`. Keep their required public Supabase and
+SkillPassport settings; use `.env.example` and `.env.production.example` as
+their templates. The duplicate `.env.local.example` was removed. Local files
+no longer need LTE database credentials or explicit `NODE_ENV` / `NEXTJS_ENV`
+overrides; Next.js and Wrangler select their modes.
+
+LTE produces jobs on the existing lte-asset-validation queue (preview uses
+lte-asset-validation-dev). The existing sp-dash Worker consumes those jobs
+by calling LTE's signed process-asset endpoint. No new Worker or queue is
+created. Keep the old LTE database secrets until the old dashboard deployment
+is retired; remove LTE_SERVICE_ROLE_KEY and LTE_SUPABASE_URL from sp-dash after
+the cutover is verified. Keep SkillPassport database credentials.
+
+Preview must use the intended preview Supabase project and R2 bucket. The
+existing LTE preview STORAGE_BUCKET points to lte; verify its mapping before
+using preview publishing. This refactor does not change that existing binding.
+
+Verify workspace/template/upload/review/edit/publish/status/lifecycle, an
+asset-containing upload, and SkillPassport recovery. Diagnostic scripts now
+call the signed LTE health endpoint and report table counts. No SQL migration
+or database reset is required.
