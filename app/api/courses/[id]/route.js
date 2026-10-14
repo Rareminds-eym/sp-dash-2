@@ -2,6 +2,12 @@ import { logAudit } from '@/lib/services/auditService';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
 import { NextResponse } from 'next/server';
+import {
+    validateHierarchyPayload,
+    validateOptionalUrl,
+    validateResourceType,
+    validateResourceUrl,
+} from '@/lib/services/course-resource-validation';
 import { z } from 'zod';
 
 const CourseUpdateSchema = z.object({
@@ -19,7 +25,11 @@ const CourseUpdateSchema = z.object({
     target_outcomes: z.array(z.string()).optional().default([]),
     skillsCovered: z.array(z.string()).optional().default([]),
     linkedClasses: z.array(z.string()).optional().default([]),
-    modules: z.array(z.any()).optional().default([])
+    // Omitted (undefined) = hierarchy untouched. Explicit array (+ updateHierarchy
+    // intent flag on the raw body) = replace. Never default to [] here: a
+    // default would turn "field not sent" into "delete everything".
+    modules: z.array(z.any()).optional(),
+    expectedUpdatedAt: z.string().nullable().optional(),
 });
 
 
@@ -117,7 +127,10 @@ export async function PUT(request, { params }) {
             target_outcomes,
             skillsCovered: Array.isArray(body.skillsCovered || body.skills) ? (body.skillsCovered || body.skills) : [],
             linkedClasses: Array.isArray(body.linkedClasses) ? body.linkedClasses : [],
-            modules: Array.isArray(body.modules) ? body.modules : []
+            // Preserve "omitted" vs "explicit empty": only pass modules through
+            // when the client actually sent the key.
+            ...('modules' in body ? { modules: body.modules } : {}),
+            expectedUpdatedAt: body.expectedUpdatedAt ?? body.expected_updated_at ?? undefined,
         };
 
         const validationResult = CourseUpdateSchema.safeParse(normalizedData);
@@ -134,8 +147,66 @@ export async function PUT(request, { params }) {
         const {
             title, code, description, duration, credits,
             thumbnail, university, category,
-            skillsCovered, linkedClasses, modules
+            skillsCovered, linkedClasses, modules,
+            expectedUpdatedAt
         } = validationResult.data;
+
+        // Explicit hierarchy-update contract (P0): the hierarchy is replaced
+        // ONLY when the client sends BOTH `modules` (possibly []) AND a
+        // verified `updateHierarchy: true` intent flag. An incompletely
+        // initialized form that posts `modules: []` without the flag — or
+        // omits the key entirely (metadata-only edit) — must never wipe
+        // existing modules/lessons/resources.
+        const hierarchyUpdateRequested = 'modules' in body;
+        const hierarchyUpdateConfirmed =
+            body.updateHierarchy === true || body.hierarchyIntent === 'replace';
+        if (hierarchyUpdateRequested && !hierarchyUpdateConfirmed) {
+            return NextResponse.json(
+                {
+                    error: 'Hierarchy update intent not confirmed',
+                    details: 'Send updateHierarchy: true with a fully loaded modules array to replace the hierarchy. Omit modules for metadata-only updates.',
+                },
+                { status: 400 }
+            );
+        }
+        const syncHierarchy = hierarchyUpdateRequested && hierarchyUpdateConfirmed;
+        if (syncHierarchy && !Array.isArray(modules)) {
+            return NextResponse.json(
+                { error: 'Invalid course hierarchy', details: 'modules must be an array' },
+                { status: 400 }
+            );
+        }
+
+        // Optimistic concurrency: reject stale edits when the caller pins a version.
+        if (expectedUpdatedAt) {
+            const { data: currentRow, error: versionError } = await supabaseAdmin
+                .from('courses')
+                .select('updated_at')
+                .eq('course_id', id)
+                .is('deleted_at', null)
+                .maybeSingle();
+            if (versionError) {
+                console.error('[Course API] Error checking course version:', versionError);
+                return NextResponse.json(
+                    { error: 'Failed to verify course version', details: versionError.message },
+                    { status: 500 }
+                );
+            }
+            if (!currentRow) {
+                return NextResponse.json({ error: 'Course not found or already deleted' }, { status: 404 });
+            }
+            if (String(currentRow.updated_at) !== String(expectedUpdatedAt)) {
+                return NextResponse.json(
+                    {
+                        error: 'Course was modified by another user',
+                        details: 'Reload the course and reapply your changes.',
+                        expectedUpdatedAt,
+                        currentUpdatedAt: currentRow.updated_at,
+                    },
+                    { status: 409 }
+                );
+            }
+        }
 
         // Handle educator_id validation if passed in payload
         let educator_id = body.educatorId ?? body.educator_id ?? undefined;
@@ -275,8 +346,39 @@ export async function PUT(request, { params }) {
             }
         }
 
-        // Sync 3: course_modules, lessons, lesson_resources (if provided in payload)
-        if (body.modules !== undefined) {
+        // Sync 3: course_modules, lessons, lesson_resources — ONLY on explicit,
+        // authorized, validated hierarchy-replace intent. Omitted modules (or
+        // modules without updateHierarchy:true) leave existing hierarchy intact.
+        // Pre-validate the full hierarchy BEFORE the destructive delete so a
+        // malformed payload can never wipe existing modules/lessons/resources.
+        // Explicit [] with intent = intentional clear-all (authorized deletion).
+        if (syncHierarchy) {
+            const hierarchyError = validateHierarchyPayload(modules);
+            if (hierarchyError) {
+                return NextResponse.json(
+                    { error: 'Invalid course hierarchy', details: hierarchyError },
+                    { status: 400 }
+                );
+            }
+            // Re-verify the course still exists (and is not deleted) immediately
+            // before the destructive step, so hierarchy rows can never be
+            // orphaned/wiped for a missing or inaccessible course.
+            const { data: hierarchyOwner, error: ownerError } = await supabaseAdmin
+                .from('courses')
+                .select('course_id')
+                .eq('course_id', id)
+                .is('deleted_at', null)
+                .maybeSingle();
+            if (ownerError) {
+                console.error('[Course API] Error verifying course before hierarchy sync:', ownerError);
+                return NextResponse.json(
+                    { error: 'Failed to verify course', details: ownerError.message },
+                    { status: 500 }
+                );
+            }
+            if (!hierarchyOwner) {
+                return NextResponse.json({ error: 'Course not found or already deleted' }, { status: 404 });
+            }
             const { error: deleteModulesErr } = await supabaseAdmin
                 .from('course_modules')
                 .delete()
@@ -298,7 +400,7 @@ export async function PUT(request, { params }) {
                             course_id: id,
                             title: mod.title,
                             description: mod.description || '',
-                            order_index: mod.order || 0,
+                            order_index: mod.order ?? mod.orderIndex ?? 0,
                             skill_tags: mod.skillTags || [],
                             activities: mod.activities || []
                         })
@@ -323,7 +425,7 @@ export async function PUT(request, { params }) {
                                     description: lesson.description || '',
                                     content: lesson.content || '',
                                     duration: lesson.duration || '',
-                                    order_index: lesson.order || 0
+                                    order_index: lesson.order ?? lesson.orderIndex ?? 0
                                 })
                                 .select()
                                 .single();
@@ -342,10 +444,10 @@ export async function PUT(request, { params }) {
                                     name: res.name,
                                     type: res.type,
                                     url: res.url,
-                                    file_size: res.size,
-                                    thumbnail_url: res.thumbnailUrl,
-                                    embed_url: res.embedUrl,
-                                    order_index: index
+                                    file_size: res.size ?? res.fileSize ?? null,
+                                    thumbnail_url: res.thumbnailUrl ?? res.thumbnail_url ?? null,
+                                    embed_url: res.embedUrl ?? res.embed_url ?? null,
+                                    order_index: res.order ?? res.orderIndex ?? index
                                 }));
                                 const { error: resourceError } = await supabaseAdmin
                                     .from('lesson_resources')

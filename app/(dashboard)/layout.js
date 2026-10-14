@@ -100,6 +100,14 @@ const initialNavigation = [
     ]
   },
   { name: 'Sales Dashboard', icon: IndianRupee, href: '/sales-dashboard' },
+  {
+    name: 'Educator',
+    icon: GraduationCap,
+    href: '/educator',
+    subItems: [
+      { name: 'Subscriptions', href: '/educator-subscriptions', icon: FileText },
+    ]
+  },
   { name: 'Activate Hybrid Plan', icon: Handshake, href: '/organizations/hybrid-plan' },
   { name: 'Audit Logs', icon: History, href: '/audit-logs' },
   { name: 'Integrations', icon: Plug, href: '/integrations' },
@@ -467,6 +475,7 @@ export default function DashboardLayout({ children }) {
   }
 
   const getPageTitle = () => {
+    if (pathname === '/educator-subscriptions') return 'Educator Subscriptions'
     const currentNav = navigation.find(nav => nav.href === pathname)
     return currentNav ? currentNav.name : 'Dashboard'
   }

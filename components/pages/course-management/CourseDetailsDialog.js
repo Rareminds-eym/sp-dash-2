@@ -9,14 +9,85 @@ import {
     User, 
     Building2,
     Target,
-    FileText
+    FileText,
+    ChevronDown,
+    File,
+    Link,
+    Loader2,
+    AlertCircle
 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 export function CourseDetailsDialog({ course, open, onOpenChange }) {
     const [imageError, setImageError] = useState(false)
+    const [modules, setModules] = useState([])
+    const [resourcesLoading, setResourcesLoading] = useState(false)
+    const [resourcesError, setResourcesError] = useState('')
+    const [expandedModules, setExpandedModules] = useState(new Set())
+
+    useEffect(() => {
+        if (!open || !course?.id) return
+
+        let cancelled = false
+        setResourcesLoading(true)
+        setResourcesError('')
+
+        fetch(`/api/courses/${course.id}/resources`, { cache: 'no-store' })
+            .then(async response => {
+                const data = await response.json()
+                if (!response.ok) throw new Error(data.error || 'Failed to load course resources')
+                if (!cancelled) setModules(data.data || [])
+            })
+            .catch(error => {
+                if (!cancelled) setResourcesError(error.message || 'Failed to load course resources')
+            })
+            .finally(() => {
+                if (!cancelled) setResourcesLoading(false)
+            })
+
+        return () => { cancelled = true }
+    }, [course?.id, open])
+
+    useEffect(() => {
+        if (!open) {
+            setModules([])
+            setResourcesError('')
+            setExpandedModules(new Set())
+        }
+    }, [open])
+
+    // An image failure for one course must never suppress valid images for
+    // other courses/resources: reset whenever the selected course changes.
+    useEffect(() => {
+        setImageError(false)
+    }, [course?.id, course?.thumbnail_url])
 
     if (!course) return null
+
+    const toggleModule = (moduleId) => {
+        setExpandedModules(previous => {
+            const next = new Set(previous)
+            if (next.has(moduleId)) next.delete(moduleId)
+            else next.add(moduleId)
+            return next
+        })
+    }
+
+    const resourceTypeLabel = (type) => {
+        const labels = {
+            pdf: 'PDF',
+            video: 'Video',
+            youtube: 'YouTube',
+            document: 'Document',
+            image: 'Image',
+            link: 'Link',
+            drive: 'Google Drive',
+            // Legacy stored values
+            ppt: 'Presentation',
+            file: 'File',
+        }
+        return labels[type?.toLowerCase()] || type || 'Resource'
+    }
 
     const getStatusConfig = (status) => {
         const configs = {
@@ -207,6 +278,117 @@ export function CourseDetailsDialog({ course, open, onOpenChange }) {
                             </div>
                         </>
                     )}
+
+                    {/* Course Resources Hierarchy */}
+                    <Separator />
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                            <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                                <FileText className="h-4 w-4" />
+                            </div>
+                            <div>
+                                <h3 className="text-base font-semibold text-gray-900 dark:text-white">Course Resources</h3>
+                                <p className="text-xs text-muted-foreground">Modules → lessons → source files</p>
+                            </div>
+                        </div>
+
+                        {resourcesLoading && (
+                            <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Loading course resources...
+                            </div>
+                        )}
+
+                        {resourcesError && (
+                            <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
+                                <AlertCircle className="h-5 w-5 shrink-0" />
+                                <span>{resourcesError}</span>
+                            </div>
+                        )}
+
+                        {!resourcesLoading && !resourcesError && modules.length === 0 && (
+                            <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-muted-foreground dark:border-slate-700">
+                                No source files have been added to this course yet.
+                            </div>
+                        )}
+
+                        {!resourcesLoading && !resourcesError && modules.map(module => {
+                            const isExpanded = expandedModules.has(module.id)
+                            const lessonCount = module.lessons.length
+                            const resourceCount = module.lessons.reduce((total, lesson) => total + lesson.resources.length, 0)
+
+                            return (
+                                <div key={module.id} className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/40">
+                                    <button
+                                        type="button"
+                                        className="flex w-full items-center gap-3 p-4 text-left"
+                                        onClick={() => toggleModule(module.id)}
+                                        aria-expanded={isExpanded}
+                                    >
+                                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-sm font-semibold text-white">
+                                            {module.title?.charAt(0).toUpperCase() || 'M'}
+                                        </span>
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block truncate text-sm font-semibold text-gray-900 dark:text-white">{module.title}</span>
+                                            <span className="block text-xs text-muted-foreground">{lessonCount} lesson{lessonCount === 1 ? '' : 's'} · {resourceCount} resource{resourceCount === 1 ? '' : 's'}</span>
+                                        </span>
+                                        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                    </button>
+
+                                    {isExpanded && (
+                                        <div className="space-y-3 border-t border-slate-200 px-4 py-4 dark:border-slate-700">
+                                            {module.lessons.length === 0 && (
+                                                <p className="text-xs text-muted-foreground">No lessons have been added to this module.</p>
+                                            )}
+                                            {module.lessons.map(lesson => (
+                                                <div key={lesson.id} className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900/60">
+                                                    <div className="mb-2 flex items-start justify-between gap-3">
+                                                        <div>
+                                                            <p className="text-sm font-medium text-gray-900 dark:text-white">{lesson.title}</p>
+                                                            {lesson.duration && <p className="text-xs text-muted-foreground">{lesson.duration}</p>}
+                                                        </div>
+                                                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                                            {lesson.resources.length} file{lesson.resources.length === 1 ? '' : 's'}
+                                                        </span>
+                                                    </div>
+
+                                                    {lesson.resources.length === 0 && (
+                                                        <p className="text-xs text-muted-foreground">No source files attached to this lesson.</p>
+                                                    )}
+                                                    <div className="space-y-2">
+                                                        {lesson.resources.map(resource => {
+                                                            const isExternal = /^https?:\/\//i.test(resource.url)
+                                                            const href = resource.url || '#'
+                                                            const isSafeUrl = isExternal || href.startsWith('/')
+
+                                                            return (
+                                                                <a
+                                                                    key={resource.id}
+                                                                    href={isSafeUrl ? href : '#'}
+                                                                    target={isExternal ? '_blank' : undefined}
+                                                                    rel={isExternal ? 'noopener noreferrer' : undefined}
+                                                                    className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 text-left transition-colors hover:border-blue-300 hover:bg-blue-50/60 dark:border-slate-700 dark:hover:border-blue-500/40 dark:hover:bg-blue-500/5"
+                                                                >
+                                                                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                                                        {isExternal ? <Link className="h-4 w-4" /> : <File className="h-4 w-4" />}
+                                                                    </span>
+                                                                    <span className="min-w-0 flex-1">
+                                                                        <span className="block truncate text-xs font-semibold text-gray-900 dark:text-white">{resource.name}</span>
+                                                                        <span className="block text-[10px] uppercase tracking-wide text-muted-foreground">{resourceTypeLabel(resource.type)}{resource.fileSize ? ` · ${resource.fileSize}` : ''}</span>
+                                                                    </span>
+                                                                    <ChevronDown className="h-3.5 w-3.5 -rotate-90 text-muted-foreground" />
+                                                                </a>
+                                                            )
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )
+                        })}
+                    </div>
 
                     {/* Metadata Footer */}
                     {course.updated_at && (
