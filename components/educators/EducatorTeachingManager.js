@@ -19,8 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import CollegeAssignmentForm from './CollegeAssignmentForm';
 
@@ -66,14 +66,6 @@ async function operation(action, payload) {
   return data.data;
 }
 
-function SectionTitle({ children }) {
-  return (
-    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-      {children}
-    </h3>
-  );
-}
-
 function Field({ label, htmlFor, children }) {
   return (
     <div className="space-y-1.5">
@@ -85,6 +77,7 @@ function Field({ label, htmlFor, children }) {
 
 export default function EducatorTeachingManager({ educator, onClose, onSaved }) {
   const { toast } = useToast();
+  const [tab, setTab] = useState('profile');
   const [data, setData] = useState({ staff: [], mappings: [], sessions: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -150,6 +143,7 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
   }
 
   const ownMappings = data.mappings.filter((m) => m.staff_id === educator.id && m.is_active);
+  const reasonOk = reason.trim().length > 0;
   const session = data.sessions.find((s) => s.id === sessionId);
   const other = data.sessions.find((s) => s.id === otherId);
   const sessionLabel = (s) =>
@@ -195,6 +189,26 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
       setError('Select an existing mapping.');
       return;
     }
+    // Mirror the teaching-contract requirements so failures surface
+    // as actionable messages instead of "Invalid teaching request".
+    if (mode !== 'map' && !reason.trim()) {
+      setError('Reason is required for this action — it is recorded in the audit trail.');
+      return;
+    }
+    if (mode === 'end_mapping' && !form.endDate) {
+      setError('End date is required to end a mapping.');
+      return;
+    }
+    if (mode !== 'end_mapping') {
+      if (!form.collegeId || !form.sectionId) {
+        setError('Select a college, department, program and section first.');
+        return;
+      }
+      if (form.assignedCourses.length === 0) {
+        setError('Select at least one course for this mapping.');
+        return;
+      }
+    }
     run(
       mode,
       mode === 'end_mapping'
@@ -229,16 +243,14 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
 
         {loading ? (
           <div className="space-y-3 py-2">
-            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-9 w-full" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
             </div>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -247,368 +259,379 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
               </Alert>
             )}
 
-            {/* Profile */}
-            <section className="space-y-3">
-              <SectionTitle>Educator profile</SectionTitle>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {PROFILE_FIELDS.map((field) => (
-                  <Field key={field.key} label={field.label} htmlFor={`teaching-${field.key}`}>
-                    <Input
-                      id={`teaching-${field.key}`}
-                      value={profile[field.key]}
-                      disabled={busy}
-                      onChange={(e) => setProfile({ ...profile, [field.key]: e.target.value })}
-                    />
-                  </Field>
-                ))}
-              </div>
-              <Button variant="outline" size="sm" disabled={busy} onClick={() => run('edit_profile', { staffId: educator.id, ...profile }, 'Profile updated successfully.')}>
-                Save profile
-              </Button>
-            </section>
+            <Tabs value={tab} onValueChange={setTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="profile">Profile</TabsTrigger>
+                <TabsTrigger value="mapping">Mapping</TabsTrigger>
+                <TabsTrigger value="sessions">Sessions</TabsTrigger>
+              </TabsList>
 
-            <Separator />
-
-            {/* Mapping */}
-            <section className="space-y-4">
-              <SectionTitle>Course / class mapping</SectionTitle>
-              <Field label="Action" htmlFor="teaching-mode">
-                <Select
-                  value={mode}
+              <TabsContent value="profile" className="space-y-4 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {PROFILE_FIELDS.map((field) => (
+                    <Field key={field.key} label={field.label} htmlFor={`teaching-${field.key}`}>
+                      <Input
+                        id={`teaching-${field.key}`}
+                        value={profile[field.key]}
+                        disabled={busy}
+                        onChange={(e) => setProfile({ ...profile, [field.key]: e.target.value })}
+                      />
+                    </Field>
+                  ))}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
                   disabled={busy}
-                  onValueChange={(value) => {
-                    setMode(value);
-                    setMappingId('');
-                    setStaffId(educator.id);
-                    setForm({ ...emptyForm });
-                  }}
+                  onClick={() =>
+                    run(
+                      'edit_profile',
+                      { staffId: educator.id, ...profile },
+                      'Profile updated successfully.'
+                    )
+                  }
                 >
-                  <SelectTrigger id="teaching-mode">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MODE_OPTIONS.map((option) => (
-                      <SelectItem key={option.id} value={option.id}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
+                  Save profile
+                </Button>
+              </TabsContent>
 
-              {mode !== 'map' && (
-                <Field label="Existing mapping" htmlFor="teaching-mapping">
-                  <Select value={mappingId || NONE} disabled={busy} onValueChange={chooseMapping}>
-                    <SelectTrigger id="teaching-mapping">
-                      <SelectValue placeholder="Select mapping" />
+              <TabsContent value="mapping" className="space-y-4 pt-2">
+                <Field label="Action" htmlFor="teaching-mode">
+                  <Select
+                    value={mode}
+                    disabled={busy}
+                    onValueChange={(value) => {
+                      setMode(value);
+                      setMappingId('');
+                      setStaffId(educator.id);
+                      setForm({ ...emptyForm });
+                    }}
+                  >
+                    <SelectTrigger id="teaching-mode">
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={NONE}>Select mapping</SelectItem>
-                      {ownMappings.map((m) => (
-                        <SelectItem key={m.id} value={m.id}>
-                          {mappingLabel(m)}
+                      {MODE_OPTIONS.map((option) => (
+                        <SelectItem key={option.id} value={option.id}>
+                          {option.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </Field>
-              )}
 
-              {mode === 'reassign_mapping' && (
-                <Field label="New educator" htmlFor="teaching-staff">
-                  <Select value={staffId} disabled={busy} onValueChange={setStaffId}>
-                    <SelectTrigger id="teaching-staff">
-                      <SelectValue placeholder="Select educator" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {data.staff
-                        .filter((s) => s.account_status === 'active')
-                        .map((s) => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.first_name} {s.last_name}
+                {mode !== 'map' && (
+                  <Field label="Existing mapping" htmlFor="teaching-mapping">
+                    <Select value={mappingId || NONE} disabled={busy} onValueChange={chooseMapping}>
+                      <SelectTrigger id="teaching-mapping">
+                        <SelectValue placeholder="Select mapping" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NONE}>Select mapping</SelectItem>
+                        {ownMappings.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>
+                            {mappingLabel(m)}
                           </SelectItem>
                         ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                )}
+
+                {mode === 'reassign_mapping' && (
+                  <Field label="New educator" htmlFor="teaching-staff">
+                    <Select value={staffId} disabled={busy} onValueChange={setStaffId}>
+                      <SelectTrigger id="teaching-staff">
+                        <SelectValue placeholder="Select educator" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {data.staff
+                          .filter((s) => s.account_status === 'active')
+                          .map((s) => (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.first_name} {s.last_name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                )}
+
+                {mode !== 'end_mapping' && (
+                  <CollegeAssignmentForm form={form} setForm={setForm} isLoading={busy} />
+                )}
+
+                {mode !== 'map' && (
+                  <>
+                    <Field label="Reason *" htmlFor="teaching-reason">
+                      <Input
+                        id="teaching-reason"
+                        value={reason}
+                        disabled={busy}
+                        onChange={(e) => setReason(e.target.value)}
+                        placeholder="Why is this mapping changing? (required)"
+                      />
+                    </Field>
+                    <p className="text-sm text-muted-foreground">
+                      Completed classes stay unchanged. Reassignment updates compatible scheduled
+                      classes from the selected start date.
+                    </p>
+                  </>
+                )}
+
+                {mode === 'end_mapping' && (
+                  <Field label="End date" htmlFor="teaching-end-date">
+                    <Input
+                      id="teaching-end-date"
+                      type="date"
+                      value={form.endDate}
+                      disabled={busy}
+                      onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+                    />
+                  </Field>
+                )}
+
+                <Button
+                  disabled={busy}
+                  onClick={handleSaveMapping}
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+                >
+                  Save mapping
+                </Button>
+              </TabsContent>
+
+              <TabsContent value="sessions" className="space-y-4 pt-2">
+                <p className="text-sm text-muted-foreground">
+                  Latest 300 training sessions. Educator attendance is separate from learner
+                  attendance.
+                </p>
+
+                <Field label="Session" htmlFor="teaching-session">
+                  <Select
+                    value={sessionId || NONE}
+                    disabled={busy}
+                    onValueChange={(value) => {
+                      setSessionId(value === NONE ? '' : value);
+                      setReplacementId('');
+                    }}
+                  >
+                    <SelectTrigger id="teaching-session">
+                      <SelectValue placeholder="Select session" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE}>Select session</SelectItem>
+                      {data.sessions.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {sessionLabel(s)}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </Field>
-              )}
 
-              {mode !== 'end_mapping' && (
-                <CollegeAssignmentForm form={form} setForm={setForm} isLoading={busy} />
-              )}
+                {session && (
+                  <div className="space-y-4 rounded-xl border p-4">
+                    <p className="text-sm text-muted-foreground">
+                      Attendance: {session.staff_attendance_status || 'Unmarked'} · Original
+                      educator:{' '}
+                      {data.staff.find((s) => s.id === session.original_organization_staff_id)
+                        ?.first_name || 'Previous educator'}
+                    </p>
 
-              {mode !== 'map' && (
-                <>
-                  <Field label="Reason" htmlFor="teaching-reason">
-                    <Input
-                      id="teaching-reason"
-                      value={reason}
-                      disabled={busy}
-                      onChange={(e) => setReason(e.target.value)}
-                      placeholder="Why is this mapping changing?"
-                    />
-                  </Field>
-                  <p className="text-sm text-muted-foreground">
-                    Completed classes stay unchanged. Reassignment updates compatible scheduled
-                    classes from the selected start date. Before changing a destination, class or
-                    course, cancel or replace affected future sessions below.
-                  </p>
-                </>
-              )}
-
-              {mode === 'end_mapping' && (
-                <Field label="End date" htmlFor="teaching-end-date">
-                  <Input
-                    id="teaching-end-date"
-                    type="date"
-                    value={form.endDate}
-                    disabled={busy}
-                    onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                  />
-                </Field>
-              )}
-
-              <Button
-                disabled={busy}
-                onClick={handleSaveMapping}
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
-              >
-                Save mapping
-              </Button>
-            </section>
-
-            <Separator />
-
-            {/* Sessions */}
-            <section className="space-y-4">
-              <SectionTitle>Attendance, replacement &amp; swaps</SectionTitle>
-              <p className="text-sm text-muted-foreground">
-                Showing the latest 300 training sessions. Educator attendance is separate from
-                learner attendance.
-              </p>
-
-              <Field label="Session" htmlFor="teaching-session">
-                <Select
-                  value={sessionId || NONE}
-                  disabled={busy}
-                  onValueChange={(value) => {
-                    setSessionId(value === NONE ? '' : value);
-                    setReplacementId('');
-                  }}
-                >
-                  <SelectTrigger id="teaching-session">
-                    <SelectValue placeholder="Select session" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE}>Select session</SelectItem>
-                    {data.sessions.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {sessionLabel(s)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-
-              {session && (
-                <div className="space-y-4 rounded-xl border p-4">
-                  <p className="text-sm text-muted-foreground">
-                    Educator attendance: {session.staff_attendance_status || 'Unmarked'} · Original
-                    educator:{' '}
-                    {data.staff.find((s) => s.id === session.original_organization_staff_id)
-                      ?.first_name || 'Previous educator'}
-                  </p>
-
-                  <Field label="Reason / attendance remarks" htmlFor="teaching-session-reason">
-                    <Input
-                      id="teaching-session-reason"
-                      value={reason}
-                      disabled={busy}
-                      onChange={(e) => setReason(e.target.value)}
-                    />
-                  </Field>
-
-                  <Field label="Educator attendance" htmlFor="teaching-attendance">
-                    <Select value={attendance} disabled={busy} onValueChange={setAttendance}>
-                      <SelectTrigger id="teaching-attendance">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ATTENDANCE_OPTIONS.map((s) => (
-                          <SelectItem key={s} value={s} className="capitalize">
-                            {s}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={busy}
-                      onClick={() =>
-                        run(
-                          'mark_staff',
-                          { sessionId, version: session.version, status: attendance, reason },
-                          'Attendance recorded successfully.'
-                        )
-                      }
-                    >
-                      Mark attendance
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={busy}
-                      onClick={() =>
-                        run(
-                          'cancel_session',
-                          { sessionId, version: session.version, reason },
-                          'Session cancelled successfully.'
-                        )
-                      }
-                    >
-                      Cancel session
-                    </Button>
-                  </div>
-
-                  <Field label="Replacement educator mapping" htmlFor="teaching-replacement">
-                    <Select
-                      value={replacementId || NONE}
-                      disabled={busy}
-                      onValueChange={(value) => setReplacementId(value === NONE ? '' : value)}
-                    >
-                      <SelectTrigger id="teaching-replacement">
-                        <SelectValue placeholder="Select eligible replacement" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={NONE}>Select eligible replacement</SelectItem>
-                        {eligible(session)
-                          .filter((m) => m.staff_id !== session.organization_staff_id)
-                          .map((m) => (
-                            <SelectItem key={m.id} value={m.id}>
-                              {mappingLabel(m)}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={busy || !replacementId}
-                    onClick={() =>
-                      run(
-                        'replace',
-                        { sessionId, version: session.version, mappingId: replacementId, reason },
-                        'Session reassigned successfully.'
-                      )
-                    }
-                  >
-                    Replace / reassign this session
-                  </Button>
-
-                  <Field label="Other session for swap" htmlFor="teaching-other-session">
-                    <Select
-                      value={otherId || NONE}
-                      disabled={busy}
-                      onValueChange={(value) => {
-                        setOtherId(value === NONE ? '' : value);
-                        setOtherMappingId('');
-                      }}
-                    >
-                      <SelectTrigger id="teaching-other-session">
-                        <SelectValue placeholder="Select second session" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={NONE}>Select second session</SelectItem>
-                        {data.sessions
-                          .filter((s) => s.id !== sessionId)
-                          .map((s) => (
-                            <SelectItem key={s.id} value={s.id}>
-                              {sessionLabel(s)}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-
-                  {other && (
-                    <>
-                      <p className="text-sm text-muted-foreground">
-                        Select the second educator&apos;s mapping to the first class above, and the
-                        first educator&apos;s mapping to the second class below.
-                      </p>
-                      <Field
-                        label="First educator's mapping to second class"
-                        htmlFor="teaching-other-mapping"
-                      >
-                        <Select
-                          value={otherMappingId || NONE}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <Field label="Reason / remarks *" htmlFor="teaching-session-reason">
+                        <Input
+                          id="teaching-session-reason"
+                          value={reason}
                           disabled={busy}
-                          onValueChange={(value) =>
-                            setOtherMappingId(value === NONE ? '' : value)
-                          }
-                        >
-                          <SelectTrigger id="teaching-other-mapping">
-                            <SelectValue placeholder="Select mapping" />
+                          onChange={(e) => setReason(e.target.value)}
+                          placeholder="Required — recorded in the audit trail"
+                        />
+                      </Field>
+                      <Field label="Attendance" htmlFor="teaching-attendance">
+                        <Select value={attendance} disabled={busy} onValueChange={setAttendance}>
+                          <SelectTrigger id="teaching-attendance">
+                            <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value={NONE}>Select mapping</SelectItem>
-                            {eligible(other)
-                              .filter((m) => m.staff_id === session.organization_staff_id)
-                              .map((m) => (
-                                <SelectItem key={m.id} value={m.id}>
-                                  {mappingLabel(m)}
-                                </SelectItem>
-                              ))}
+                            {ATTENDANCE_OPTIONS.map((s) => (
+                              <SelectItem key={s} value={s} className="capitalize">
+                                {s}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </Field>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        disabled={busy}
+                        disabled={busy || !reasonOk}
+                        title={!reasonOk ? 'Enter a reason first' : undefined}
                         onClick={() =>
                           run(
-                            'swap',
-                            {
-                              sessionId,
-                              version: session.version,
-                              otherSessionId: other.id,
-                              otherVersion: other.version,
-                              mappingId: replacementId,
-                              otherMappingId,
-                              reason,
-                            },
-                            'Sessions swapped successfully.'
+                            'mark_staff',
+                            { sessionId, version: session.version, status: attendance, reason },
+                            'Attendance recorded successfully.'
                           )
                         }
                       >
-                        Swap both educators
+                        Mark attendance
                       </Button>
-                    </>
-                  )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={busy || !reasonOk}
+                        title={!reasonOk ? 'Enter a reason first' : undefined}
+                        onClick={() =>
+                          run(
+                            'cancel_session',
+                            { sessionId, version: session.version, reason },
+                            'Session cancelled successfully.'
+                          )
+                        }
+                      >
+                        Cancel session
+                      </Button>
+                    </div>
 
-                  {session.instructor_changes?.length > 0 && (
-                    <details className="text-sm">
-                      <summary className="cursor-pointer font-medium">
-                        Previous instructor / attendance details
-                      </summary>
-                      <div className="mt-2 space-y-1 text-muted-foreground">
-                        {session.instructor_changes.map((c, i) => (
-                          <p key={i}>
-                            {c.at} · Educator {c.staffId} · Attendance {c.staffAttendance || 'Unmarked'} · {c.reason}
-                          </p>
-                        ))}
-                      </div>
-                    </details>
-                  )}
-                </div>
-              )}
-            </section>
+                    <Field label="Replacement mapping" htmlFor="teaching-replacement">
+                      <Select
+                        value={replacementId || NONE}
+                        disabled={busy}
+                        onValueChange={(value) => setReplacementId(value === NONE ? '' : value)}
+                      >
+                        <SelectTrigger id="teaching-replacement">
+                          <SelectValue placeholder="Select eligible replacement" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NONE}>Select eligible replacement</SelectItem>
+                          {eligible(session)
+                            .filter((m) => m.staff_id !== session.organization_staff_id)
+                            .map((m) => (
+                              <SelectItem key={m.id} value={m.id}>
+                                {mappingLabel(m)}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={busy || !replacementId || !reasonOk}
+                      title={!reasonOk ? 'Enter a reason first' : undefined}
+                      onClick={() =>
+                        run(
+                          'replace',
+                          { sessionId, version: session.version, mappingId: replacementId, reason },
+                          'Session reassigned successfully.'
+                        )
+                      }
+                    >
+                      Replace this session
+                    </Button>
+
+                    <Field label="Other session for swap" htmlFor="teaching-other-session">
+                      <Select
+                        value={otherId || NONE}
+                        disabled={busy}
+                        onValueChange={(value) => {
+                          setOtherId(value === NONE ? '' : value);
+                          setOtherMappingId('');
+                        }}
+                      >
+                        <SelectTrigger id="teaching-other-session">
+                          <SelectValue placeholder="Select second session" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NONE}>Select second session</SelectItem>
+                          {data.sessions
+                            .filter((s) => s.id !== sessionId)
+                            .map((s) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {sessionLabel(s)}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+
+                    {other && (
+                      <>
+                        <Field
+                          label="First educator's mapping to second class"
+                          htmlFor="teaching-other-mapping"
+                        >
+                          <Select
+                            value={otherMappingId || NONE}
+                            disabled={busy}
+                            onValueChange={(value) =>
+                              setOtherMappingId(value === NONE ? '' : value)
+                            }
+                          >
+                            <SelectTrigger id="teaching-other-mapping">
+                              <SelectValue placeholder="Select mapping" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={NONE}>Select mapping</SelectItem>
+                              {eligible(other)
+                                .filter((m) => m.staff_id === session.organization_staff_id)
+                                .map((m) => (
+                                  <SelectItem key={m.id} value={m.id}>
+                                    {mappingLabel(m)}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </Field>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={busy || !reasonOk}
+                          title={!reasonOk ? 'Enter a reason first' : undefined}
+                          onClick={() =>
+                            run(
+                              'swap',
+                              {
+                                sessionId,
+                                version: session.version,
+                                otherSessionId: other.id,
+                                otherVersion: other.version,
+                                mappingId: replacementId,
+                                otherMappingId,
+                                reason,
+                              },
+                              'Sessions swapped successfully.'
+                            )
+                          }
+                        >
+                          Swap both educators
+                        </Button>
+                      </>
+                    )}
+
+                    {session.instructor_changes?.length > 0 && (
+                      <details className="text-sm">
+                        <summary className="cursor-pointer font-medium">
+                          Previous instructor / attendance details
+                        </summary>
+                        <div className="mt-2 space-y-1 text-muted-foreground">
+                          {session.instructor_changes.map((c, i) => (
+                            <p key={i}>
+                              {c.at} · Educator {c.staffId} · Attendance{' '}
+                              {c.staffAttendance || 'Unmarked'} · {c.reason}
+                            </p>
+                          ))}
+                        </div>
+                      </details>
+                    )}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           </div>
         )}
       </DialogContent>

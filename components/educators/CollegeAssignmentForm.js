@@ -14,6 +14,30 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { useEffect, useState } from 'react'
 import { useToast } from '@/hooks/use-toast'
 
+// Mirrors skillpassport's formatProgramLabel (src/shared/lib/programLabel.ts):
+// "Program Name" when it has no specializations, "CODE - Spec1, Spec2"
+// when it does (falls back to the name if code is missing). Accepts the DB
+// shape (text[]), a legacy comma-separated string, null, or undefined.
+function getProgramSpecializations(program) {
+  const specs = program?.specializations
+  if (Array.isArray(specs)) {
+    return specs.map((s) => String(s).trim()).filter(Boolean)
+  }
+  if (typeof specs === 'string') {
+    return specs.split(',').map((s) => s.trim()).filter(Boolean)
+  }
+  return []
+}
+
+function formatProgramLabel(program) {
+  const specs = getProgramSpecializations(program)
+  if (specs.length === 0) return program.name
+  const code = typeof program?.code === 'string' && program.code.trim().length > 0
+    ? program.code.trim()
+    : program.name
+  return `${code} - ${specs.join(', ')}`
+}
+
 export default function CollegeAssignmentForm({ 
   form, 
   setForm, 
@@ -238,7 +262,7 @@ export default function CollegeAssignmentForm({
               <SelectItem value="all" disabled>Select Program</SelectItem>
               {programs.map(program => (
                 <SelectItem key={program.id} value={program.id}>
-                  {program.name} ({program.code})
+                  {formatProgramLabel(program)}
                 </SelectItem>
               ))}
             </SelectContent>
