@@ -48,8 +48,6 @@ const PROFILE_FIELDS = [
 const MODE_OPTIONS = [
   { id: 'map', label: 'Add mapping' },
   { id: 'edit_mapping', label: 'Edit mapping' },
-  { id: 'relocate', label: 'Relocate' },
-  { id: 'reassign_mapping', label: 'Reassign' },
   { id: 'end_mapping', label: 'End mapping' },
 ];
 
@@ -84,6 +82,7 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState('map');
   const [mappingId, setMappingId] = useState('');
+  const [origMapping, setOrigMapping] = useState(null);
   const [form, setForm] = useState({ ...emptyForm });
   const [staffId, setStaffId] = useState(educator.id);
   const [reason, setReason] = useState('');
@@ -172,18 +171,51 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
     const m = data.mappings.find((x) => x.id === nextId);
     if (m) {
       setStaffId(m.staff_id);
-      setForm({
+      const snapshot = {
+        staffId: m.staff_id,
         collegeId: m.college_id,
         departmentId: m.department_id,
         programId: m.program_id,
         sectionId: m.section_id,
         specializationId: m.metadata?.specializations?.[0] || '',
-        assignedCourses: m.assigned_courses || [],
+        assignedCourses: [...(m.assigned_courses || [])].sort(),
         startDate: m.start_date,
         endDate: m.end_date || '',
+      };
+      setOrigMapping(snapshot);
+      setForm({
+        collegeId: snapshot.collegeId,
+        departmentId: snapshot.departmentId,
+        programId: snapshot.programId,
+        sectionId: snapshot.sectionId,
+        specializationId: snapshot.specializationId,
+        assignedCourses: [...(m.assigned_courses || [])],
+        startDate: snapshot.startDate,
+        endDate: snapshot.endDate,
         notes: m.notes || '',
       });
+    } else {
+      setOrigMapping(null);
     }
+  }
+
+  // Edit mode auto-detects the real operation so Relocate/Reassign need no
+  // separate modes: a different educator => reassign, a different
+  // destination => relocate, otherwise a plain edit. Audit labels preserved.
+  function detectEditAction(m) {
+    if (staffId !== m.staff_id) return 'reassign_mapping';
+    const sameCourses =
+      [...form.assignedCourses].sort().join('|') === (origMapping?.assignedCourses || []).join('|');
+    const moved =
+      form.collegeId !== origMapping?.collegeId ||
+      form.departmentId !== origMapping?.departmentId ||
+      form.programId !== origMapping?.programId ||
+      form.sectionId !== origMapping?.sectionId ||
+      (form.specializationId || '') !== (origMapping?.specializationId || '') ||
+      !sameCourses ||
+      form.startDate !== (origMapping?.startDate || '') ||
+      (form.endDate || '') !== (origMapping?.endDate || '');
+    return moved ? 'relocate' : 'edit_mapping';
   }
 
   function handleSaveMapping() {
@@ -216,8 +248,16 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
         return;
       }
     }
+    const effectiveAction = mode === 'map' ? 'map' : mode === 'end_mapping' ? 'end_mapping' : detectEditAction(m);
+    const successMessages = {
+      map: 'Mapping added successfully.',
+      edit_mapping: 'Mapping updated successfully.',
+      relocate: 'Trainer relocated successfully.',
+      reassign_mapping: 'Mapping reassigned successfully.',
+      end_mapping: 'Mapping ended successfully.',
+    };
     run(
-      mode,
+      effectiveAction,
       mode === 'end_mapping'
         ? { mappingId, version: m.assignment_version, reason, endDate: form.endDate }
         : {
@@ -231,7 +271,7 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
             notes: form.notes,
             ...(mode === 'map' ? {} : { mappingId, version: m.assignment_version, reason }),
           },
-      mode === 'map' ? 'Mapping added successfully.' : 'Mapping updated successfully.'
+      successMessages[effectiveAction]
     );
   }
 
@@ -314,6 +354,7 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
                     onValueChange={(value) => {
                       setMode(value);
                       setMappingId('');
+                      setOrigMapping(null);
                       setStaffId(educator.id);
                       setForm({ ...emptyForm });
                     }}
@@ -349,8 +390,8 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
                   </Field>
                 )}
 
-                {mode === 'reassign_mapping' && (
-                  <Field label="New educator" htmlFor="teaching-staff">
+                {mode === 'edit_mapping' && mappingId && (
+                  <Field label="New educator (optional — leave to keep current trainer)" htmlFor="teaching-staff">
                     <Select value={staffId} disabled={busy} onValueChange={setStaffId}>
                       <SelectTrigger id="teaching-staff">
                         <SelectValue placeholder="Select educator" />
