@@ -463,8 +463,11 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
                     value={sessionId || NONE}
                     disabled={busy}
                     onValueChange={(value) => {
-                      setSessionId(value === NONE ? '' : value);
+                      const nextId = value === NONE ? '' : value;
+                      setSessionId(nextId);
                       setReplacementId('');
+                      const next = ownSessions.find((s) => s.id === nextId);
+                      setAttendance(next?.staff_attendance_status || 'present');
                     }}
                   >
                     <SelectTrigger id="teaching-session">
@@ -483,12 +486,28 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
 
                 {session && (
                   <div className="space-y-4 rounded-xl border p-4">
-                    <p className="text-sm text-muted-foreground">
-                      Attendance: {session.staff_attendance_status || 'Unmarked'} · Original
-                      educator:{' '}
-                      {data.staff.find((s) => s.id === session.original_organization_staff_id)
-                        ?.first_name || 'Previous educator'}
-                    </p>
+                    {session.staff_attendance_status ? (
+                      <div className="rounded-lg bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 px-3 py-2 text-sm">
+                        <span className="font-semibold text-green-700 dark:text-green-300">
+                          Marked: {session.staff_attendance_status}
+                        </span>
+                        {session.staff_attendance_remarks && (
+                          <span className="text-green-700/80 dark:text-green-300/80"> · {session.staff_attendance_remarks}</span>
+                        )}
+                        <span className="block text-xs text-muted-foreground mt-0.5">
+                          Original educator:{' '}
+                          {data.staff.find((s) => s.id === session.original_organization_staff_id)
+                            ?.first_name || 'Previous educator'}{' '}
+                          · you can update it below
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Attendance: Unmarked · Original educator:{' '}
+                        {data.staff.find((s) => s.id === session.original_organization_staff_id)
+                          ?.first_name || 'Previous educator'}
+                      </p>
+                    )}
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Field label="Reason / remarks *" htmlFor="teaching-session-reason">
@@ -554,7 +573,17 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
                         Cancel session
                       </Button>
                     </div>
+                    {!reasonOk && (
+                      <p className="text-xs text-muted-foreground">
+                        ↑ Fill in Reason / remarks above to enable these actions. Mark attendance is the apply button — it saves the chosen status.
+                      </p>
+                    )}
 
+                    <details open={!session.staff_attendance_status} className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2">
+                      <summary className="cursor-pointer text-sm font-medium">
+                        Replace or swap this session
+                      </summary>
+                      <div className="space-y-4 pt-3">
                     <Field label="Replacement mapping" htmlFor="teaching-replacement">
                       <Select
                         value={replacementId || NONE}
@@ -670,6 +699,8 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
                         </Button>
                       </>
                     )}
+                      </div>
+                    </details>
 
                     {session.instructor_changes?.length > 0 && (
                       <details className="text-sm">

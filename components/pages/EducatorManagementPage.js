@@ -916,6 +916,9 @@ export default function EducatorManagementPage({ currentUser }) {
                                         {educator.assignments[0].assignedCourses.length} Course(s)
                                       </Badge>
                                     )}
+                                    <Button variant="outline" size="sm" onClick={() => setAssignmentsEducator(educator)}>
+                                      Details
+                                    </Button>
                                   </div>
                                 </div>
                               ) : (
