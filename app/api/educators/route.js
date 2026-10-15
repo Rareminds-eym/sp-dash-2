@@ -68,6 +68,7 @@ export async function GET(request) {
           assigned_courses,
           start_date,
           end_date,
+          metadata,
           departments:department_id(id, name, code),
           programs:program_id(id, name, code),
           sections:section_id(id, section, semester)
@@ -123,26 +124,61 @@ export async function GET(request) {
 
     console.log(`✅ [LIST EDUCATORS API] Found ${count} total educators, returning ${educators?.length} for page ${page}`)
 
+    // Resolve college names from organizations by assignment college_id.
+    const collegeIds = [...new Set(
+      (educators || []).flatMap(staff => (staff.assignments || []).map(a => a.college_id)).filter(Boolean)
+    )];
+    let collegesById = {};
+    if (collegeIds.length > 0) {
+      const { data: colleges, error: collegesError } = await supabaseAdmin
+        .from('organizations')
+        .select('id, name')
+        .in('id', collegeIds);
+      if (!collegesError) {
+        collegesById = Object.fromEntries((colleges || []).map(c => [c.id, c.name]));
+      } else {
+        console.error('❌ [LIST EDUCATORS API] Error fetching college names:', collegesError);
+      }
+    }
+
     // Map organization_staff fields to match frontend expectations.
     // department/designation/specialization don't exist as columns — derive
     // them from assignments + metadata so the UI never renders `undefined`.
     let mappedEducators = (educators || []).map(staff => {
-      const assignments = (staff.assignments || []).map(assignment => ({
-        id: assignment.id,
-        collegeId: assignment.college_id,
-        departmentId: assignment.department_id,
-        programId: assignment.program_id,
-        sectionId: assignment.section_id,
-        assignedCourses: assignment.assigned_courses || [],
-        startDate: assignment.start_date,
-        endDate: assignment.end_date,
-        departmentName: assignment.departments?.name || null,
-        departmentCode: assignment.departments?.code || null,
-        programName: assignment.programs?.name || null,
-        programCode: assignment.programs?.code || null,
-        sectionName: assignment.sections?.section || null,
-        semester: assignment.sections?.semester || null
-      }));
+      const today = new Date().toISOString().slice(0, 10);
+      const assignments = (staff.assignments || []).map(assignment => {
+        const specs = Array.isArray(assignment.metadata?.specializations)
+          ? assignment.metadata.specializations.map(s => String(s).trim()).filter(Boolean)
+          : [];
+        const programName = assignment.programs?.name || null;
+        const programCode = (typeof assignment.programs?.code === 'string' && assignment.programs.code.trim())
+          ? assignment.programs.code.trim()
+          : programName;
+        const start = assignment.start_date || null;
+        const end = assignment.end_date || null;
+        const status = start && start > today ? 'upcoming' : (end && end < today ? 'ended' : 'active');
+        return {
+          id: assignment.id,
+          collegeId: assignment.college_id,
+          collegeName: collegesById[assignment.college_id] || null,
+          departmentId: assignment.department_id,
+          programId: assignment.program_id,
+          sectionId: assignment.section_id,
+          assignedCourses: assignment.assigned_courses || [],
+          startDate: start,
+          endDate: end,
+          status,
+          specializations: specs,
+          specialization: specs[0] || null,
+          programLabel: specs.length > 0 && programCode ? `${programCode} - ${specs.join(', ')}` : programName,
+          departmentName: assignment.departments?.name || null,
+          departmentCode: assignment.departments?.code || null,
+          programName,
+          programCode: assignment.programs?.code || null,
+          sectionName: assignment.sections?.section || null,
+          semester: assignment.sections?.semester || null
+        };
+      });
       const firstDept = assignments.find(a => a.departmentName)?.departmentName || null;
       const meta = staff.metadata || {};
       return {

@@ -11,7 +11,10 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Checkbox } from '@/components/ui/checkbox'
-import { useEffect, useState } from 'react'
+import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
+import { Search } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { useToast } from '@/hooks/use-toast'
 
 // Mirrors skillpassport's formatProgramLabel (src/shared/lib/programLabel.ts):
@@ -54,6 +57,7 @@ export default function CollegeAssignmentForm({
   const [specializations, setSpecializations] = useState([]) // New: for selected program's specializations
   const [sections, setSections] = useState([])
   const [courses, setCourses] = useState([])
+  const [courseSearch, setCourseSearch] = useState('')
   
   // Fetch colleges on mount
   useEffect(() => {
@@ -179,12 +183,38 @@ export default function CollegeAssignmentForm({
     }))
   }
 
+  const filteredCourses = useMemo(() => {
+    const q = courseSearch.trim().toLowerCase()
+    if (!q) return courses
+    return courses.filter(c =>
+      `${c.code || ''} ${c.title || ''}`.toLowerCase().includes(q)
+    )
+  }, [courses, courseSearch])
+
+  const toggleFilteredCourses = (select) => {
+    setForm(prev => {
+      const ids = filteredCourses.map(c => c.course_id)
+      const next = new Set(prev.assignedCourses)
+      ids.forEach(id => {
+        if (select) next.add(id)
+        else next.delete(id)
+      })
+      return { ...prev, assignedCourses: [...next] }
+    })
+  }
+
+  const selectedCount = form.assignedCourses.length
+
   return (
-    <div className="space-y-6">
-      {/* College Selection */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Assignment Details</h3>
-        
+    <div className="space-y-8">
+      {/* Step 1 — Placement */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-[11px] font-bold text-white">1</span>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Placement</h3>
+        </div>
+
+        <div className="space-y-4 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
         <div className="space-y-2">
           <Label htmlFor="collegeId">
             Select College <span className="text-red-500">*</span>
@@ -322,31 +352,74 @@ export default function CollegeAssignmentForm({
           </Select>
         </div>
       </div>
+      </section>
 
-      {/* Course Selection */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Assigned Courses <span className="text-red-500">*</span>
-        </h3>
-        
+      {/* Step 2 — Courses */}
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-[11px] font-bold text-white">2</span>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              Courses <span className="text-red-500">*</span>
+            </h3>
+          </div>
+          {selectedCount > 0 && (
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+              {selectedCount} selected
+            </Badge>
+          )}
+        </div>
+
         {form.departmentId ? (
           courses.length > 0 ? (
-            <div className="max-h-64 overflow-y-auto border rounded-lg p-4 space-y-2">
-              {courses.map(course => (
-                <div key={course.course_id} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`course-${course.course_id}`}
-                    checked={form.assignedCourses.includes(course.course_id)}
-                    onCheckedChange={() => toggleCourse(course.course_id)}
-                  />
-                  <label
-                    htmlFor={`course-${course.course_id}`}
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                  >
-                    {course.code} - {course.title}
-                  </label>
+            <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="flex items-center gap-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/40 px-3 py-2.5">
+                <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <Input
+                  value={courseSearch}
+                  onChange={(e) => setCourseSearch(e.target.value)}
+                  placeholder="Search courses…"
+                  className="h-8 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+                />
+                {filteredCourses.length > 0 && (
+                  <div className="flex shrink-0 gap-1">
+                    <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => toggleFilteredCourses(true)}>
+                      All
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => toggleFilteredCourses(false)}>
+                      Clear
+                    </Button>
+                  </div>
+                )}
+              </div>
+              {filteredCourses.length > 0 ? (
+                <div className="max-h-64 overflow-y-auto p-2 space-y-1">
+                  {filteredCourses.map(course => {
+                    const checked = form.assignedCourses.includes(course.course_id)
+                    return (
+                      <label
+                        key={course.course_id}
+                        className={`flex min-h-[44px] cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${checked ? 'bg-blue-50 dark:bg-blue-950/40' : 'hover:bg-gray-50 dark:hover:bg-gray-800/60'}`}
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={() => toggleCourse(course.course_id)}
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium leading-snug">
+                            {course.title}
+                          </span>
+                          <span className="block text-xs text-muted-foreground">{course.code}</span>
+                        </span>
+                      </label>
+                    )
+                  })}
                 </div>
-              ))}
+              ) : (
+                <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+                  No courses match “{courseSearch}”.
+                </p>
+              )}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">No courses available for this department</p>
@@ -354,56 +427,54 @@ export default function CollegeAssignmentForm({
         ) : (
           <p className="text-sm text-muted-foreground">Select a department to see available courses</p>
         )}
-        
-        {form.assignedCourses.length > 0 && (
-          <p className="text-sm text-green-600 dark:text-green-400">
-            {form.assignedCourses.length} course(s) selected
-          </p>
-        )}
-      </div>
+      </section>
 
-      {/* Date Selection */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Schedule</h3>
-        
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="startDate">
-              Start Date <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="startDate"
-              type="date"
-              value={form.startDate}
-              onChange={(e) => setForm(prev => ({ ...prev, startDate: e.target.value }))}
-            />
+      {/* Step 3 — Schedule */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-[11px] font-bold text-white">3</span>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Schedule & notes</h3>
+        </div>
+
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="startDate">
+                Start Date <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="startDate"
+                type="date"
+                value={form.startDate}
+                onChange={(e) => setForm(prev => ({ ...prev, startDate: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="endDate">
+                End Date (Optional)
+              </Label>
+              <Input
+                id="endDate"
+                type="date"
+                value={form.endDate}
+                onChange={(e) => setForm(prev => ({ ...prev, endDate: e.target.value }))}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="endDate">
-              End Date (Optional)
-            </Label>
-            <Input
-              id="endDate"
-              type="date"
-              value={form.endDate}
-              onChange={(e) => setForm(prev => ({ ...prev, endDate: e.target.value }))}
+            <Label htmlFor="notes">Notes (Optional)</Label>
+            <Textarea
+              id="notes"
+              rows={3}
+              placeholder="Add any special notes about this assignment..."
+              value={form.notes}
+              onChange={(e) => setForm(prev => ({ ...prev, notes: e.target.value }))}
             />
           </div>
         </div>
-      </div>
-
-      {/* Notes */}
-      <div className="space-y-2">
-        <Label htmlFor="notes">Notes (Optional)</Label>
-        <textarea
-          id="notes"
-          className="w-full min-h-[100px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          placeholder="Add any special notes about this assignment..."
-          value={form.notes}
-          onChange={(e) => setForm(prev => ({ ...prev, notes: e.target.value }))}
-        />
-      </div>
+      </section>
     </div>
   )
 }

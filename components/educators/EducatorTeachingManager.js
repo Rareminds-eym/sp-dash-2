@@ -144,7 +144,10 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
 
   const ownMappings = data.mappings.filter((m) => m.staff_id === educator.id && m.is_active);
   const reasonOk = reason.trim().length > 0;
-  const session = data.sessions.find((s) => s.id === sessionId);
+  // This card manages ONE educator — the session picker shows only their
+  // sessions, never other trainers'. (Swap counterpart picker stays global.)
+  const ownSessions = data.sessions.filter((s) => s.organization_staff_id === educator.id);
+  const session = ownSessions.find((s) => s.id === sessionId);
   const other = data.sessions.find((s) => s.id === otherId);
   const sessionLabel = (s) =>
     `${s.date} ${s.start_time} · ${s.subject_name} · ${s.faculty_name} · ${s.section} (${s.status})`;
@@ -197,6 +200,10 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
     }
     if (mode === 'end_mapping' && !form.endDate) {
       setError('End date is required to end a mapping.');
+      return;
+    }
+    if (form.endDate && form.startDate && form.endDate < form.startDate) {
+      setError('End date cannot be before the start date.');
       return;
     }
     if (mode !== 'end_mapping') {
@@ -283,13 +290,17 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
                   variant="outline"
                   size="sm"
                   disabled={busy}
-                  onClick={() =>
+                  onClick={() => {
+                    if (!profile.firstName.trim() || !profile.lastName.trim()) {
+                      setError('First name and last name are required.');
+                      return;
+                    }
                     run(
                       'edit_profile',
                       { staffId: educator.id, ...profile },
                       'Profile updated successfully.'
-                    )
-                  }
+                    );
+                  }}
                 >
                   Save profile
                 </Button>
@@ -420,7 +431,7 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={NONE}>Select session</SelectItem>
-                      {data.sessions.map((s) => (
+                      {ownSessions.map((s) => (
                         <SelectItem key={s.id} value={s.id}>
                           {sessionLabel(s)}
                         </SelectItem>
@@ -460,8 +471,14 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
                               </SelectItem>
                             ))}
                           </SelectContent>
-                        </Select>
-                      </Field>
+                  </Select>
+                </Field>
+
+                {!session && ownSessions.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    No sessions assigned to this educator yet.
+                  </p>
+                )}
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-2">
@@ -590,8 +607,8 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
                         <Button
                           variant="outline"
                           size="sm"
-                          disabled={busy || !reasonOk}
-                          title={!reasonOk ? 'Enter a reason first' : undefined}
+                          disabled={busy || !reasonOk || !otherId || !otherMappingId || !replacementId}
+                          title={!reasonOk ? 'Enter a reason first' : (!otherId || !otherMappingId || !replacementId ? 'Select the other session and both mappings first' : undefined)}
                           onClick={() =>
                             run(
                               'swap',

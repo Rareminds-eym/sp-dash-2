@@ -1,5 +1,6 @@
 'use client'
 import EducatorTeachingManager from '@/components/educators/EducatorTeachingManager';
+import EducatorAssignmentsModal from '@/components/educators/EducatorAssignmentsModal';
 
 import {
   AlertDialog,
@@ -36,6 +37,7 @@ import { useToast } from '@/hooks/use-toast'
 import CollegeAssignmentForm from '@/components/educators/CollegeAssignmentForm'
 import {
   BookOpen,
+  Building2,
   ChevronLeft,
   ChevronRight,
   GraduationCap,
@@ -53,6 +55,7 @@ import { useEffect, useRef, useState } from 'react'
 
 export default function EducatorManagementPage({ currentUser }) {
   const [managedEducator,setManagedEducator]=useState(null)
+  const [assignmentsEducator,setAssignmentsEducator]=useState(null)
   const [educators, setEducators] = useState([])
   const [loading, setLoading] = useState(true)
   const [actionDialog, setActionDialog] = useState({ open: false, educator: null, action: null })
@@ -673,6 +676,7 @@ export default function EducatorManagementPage({ currentUser }) {
     <div className="space-y-6">
 
       {managedEducator&&<EducatorTeachingManager educator={managedEducator} onClose={()=>setManagedEducator(null)} onSaved={fetchEducators}/>}
+      {assignmentsEducator&&<EducatorAssignmentsModal educator={assignmentsEducator} onClose={()=>setAssignmentsEducator(null)}/>}
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card className="neu-card bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/20 border-blue-200 dark:border-blue-800">
@@ -881,34 +885,67 @@ export default function EducatorManagementPage({ currentUser }) {
                           {educator.assignments && educator.assignments.length > 0 && (
                             <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
                               <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">College Assignments:</p>
-                              {educator.assignments.map((assignment, idx) => (
-                                <div key={assignment.id || idx} className="mb-2 last:mb-0">
+                              {educator.assignments.length === 1 ? (
+                                <div className="mb-2 last:mb-0">
                                   <div className="flex flex-wrap gap-2 items-center text-xs">
-                                    {assignment.departmentName && (
+                                    {educator.assignments[0].collegeName && (
+                                      <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-200">
+                                        <Building2 className="h-3 w-3 mr-1" />
+                                        {educator.assignments[0].collegeName}
+                                      </Badge>
+                                    )}
+                                    {educator.assignments[0].departmentName && (
                                       <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                                         <BookOpen className="h-3 w-3 mr-1" />
-                                        {assignment.departmentName}
+                                        {educator.assignments[0].departmentName}
                                       </Badge>
                                     )}
-                                    {assignment.programName && (
+                                    {(educator.assignments[0].programLabel || educator.assignments[0].programName) && (
                                       <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
                                         <GraduationCap className="h-3 w-3 mr-1" />
-                                        {assignment.programName}
+                                        {educator.assignments[0].programLabel || educator.assignments[0].programName}
                                       </Badge>
                                     )}
-                                    {assignment.sectionName && (
+                                    {educator.assignments[0].sectionName && (
                                       <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                                        Section {assignment.sectionName} - Sem {assignment.semester}
+                                        Section {educator.assignments[0].sectionName} - Sem {educator.assignments[0].semester}
                                       </Badge>
                                     )}
-                                    {assignment.assignedCourses && assignment.assignedCourses.length > 0 && (
+                                    {educator.assignments[0].assignedCourses && educator.assignments[0].assignedCourses.length > 0 && (
                                       <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
-                                        {assignment.assignedCourses.length} Course(s)
+                                        {educator.assignments[0].assignedCourses.length} Course(s)
                                       </Badge>
                                     )}
                                   </div>
                                 </div>
-                              ))}
+                              ) : (
+                                <div className="flex flex-wrap gap-2 items-center text-xs">
+                                  {educator.assignments[0].collegeName && (
+                                    <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-200">
+                                      <Building2 className="h-3 w-3 mr-1" />
+                                      {educator.assignments[0].collegeName}
+                                    </Badge>
+                                  )}
+                                  {educator.assignments[0].departmentName && (
+                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                      <BookOpen className="h-3 w-3 mr-1" />
+                                      {educator.assignments[0].departmentName}
+                                    </Badge>
+                                  )}
+                                  {(educator.assignments[0].programLabel || educator.assignments[0].programName) && (
+                                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                                      <GraduationCap className="h-3 w-3 mr-1" />
+                                      {educator.assignments[0].programLabel || educator.assignments[0].programName}
+                                    </Badge>
+                                  )}
+                                  <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                                    {educator.assignments.reduce((n, a) => n + (a.assignedCourses?.length || 0), 0)} Course(s) total
+                                  </Badge>
+                                  <Button variant="outline" size="sm" onClick={() => setAssignmentsEducator(educator)}>
+                                    View all {educator.assignments.length}
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
