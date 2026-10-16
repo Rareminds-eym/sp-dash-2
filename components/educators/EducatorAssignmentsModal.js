@@ -10,7 +10,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
-import { AlertCircle, BookOpen, Building2, CalendarDays } from 'lucide-react'
+import { AlertCircle, BookOpen, Building2, CalendarDays, Clock } from 'lucide-react'
+import { formatSlotLabel } from '@/components/educators/CollegeAssignmentForm'
 import { useEffect, useState } from 'react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
@@ -96,6 +97,24 @@ function AssignmentCard({ assignment }) {
           Start: {formatDate(assignment.startDate)}
         </span>
         <span>End: {formatDate(assignment.endDate)}</span>
+      </div>
+
+      <div className="space-y-1.5">
+        <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+          Time slots {assignment.timeSlots?.length > 0 ? `(${(assignment.timeSlots || []).length})` : ''}
+        </p>
+        {(assignment.timeSlots || []).length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {(assignment.timeSlots || []).map((slot, i) => (
+              <Badge key={i} variant="outline" className="bg-slate-50 text-slate-600 border-slate-200">
+                <Clock className="h-3 w-3 mr-1" />
+                {formatSlotLabel(slot)}
+              </Badge>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">Available for any session in the date range.</p>
+        )}
       </div>
 
       <div className="pt-1">

@@ -1,6 +1,8 @@
 'use client'
 import EducatorTeachingManager from '@/components/educators/EducatorTeachingManager';
 import EducatorAssignmentsModal from '@/components/educators/EducatorAssignmentsModal';
+import EducatorAttendanceImportModal from '@/components/educators/EducatorAttendanceImportModal';
+import EducatorAttendanceTableModal from '@/components/educators/EducatorAttendanceTableModal';
 
 import {
   AlertDialog,
@@ -34,11 +36,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from '@/hooks/use-toast'
-import CollegeAssignmentForm from '@/components/educators/CollegeAssignmentForm'
+import CollegeAssignmentForm, { formatSlotLabel, validateTimeSlots } from '@/components/educators/CollegeAssignmentForm'
 import {
   BookOpen,
   Building2,
   ChevronLeft,
+  Clock,
   ChevronRight,
   GraduationCap,
   Mail,
@@ -56,6 +59,8 @@ import { useEffect, useRef, useState } from 'react'
 export default function EducatorManagementPage({ currentUser }) {
   const [managedEducator,setManagedEducator]=useState(null)
   const [assignmentsEducator,setAssignmentsEducator]=useState(null)
+  const [importAttendanceOpen,setImportAttendanceOpen]=useState(false)
+  const [attendanceView,setAttendanceView]=useState(null)
   const [educators, setEducators] = useState([])
   const [loading, setLoading] = useState(true)
   const [actionDialog, setActionDialog] = useState({ open: false, educator: null, action: null })
@@ -93,6 +98,7 @@ export default function EducatorManagementPage({ currentUser }) {
     programId: '', // optional
     sectionId: '', // optional
     assignedCourses: [], // array of course IDs
+    timeSlots: [], // optional availability rows
     startDate: '',
     endDate: '', // optional
     notes: '' // optional
@@ -575,10 +581,27 @@ export default function EducatorManagementPage({ currentUser }) {
     
     // Validate required fields
     if (!collegeAssignmentForm.collegeId || !collegeAssignmentForm.departmentId || 
-        !collegeAssignmentForm.programId || !collegeAssignmentForm.sectionId || collegeAssignmentForm.assignedCourses.length === 0 || !collegeAssignmentForm.startDate) {
+        !collegeAssignmentForm.programId || !collegeAssignmentForm.sectionId || collegeAssignmentForm.assignedCourses.length === 0 || !collegeAssignmentForm.startDate || !collegeAssignmentForm.endDate) {
       toast({
         title: 'Validation Error',
-        description: 'Please fill in College, Department, Program, Section, Courses, and Start Date',
+        description: 'Please fill in College, Department, Program, Section, Courses, Start Date, and End Date',
+        variant: 'destructive'
+      })
+      return
+    }
+    if (collegeAssignmentForm.endDate < collegeAssignmentForm.startDate) {
+      toast({
+        title: 'Validation Error',
+        description: 'End Date cannot be before the Start Date',
+        variant: 'destructive'
+      })
+      return
+    }
+    const slotError = validateTimeSlots(collegeAssignmentForm.timeSlots)
+    if (slotError) {
+      toast({
+        title: 'Validation Error',
+        description: slotError,
         variant: 'destructive'
       })
       return
@@ -673,10 +696,12 @@ export default function EducatorManagementPage({ currentUser }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="w-full min-w-0 space-y-6">
 
       {managedEducator&&<EducatorTeachingManager educator={managedEducator} onClose={()=>setManagedEducator(null)} onSaved={fetchEducators}/>}
       {assignmentsEducator&&<EducatorAssignmentsModal educator={assignmentsEducator} onClose={()=>setAssignmentsEducator(null)}/>}
+      {attendanceView&&<EducatorAttendanceTableModal educator={attendanceView.educator} onClose={()=>setAttendanceView(null)}/>}
+      <EducatorAttendanceImportModal open={importAttendanceOpen} onClose={()=>setImportAttendanceOpen(false)} onImported={fetchEducators}/>
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card className="neu-card bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/20 border-blue-200 dark:border-blue-800">
@@ -750,23 +775,33 @@ export default function EducatorManagementPage({ currentUser }) {
         <CardHeader>
           <div className="space-y-4">
             {/* Title and Add Educator Button */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Educator Management</h2>
                 <p className="text-sm text-muted-foreground mt-1">Add new faculty members with documents and subject expertise</p>
               </div>
-              <Button
-                onClick={() => setAddEducatorDialog(true)}
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Educator
-              </Button>
+              <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap xl:w-auto xl:justify-end">
+                <Button variant="outline" onClick={()=>setAttendanceView({educator:null})}>View Attendance</Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setImportAttendanceOpen(true)}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import Attendance
+                </Button>
+                <Button
+                  onClick={() => setAddEducatorDialog(true)}
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Educator
+                </Button>
+              </div>
             </div>
 
             {/* Search and Filters Row */}
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="relative flex-1">
+            <div className="flex min-w-0 flex-col gap-3 xl:flex-row xl:gap-4">
+              <div className="relative min-w-0 flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search by name, email, or employee ID..."
@@ -783,7 +818,7 @@ export default function EducatorManagementPage({ currentUser }) {
                   setPagination(prev => ({ ...prev, page: 1 }))
                 }}
               >
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full xl:w-[180px]">
                   <SelectValue placeholder="Department" />
                 </SelectTrigger>
                 <SelectContent>
@@ -802,7 +837,7 @@ export default function EducatorManagementPage({ currentUser }) {
                   setPagination(prev => ({ ...prev, page: 1 }))
                 }}
               >
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className="w-full xl:w-[160px]">
                   <SelectValue placeholder="Faculty Role" />
                 </SelectTrigger>
                 <SelectContent>
@@ -821,7 +856,7 @@ export default function EducatorManagementPage({ currentUser }) {
                   setPagination(prev => ({ ...prev, page: 1 }))
                 }}
               >
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-full xl:w-[140px]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -845,23 +880,23 @@ export default function EducatorManagementPage({ currentUser }) {
             <div className="space-y-4">
               {educators.length > 0 ? (
                 educators.map((educator, index) => (
-                  <div key={educator.id || `educator-${index}`} className="group p-5 bg-gradient-to-r from-gray-50 to-white hover:from-gray-100 hover:to-gray-50 dark:from-gray-800/50 dark:to-gray-900/50 dark:hover:from-gray-800 dark:hover:to-gray-800/80 rounded-xl transition-all duration-200 border border-gray-200 dark:border-gray-700 hover:shadow-md">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-4 flex-1">
+                  <div key={educator.id || `educator-${index}`} className="group min-w-0 p-4 sm:p-5 bg-gradient-to-r from-gray-50 to-white hover:from-gray-100 hover:to-gray-50 dark:from-gray-800/50 dark:to-gray-900/50 dark:hover:from-gray-800 dark:hover:to-gray-800/80 rounded-xl transition-all duration-200 border border-gray-200 dark:border-gray-700 hover:shadow-md">
+                    <div className="flex min-w-0 flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                      <div className="flex min-w-0 w-full flex-1 items-start gap-3 sm:gap-4">
                         <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-blue-500 to-indigo-500">
                           <GraduationCap className="h-7 w-7 text-white" />
                         </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <p className="font-semibold text-lg dark:text-white">{educator.firstName} {educator.lastName}</p>
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-2 flex flex-wrap items-center gap-2 sm:gap-3">
+                            <p className="break-words font-semibold text-lg dark:text-white">{educator.firstName} {educator.lastName}</p>
                             <Badge variant={educator.status === 'active' ? 'default' : 'secondary'} className="font-medium">
                               {educator.status === 'active' ? '● Active' : '○ Inactive'}
                             </Badge>
                           </div>
                           <div className="flex flex-wrap items-center gap-3 text-sm mb-2">
-                            <span className="text-muted-foreground flex items-center gap-1">
-                              <Mail className="h-3.5 w-3.5" />
-                              {educator.email}
+                            <span className="flex min-w-0 max-w-full items-center gap-1 text-muted-foreground">
+                              <Mail className="h-3.5 w-3.5 shrink-0" />
+                              <span className="min-w-0 break-all">{educator.email}</span>
                             </span>
                             {educator.phone && (
                               <span className="text-muted-foreground flex items-center gap-1">
@@ -869,10 +904,10 @@ export default function EducatorManagementPage({ currentUser }) {
                                 {educator.phone}
                               </span>
                             )}
-                            <Badge className="bg-blue-100 text-blue-700 border border-blue-200">
+                            <Badge className="max-w-full whitespace-normal break-words [&_svg]:shrink-0 bg-blue-100 text-blue-700 border border-blue-200">
                               {educator.facultyRole}
                             </Badge>
-                            <Badge className="bg-purple-100 text-purple-700 border border-purple-200">
+                            <Badge className="max-w-full whitespace-normal break-words [&_svg]:shrink-0 bg-purple-100 text-purple-700 border border-purple-200">
                               {educator.department}
                             </Badge>
                           </div>
@@ -889,33 +924,39 @@ export default function EducatorManagementPage({ currentUser }) {
                                 <div className="mb-2 last:mb-0">
                                   <div className="flex flex-wrap gap-2 items-center text-xs">
                                     {educator.assignments[0].collegeName && (
-                                      <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-200">
+                                      <Badge variant="outline" className="max-w-full whitespace-normal break-words [&_svg]:shrink-0 bg-slate-100 text-slate-700 border-slate-200">
                                         <Building2 className="h-3 w-3 mr-1" />
                                         {educator.assignments[0].collegeName}
                                       </Badge>
                                     )}
                                     {educator.assignments[0].departmentName && (
-                                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                      <Badge variant="outline" className="max-w-full whitespace-normal break-words [&_svg]:shrink-0 bg-blue-50 text-blue-700 border-blue-200">
                                         <BookOpen className="h-3 w-3 mr-1" />
                                         {educator.assignments[0].departmentName}
                                       </Badge>
                                     )}
                                     {(educator.assignments[0].programLabel || educator.assignments[0].programName) && (
-                                      <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                                      <Badge variant="outline" className="max-w-full whitespace-normal break-words [&_svg]:shrink-0 bg-purple-50 text-purple-700 border-purple-200">
                                         <GraduationCap className="h-3 w-3 mr-1" />
                                         {educator.assignments[0].programLabel || educator.assignments[0].programName}
                                       </Badge>
                                     )}
                                     {educator.assignments[0].sectionName && (
-                                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                      <Badge variant="outline" className="max-w-full whitespace-normal break-words [&_svg]:shrink-0 bg-green-50 text-green-700 border-green-200">
                                         Section {educator.assignments[0].sectionName} - Sem {educator.assignments[0].semester}
                                       </Badge>
                                     )}
                                     {educator.assignments[0].assignedCourses && educator.assignments[0].assignedCourses.length > 0 && (
-                                      <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                                      <Badge variant="outline" className="max-w-full whitespace-normal break-words [&_svg]:shrink-0 bg-orange-50 text-orange-700 border-orange-200">
                                         {educator.assignments[0].assignedCourses.length} Course(s)
                                       </Badge>
                                     )}
+                                    {(educator.assignments[0].timeSlots || []).slice(0, 2).map((slot, i) => (
+                                      <Badge key={i} variant="outline" className="bg-slate-50 text-slate-600 border-slate-200">
+                                        <Clock className="h-3 w-3 mr-1" />
+                                        {formatSlotLabel(slot)}
+                                      </Badge>
+                                    ))}
                                     <Button variant="outline" size="sm" onClick={() => setAssignmentsEducator(educator)}>
                                       Details
                                     </Button>
@@ -944,6 +985,17 @@ export default function EducatorManagementPage({ currentUser }) {
                                   <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
                                     {educator.assignments.reduce((n, a) => n + (a.assignedCourses?.length || 0), 0)} Course(s) total
                                   </Badge>
+                                  {(educator.assignments[0].timeSlots || []).slice(0, 2).map((slot, i) => (
+                                    <Badge key={i} variant="outline" className="bg-slate-50 text-slate-600 border-slate-200">
+                                      <Clock className="h-3 w-3 mr-1" />
+                                      {formatSlotLabel(slot)}
+                                    </Badge>
+                                  ))}
+                                  {(educator.assignments[0].timeSlots || []).length > 2 && (
+                                    <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200">
+                                      +{(educator.assignments[0].timeSlots || []).length - 2} more slots
+                                    </Badge>
+                                  )}
                                   <Button variant="outline" size="sm" onClick={() => setAssignmentsEducator(educator)}>
                                     View all {educator.assignments.length}
                                   </Button>
@@ -953,7 +1005,7 @@ export default function EducatorManagementPage({ currentUser }) {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 ml-4">
+                      <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap xl:ml-4 xl:w-auto xl:shrink-0">
                         <Button variant="outline" size="sm" onClick={()=>setManagedEducator(educator)}>Manage teaching</Button>
                         <Button
                           variant="outline"
@@ -986,7 +1038,7 @@ export default function EducatorManagementPage({ currentUser }) {
 
           {/* Pagination */}
           {!loading && pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between mt-6 pt-4 border-t">
+            <div className="mt-6 flex flex-col gap-4 border-t pt-4 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">
                   Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
@@ -1009,7 +1061,7 @@ export default function EducatorManagementPage({ currentUser }) {
                 </Select>
               </div>
               
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"

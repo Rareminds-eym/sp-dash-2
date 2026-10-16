@@ -141,6 +141,21 @@ export async function GET(request) {
       }
     }
 
+    // Resolve time slots per assignment (empty = unrestricted).
+    const allAssignmentIds = (educators || []).flatMap(staff => (staff.assignments || []).map(a => a.id));
+    let slotsByAssignment = {};
+    if (allAssignmentIds.length > 0) {
+      const { data: slots } = await supabaseAdmin
+        .from('assignment_time_slots')
+        .select('assignment_id, start_time, end_time')
+        .in('assignment_id', allAssignmentIds)
+        .order('start_time', { ascending: true });
+      slotsByAssignment = Object.fromEntries(allAssignmentIds.map(aid => [aid, []]));
+      for (const s of slots || []) {
+        if (slotsByAssignment[s.assignment_id]) slotsByAssignment[s.assignment_id].push(s);
+      }
+    }
+
     // Map organization_staff fields to match frontend expectations.
     // department/designation/specialization don't exist as columns — derive
     // them from assignments + metadata so the UI never renders `undefined`.
@@ -168,6 +183,7 @@ export async function GET(request) {
           startDate: start,
           endDate: end,
           status,
+          timeSlots: slotsByAssignment[assignment.id] || [],
           specializations: specs,
           specialization: specs[0] || null,
           programLabel: specs.length > 0 && programCode ? `${programCode} - ${specs.join(', ')}` : programName,

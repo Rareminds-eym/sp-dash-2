@@ -22,7 +22,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import CollegeAssignmentForm from './CollegeAssignmentForm';
+import CollegeAssignmentForm, { validateTimeSlots } from './CollegeAssignmentForm';
 
 const NONE = 'none';
 
@@ -33,6 +33,7 @@ const emptyForm = {
   sectionId: '',
   specializationId: '',
   assignedCourses: [],
+  timeSlots: [],
   startDate: new Date().toISOString().slice(0, 10),
   endDate: '',
   notes: '',
@@ -190,6 +191,10 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
         sectionId: snapshot.sectionId,
         specializationId: snapshot.specializationId,
         assignedCourses: [...(m.assigned_courses || [])],
+        timeSlots: (m.time_slots || []).map(s => ({
+          start_time: (s.start_time || '').slice(0, 5),
+          end_time: (s.end_time || '').slice(0, 5),
+        })),
         startDate: snapshot.startDate,
         endDate: snapshot.endDate,
         notes: m.notes || '',
@@ -234,11 +239,20 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
       setError('End date is required to end a mapping.');
       return;
     }
+    if (mode !== 'end_mapping' && !form.endDate) {
+      setError('End Date is required.');
+      return;
+    }
     if (form.endDate && form.startDate && form.endDate < form.startDate) {
       setError('End date cannot be before the start date.');
       return;
     }
     if (mode !== 'end_mapping') {
+      const slotError = validateTimeSlots(form.timeSlots)
+      if (slotError) {
+        setError(slotError)
+        return
+      }
       if (!form.collegeId || !form.sectionId) {
         setError('Select a college, department, program and section first.');
         return;
@@ -269,6 +283,7 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
             startDate: form.startDate,
             endDate: form.endDate,
             notes: form.notes,
+            time_slots: form.timeSlots || [],
             ...(mode === 'map' ? {} : { mappingId, version: m.assignment_version, reason }),
           },
       successMessages[effectiveAction]

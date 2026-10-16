@@ -60,7 +60,18 @@ export async function GET(request, { params }) {
 
     const assignmentIds = (assignments || []).map(a => a.id);
     let sessionsByAssignment = {};
+    let slotsByAssignment = {};
     if (assignmentIds.length > 0) {
+      const { data: slots } = await supabaseAdmin
+        .from('assignment_time_slots')
+        .select('assignment_id, start_time, end_time')
+        .in('assignment_id', assignmentIds)
+        .order('start_time', { ascending: true });
+      slotsByAssignment = Object.fromEntries(assignmentIds.map(aid => [aid, []]));
+      for (const s of slots || []) {
+        if (slotsByAssignment[s.assignment_id]) slotsByAssignment[s.assignment_id].push(s);
+      }
+
       const { data: sessions, error: sessionsError } = await supabaseAdmin
         .from('college_attendance_sessions')
         .select('id, staff_assignment_id, lms_course_id, date, subject_name, status, present_count, total_learners, attendance_percentage')
@@ -140,6 +151,7 @@ export async function GET(request, { params }) {
         endDate: end,
         isActive: assignment.is_active,
         status: start && start > today ? 'upcoming' : (end && end < today ? 'ended' : 'active'),
+        timeSlots: slotsByAssignment[assignment.id] || [],
         history,
         historyTotal: (sessionsByAssignment[assignment.id] || []).length,
       };

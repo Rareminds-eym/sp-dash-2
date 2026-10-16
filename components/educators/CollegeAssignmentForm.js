@@ -32,6 +32,50 @@ function getProgramSpecializations(program) {
   return []
 }
 
+// Compact chip label shared by the educator card and assignments modal.
+export function formatSlotLabel(slot) {
+  if (!slot || !slot.start_time || !slot.end_time) return ''
+  return `${String(slot.start_time).slice(0, 5)}–${String(slot.end_time).slice(0, 5)}`
+}
+
+function emptySlot() {
+  return { start_time: '', end_time: '' }
+}
+
+// Required-slot validation shared by both save paths. Returns an error
+// message, or '' when the rows are acceptable (backend re-validates).
+export function validateTimeSlots(slots) {
+  if (!Array.isArray(slots) || slots.length === 0) {
+    return 'Add at least one time slot.'
+  }
+  for (const s of slots) {
+    if (!s.start_time || !s.end_time) {
+      return 'Every time slot needs a start and end time.'
+    }
+    if (s.start_time >= s.end_time) {
+      return 'Time slot start must be before its end.'
+    }
+  }
+  return ''
+}
+function slotOverlapWarning(slots) {
+  const ranges = (slots || [])
+    .filter(s => s.start_time && s.end_time && s.start_time < s.end_time)
+  for (let i = 0; i < ranges.length; i++) {
+    for (let j = i + 1; j < ranges.length; j++) {
+      if (ranges[i].start_time < ranges[j].end_time && ranges[j].start_time < ranges[i].end_time) {
+        return 'Two time slots overlap — the server will reject this.'
+      }
+    }
+  }
+  return ''
+}
+
+function formatSlotSummary(slot) {
+  if (slot.start_time && slot.end_time) return `${slot.start_time}–${slot.end_time}`
+  return 'pick times'
+}
+
 function formatProgramLabel(program) {
   const specs = getProgramSpecializations(program)
   if (specs.length === 0) return program.name
@@ -201,6 +245,24 @@ export default function CollegeAssignmentForm({
       })
       return { ...prev, assignedCourses: [...next] }
     })
+  }
+
+  const timeSlots = form.timeSlots || []
+  const overlapWarning = slotOverlapWarning(timeSlots)
+
+  const updateSlot = (index, patch) => {
+    setForm(prev => ({
+      ...prev,
+      timeSlots: (prev.timeSlots || []).map((s, i) => (i === index ? { ...s, ...patch } : s)),
+    }))
+  }
+
+  const addSlot = () => {
+    setForm(prev => ({ ...prev, timeSlots: [...(prev.timeSlots || []), emptySlot()] }))
+  }
+
+  const removeSlot = (index) => {
+    setForm(prev => ({ ...prev, timeSlots: (prev.timeSlots || []).filter((_, i) => i !== index) }))
   }
 
   const selectedCount = form.assignedCourses.length
@@ -452,7 +514,7 @@ export default function CollegeAssignmentForm({
 
             <div className="space-y-2">
               <Label htmlFor="endDate">
-                End Date (Optional)
+                End Date <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="endDate"
@@ -461,6 +523,62 @@ export default function CollegeAssignmentForm({
                 onChange={(e) => setForm(prev => ({ ...prev, endDate: e.target.value }))}
               />
             </div>
+          </div>
+
+          <div className="space-y-3 border-t border-gray-200 dark:border-gray-700 pt-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-medium">
+                Time slots <span className="text-red-500">*</span>
+              </p>
+              <Button type="button" variant="outline" size="sm" onClick={addSlot}>
+                Add slot
+              </Button>
+            </div>
+
+            {timeSlots.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Add at least one time slot — sessions can only be created inside these hours.
+            </p>
+            ) : (
+              <div className="space-y-3">
+                {timeSlots.map((slot, index) => (
+                  <div key={index} className="space-y-3 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-medium text-muted-foreground truncate">
+                        {formatSlotSummary(slot)}
+                      </p>
+                      <Button type="button" variant="ghost" size="sm" className="h-7 shrink-0 text-red-600 hover:text-red-700" onClick={() => removeSlot(index)}>
+                        Remove
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label>Start</Label>
+                        <Input
+                          type="time"
+                          value={slot.start_time}
+                          onChange={(e) => updateSlot(index, { start_time: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>End</Label>
+                        <Input
+                          type="time"
+                          value={slot.end_time}
+                          onChange={(e) => updateSlot(index, { end_time: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {overlapWarning && (
+                  <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                    {overlapWarning}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
