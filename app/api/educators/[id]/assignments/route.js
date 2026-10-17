@@ -16,7 +16,7 @@ export async function GET(request, { params }) {
 
     const { data: staff, error: staffError } = await supabaseAdmin
       .from('organization_staff')
-      .select('id, first_name, last_name, email, employee_id')
+      .select('id, user_id, first_name, last_name, email, employee_id')
       .eq('id', id)
       .single();
 
@@ -48,7 +48,43 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Failed to fetch assignments', details: assignError.message }, { status: 500 });
     }
 
-    const collegeIds = [...new Set((assignments || []).map(a => a.college_id).filter(Boolean))];
+    // Fetch tasks created by this external educator
+    let rawTasks = [];
+    if (staff.user_id) {
+      const { data: taskRows } = await supabaseAdmin
+        .from('college_assignments')
+        .select(`
+          assignment_id,
+          title,
+          description,
+          instructions,
+          course_name,
+          course_code,
+          due_date,
+          total_points,
+          assignment_type,
+          skill_outcomes,
+          created_date,
+          college_id,
+          department_id,
+          program_id,
+          program_section_id,
+          programs:program_id(id, name, code),
+          departments:department_id(id, name, code),
+          sections:program_section_id(id, section, semester)
+        `)
+        .eq('external_educator_id', staff.user_id)
+        .eq('is_deleted', false)
+        .order('created_date', { ascending: false });
+
+      if (taskRows) rawTasks = taskRows;
+    }
+
+    const collegeIds = [...new Set([
+      ...(assignments || []).map(a => a.college_id),
+      ...rawTasks.map(t => t.college_id),
+    ].filter(Boolean))];
+
     let collegesById = {};
     if (collegeIds.length > 0) {
       const { data: colleges } = await supabaseAdmin
@@ -56,6 +92,101 @@ export async function GET(request, { params }) {
         .select('id, name')
         .in('id', collegeIds);
       collegesById = Object.fromEntries((colleges || []).map(c => [c.id, c.name]));
+    }
+
+    // Process learner submissions, grades, and feedback for each task
+    let tasks = [];
+    if (rawTasks.length > 0) {
+      const taskIds = rawTasks.map(t => t.assignment_id);
+
+      const { data: subRows } = await supabaseAdmin
+        .from('college_learner_assignments')
+        .select(`
+          learner_assignment_id,
+          assignment_id,
+          learner_id,
+          status,
+          priority,
+          grade_received,
+          grade_percentage,
+          instructor_feedback,
+          feedback_date,
+          graded_date,
+          submission_date,
+          is_late
+        `)
+        .in('assignment_id', taskIds)
+        .eq('is_deleted', false);
+
+      const learnerUserIds = [...new Set((subRows || []).map(s => s.learner_id).filter(Boolean))];
+      let learnersById = {};
+      if (learnerUserIds.length > 0) {
+        const { data: learnerRows } = await supabaseAdmin
+          .from('learners')
+          .select('id, user_id, name, email, roll_number')
+          .in('user_id', learnerUserIds);
+        learnersById = Object.fromEntries((learnerRows || []).map(l => [l.user_id, l]));
+      }
+
+      const submissionsByTask = {};
+      for (const sub of subRows || []) {
+        if (!submissionsByTask[sub.assignment_id]) {
+          submissionsByTask[sub.assignment_id] = [];
+        }
+        const learnerInfo = learnersById[sub.learner_id] || null;
+        submissionsByTask[sub.assignment_id].push({
+          id: sub.learner_assignment_id,
+          learnerId: sub.learner_id,
+          learnerName: learnerInfo?.name || 'Unknown Learner',
+          learnerEmail: learnerInfo?.email || '',
+          rollNumber: learnerInfo?.roll_number || '',
+          status: sub.status,
+          priority: sub.priority,
+          gradeReceived: sub.grade_received,
+          gradePercentage: sub.grade_percentage,
+          instructorFeedback: sub.instructor_feedback,
+          feedbackDate: sub.feedback_date,
+          gradedDate: sub.graded_date,
+          submissionDate: sub.submission_date,
+          isLate: sub.is_late,
+        });
+      }
+
+      tasks = rawTasks.map(t => {
+        const subs = submissionsByTask[t.assignment_id] || [];
+        const totalAssigned = subs.length;
+        const submittedCount = subs.filter(s => s.status === 'submitted' || s.status === 'graded').length;
+        const gradedCount = subs.filter(s => s.status === 'graded' || (s.gradePercentage !== null && s.gradePercentage !== undefined)).length;
+        const pendingCount = subs.filter(s => s.status === 'submitted').length;
+
+        return {
+          id: t.assignment_id,
+          title: t.title,
+          description: t.description,
+          instructions: t.instructions,
+          courseName: t.course_name,
+          courseCode: t.course_code,
+          dueDate: t.due_date,
+          totalPoints: t.total_points,
+          assignmentType: t.assignment_type,
+          skillOutcomes: t.skill_outcomes || [],
+          createdDate: t.created_date,
+          collegeId: t.college_id,
+          collegeName: collegesById[t.college_id] || null,
+          departmentName: t.departments?.name || null,
+          programName: t.programs?.name || null,
+          sectionName: t.sections?.section || null,
+          semester: t.sections?.semester || null,
+          programSectionId: t.program_section_id,
+          stats: {
+            totalAssigned,
+            submittedCount,
+            gradedCount,
+            pendingCount,
+          },
+          learners: subs,
+        };
+      });
     }
 
     const assignmentIds = (assignments || []).map(a => a.id);
@@ -154,10 +285,11 @@ export async function GET(request, { params }) {
         timeSlots: slotsByAssignment[assignment.id] || [],
         history,
         historyTotal: (sessionsByAssignment[assignment.id] || []).length,
+        tasks: tasks.filter(t => t.programSectionId && t.programSectionId === assignment.section_id),
       };
     });
 
-    return NextResponse.json({ success: true, data: { educator: staff, assignments: data } });
+    return NextResponse.json({ success: true, data: { educator: staff, assignments: data, tasks } });
   } catch (error) {
     console.error('❌ [ASSIGNMENT DETAIL API] Error:', error);
     return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 });
