@@ -6,7 +6,6 @@
  */
 
 import type { SsoWorker as SSOEntrypoint } from "../../workers/sso-worker/src/index";
-import type { LTEAssetValidationMessage } from "../lib/services/lte-ingestion/publish-job";
 import type { CourseManagementQueueMessage } from "../lib/services/course-upload-queue";
 
 declare global {
@@ -14,9 +13,9 @@ declare global {
     SSO: Service<SSOEntrypoint>;
     WORKER_SELF_REFERENCE: Service<SSOEntrypoint>;
     MAINTENANCE_EVENTS_QUEUE: Queue;
-    LTE_ASSET_VALIDATION_QUEUE: Queue<LTEAssetValidationMessage>;
     COURSE_MANAGEMENT_UPLOAD_QUEUE: Queue<CourseManagementQueueMessage>;
-    LTE_ASSETS: R2Bucket;
+    LTE_API_BASE_URL: string;
+    LTE_CATALOG_SYNC_SECRET: string;
     SKILLPASSPORT_ASSETS: R2Bucket;
     RATE_LIMIT_KV: KVNamespace;
     COURSE_UPLOAD_WORKER_TOKEN: string;

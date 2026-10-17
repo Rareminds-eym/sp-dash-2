@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { exportCatalog } from "@/lib/services/lte-ingestion/catalog-export";
+import { signedLTERequest, readLTEBody, type LTEConnection } from "@/lib/lte-http";
+import { lteConnection } from "@/lib/lte-api";
 
 export const runtime = "nodejs";
 const schema = z
@@ -8,7 +9,11 @@ const schema = z
   .strict();
 
 export async function POST(request: NextRequest) {
-  const secret = process.env.LTE_CATALOG_SYNC_SECRET;
+  let connection: LTEConnection;
+  try {connection=await lteConnection();} catch {
+    return NextResponse.json({error:'Catalogue sync is not configured'},{status:503});
+  }
+  const secret = connection.LTE_CATALOG_SYNC_SECRET;
   if (!secret || secret.length < 32)
     return NextResponse.json(
       { error: "Catalogue sync is not configured" },
@@ -23,9 +28,10 @@ export async function POST(request: NextRequest) {
   ) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const body = await request.text();
-  if (body.length > 16384)
-    return NextResponse.json({ error: "Request too large" }, { status: 413 });
+  let body:string;
+  try {body=await readLTEBody(request,16384);} catch {
+    return NextResponse.json({error:'Request too large'},{status:413});
+  }
   const key = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(secret),
@@ -50,11 +56,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid role IDs" }, { status: 400 });
   }
   try {
-    const { supabaseLTE } = await import("@/lib/supabase-lte");
-    const result = await exportCatalog(supabaseLTE, payload.roleIds);
-    return NextResponse.json(result, {
-      headers: { "Cache-Control": "no-store" },
-    });
+    const result = await signedLTERequest(connection, "/api/v1/internal/catalog/export", payload);
+    return new NextResponse(result.body, {status:result.status, headers:{"Content-Type":"application/json", "Cache-Control":"no-store"}});
   } catch (error) {
     console.error("LTE catalogue export failed", error);
     return NextResponse.json(

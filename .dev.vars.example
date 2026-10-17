@@ -1,0 +1,4 @@
+# Local Wrangler/OpenNext bindings. Copy to .dev.vars and fill private values.
+# These LTE settings are server-only; do not add NEXT_PUBLIC_ prefixes.
+LTE_API_BASE_URL=http://localhost:8789
+LTE_CATALOG_SYNC_SECRET=replace_with_a_private_secret_of_at_least_32_characters

@@ -1,56 +1,27 @@
-import { createClient } from '@supabase/supabase-js';
-import {
-  finalizePublishJobIfReady,
-  markAssetValidationFailed,
-  processAssetValidationMessage,
-  type LTEAssetValidationMessage,
-} from '../lib/services/lte-ingestion/publish-job';
-import { R2StorageService, type R2BucketLike } from '../lib/services/lte-ingestion/r2-storage';
+import { signedLTERequest, type LTEConnection } from '../lib/lte-http';
 
-interface Env {
-  LTE_SUPABASE_URL: string;
-  LTE_SERVICE_ROLE_KEY: string;
-  SUPABASE_SERVICE_ROLE_KEY?: string;
-  LTE_ASSETS: R2BucketLike;
-}
-
-interface QueueMessage<T> {
-  body: T;
+interface AssetMessage { uploadId: string; assetUrl: string }
+interface QueueMessage {
+  body: AssetMessage;
   ack(): void;
-  retry(options?: { delaySeconds?: number }): void;
+  retry(options?: {delaySeconds?:number}): void;
   attempts?: number;
 }
 
-interface QueueBatch<T> {
-  messages: QueueMessage<T>[];
-}
-
 export default {
-  async queue(batch: QueueBatch<LTEAssetValidationMessage>, env: Env): Promise<void> {
-    const serviceRoleKey = env.LTE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!env.LTE_SUPABASE_URL || !serviceRoleKey) {
-      throw new Error('LTE queue consumer requires LTE_SUPABASE_URL and LTE_SERVICE_ROLE_KEY.');
-    }
-
-    const supabase = createClient(env.LTE_SUPABASE_URL, serviceRoleKey, {
-      auth: { persistSession: false },
-    });
-    const storage = new R2StorageService(env.LTE_ASSETS);
-
+  async queue(batch: {messages:QueueMessage[]}, env: LTEConnection): Promise<void> {
     for (const message of batch.messages) {
-      const body = message.body;
       try {
-        await processAssetValidationMessage(body, { supabase, storage });
+        const response = await signedLTERequest(env, '/api/v1/internal/catalog/process-asset', {
+          ...message.body, attempts:Number(message.attempts || 1),
+        });
+        // Ack only after LTE has processed or persisted an exhausted job.
+        if (!response.ok) throw new Error(`LTE asset endpoint returned ${response.status}`);
+        const result = await response.json() as {success?:boolean};
+        if (result.success !== true) throw new Error('LTE did not confirm asset processing');
         message.ack();
-      } catch (error) {
-        const attempts = Number(message.attempts || 1);
-        if (attempts < 3) {
-          message.retry({ delaySeconds: 30 });
-        } else {
-          await markAssetValidationFailed(body.uploadId, body.assetUrl, error, { supabase, storage });
-          await finalizePublishJobIfReady(body.uploadId, { supabase, storage });
-          message.ack();
-        }
+      } catch {
+        message.retry({delaySeconds:30});
       }
     }
   },
