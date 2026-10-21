@@ -1323,7 +1323,7 @@ export default function EducatorManagementPage({ currentUser }) {
               
               <div className="space-y-2">
                 <Label htmlFor="degreeCertificate">
-                  Degree Certificate <span className="text-red-500">*</span>
+                  Degree Certificate
                 </Label>
                 <div className="flex items-center gap-2">
                   <Button
@@ -1347,7 +1347,7 @@ export default function EducatorManagementPage({ currentUser }) {
 
               <div className="space-y-2">
                 <Label htmlFor="idProof">
-                  ID Proof <span className="text-red-500">*</span>
+                  ID Proof
                 </Label>
                 <div className="flex items-center gap-2">
                   <Button
@@ -1371,7 +1371,7 @@ export default function EducatorManagementPage({ currentUser }) {
 
               <div className="space-y-2">
                 <Label htmlFor="experienceLetters">
-                  Experience Letters <span className="text-red-500">*</span>
+                  Experience Letters
                 </Label>
                 <div className="flex items-center gap-2">
                   <Button
@@ -1397,7 +1397,7 @@ export default function EducatorManagementPage({ currentUser }) {
             {/* Subject Expertise Section */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                Subject Expertise <span className="text-red-500">*</span>
+                Subject Expertise
               </h3>
               
               <div className="grid grid-cols-12 gap-3">
