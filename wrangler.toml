@@ -91,7 +91,7 @@ workers_dev = true
 preview_urls = true
 
 [env.dev.vars]
-# Set LTE_API_BASE_URL to your LTE preview origin before deploying dev.
+LTE_API_BASE_URL = "https://lte-dev-b42.pages.dev"
 # Local development: LTE_API_BASE_URL=http://localhost:8789
 NEXT_PUBLIC_SUPABASE_URL = "https://qjdmndjtibajwswufghf.supabase.co"
 SKILLPASSPORT_SUPABASE_URL = "https://qjdmndjtibajwswufghf.supabase.co"

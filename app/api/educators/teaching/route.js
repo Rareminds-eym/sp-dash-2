@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireEducatorAdmin } from '@/lib/educator-admin';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { parseTeachingRequest, PLATFORM_TEACHING_ADMIN_ACTIONS, teachingFailure } from '../../../../../skillpassport/functions/lib/teaching-contract';
+import { parseTeachingRequest, PLATFORM_TEACHING_ADMIN_ACTIONS, teachingFailure } from '@/lib/teaching-contract';
 
 export async function GET(request) {
   const auth=await requireEducatorAdmin(request); if(auth.error)return auth.error;

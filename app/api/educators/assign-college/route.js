@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requireEducatorAdmin } from '@/lib/educator-admin';
-import { parseTeachingRequest,teachingFailure } from '../../../../../skillpassport/functions/lib/teaching-contract';
+import { parseTeachingRequest,teachingFailure } from '@/lib/teaching-contract';
 
 // Normalize UI slot rows to the teaching-contract shape; anything malformed
 // is left for Zod to reject with a clear 400.
