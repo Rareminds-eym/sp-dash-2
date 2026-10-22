@@ -93,8 +93,8 @@ preview_urls = true
 [env.dev.vars]
 LTE_API_BASE_URL = "https://lte-dev-b42.pages.dev"
 # Local development: LTE_API_BASE_URL=http://localhost:8789
-NEXT_PUBLIC_SUPABASE_URL = "https://qjdmndjtibajwswufghf.supabase.co"
-SKILLPASSPORT_SUPABASE_URL = "https://qjdmndjtibajwswufghf.supabase.co"
+NEXT_PUBLIC_SUPABASE_URL = "https://qidmndjtlbajwswufghf.supabase.co"
+SKILLPASSPORT_SUPABASE_URL = "https://qidmndjtlbajwswufghf.supabase.co"
 SSO_WORKER_URL = "https://sso-api-dev.subashini.workers.dev"
 
 [[env.dev.services]]
@@ -152,8 +152,8 @@ bucket_name = "skill-echosystem-dev"
 # Queue consumers stay on the persistent dev Worker.
 [env.dev.previews.vars]
 LTE_API_BASE_URL = "https://lte-dev-b42.pages.dev"
-NEXT_PUBLIC_SUPABASE_URL = "https://qjdmndjtibajwswufghf.supabase.co"
-SKILLPASSPORT_SUPABASE_URL = "https://qjdmndjtibajwswufghf.supabase.co"
+NEXT_PUBLIC_SUPABASE_URL = "https://qidmndjtlbajwswufghf.supabase.co"
+SKILLPASSPORT_SUPABASE_URL = "https://qidmndjtlbajwswufghf.supabase.co"
 SSO_WORKER_URL = "https://sso-api-dev.subashini.workers.dev"
 
 [[env.dev.previews.services]]
@@ -192,3 +192,78 @@ bucket_name = "lte-dev"
 [[env.dev.previews.r2_buckets]]
 binding = "SKILLPASSPORT_ASSETS"
 bucket_name = "skill-echosystem-dev"
+
+# ============================================================================
+# QA: same database as dev, separate Worker/services/queues/storage/rate limits.
+# Create course-management-uploads-qa and lte-asset-validation-qa if missing.
+# Ensure lte-qa and skill-echosystem-qa R2 buckets exist.
+# RATE_LIMIT_KV below currently shares the dev namespace; use a separate ID for isolated QA limits.
+# Add the same database credentials as dev as secrets with --env qa;
+# use the QA LTE_CATALOG_SYNC_SECRET and QA COURSE_UPLOAD_WORKER_TOKEN.
+# Secrets are not inherited from dev. Do not deploy until placeholders are replaced.
+# ============================================================================
+
+[env.qa]
+account_id = "d10c2b1a3d702c710a036bc5a6d0902e"
+name = "sp-dash-2-qa"
+compatibility_date = "2026-09-24"
+workers_dev = true
+preview_urls = false
+
+[env.qa.vars]
+LTE_API_BASE_URL = "https://lte-qa.pages.dev"
+# Local development: LTE_API_BASE_URL=http://localhost:8789
+NEXT_PUBLIC_SUPABASE_URL = "https://qidmndjtlbajwswufghf.supabase.co"
+SKILLPASSPORT_SUPABASE_URL = "https://qidmndjtlbajwswufghf.supabase.co"
+SSO_WORKER_URL = "https://sso-api-qa.subashini.workers.dev"
+
+[[env.qa.services]]
+binding = "SSO"
+service = "sso-api-qa"
+entrypoint = "SsoWorker"
+
+[[env.qa.services]]
+binding = "WORKER_SELF_REFERENCE"
+service = "sp-dash-2-qa"
+
+[[env.qa.queues.producers]]
+binding = "MAINTENANCE_EVENTS_QUEUE"
+queue = "realtime-events-queue-qa"
+
+[[env.qa.queues.producers]]
+binding = "EMAIL_QUEUE"
+queue = "email-queue-qa"
+
+[[env.qa.queues.producers]]
+binding = "LTE_ASSET_VALIDATION_QUEUE"
+queue = "lte-asset-validation-qa"
+
+[[env.qa.queues.producers]]
+binding = "COURSE_MANAGEMENT_UPLOAD_QUEUE"
+queue = "course-management-uploads-qa"
+
+[[env.qa.queues.consumers]]
+queue = "lte-asset-validation-qa"
+max_batch_size = 2
+max_batch_timeout = 1
+max_concurrency = 5
+max_retries = 3
+
+[[env.qa.queues.consumers]]
+queue = "course-management-uploads-qa"
+max_batch_size = 5
+max_batch_timeout = 1
+max_concurrency = 5
+max_retries = 3
+
+[[env.qa.kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "00dd9c44924f413ca859ba9ad80b8aa7"
+
+[[env.qa.r2_buckets]]
+binding = "LTE_ASSETS"
+bucket_name = "lte-qa"
+
+[[env.qa.r2_buckets]]
+binding = "SKILLPASSPORT_ASSETS"
+bucket_name = "skill-echosystem-qa"
