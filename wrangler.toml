@@ -146,4 +146,4 @@ bucket_name = "lte-dev"
 
 [[env.dev.r2_buckets]]
 binding = "SKILLPASSPORT_ASSETS"
-bucket_name = "skill-echosystem-demo"
+bucket_name = "skill-echosystem-dev"
