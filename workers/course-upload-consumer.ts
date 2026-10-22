@@ -42,7 +42,7 @@ interface InternalWorkerBinding {
 }
 
 interface Env {
-  COURSE_ASSETS: R2BucketLike;
+  SKILLPASSPORT_ASSETS: R2BucketLike;
   RATE_LIMIT_KV: KVNamespaceLike;
   NEXT_PUBLIC_SUPABASE_URL?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
@@ -94,7 +94,7 @@ async function processFileUpload(
     }
 
     await updateJob(env.RATE_LIMIT_KV, body.jobId, { status: 'processing', error: undefined });
-    const stagedObject = await env.COURSE_ASSETS.get(body.stagingKey);
+    const stagedObject = await env.SKILLPASSPORT_ASSETS.get(body.stagingKey);
     if (!stagedObject?.body) throw new Error('Staged upload file is unavailable.');
 
     let resultUrl = `/api/courses/assets?key=${encodeURIComponent(body.r2Key)}`;
@@ -119,7 +119,7 @@ async function processFileUpload(
       resultUrl = supabase.storage.from('course-images').getPublicUrl(imagePath).data.publicUrl;
       resultKey = imagePath;
     } else {
-      await env.COURSE_ASSETS.put(body.r2Key, stagedObject.body, {
+      await env.SKILLPASSPORT_ASSETS.put(body.r2Key, stagedObject.body, {
         httpMetadata: { contentType: body.mimeType },
         customMetadata: {
           originalFileName: body.fileName,
@@ -141,7 +141,7 @@ async function processFileUpload(
       mimeType: body.mimeType,
       contentHash: body.contentHash,
     });
-    await removeStagedFile(env.COURSE_ASSETS, body.jobId, body.stagingKey);
+    await removeStagedFile(env.SKILLPASSPORT_ASSETS, body.jobId, body.stagingKey);
     message.ack();
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -161,7 +161,7 @@ async function processFileUpload(
       status: 'failed',
       error: errorMessage,
     });
-    await removeStagedFile(env.COURSE_ASSETS, body.jobId, body.stagingKey);
+    await removeStagedFile(env.SKILLPASSPORT_ASSETS, body.jobId, body.stagingKey);
     message.ack();
   }
 }
@@ -186,7 +186,7 @@ async function processBulkCourseJob(
       status: 'failed',
       error: 'Processing was interrupted. Verify imported courses before starting a new import.',
     });
-    await removeStagedFile(env.COURSE_ASSETS, body.jobId, body.stagingKey);
+    await removeStagedFile(env.SKILLPASSPORT_ASSETS, body.jobId, body.stagingKey);
     message.ack();
     return;
   }
@@ -196,7 +196,7 @@ async function processBulkCourseJob(
       throw new Error('Course import queue requires COURSE_UPLOAD_WORKER_TOKEN and WORKER_SELF_REFERENCE.');
     }
     await updateJob(env.RATE_LIMIT_KV, body.jobId, { status: 'processing' });
-    const stagedObject = await env.COURSE_ASSETS.get(body.stagingKey);
+    const stagedObject = await env.SKILLPASSPORT_ASSETS.get(body.stagingKey);
     if (!stagedObject?.body) throw new Error('Staged course import payload is unavailable.');
 
     const routeByKind: Record<BulkCourseJobMessage['kind'], string> = {
@@ -246,7 +246,7 @@ async function processBulkCourseJob(
         result,
       });
     }
-    await removeStagedFile(env.COURSE_ASSETS, body.jobId, body.stagingKey);
+    await removeStagedFile(env.SKILLPASSPORT_ASSETS, body.jobId, body.stagingKey);
     message.ack();
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -258,7 +258,7 @@ async function processBulkCourseJob(
       status: 'failed',
       error: errorMessage,
     });
-    await removeStagedFile(env.COURSE_ASSETS, body.jobId, body.stagingKey);
+    await removeStagedFile(env.SKILLPASSPORT_ASSETS, body.jobId, body.stagingKey);
     message.ack();
   }
 }
