@@ -44,6 +44,14 @@ binding = "MAINTENANCE_EVENTS_QUEUE"
 queue = "realtime-events-queue"
 
 [[queues.producers]]
+binding = "EMAIL_QUEUE"
+queue = "email-queue"
+
+[[queues.producers]]
+binding = "LTE_ASSET_VALIDATION_QUEUE"
+queue = "lte-asset-validation"
+
+[[queues.producers]]
 binding = "COURSE_MANAGEMENT_UPLOAD_QUEUE"
 queue = "course-management-uploads"
 
@@ -69,8 +77,12 @@ binding = "RATE_LIMIT_KV"
 id = "a162f140e4464515a8d5a27b5ebc6c6b"
 
 [[r2_buckets]]
-binding = "COURSE_ASSETS"
-bucket_name = "course-assets"
+binding = "LTE_ASSETS"
+bucket_name = "lte"
+
+[[r2_buckets]]
+binding = "SKILLPASSPORT_ASSETS"
+bucket_name = "skill-echosystem"
 
 [env.dev]
 name = "sp-dash-2"
@@ -99,6 +111,14 @@ binding = "MAINTENANCE_EVENTS_QUEUE"
 queue = "realtime-events-queue-dev"
 
 [[env.dev.queues.producers]]
+binding = "EMAIL_QUEUE"
+queue = "email-queue-dev"
+
+[[env.dev.queues.producers]]
+binding = "LTE_ASSET_VALIDATION_QUEUE"
+queue = "lte-asset-validation-dev"
+
+[[env.dev.queues.producers]]
 binding = "COURSE_MANAGEMENT_UPLOAD_QUEUE"
 queue = "course-management-uploads-dev"
 
@@ -121,5 +141,9 @@ binding = "RATE_LIMIT_KV"
 id = "00dd9c44924f413ca859ba9ad80b8aa7"
 
 [[env.dev.r2_buckets]]
-binding = "COURSE_ASSETS"
-bucket_name = "course-assets-dev"
+binding = "LTE_ASSETS"
+bucket_name = "lte-dev"
+
+[[env.dev.r2_buckets]]
+binding = "SKILLPASSPORT_ASSETS"
+bucket_name = "skill-echosystem-dev"
