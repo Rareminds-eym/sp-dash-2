@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
   try {connection=await lteConnection();} catch {
     return NextResponse.json({error:'Catalogue sync is not configured'},{status:503});
   }
-  const secret = connection.LTE_CATALOG_SYNC_SECRET;
+  const secret = connection.LTE_INTERNAL_SECRET;
   if (!secret || secret.length < 32)
     return NextResponse.json(
       { error: "Catalogue sync is not configured" },

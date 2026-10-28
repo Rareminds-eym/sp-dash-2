@@ -15,7 +15,7 @@ SSO_WORKER_URL = "https://sso-api.dark-mode-d021.workers.dev"
 # CRITICAL: MISSING SECRETS - These must be added as Cloudflare secrets!
 # ============================================================================
 # Run these commands to add the secrets:
-#   wrangler secret put LTE_CATALOG_SYNC_SECRET (same value on LTE Pages)
+#   wrangler secret put LTE_INTERNAL_SECRET (same value on LTE Pages)
 #   wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 #   wrangler secret put COURSE_UPLOAD_WORKER_TOKEN
 #   wrangler secret put NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -199,7 +199,7 @@ bucket_name = "skill-echosystem-dev"
 # Ensure lte-qa and skill-echosystem-qa R2 buckets exist.
 # RATE_LIMIT_KV below currently shares the dev namespace; use a separate ID for isolated QA limits.
 # Add the same database credentials as dev as secrets with --env qa;
-# use the QA LTE_CATALOG_SYNC_SECRET and QA COURSE_UPLOAD_WORKER_TOKEN.
+# use the QA LTE_INTERNAL_SECRET and QA COURSE_UPLOAD_WORKER_TOKEN.
 # Secrets are not inherited from dev. Do not deploy until placeholders are replaced.
 # ============================================================================
 
