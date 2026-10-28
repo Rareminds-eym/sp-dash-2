@@ -15,7 +15,7 @@ declare global {
     MAINTENANCE_EVENTS_QUEUE: Queue;
     COURSE_MANAGEMENT_UPLOAD_QUEUE: Queue<CourseManagementQueueMessage>;
     LTE_API_BASE_URL: string;
-    LTE_CATALOG_SYNC_SECRET: string;
+    LTE_INTERNAL_SECRET: string;
     SKILLPASSPORT_ASSETS: R2Bucket;
     RATE_LIMIT_KV: KVNamespace;
     COURSE_UPLOAD_WORKER_TOKEN: string;

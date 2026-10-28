@@ -54,7 +54,7 @@ SSO_WORKER_URL=https://sso-api.dark-mode-d021.workers.dev
 
 **Secrets** (use `wrangler secret put`):
 ```bash
-wrangler secret put LTE_CATALOG_SYNC_SECRET
+wrangler secret put LTE_INTERNAL_SECRET
 wrangler secret put SUPABASE_SERVICE_ROLE_KEY --env production
 wrangler secret put NEXT_PUBLIC_SUPABASE_ANON_KEY --env production
 wrangler secret put SKILLPASSPORT_SERVICE_ROLE_KEY --env production
@@ -267,14 +267,14 @@ wrangler tail sp-dash-2 --status ok
 
 Deploy LTE Pages Functions before the dashboard. LTE keeps its existing
 SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and STORAGE_BUCKET binding. Configure
-LTE_CATALOG_SYNC_SECRET (at least 32 characters) on LTE Pages and sp-dash with
+LTE_INTERNAL_SECRET (at least 32 characters) on LTE Pages and sp-dash with
 the same value; this also preserves the existing SkillPassport recovery export.
 Set LTE_API_BASE_URL to the production or preview LTE origin in the matching
 dashboard environment. Local development uses http://localhost:8789.
 
 Local Wrangler and the OpenNext development bridge read `.dev.vars`; `.env`
 files are not used by the LTE transport. Set `LTE_API_BASE_URL` and the shared
-`LTE_CATALOG_SYNC_SECRET` there. Keep the secret out of source control. See
+`LTE_INTERNAL_SECRET` there. Keep the secret out of source control. See
 `.dev.vars.example` for the two server-only settings. Restart local processes
 after changing bindings. Node development defaults to the local LTE origin and
 does not inherit a production URL from top-level Wrangler deployment vars.

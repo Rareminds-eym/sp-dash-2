@@ -11,9 +11,9 @@ afterEach(() => {vi.unstubAllEnvs();vi.unstubAllGlobals();});
 describe('LTE API boundary', () => {
  it('uses Cloudflare bindings and prevents Node dev from inheriting a production LTE target',async()=>{
   vi.stubEnv('NODE_ENV','development');vi.stubEnv('LTE_API_BASE_URL','https://unexpected-process-env.example.com');
-  vi.mocked(getCloudflareContext).mockResolvedValue({env:{LTE_API_BASE_URL:'https://lte.rareminds.in',LTE_CATALOG_SYNC_SECRET:secret}} as never);
-  expect(await lteConnection()).toEqual({LTE_API_BASE_URL:'http://localhost:8789',LTE_CATALOG_SYNC_SECRET:secret});
-  vi.mocked(getCloudflareContext).mockResolvedValue({env:{LTE_API_BASE_URL:'http://127.0.0.1:8789',LTE_CATALOG_SYNC_SECRET:secret}} as never);
+  vi.mocked(getCloudflareContext).mockResolvedValue({env:{LTE_API_BASE_URL:'https://lte.rareminds.in',LTE_INTERNAL_SECRET:secret}} as never);
+  expect(await lteConnection()).toEqual({LTE_API_BASE_URL:'http://localhost:8789',LTE_INTERNAL_SECRET:secret});
+  vi.mocked(getCloudflareContext).mockResolvedValue({env:{LTE_API_BASE_URL:'http://127.0.0.1:8789',LTE_INTERNAL_SECRET:secret}} as never);
   expect((await lteConnection()).LTE_API_BASE_URL).toBe('http://127.0.0.1:8789');
   vi.stubEnv('NODE_ENV','production');vi.mocked(getCloudflareContext).mockResolvedValue({env:{LTE_API_BASE_URL:'https://lte.rareminds.in'}} as never);
   expect((await lteConnection()).LTE_API_BASE_URL).toBe('https://lte.rareminds.in');
@@ -63,7 +63,7 @@ describe('LTE API boundary', () => {
  });
  it('signs the exact path and body for machine requests', async () => {
   const upstream = vi.fn(async(_input: RequestInfo | URL, _init?: RequestInit)=>Response.json({success:true}));vi.stubGlobal('fetch',upstream);
-  await signedLTERequest({LTE_API_BASE_URL:'https://lte.example.com',LTE_CATALOG_SYNC_SECRET:secret},'/api/v1/internal/catalog/export',{roleIds:['role']});
+  await signedLTERequest({LTE_API_BASE_URL:'https://lte.example.com',LTE_INTERNAL_SECRET:secret},'/api/v1/internal/catalog/export',{roleIds:['role']});
   const [url,options] = upstream.mock.calls[0] as unknown as [URL,RequestInit];
   const headers = new Headers(options.headers);const timestamp=headers.get('x-lte-timestamp');
   const key = await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['verify']);
@@ -73,7 +73,7 @@ describe('LTE API boundary', () => {
  it('keeps the original queue body and acknowledges only a confirmed result', async () => {
   const upstream = vi.fn().mockResolvedValueOnce(Response.json({success:true})).mockResolvedValueOnce(Response.json({error:'Unavailable'},{status:503}));vi.stubGlobal('fetch',upstream);
   const messages = [1,3].map(attempts=>({body:{uploadId:'upload',assetUrl:'https://drive.google.com/file/d/id/view'},attempts,ack:vi.fn(),retry:vi.fn()}));
-  await consumer.queue({messages},{LTE_API_BASE_URL:'https://lte.example.com',LTE_CATALOG_SYNC_SECRET:secret});
+  await consumer.queue({messages},{LTE_API_BASE_URL:'https://lte.example.com',LTE_INTERNAL_SECRET:secret});
   expect(messages[0].ack).toHaveBeenCalledOnce();expect(messages[1].ack).not.toHaveBeenCalled();
   expect(messages[1].retry).toHaveBeenCalledWith({delaySeconds:30});
   expect(JSON.parse(upstream.mock.calls[1][1].body)).toEqual({...messages[1].body,attempts:3});

@@ -1,5 +1,5 @@
 /** Server-only LTE transport, also used by the existing queue consumer. */
-export interface LTEConnection { LTE_API_BASE_URL?: string; LTE_CATALOG_SYNC_SECRET?: string }
+export interface LTEConnection { LTE_API_BASE_URL?: string; LTE_INTERNAL_SECRET?: string }
 
 export async function readLTEBody(request: Request, limit: number): Promise<string> {
   if (Number(request.headers.get('content-length')) > limit) throw new RangeError('Request too large');
@@ -24,8 +24,8 @@ export function lteEndpoint(config: LTEConnection, path: string): URL {
 }
 
 export async function signedLTERequest(config: LTEConnection, path: string, payload: unknown): Promise<Response> {
-  const secret = config.LTE_CATALOG_SYNC_SECRET;
-  if (!secret || secret.length < 32) throw new Error('LTE_CATALOG_SYNC_SECRET is not configured');
+  const secret = config.LTE_INTERNAL_SECRET;
+  if (!secret || secret.length < 32) throw new Error('LTE_INTERNAL_SECRET is not configured');
   const endpoint = lteEndpoint(config, path);
   const body = JSON.stringify(payload);
   const timestamp = String(Date.now());

@@ -4,11 +4,11 @@ import { POST } from "@/app/api/internal/lte/catalog/route";
 import { NextRequest } from "next/server";
 vi.mock('@opennextjs/cloudflare',()=>({getCloudflareContext:vi.fn()}));
 const secret='test-secret-longer-than-thirty-two-characters';
-beforeEach(()=>vi.mocked(getCloudflareContext).mockResolvedValue({env:{LTE_API_BASE_URL:'https://lte.example.com',LTE_CATALOG_SYNC_SECRET:secret}} as never));
+beforeEach(()=>vi.mocked(getCloudflareContext).mockResolvedValue({env:{LTE_API_BASE_URL:'https://lte.example.com',LTE_INTERNAL_SECRET:secret}} as never));
 afterEach(() => {vi.unstubAllEnvs();vi.unstubAllGlobals();});
 describe("catalogue export", () => {
   it('reads the recovery secret from Worker bindings and streams a signed LTE export',async()=>{
-    vi.stubEnv('LTE_CATALOG_SYNC_SECRET','wrong-process-secret');
+    vi.stubEnv('LTE_INTERNAL_SECRET','wrong-process-secret');
     const timestamp=String(Date.now());const body=JSON.stringify({roleIds:['11111111-1111-4111-8111-111111111111']});
     const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
     const bytes=new Uint8Array(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(`POST\n/api/internal/lte/catalog\n${timestamp}\n${body}`)));
@@ -20,7 +20,7 @@ describe("catalogue export", () => {
   });
   it("rejects unsigned and expired requests before database access", async () => {
     vi.stubEnv(
-      "LTE_CATALOG_SYNC_SECRET",
+      "LTE_INTERNAL_SECRET",
       "test-secret-longer-than-thirty-two-characters",
     );
     expect(
@@ -50,7 +50,7 @@ describe("catalogue export", () => {
   });
   it("rejects a signature when its request body has been changed", async () => {
     const secret = "test-secret-longer-than-thirty-two-characters";
-    vi.stubEnv("LTE_CATALOG_SYNC_SECRET", secret);
+    vi.stubEnv("LTE_INTERNAL_SECRET", secret);
     const timestamp = String(Date.now());
     const body = JSON.stringify({
       roleIds: ["11111111-1111-4111-8111-111111111111"],
