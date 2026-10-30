@@ -59,6 +59,7 @@ interface IncomingResource {
   file_size?: string;
   file_path?: string;
   rowNumber?: number;
+  slide_questions?: Array<{ slide_number: number; question: string; options: string[]; correct_option: string }>;
 }
 
 /**
@@ -103,6 +104,17 @@ function validateIncomingCourse(course: IncomingCourse): string | null {
         if (!String(r.resource_name || '').trim()) return 'resource_name is required';
         const typeError = validateResourceType(String(r.resource_type || '').toLowerCase());
         if (typeError) return typeError;
+        if (r.slide_questions !== undefined) {
+          if (!Array.isArray(r.slide_questions) || r.slide_questions.length > 1000) return 'Invalid slide quiz questions';
+          const isPptx = [r.resource_name, r.file_path || '', r.resource_url || ''].some(value => /\.pptx(?:$|[?#])/i.test(value))
+            || /^https:\/\/docs\.google\.com\/presentation\/d\//i.test(r.resource_url || '');
+          if (r.slide_questions.length && (String(r.resource_type).toLowerCase() !== 'document' || !isPptx)) return 'Slide quiz resource must be a PPTX';
+          for (const q of r.slide_questions) {
+            if (!q || !Number.isInteger(q.slide_number) || q.slide_number < 1 || typeof q.question !== 'string' || !q.question.trim() ||
+              !Array.isArray(q.options) || q.options.length !== 4 || q.options.some(option => typeof option !== 'string' || !option.trim()) ||
+              !['A', 'B', 'C', 'D'].includes(q.correct_option)) return 'Invalid slide quiz question';
+          }
+        }
         const url = (r.resource_url || '').trim();
         if (url) {
           const urlError = validateResourceUrl(url, String(r.resource_type).toLowerCase());
@@ -413,17 +425,30 @@ export async function POST(request: NextRequest) {
                 const urlError = validateResourceUrl(url, type);
                 if (urlError) throw new Error(urlError);
 
-                const { error: insertError } = await supabaseAdmin.from('lesson_resources').insert({
+                const { data: insertedResource, error: insertError } = await supabaseAdmin.from('lesson_resources').insert({
                   lesson_id: lessonId,
                   name: String(resourceData.resource_name).trim(),
                   type,
                   url,
                   file_size: fileSize || null,
                   order_index: resourceIndex,
-                });
+                }).select('resource_id').single();
                 if (insertError) throw new Error(insertError.message);
+                if (!insertedResource) throw new Error('Resource creation returned no ID');
+                if (resourceData.slide_questions?.length) {
+                  const bySlide = new Map<number, typeof resourceData.slide_questions>();
+                  for (const question of resourceData.slide_questions) {
+                    const questions = bySlide.get(question.slide_number) || [];
+                    questions.push(question);
+                    bySlide.set(question.slide_number, questions);
+                  }
+                  const quizRows = Array.from(bySlide, ([slide_number, questions]) => ({ resource_id: insertedResource.resource_id, slide_number, questions }));
+                  const { error: quizError } = await supabaseAdmin.from('ppt_slide_quizzes').insert(quizRows);
+                  if (quizError) throw new Error(`Slide quiz creation failed: ${quizError.message}`);
+                }
                 totalResourcesInserted++;
               } catch (err) {
+                if (resourceData.slide_questions?.length) throw err;
                 // Per-row failure: nothing is persisted for this row and the
                 // reason is reported (course continues; row reported).
                 errors.push({ course: courseCode, error: (err as Error).message });
