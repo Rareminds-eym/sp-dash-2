@@ -325,6 +325,9 @@ export function BulkCourseUploadModal({ open, onOpenChange, onSuccess }) {
                     <p className="text-xs text-pink-600">Resources</p>
                   </div>
                 </div>
+                {previewData.totalQuizQuestions > 0 && <div role="status" className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-800">
+                  {previewData.totalQuizQuestions} slide quiz question(s) validated and will be saved with their presentations.
+                </div>}
                 <ScrollArea className="max-h-48">
                   <div className="space-y-2">
                     {(previewData.courses || []).map((course, i) => (

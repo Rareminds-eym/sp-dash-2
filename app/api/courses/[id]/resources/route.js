@@ -100,6 +100,18 @@ export async function GET(request, { params }) {
     }
 
     const resourcesByLesson = new Map();
+    const quizzesByResource = new Map();
+    const resourceIds = resourceRows.map(resource => resource.resource_id);
+    for (const chunk of chunkArray(resourceIds, SUPABASE_IN_CHUNK_SIZE)) {
+      if (!chunk.length) continue;
+      const result = await supabaseAdmin.from('ppt_slide_quizzes').select('resource_id, slide_number, questions').in('resource_id', chunk).order('slide_number');
+      if (result.error) return NextResponse.json({ error: 'Failed to load slide quizzes' }, { status: 500 });
+      for (const quiz of result.data || []) {
+        const list = quizzesByResource.get(quiz.resource_id) || [];
+        list.push({ slide_number: quiz.slide_number, questions: quiz.questions });
+        quizzesByResource.set(quiz.resource_id, list);
+      }
+    }
     for (const resource of resourceRows) {
       const lessonResources = resourcesByLesson.get(resource.lesson_id) || [];
       lessonResources.push(resource);
@@ -133,6 +145,7 @@ export async function GET(request, { params }) {
               thumbnailUrl: resource.thumbnail_url,
               embedUrl: resource.embed_url,
               content: resource.content,
+              slideQuizzes: quizzesByResource.get(resource.resource_id) || [],
               orderIndex: resource.order_index,
             })),
         })),
