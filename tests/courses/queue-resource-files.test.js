@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { queueCourseFileUpload } = vi.hoisted(() => ({
+const { queueCourseFileUpload, waitForCourseUploadJob } = vi.hoisted(() => ({
   queueCourseFileUpload: vi.fn(),
+  waitForCourseUploadJob: vi.fn(),
 }))
 
-vi.mock('@/lib/services/course-upload-client', () => ({ queueCourseFileUpload }))
+vi.mock('@/lib/services/course-upload-client', () => ({ queueCourseFileUpload, waitForCourseUploadJob }))
 
 import {
   queueCourseFilesInCourses,
@@ -67,5 +68,16 @@ describe('Course Management queued resource files', () => {
 
     expect(queuedCourse.modules[0].lessons[0].resources[0].resource_url).toContain('/api/courses/assets?key=')
     expect(course.modules[0].lessons[0].resources[0].resource_url).toBeUndefined()
+  })
+
+  it('imports a shared Google presentation once and stores its R2 URL', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ success: true, r2Url: '/api/courses/assets?key=slides', fileName: 'Slides.pptx', fileSize: '2 KB' }) })
+    try {
+      const resource = { resource_name: 'Slides.ppt', resource_type: 'document', resource_url: 'https://docs.google.com/presentation/d/abc/edit' }
+      const queued = await queueResourceFiles([resource, { ...resource }], [], { importGoogle: true })
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(queued[0]).toMatchObject({ resource_name: 'Slides.pptx', resource_url: '/api/courses/assets?key=slides' })
+      expect(queued[1].resource_url).toBe(queued[0].resource_url)
+    } finally { fetchMock.mockRestore() }
   })
 })

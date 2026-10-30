@@ -383,7 +383,7 @@ export async function POST(request: NextRequest) {
             const lessonId = newLesson.lesson_id;
             totalLessons++;
 
-            for (const resourceData of lessonData.resources) {
+            for (const [resourceIndex, resourceData] of lessonData.resources.entries()) {
               try {
                 const type = String(resourceData.resource_type || '').toLowerCase();
                 const typeError = validateResourceType(type);
@@ -419,7 +419,7 @@ export async function POST(request: NextRequest) {
                   type,
                   url,
                   file_size: fileSize || null,
-                  order_index: 0,
+                  order_index: resourceIndex,
                 });
                 if (insertError) throw new Error(insertError.message);
                 totalResourcesInserted++;

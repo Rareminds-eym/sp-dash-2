@@ -143,7 +143,9 @@ export async function POST(request: NextRequest) {
 
     const queue = bindings?.COURSE_MANAGEMENT_UPLOAD_QUEUE;
     const kv = bindings?.RATE_LIMIT_KV;
-    if (!queue || !kv) {
+    // Next's local dev server does not run the queue consumer. Complete file
+    // uploads directly there, even if local queue bindings are present.
+    if (process.env.NODE_ENV === 'development' || !queue || !kv) {
       if (process.env.NODE_ENV === 'development') {
         const localKey = r2Key;
         await bucket.put(localKey, bytes, {
