@@ -64,6 +64,8 @@ const INSTRUCTIONS = [
   'PY101       | Python Basics | Python, Programming, Web  | Variables    | 2            | Basic Types    | 1',
   '',
   'RESOURCE TYPES: pdf, video, youtube, document, image, link',
+  'QUIZ SHEET: one question per row; use the same course code, module order, lesson order and PPTX resource name as Course_Upload.',
+  'slide_number starts at 1; correct_option must be A, B, C or D.',
   '',
   '5. Save and upload via Course Management > Bulk Resources > Import New Courses',
 ];
@@ -102,8 +104,7 @@ export async function GET(request: NextRequest) {
     const sheet = workbook.addWorksheet('Course_Upload');
     sheet.columns = TEMPLATE_COLUMNS;
     
-    // Add header row
-    sheet.addRow(Object.fromEntries(TEMPLATE_COLUMNS.map((c) => [c.key, c.header])));
+    // Setting columns creates the header row.
     sheet.getRow(1).font = { bold: true };
     sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
     sheet.views = [{ state: 'frozen', ySplit: 1 }];
@@ -149,9 +150,9 @@ export async function GET(request: NextRequest) {
           lesson_content: 'Download and install Python on your computer...',
           lesson_duration: '20 minutes',
           resource_name: 'Installation Guide',
-          resource_type: 'pdf',
-          resource_url: '',
-          file_path: 'python-install-guide.pdf',
+          resource_type: 'link',
+          resource_url: 'https://docs.python.org/3/using/index.html',
+          file_path: '',
         },
         {
           course_code: 'PY101',
@@ -179,7 +180,26 @@ export async function GET(request: NextRequest) {
       for (const row of sampleData) {
         sheet.addRow(row);
       }
+      sheet.addRow({ ...sampleData[0], resource_name: 'Python Slides', resource_type: 'document', resource_url: 'https://example.com/python-slides.pptx' });
     }
+
+    const quizSheet = workbook.addWorksheet('Quiz');
+    quizSheet.columns = [
+      { header: 'course_code', key: 'course_code', width: 20 },
+      { header: 'module_order', key: 'module_order', width: 16 },
+      { header: 'lesson_order', key: 'lesson_order', width: 16 },
+      { header: 'resource_name', key: 'resource_name', width: 28 },
+      { header: 'slide_number', key: 'slide_number', width: 16 },
+      { header: 'question', key: 'question', width: 45 },
+      { header: 'option_a', key: 'option_a', width: 25 },
+      { header: 'option_b', key: 'option_b', width: 25 },
+      { header: 'option_c', key: 'option_c', width: 25 },
+      { header: 'option_d', key: 'option_d', width: 25 },
+      { header: 'correct_option', key: 'correct_option', width: 18 },
+    ];
+    quizSheet.getRow(1).font = { bold: true };
+    quizSheet.views = [{ state: 'frozen', ySplit: 1 }];
+    if (withSample) quizSheet.addRow({ course_code: 'PY101', module_order: 1, lesson_order: 1, resource_name: 'Python Slides', slide_number: 4, question: 'Which language is covered?', option_a: 'Python', option_b: 'French', option_c: 'Spanish', option_d: 'German', correct_option: 'A' });
 
     // Data validation for resource_type column (column P)
     const sheetWithValidation = sheet as unknown as {
