@@ -369,6 +369,7 @@ export interface HierarchyResourceInput {
   thumbnail_url?: unknown;
   embedUrl?: unknown;
   embed_url?: unknown;
+  slideQuizzes?: unknown;
 }
 
 export interface HierarchyLessonInput {
@@ -419,6 +420,20 @@ export function validateHierarchyPayload(modules: unknown, options: { allowLocal
         if (typeError) return `${path}: ${typeError}`;
         const url = String(res.url || '').trim();
         if (!url) return `${path}: resource URL is required`;
+        if (res.slideQuizzes !== undefined) {
+          if (!Array.isArray(res.slideQuizzes) || res.slideQuizzes.length > 100) return `${path}: invalid slide quizzes`;
+          const isPptx = [String(res.name || ''), url].some(value => /\.pptx(?:$|[?#&])/i.test(value)) || /^https:\/\/docs\.google\.com\/presentation\/d\//i.test(url);
+          if (res.slideQuizzes.length && (res.type !== 'document' || !isPptx)) return `${path}: slide quizzes require a PPTX`;
+          const slides = new Set<number>();
+          for (const quiz of res.slideQuizzes) {
+            if (!quiz || !Number.isInteger(quiz.slide_number) || quiz.slide_number < 1 || quiz.slide_number > 999999 || slides.has(quiz.slide_number)) return `${path}: each quiz must have a unique positive slide number`;
+            slides.add(quiz.slide_number);
+            if (!Array.isArray(quiz.questions) || quiz.questions.length < 1 || quiz.questions.length > 100) return `${path}: each slide needs 1 to 100 questions`;
+            for (const q of quiz.questions) {
+              if (!q || typeof q.question !== 'string' || !q.question.trim() || q.question.length > 2000 || !Array.isArray(q.options) || q.options.length !== 4 || q.options.some((o: unknown) => typeof o !== 'string' || !o.trim() || o.length > 1000) || !['A','B','C','D'].includes(q.correct_option)) return `${path}: each question needs text, four options and a correct option`;
+            }
+          }
+        }
         let localDemoUrl = false;
         if (options.allowLocalDemoUrls) {
           try {

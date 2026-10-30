@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { 
   X, Plus, Check, ChevronLeft, ChevronRight, Upload, Image as ImageIcon,
   BookOpen, Loader2, Trash2, Target, Layers, GraduationCap, Clock, Hash, 
@@ -24,6 +25,8 @@ import {
 } from '@/lib/services/coursesService'
 import { moveLessonResource, normalizeCourseHierarchy } from '@/lib/services/course-hierarchy'
 import { queueCourseFileUpload } from '@/lib/services/course-upload-client'
+import SlideQuizFields from './SlideQuizFields'
+import { isPptxResource, prepareSlideQuizzes } from '@/lib/services/slide-quiz-editor'
 import {
   COURSE_RESOURCE_TYPES,
   getAcceptedFileTypes,
@@ -78,6 +81,7 @@ export function CreateCourseModal({
   const [selectedModuleIndex, setSelectedModuleIndex] = useState(null)
   const [editingLessonIndex, setEditingLessonIndex] = useState(null)
   const [editingResourceIndex, setEditingResourceIndex] = useState(null)
+  const [resourceTab, setResourceTab] = useState('resource')
   const [uploadingResource, setUploadingResource] = useState(false)
   const [loading, setLoading] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
@@ -268,17 +272,25 @@ export function CreateCourseModal({
       setErrors(prev => ({ ...prev, resource: 'Upload a file or enter a URL first' }))
       return
     }
+    const { quizzes, error } = prepareSlideQuizzes(newResource)
+    if (error) {
+      setErrors(prev => ({ ...prev, resource: error }))
+      return
+    }
+    const savedResource = { ...newResource, name: newResource.name.trim(), url: newResource.url.trim(), ...(quizzes === undefined ? {} : { slideQuizzes: quizzes }) }
     setNewLesson(prev => ({ ...prev, resources: editingResourceIndex === null
-      ? [...prev.resources, { ...newResource, name: newResource.name.trim(), url: newResource.url.trim(), order: prev.resources.length, orderIndex: prev.resources.length }]
-      : prev.resources.map((resource, index) => index === editingResourceIndex ? { ...resource, ...newResource, name: newResource.name.trim(), url: newResource.url.trim() } : resource) }))
+      ? [...prev.resources, { ...savedResource, order: prev.resources.length, orderIndex: prev.resources.length }]
+      : prev.resources.map((resource, index) => index === editingResourceIndex ? { ...resource, ...savedResource } : resource) }))
     setNewResource({ name: '', type: 'pdf', url: '', size: '', thumbnailUrl: '', embedUrl: '', r2Key: '' })
     setEditingResourceIndex(null)
+    setResourceTab('resource')
     setErrors(prev => ({ ...prev, resource: undefined }))
   }
 
   const removeResourceFromLesson = (index) => {
     setNewLesson(prev => ({ ...prev, resources: prev.resources.filter((_, idx) => idx !== index).map((resource, order) => ({ ...resource, order, orderIndex: order, order_index: order })) }))
     setEditingResourceIndex(null)
+    setResourceTab('resource')
     setNewResource({ name: '', type: 'pdf', url: '', size: '', thumbnailUrl: '', embedUrl: '', r2Key: '' })
   }
 
@@ -850,7 +862,7 @@ export function CreateCourseModal({
                     <span className="text-xs text-gray-700 dark:text-gray-300 truncate flex-1">{res.name}</span>
                     {res.size && <span className="text-xs text-gray-400 shrink-0">{res.size}</span>}
                     {editingResourceIndex === null && resourceOrderButtons(newLesson.resources, ri, resources => setNewLesson(prev => ({ ...prev, resources })))}
-                    <Button type="button" variant="ghost" size="sm" disabled={uploadingResource} onClick={() => { setEditingResourceIndex(ri); setNewResource({ ...res, name: res.name || '', type: res.type || 'document', url: res.url || '', size: res.size || '', thumbnailUrl: res.thumbnailUrl || '', embedUrl: res.embedUrl || '', r2Key: res.r2Key || '' }) }} className="h-6 px-2 text-xs text-indigo-600">Edit</Button>
+                    <Button type="button" variant="ghost" size="sm" disabled={uploadingResource} onClick={() => { setResourceTab('resource'); setEditingResourceIndex(ri); setNewResource({ ...res, name: res.name || '', type: res.type || 'document', url: res.url || '', size: res.size || '', thumbnailUrl: res.thumbnailUrl || '', embedUrl: res.embedUrl || '', r2Key: res.r2Key || '' }) }} className="h-6 px-2 text-xs text-indigo-600">Edit</Button>
                     <Button type="button" variant="ghost" size="icon" onClick={() => removeResourceFromLesson(ri)} className="h-6 w-6 text-red-500 hover:bg-red-50 shrink-0">
                       <X className="h-3 w-3" />
                     </Button>
@@ -859,6 +871,13 @@ export function CreateCourseModal({
               </div>
             )}
 
+            <Tabs value={resourceTab} onValueChange={setResourceTab}>
+            {editingCourse && <TabsList className="w-full justify-start">
+              <TabsTrigger value="resource">Resource</TabsTrigger>
+              <TabsTrigger value="quiz" disabled={!isPptxResource(newResource) && !newResource.slideQuizzes?.length}>Slide Quiz{newResource.slideQuizzes?.length > 0 ? ` (${newResource.slideQuizzes.length})` : ''}</TabsTrigger>
+            </TabsList>}
+            {editingCourse && !isPptxResource(newResource) && !newResource.slideQuizzes?.length && <p className="mt-1 text-xs text-gray-500">Select a PPTX resource to add slide questions.</p>}
+            <TabsContent value="resource" className="space-y-2">
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs">Resource Name</Label>
@@ -908,6 +927,10 @@ export function CreateCourseModal({
                 <Input value={newResource.embedUrl} onChange={(e) => setNewResource(prev => ({ ...prev, embedUrl: e.target.value }))} placeholder="https://.../embed" className="text-xs h-8" />
               </div>
             </div>
+
+            </TabsContent>
+            {editingCourse && <TabsContent value="quiz"><SlideQuizFields quizzes={newResource.slideQuizzes || []} onChange={slideQuizzes => setNewResource(prev => ({ ...prev, slideQuizzes }))} /></TabsContent>}
+            </Tabs>
 
             {errors.resource && <p className="text-xs text-red-500">{errors.resource}</p>}
 
