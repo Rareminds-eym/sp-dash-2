@@ -210,7 +210,7 @@ export function BulkCourseUploadModal({ open, onOpenChange, onSuccess }) {
             <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl text-sm text-gray-600 dark:text-gray-400 space-y-1.5">
               <p><strong>1.</strong> Each row = one lesson. Duplicate course/module info for each lesson in that course</p>
               <p><strong>2.</strong> Required fields: course_code, course_title, module_title, module_order, lesson_title, lesson_order</p>
-              <p><strong>3.</strong> Optional: skills (comma-separated, e.g., "Python, Programming, Web")</p>
+              <p><strong>3.</strong> Client fields: course_description, duration, skills, lesson_duration, resource_name, resource_type, resource_url. Enter skills separated by commas.</p>
               <p><strong>4.</strong> Group lessons using the same course_code (e.g., PY101)</p>
               <p><strong>5.</strong> module_order and lesson_order determine the sequence (1, 2, 3...)</p>
               <p><strong>6.</strong> For resources: fill resource_name, resource_type, and resource_url OR file_path</p>

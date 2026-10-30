@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeCourseHierarchy } from '@/lib/services/course-hierarchy';
+import { moveLessonResource, normalizeCourseHierarchy } from '@/lib/services/course-hierarchy';
 
 const DB_SHAPE = [
   {
@@ -35,6 +35,15 @@ const DB_SHAPE = [
 ];
 
 describe('normalizeCourseHierarchy round-trip preservation', () => {
+  it('persists moved resource order across normalization and leaves the original intact', () => {
+    const original = [{ name: 'Video', order: 3 }, { name: 'Slides', order: 7 }];
+    const moved = moveLessonResource(original, 1, 0);
+    expect(moved.map(resource => resource.name)).toEqual(['Slides', 'Video']);
+    expect(moved.map(resource => [resource.order, resource.orderIndex, resource.order_index])).toEqual([[0, 0, 0], [1, 1, 1]]);
+    expect(original.map(resource => resource.order)).toEqual([3, 7]);
+    expect(normalizeCourseHierarchy([{ lessons: [{ resources: moved }] }])[0].lessons[0].resources.map(resource => resource.order)).toEqual([0, 1]);
+    expect(moveLessonResource(original, 0, -1)).toBe(original);
+  });
   it('preserves ids, content, activities, skill tags and sizes', () => {
     const [mod] = normalizeCourseHierarchy(DB_SHAPE);
     expect(mod.id).toBe('m1');

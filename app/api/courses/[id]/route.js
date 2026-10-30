@@ -176,6 +176,12 @@ export async function PUT(request, { params }) {
                 { status: 400 }
             );
         }
+        if (syncHierarchy) {
+            const hierarchyError = validateHierarchyPayload(modules, { allowLocalDemoUrls: process.env.NODE_ENV === 'development' });
+            if (hierarchyError) {
+                return NextResponse.json({ error: 'Invalid course hierarchy', details: hierarchyError }, { status: 400 });
+            }
+        }
 
         // Optimistic concurrency: reject stale edits when the caller pins a version.
         if (expectedUpdatedAt) {
@@ -254,218 +260,21 @@ export async function PUT(request, { params }) {
             updateFields.total_skills = skillsCovered.length;
         }
 
-        // Update primary course record
-        const { data, error: updateError } = await supabaseAdmin
-            .from('courses')
-            .update(updateFields)
-            .eq('course_id', id)
-            .is('deleted_at', null)
-            .select('course_id, title, code, description, university, duration, credits, category, thumbnail, target_outcomes, status, created_at, updated_at')
-            .single();
-
+        // The database function updates all course data in one transaction.
+        const { data, error: updateError } = await supabaseAdmin.rpc('update_course_transactional', {
+            p_course_id: id,
+            p_fields: updateFields,
+            p_skills: body.skillsCovered !== undefined || body.skills !== undefined ? skillsCovered : null,
+            p_classes: body.linkedClasses !== undefined ? linkedClasses : null,
+            p_modules: syncHierarchy ? modules : null,
+            p_expected_updated_at: expectedUpdatedAt || null,
+        });
         if (updateError) {
-            console.error('Error updating course:', updateError);
-            return NextResponse.json(
-                { error: updateError.message },
-                { status: 500 }
-            );
+            console.error('[Course API] Error updating course:', updateError);
+            const status = updateError.code === '40001' ? 409 : updateError.code === 'P0002' ? 404 : 500;
+            return NextResponse.json({ error: 'Failed to update course', details: updateError.message }, { status });
         }
-
-        if (!data) {
-            return NextResponse.json(
-                { error: 'Course not found or already deleted' },
-                { status: 404 }
-            );
-        }
-
-        // Sync 1: course_skills (if provided in payload)
-        if (body.skillsCovered !== undefined || body.skills !== undefined) {
-            const { error: deleteSkillsErr } = await supabaseAdmin
-                .from('course_skills')
-                .delete()
-                .eq('course_id', id);
-
-            if (deleteSkillsErr) {
-                console.error('[Course API] Error clearing existing skills:', deleteSkillsErr);
-                return NextResponse.json(
-                    { error: 'Failed to sync course skills', details: deleteSkillsErr.message },
-                    { status: 500 }
-                );
-            }
-
-            if (skillsCovered.length > 0) {
-                const skillsToInsert = skillsCovered.map(skill => ({
-                    course_id: id,
-                    skill_name: skill
-                }));
-                const { error: insertSkillsErr } = await supabaseAdmin
-                    .from('course_skills')
-                    .insert(skillsToInsert);
-
-                if (insertSkillsErr) {
-                    console.error('[Course API] Error inserting course skills:', insertSkillsErr);
-                    return NextResponse.json(
-                        { error: 'Failed to sync course skills', details: insertSkillsErr.message },
-                        { status: 500 }
-                    );
-                }
-            }
-        }
-
-        // Sync 2: course_classes (if provided in payload)
-        if (body.linkedClasses !== undefined) {
-            const { error: deleteClassesErr } = await supabaseAdmin
-                .from('course_classes')
-                .delete()
-                .eq('course_id', id);
-
-            if (deleteClassesErr) {
-                console.error('[Course API] Error clearing existing classes:', deleteClassesErr);
-                return NextResponse.json(
-                    { error: 'Failed to sync course classes', details: deleteClassesErr.message },
-                    { status: 500 }
-                );
-            }
-
-            if (linkedClasses.length > 0) {
-                const classesToInsert = linkedClasses.map(className => ({
-                    course_id: id,
-                    class_name: className
-                }));
-                const { error: insertClassesErr } = await supabaseAdmin
-                    .from('course_classes')
-                    .insert(classesToInsert);
-
-                if (insertClassesErr) {
-                    console.error('[Course API] Error inserting course classes:', insertClassesErr);
-                    return NextResponse.json(
-                        { error: 'Failed to sync course classes', details: insertClassesErr.message },
-                        { status: 500 }
-                    );
-                }
-            }
-        }
-
-        // Sync 3: course_modules, lessons, lesson_resources — ONLY on explicit,
-        // authorized, validated hierarchy-replace intent. Omitted modules (or
-        // modules without updateHierarchy:true) leave existing hierarchy intact.
-        // Pre-validate the full hierarchy BEFORE the destructive delete so a
-        // malformed payload can never wipe existing modules/lessons/resources.
-        // Explicit [] with intent = intentional clear-all (authorized deletion).
-        if (syncHierarchy) {
-            const hierarchyError = validateHierarchyPayload(modules);
-            if (hierarchyError) {
-                return NextResponse.json(
-                    { error: 'Invalid course hierarchy', details: hierarchyError },
-                    { status: 400 }
-                );
-            }
-            // Re-verify the course still exists (and is not deleted) immediately
-            // before the destructive step, so hierarchy rows can never be
-            // orphaned/wiped for a missing or inaccessible course.
-            const { data: hierarchyOwner, error: ownerError } = await supabaseAdmin
-                .from('courses')
-                .select('course_id')
-                .eq('course_id', id)
-                .is('deleted_at', null)
-                .maybeSingle();
-            if (ownerError) {
-                console.error('[Course API] Error verifying course before hierarchy sync:', ownerError);
-                return NextResponse.json(
-                    { error: 'Failed to verify course', details: ownerError.message },
-                    { status: 500 }
-                );
-            }
-            if (!hierarchyOwner) {
-                return NextResponse.json({ error: 'Course not found or already deleted' }, { status: 404 });
-            }
-            const { error: deleteModulesErr } = await supabaseAdmin
-                .from('course_modules')
-                .delete()
-                .eq('course_id', id);
-
-            if (deleteModulesErr) {
-                console.error('[Course API] Error clearing existing modules:', deleteModulesErr);
-                return NextResponse.json(
-                    { error: 'Failed to sync course modules', details: deleteModulesErr.message },
-                    { status: 500 }
-                );
-            }
-
-            if (modules.length > 0) {
-                for (const mod of modules) {
-                    const { data: moduleRow, error: moduleError } = await supabaseAdmin
-                        .from('course_modules')
-                        .insert({
-                            course_id: id,
-                            title: mod.title,
-                            description: mod.description || '',
-                            order_index: mod.order ?? mod.orderIndex ?? 0,
-                            skill_tags: mod.skillTags || [],
-                            activities: mod.activities || []
-                        })
-                        .select()
-                        .single();
-
-                    if (moduleError || !moduleRow) {
-                        console.error('[Course API] Module update error:', moduleError);
-                        return NextResponse.json(
-                            { error: 'Failed to update course modules', details: moduleError?.message },
-                            { status: 500 }
-                        );
-                    }
-
-                    if (mod.lessons?.length > 0) {
-                        for (const lesson of mod.lessons) {
-                            const { data: lessonRow, error: lessonError } = await supabaseAdmin
-                                .from('lessons')
-                                .insert({
-                                    module_id: moduleRow.module_id,
-                                    title: lesson.title,
-                                    description: lesson.description || '',
-                                    content: lesson.content || '',
-                                    duration: lesson.duration || '',
-                                    order_index: lesson.order ?? lesson.orderIndex ?? 0
-                                })
-                                .select()
-                                .single();
-
-                            if (lessonError || !lessonRow) {
-                                console.error('[Course API] Lesson update error:', lessonError);
-                                return NextResponse.json(
-                                    { error: 'Failed to update lesson', details: lessonError?.message },
-                                    { status: 500 }
-                                );
-                            }
-
-                            if (lesson.resources?.length > 0) {
-                                const resourcesToInsert = lesson.resources.map((res, index) => ({
-                                    lesson_id: lessonRow.lesson_id,
-                                    name: res.name,
-                                    type: res.type,
-                                    url: res.url,
-                                    file_size: res.size ?? res.fileSize ?? null,
-                                    thumbnail_url: res.thumbnailUrl ?? res.thumbnail_url ?? null,
-                                    embed_url: res.embedUrl ?? res.embed_url ?? null,
-                                    order_index: res.order ?? res.orderIndex ?? index
-                                }));
-                                const { error: resourceError } = await supabaseAdmin
-                                    .from('lesson_resources')
-                                    .insert(resourcesToInsert);
-
-                                if (resourceError) {
-                                    console.error('[Course API] Lesson resource update error:', resourceError);
-                                    return NextResponse.json(
-                                        { error: 'Failed to update lesson resources', details: resourceError.message },
-                                        { status: 500 }
-                                    );
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        if (!data) return NextResponse.json({ error: 'Course not found or already deleted' }, { status: 404 });
 
         // Log audit
         await logAudit(user.id, 'update_course', id, {

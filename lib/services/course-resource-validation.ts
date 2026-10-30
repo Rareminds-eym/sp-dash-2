@@ -73,7 +73,7 @@ export const COURSE_RESOURCE_TYPES: ResourceTypeConfig[] = [
       '.txt': 'text/plain',
       '.rtf': 'application/rtf',
     },
-    maxSizeBytes: 50 * 1024 * 1024,
+    maxSizeBytes: 500 * 1024 * 1024,
   },
   {
     type: 'image',
@@ -390,7 +390,7 @@ export interface HierarchyModuleInput {
  * processing (via per-resource checks). Explicit empty arrays are valid
  * (clear-all); callers decide whether an omitted key means "skip sync".
  */
-export function validateHierarchyPayload(modules: unknown): string | null {
+export function validateHierarchyPayload(modules: unknown, options: { allowLocalDemoUrls?: boolean } = {}): string | null {
   if (!Array.isArray(modules)) return 'modules must be an array';
   if (modules.length > 200) return 'Maximum 200 modules per course';
   for (let mi = 0; mi < modules.length; mi += 1) {
@@ -419,7 +419,16 @@ export function validateHierarchyPayload(modules: unknown): string | null {
         if (typeError) return `${path}: ${typeError}`;
         const url = String(res.url || '').trim();
         if (!url) return `${path}: resource URL is required`;
-        const urlError = validateResourceUrl(url, String(res.type));
+        let localDemoUrl = false;
+        if (options.allowLocalDemoUrls) {
+          try {
+            const parsed = new URL(url);
+            localDemoUrl = parsed.protocol === 'http:' && parsed.hostname === 'localhost' && parsed.port === '8788' &&
+              (parsed.pathname === '/video-bg.mp4' || parsed.pathname.startsWith('/demo-course/')) &&
+              !parsed.username && !parsed.password && !parsed.search && !parsed.hash;
+          } catch { /* Invalid URLs are rejected by the normal validator. */ }
+        }
+        const urlError = localDemoUrl ? null : validateResourceUrl(url, String(res.type));
         if (urlError) return `${path}: ${urlError}`;
         if (url.startsWith('/api/courses/assets?')) {
           const sizeError =
@@ -427,7 +436,7 @@ export function validateHierarchyPayload(modules: unknown): string | null {
               ? null
               : `${path}: uploaded resources must include file size`;
           if (sizeError) return sizeError;
-        } else if (!/^https:\/\//i.test(url)) {
+        } else if (!localDemoUrl && !/^https:\/\//i.test(url)) {
           return `${path}: resource URL must be https:// or a valid asset path`;
         }
         const thumbError = validateOptionalUrl(

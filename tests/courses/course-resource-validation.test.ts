@@ -94,6 +94,12 @@ describe('file validation parity (single upload == bulk process)', () => {
     expect(validateFileSize(-1, 'pdf')).toMatch(/Invalid file size/);
   });
 
+  it('allows documents up to 500 MB', () => {
+    const limit = 500 * 1024 * 1024;
+    expect(validateFileSize(limit, 'document')).toBeNull();
+    expect(validateFileSize(limit + 1, 'document')).toMatch(/500\.0 MB/);
+  });
+
   it('sniffs magic numbers for image/pdf payloads', () => {
     const pdf = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]); // %PDF-
     expect(validateFileSignature(pdf, 'a.pdf')).toBeNull();

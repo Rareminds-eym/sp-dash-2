@@ -1,10 +1,10 @@
-import { queueCourseFileUpload } from '@/lib/services/course-upload-client'
+import { queueCourseFileUpload, waitForCourseUploadJob } from '@/lib/services/course-upload-client'
 
 function basename(path) {
   return String(path || '').split(/[\\/]/).pop() || ''
 }
 
-export async function queueResourceFiles(resources, files) {
+export async function queueResourceFiles(resources, files, { importGoogle = false } = {}) {
   const fileByName = new Map()
   for (const file of files) {
     fileByName.set(file.name, file)
@@ -15,6 +15,12 @@ export async function queueResourceFiles(resources, files) {
   const uploadTargets = new Map()
   const queuedByResource = new Map()
   for (const resource of resources) {
+    if (importGoogle && String(resource.resource_type || '').toLowerCase() === 'document' && /^https:\/\/docs\.google\.com\/(presentation|document)\/d\/[a-zA-Z0-9_-]+(?:\/|\?|$)/i.test(resource.resource_url || '')) {
+      const uploadKey = `google\u0000${resource.resource_url}`
+      if (!uploadTargets.has(uploadKey)) uploadTargets.set(uploadKey, { googleUrl: resource.resource_url, resourceName: resource.resource_name })
+      queuedByResource.set(resource, uploadKey)
+      continue
+    }
     if (resource.resource_url || !resource.file_path) continue
     const path = String(resource.file_path)
     const file = fileByName.get(path) || fileByName.get(basename(path))
@@ -34,11 +40,18 @@ export async function queueResourceFiles(resources, files) {
 
   const targets = Array.from(uploadTargets.entries())
   let nextTarget = 0
-  const workers = Array.from({ length: Math.min(3, targets.length) }, async () => {
+  // Serial imports avoid buffering several large files simultaneously.
+  const workers = Array.from({ length: Math.min(1, targets.length) }, async () => {
     while (nextTarget < targets.length) {
       const targetIndex = nextTarget++
       const [key, target] = targets[targetIndex]
-      const upload = await queueCourseFileUpload(target.file, target.resourceType, target.resourceName)
+      let upload
+      if (target.googleUrl) {
+        const response = await fetch('/api/courses/import-google', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: target.googleUrl, name: target.resourceName }) })
+        const result = await response.json().catch(() => ({}))
+        if (!response.ok || !result.success) throw new Error(result.error || 'Google file import failed')
+        upload = result.jobId ? await waitForCourseUploadJob(result.jobId, target.resourceName) : result
+      } else upload = await queueCourseFileUpload(target.file, target.resourceType, target.resourceName)
       uploadTargets.set(key, upload)
     }
   })
@@ -50,9 +63,15 @@ export async function queueResourceFiles(resources, files) {
     const uploadKey = queuedByResource.get(resource)
     const upload = uploadKey ? uploadTargets.get(uploadKey) : null
     return upload
-      ? { ...resource, resource_url: upload.r2Url, file_size: upload.fileSize }
+      ? { ...resource, resource_name: targetName(resource, upload), resource_url: upload.r2Url, file_size: upload.fileSize }
       : resource
   })
+}
+
+function targetName(resource, upload) {
+  if (!/^https:\/\/docs\.google\.com\//i.test(resource.resource_url || '')) return resource.resource_name
+  const extension = upload.fileName?.match(/\.(pptx|docx)$/i)?.[0]
+  return extension ? `${String(resource.resource_name || 'Document').replace(/\.(pptx?|docx?)$/i, '')}${extension}` : resource.resource_name
 }
 
 export async function queueCourseFilesInCourses(courses, files) {
@@ -61,7 +80,7 @@ export async function queueCourseFilesInCourses(courses, files) {
       (module.lessons || []).flatMap((lesson) => lesson.resources || []),
     ),
   )
-  const queuedResources = await queueResourceFiles(resources, files)
+  const queuedResources = await queueResourceFiles(resources, files, { importGoogle: true })
   const byOriginalResource = new Map(resources.map((resource, index) => [
     resource,
     queuedResources[index],
