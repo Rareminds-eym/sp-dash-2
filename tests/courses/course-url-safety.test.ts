@@ -33,6 +33,15 @@ describe('Blocker 3: upload-type URL hardening', () => {
 });
 
 describe('Blocker 3: shared hierarchy contract', () => {
+  it('permits only local demo assets when explicitly enabled for development', () => {
+    const hierarchy = (url: string) => [{ title: 'Demo', lessons: [{ title: 'Lesson', resources: [{ name: 'Slides', type: 'document', url }] }] }];
+    const local = 'http://localhost:8788/demo-course/testing-3.pptx';
+    expect(validateHierarchyPayload(hierarchy(local))).toMatch(/https/);
+    expect(validateHierarchyPayload(hierarchy(local), { allowLocalDemoUrls: true })).toBeNull();
+    expect(validateHierarchyPayload(hierarchy('http://localhost:8788/video-bg.mp4'), { allowLocalDemoUrls: true })).toBeNull();
+    expect(validateHierarchyPayload(hierarchy('http://localhost:8788/private'), { allowLocalDemoUrls: true })).toMatch(/https/);
+    expect(validateHierarchyPayload(hierarchy('http://example.com/demo-course/file.pptx'), { allowLocalDemoUrls: true })).toMatch(/https/);
+  });
   it('rejects unsafe resource URLs nested in hierarchy', () => {
     const err = validateHierarchyPayload([
       { title: 'M1', lessons: [{ title: 'L1', resources: [{ name: 'R', type: 'pdf', url: 'javascript:alert(1)' }] }] },
