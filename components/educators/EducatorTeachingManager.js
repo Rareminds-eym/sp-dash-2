@@ -23,6 +23,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import CollegeAssignmentForm, { validateTimeSlots } from './CollegeAssignmentForm';
+import { eventLabel, groupReplacementOptions, groupSessionsForDisplay, groupVersions } from './combinedSessions';
+import CombinedGroupPanel from './CombinedGroupPanel';
 
 const NONE = 'none';
 
@@ -50,6 +52,7 @@ const MODE_OPTIONS = [
   { id: 'map', label: 'Add mapping' },
   { id: 'edit_mapping', label: 'Edit mapping' },
   { id: 'end_mapping', label: 'End mapping' },
+  { id: 'combined_group', label: 'Combined group' },
 ];
 
 const ATTENDANCE_OPTIONS = ['present', 'absent', 'late', 'excused'];
@@ -142,17 +145,43 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
     }
   }
 
+  // Runs several operations in order (used by the combined group form) and always reloads, so partly saved work is visible.
+  async function runSteps(steps, successMessage) {
+    setBusy(true);
+    setError('');
+    try {
+      await steps();
+      toast({ title: 'Success', description: successMessage });
+    } catch (e) {
+      setError(e.message);
+      toast({ title: 'Action failed', description: e.message, variant: 'destructive' });
+    } finally {
+      try {
+        await refresh();
+        await onSaved?.();
+      } catch {
+        // the reload failure is already visible through the error state of the next action
+      }
+      setBusy(false);
+    }
+  }
+
   const ownMappings = data.mappings.filter((m) => m.staff_id === educator.id && m.is_active);
   const reasonOk = reason.trim().length > 0;
   // This card manages ONE educator — the session picker shows only their
   // sessions, never other trainers'. (Swap counterpart picker stays global.)
   const ownSessions = data.sessions.filter((s) => s.organization_staff_id === educator.id);
-  const session = ownSessions.find((s) => s.id === sessionId);
+  // The sibling rows of a combined class session are listed and managed as one event.
+  const events = groupSessionsForDisplay(ownSessions);
+  const selectedEvent = events.find((e) => e.key === sessionId);
+  const session = selectedEvent?.representative;
+  const isGroup = Boolean(selectedEvent?.groupId);
+  const groupReplacements = isGroup ? groupReplacementOptions(selectedEvent, eligible) : [];
   const other = data.sessions.find((s) => s.id === otherId);
   const sessionLabel = (s) =>
     `${s.date} ${s.start_time} · ${s.subject_name} · ${s.faculty_name} · ${s.section} (${s.status})`;
   const mappingLabel = (m) =>
-    `${m.staff_name} · ${m.college_name} · ${m.program_name} · Sem ${m.semester} / ${m.section}`;
+    `${m.staff_name} · ${m.college_name} · ${m.program_name} · Sem ${m.semester} / ${m.section}${m.combined_class_group_id ? ' · combined group' : ''}`;
 
   function eligible(s) {
     return data.mappings.filter(
@@ -170,6 +199,11 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
     const nextId = id === NONE ? '' : id;
     setMappingId(nextId);
     const m = data.mappings.find((x) => x.id === nextId);
+    if (m?.combined_class_group_id) {
+      setMappingId('');
+      setError('This mapping belongs to a combined group. Use the "Combined group" action to end the group and create a new one.');
+      return;
+    }
     if (m) {
       setStaffId(m.staff_id);
       const snapshot = {
@@ -387,6 +421,18 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
                   </Select>
                 </Field>
 
+                {mode === 'combined_group' && (
+                  <CombinedGroupPanel
+                    educator={educator}
+                    mappings={data.mappings}
+                    busy={busy}
+                    runSteps={runSteps}
+                    operation={operation}
+                  />
+                )}
+
+                {mode !== 'combined_group' && (
+                <>
                 {mode !== 'map' && (
                   <Field label="Existing mapping" htmlFor="teaching-mapping">
                     <Select value={mappingId || NONE} disabled={busy} onValueChange={chooseMapping}>
@@ -465,6 +511,8 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
                 >
                   Save mapping
                 </Button>
+                </>
+                )}
               </TabsContent>
 
               <TabsContent value="sessions" className="space-y-4 pt-2">
@@ -481,7 +529,7 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
                       const nextId = value === NONE ? '' : value;
                       setSessionId(nextId);
                       setReplacementId('');
-                      const next = ownSessions.find((s) => s.id === nextId);
+                      const next = events.find((e) => e.key === nextId)?.representative;
                       setAttendance(next?.staff_attendance_status || 'present');
                     }}
                   >
@@ -490,9 +538,9 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={NONE}>Select session</SelectItem>
-                      {ownSessions.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {sessionLabel(s)}
+                      {events.map((ev) => (
+                        <SelectItem key={ev.key} value={ev.key}>
+                          {eventLabel(ev, sessionLabel)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -564,9 +612,11 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
                         title={!reasonOk ? 'Enter a reason first' : undefined}
                         onClick={() =>
                           run(
-                            'mark_staff',
-                            { sessionId, version: session.version, status: attendance, reason },
-                            'Attendance recorded successfully.'
+                            isGroup ? 'mark_combined_staff' : 'mark_staff',
+                            isGroup
+                              ? { groupId: selectedEvent.groupId, sessions: groupVersions(selectedEvent), status: attendance, reason }
+                              : { sessionId, version: session.version, status: attendance, reason },
+                            isGroup ? 'Attendance recorded for all classes.' : 'Attendance recorded successfully.'
                           )
                         }
                       >
@@ -579,13 +629,15 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
                         title={!reasonOk ? 'Enter a reason first' : undefined}
                         onClick={() =>
                           run(
-                            'cancel_session',
-                            { sessionId, version: session.version, reason },
-                            'Session cancelled successfully.'
+                            isGroup ? 'cancel_combined_session' : 'cancel_session',
+                            isGroup
+                              ? { groupId: selectedEvent.groupId, sessions: groupVersions(selectedEvent), reason }
+                              : { sessionId, version: session.version, reason },
+                            isGroup ? 'Combined session cancelled for all classes.' : 'Session cancelled successfully.'
                           )
                         }
                       >
-                        Cancel session
+                        {isGroup ? 'Cancel all classes' : 'Cancel session'}
                       </Button>
                     </div>
                     {!reasonOk && (
@@ -610,13 +662,19 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value={NONE}>Select eligible replacement</SelectItem>
-                          {eligible(session)
-                            .filter((m) => m.staff_id !== session.organization_staff_id)
-                            .map((m) => (
-                              <SelectItem key={m.id} value={m.id}>
-                                {mappingLabel(m)}
-                              </SelectItem>
-                            ))}
+                          {isGroup
+                            ? groupReplacements.map((r) => (
+                                <SelectItem key={r.staffId} value={r.staffId}>
+                                  {r.staffName} · all {selectedEvent.sessions.length} classes
+                                </SelectItem>
+                              ))
+                            : eligible(session)
+                                .filter((m) => m.staff_id !== session.organization_staff_id)
+                                .map((m) => (
+                                  <SelectItem key={m.id} value={m.id}>
+                                    {mappingLabel(m)}
+                                  </SelectItem>
+                                ))}
                         </SelectContent>
                       </Select>
                     </Field>
@@ -627,15 +685,28 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
                       title={!reasonOk ? 'Enter a reason first' : undefined}
                       onClick={() =>
                         run(
-                          'replace',
-                          { sessionId, version: session.version, mappingId: replacementId, reason },
-                          'Session reassigned successfully.'
+                          isGroup ? 'replace_combined_session' : 'replace',
+                          isGroup
+                            ? {
+                                groupId: selectedEvent.groupId,
+                                sessions: groupVersions(selectedEvent),
+                                mappingIds: groupReplacements.find((r) => r.staffId === replacementId)?.mappingIds,
+                                reason,
+                              }
+                            : { sessionId, version: session.version, mappingId: replacementId, reason },
+                          isGroup ? 'Combined session reassigned for all classes.' : 'Session reassigned successfully.'
                         )
                       }
                     >
-                      Replace this session
+                      {isGroup ? 'Replace all classes' : 'Replace this session'}
                     </Button>
 
+                    {isGroup ? (
+                      <p className="text-sm text-muted-foreground">
+                        Trainer swap is not available for combined sessions. Replace the whole group instead.
+                      </p>
+                    ) : (
+                    <>
                     <Field label="Other session for swap" htmlFor="teaching-other-session">
                       <Select
                         value={otherId || NONE}
@@ -651,7 +722,7 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
                         <SelectContent>
                           <SelectItem value={NONE}>Select second session</SelectItem>
                           {data.sessions
-                            .filter((s) => s.id !== sessionId)
+                            .filter((s) => s.id !== sessionId && !s.combined_group_id)
                             .map((s) => (
                               <SelectItem key={s.id} value={s.id}>
                                 {sessionLabel(s)}
@@ -713,6 +784,8 @@ export default function EducatorTeachingManager({ educator, onClose, onSaved }) 
                           Swap both educators
                         </Button>
                       </>
+                    )}
+                    </>
                     )}
                       </div>
                     </details>

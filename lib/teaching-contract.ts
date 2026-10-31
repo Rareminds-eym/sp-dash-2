@@ -13,6 +13,10 @@ const map = z.object({ staffId: id, collegeId: id, sectionId: id, courseIds: z.a
   endDate: z.union([date, z.literal('')]).optional(), notes: z.string().max(2000).optional(),
   time_slots: z.array(timeSlot).max(50).optional().default([]),
   mappingId: id.optional(), version: version.optional(), reason: reason.optional() });
+// Combined class sessions: one session row per class sharing a group id (see external_educator_combined_action).
+// Trainer swap is intentionally not offered for combined sessions in version 1.
+const attendanceStatus = z.enum(['present','absent','late','excused']);
+const combinedSessions = z.array(z.object({ sessionId: id, version })).min(2).max(10);
 const schemas: Record<string, z.ZodTypeAny> = {
   context: z.object({}), admin_overview: z.object({}), learners: z.object({}), courses: z.object({}), sessions: z.object({}),
   map,
@@ -35,9 +39,23 @@ const schemas: Record<string, z.ZodTypeAny> = {
   cancel_session: z.object({ sessionId: id, version, reason }),
   replace: z.object({ sessionId: id, version, mappingId: id, reason }),
   swap: z.object({ sessionId: id, version, otherSessionId: id, otherVersion: version, mappingId: id, otherMappingId: id, reason }),
+  create_combined_session: z.object({ approvedGroupId: id, mappings: z.array(z.object({ mappingId: id, mappingVersion: version })).min(2).max(10),
+    courseId: id, date, startTime: time, endTime: time, requestId: id, room: z.string().max(50).optional(), remarks: z.string().max(2000).optional() }),
+  cancel_combined_session: z.object({ groupId: id, sessions: combinedSessions, reason }),
+  replace_combined_session: z.object({ groupId: id, sessions: combinedSessions, mappingIds: z.array(id).min(2).max(10), reason }),
+  mark_combined_staff: z.object({ groupId: id, sessions: combinedSessions, status: attendanceStatus, reason }),
+  // SP Admin defines an approved combined group from existing per-class mappings; the college admin only schedules approved groups.
+  group_mappings: z.object({ mappingIds: z.array(id).min(2).max(10), time_slots: z.array(timeSlot).min(1).max(50) }),
+  end_mapping_group: z.object({ groupId: id, endDate: date, reason }),
+  combined_groups: z.object({ collegeId: id, date }),
+  mark_combined_learners: z.object({ groupId: id, sessions: z.array(z.object({ sessionId: id, version, attendanceRevision: z.number().int().nonnegative(),
+    records: z.array(z.object({ learnerId: id, status: attendanceStatus })).min(1).max(1000) })).min(1).max(10) }),
 
 };
-export const PLATFORM_TEACHING_ADMIN_ACTIONS = new Set(['map','edit_mapping','relocate','reassign_mapping','end_mapping','edit_profile','deactivate_staff','admin_overview','mark_staff','replace','swap','cancel_session']);
+export const PLATFORM_TEACHING_ADMIN_ACTIONS = new Set(['map','edit_mapping','relocate','reassign_mapping','end_mapping','edit_profile','deactivate_staff','admin_overview','mark_staff','replace','swap','cancel_session','cancel_combined_session','replace_combined_session','mark_combined_staff','group_mappings','end_mapping_group']);
+export const COMBINED_TEACHING_ACTIONS = new Set(['group_mappings','end_mapping_group','combined_groups','create_combined_session','cancel_combined_session','replace_combined_session','mark_combined_staff','mark_combined_learners']);
+/** Combined-session actions run in their own database function; every other action keeps using external_educator_action. */
+export const teachingRpcName = (action: string) => COMBINED_TEACHING_ACTIONS.has(action) ? 'external_educator_combined_action' : 'external_educator_action';
 export function parseTeachingRequest(value: unknown) {
   const envelope = z.object({ action: z.string(), payload: z.record(z.unknown()).default({}) }).parse(value);
   const schema = schemas[envelope.action];
