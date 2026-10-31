@@ -15,7 +15,7 @@ export async function lteConnection(): Promise<LTEConnection> {
       ? (bindings.LTE_API_BASE_URL && ['localhost', '127.0.0.1', '[::1]'].includes(new URL(bindings.LTE_API_BASE_URL).hostname)
         ? bindings.LTE_API_BASE_URL : 'http://localhost:8789')
       : bindings.LTE_API_BASE_URL,
-    LTE_CATALOG_SYNC_SECRET: bindings.LTE_CATALOG_SYNC_SECRET,
+    LTE_INTERNAL_SECRET: bindings.LTE_INTERNAL_SECRET,
   };
 }
 

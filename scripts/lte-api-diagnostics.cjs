@@ -3,8 +3,8 @@ const { createHmac } = require('node:crypto');
 require('dotenv').config({ path: '.dev.vars', quiet: true, override: true });
 module.exports = async function run() {
   const origin = process.env.LTE_API_BASE_URL;
-  const secret = process.env.LTE_CATALOG_SYNC_SECRET;
-  if (!origin || !secret || secret.length < 32) throw new Error('Set LTE_API_BASE_URL and LTE_CATALOG_SYNC_SECRET');
+  const secret = process.env.LTE_INTERNAL_SECRET;
+  if (!origin || !secret || secret.length < 32) throw new Error('Set LTE_API_BASE_URL and LTE_INTERNAL_SECRET');
   const url = new URL('/api/v1/internal/catalog/health', origin);
   if (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname))) throw new Error('LTE must use HTTPS or local loopback');
   const body = '{}';
