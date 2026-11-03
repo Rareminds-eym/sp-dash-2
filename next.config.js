@@ -6,9 +6,14 @@ const path = require('path');
 // Local server bindings come from .dev.vars through Wrangler.
 // Must be called here, not inside an async function, per @opennextjs/cloudflare docs.
 const { initOpenNextCloudflareForDev } = require('@opennextjs/cloudflare');
-initOpenNextCloudflareForDev();
+initOpenNextCloudflareForDev(process.env.CLOUDFLARE_LOCAL_CONFIG_PATH
+  ? { configPath: process.env.CLOUDFLARE_LOCAL_CONFIG_PATH }
+  : undefined);
 
 const nextConfig = {
+  // OAuth callback query strings contain short-lived authorization codes.
+  logging: { incomingRequests: { ignore: [/^\/api\/integrations\/zoho-recruit\/oauth\/callback(?:\?|$)/] } },
+  ...(process.env.CLOUDFLARE_LOCAL_CONFIG_PATH ? { distDir: '.next.zoho-local' } : {}),
   outputFileTracingRoot: path.join(__dirname),
   typescript: {
     // Ignore external node_modules type check errors during build
@@ -54,6 +59,7 @@ const nextConfig = {
           '**/node_modules/**',
           '**/.git/**',
           '**/.next/**',
+          '**/.next.*/**',
           '**/.open-next/**',
           '**/.wrangler/**',
           '**/graphify-out/**',

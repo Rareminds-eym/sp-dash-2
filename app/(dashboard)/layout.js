@@ -278,27 +278,11 @@ export default function DashboardLayout({ children }) {
     const fetchApprovalCounts = async () => {
       try {
         if (isMounted) {
-          const endpoints = [
-            { type: 'universities', url: '/api/universities?approval_status=pending&page=1&limit=1' },
-            { type: 'recruiters', url: '/api/recruiters?approval_status=pending&page=1&limit=1' },
-            { type: 'colleges', url: '/api/colleges?approval_status=pending&page=1&limit=1' },
-            { type: 'students', url: '/api/students?approval_status=pending&page=1&limit=1' },
-            { type: 'courses', url: '/api/courses?approval_status=pending&page=1&limit=1' }
-          ]
-
-          const responses = await Promise.all(
-            endpoints.map(endpoint =>
-              fetch(endpoint.url).then(res => {
-                if (!res.ok) {
-                  throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-                }
-                return res.json();
-              }).catch(error => {
-                logger.warn(`Failed to fetch ${endpoint.type}`, { error: getErrorMessage(error), endpoint: endpoint.url });
-                return { pagination: { total: 0 } };
-              })
-            )
-          )
+          const response=await fetch('/api/approval-counts',{cache:'no-store'});
+          if(!response.ok)throw new Error('Approval counts are unavailable');
+          const snapshot=await response.json();
+          const types=['universities','recruiters','colleges','students','courses'];
+          const responses=types.map(type=>snapshot.sources?.[type]||{status:'unavailable',count:null});
 
           // Update navigation with counts only if component is still mounted
           if (isMounted) {
@@ -308,10 +292,10 @@ export default function DashboardLayout({ children }) {
               return prevNav.map(navItem => {
                 if (navItem.name === 'Approval Center' && navItem.subItems) {
                   const updatedSubItems = navItem.subItems.map((subItem, index) => {
-                    const count = responses[index]?.pagination?.total || 0
+                    const count = responses[index]?.status==='available'?responses[index].count:null
                     return {
                       ...subItem,
-                      pendingCount: count
+                      pendingCount: count, countsUnavailable:count===null
                     }
                   })
                   return {
@@ -325,7 +309,7 @@ export default function DashboardLayout({ children }) {
           }
         }
       } catch (error) {
-        logger.error('Failed to fetch approval counts', { error: getErrorMessage(error) });
+        setNavigation(previous=>previous.map(item=>item.name==='Approval Center'?{...item,subItems:item.subItems.map(sub=>({...sub,countsUnavailable:true}))}:item));
         // Retry logic
         if (retryCount < maxRetries && isMounted) {
           retryCount++;
@@ -476,6 +460,7 @@ export default function DashboardLayout({ children }) {
   }
 
   const getPageTitle = () => {
+    if (pathname.startsWith('/integrations/zoho-recruit')) return 'Zoho Recruit'
     if (pathname === '/educator-subscriptions') return 'Educator Subscriptions'
     const currentNav = navigation.find(nav => nav.href === pathname)
     return currentNav ? currentNav.name : 'Dashboard'
@@ -625,9 +610,10 @@ export default function DashboardLayout({ children }) {
                                 {item.name === 'Approval Center' && item.subItems && (
                                   (() => {
                                     const totalCount = item.subItems.reduce((sum, sub) => sum + (sub.pendingCount || 0), 0);
-                                    return totalCount > 0 ? (
+                                    const partial=item.subItems.some(sub=>sub.countsUnavailable);
+                                    return totalCount > 0 || partial ? (
                                       <span className="bg-red-500 text-white text-xs rounded-full h-5 min-w-[1.25rem] px-1.5 flex items-center justify-center font-semibold">
-                                        {totalCount}
+                                        <span title={partial?'Partial count: some approval queues are unavailable':'Pending approvals'}>{totalCount}{partial?'+':''}</span>
                                       </span>
                                     ) : null;
                                   })()
@@ -800,6 +786,7 @@ export default function DashboardLayout({ children }) {
                                 <span className="flex items-center gap-2">
                                   {subItem.name}
                                   {/* Badge showing pending count */}
+                                  {subItem.countsUnavailable&&<span className="text-xs text-amber-700 dark:text-amber-300" title="This approval queue is unavailable in the current environment">Unavailable</span>}
                                   {subItem.pendingCount > 0 && (
                                     <span className="bg-red-500 text-white text-xs rounded-full h-5 min-w-[1.25rem] px-1.5 flex items-center justify-center font-semibold">
                                       {subItem.pendingCount}
@@ -860,7 +847,7 @@ export default function DashboardLayout({ children }) {
         </motion.aside>
 
         {/* Main content */}
-        <div className="lg:pl-64">
+        <div className="min-w-0 lg:pl-64">
           {/* Top bar */}
           <header className="sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-white/20 dark:border-slate-700/50 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50">
             <div className="flex items-center justify-between px-6 py-4">
@@ -869,6 +856,7 @@ export default function DashboardLayout({ children }) {
                   variant="ghost"
                   size="icon"
                   className="lg:hidden hover:bg-white/50 dark:hover:bg-slate-800/50"
+                  aria-label="Open navigation"
                   onClick={() => setSidebarOpen(true)}
                 >
                   <Menu className="h-5 w-5" />
@@ -885,6 +873,7 @@ export default function DashboardLayout({ children }) {
                         variant="ghost"
                         size="icon"
                         onClick={handleRefresh}
+                        aria-label="Refresh current page"
                         disabled={refreshing}
                         className="w-10 h-10 rounded-md flex items-center justify-center"
                       >
