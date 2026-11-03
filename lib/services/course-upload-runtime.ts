@@ -12,7 +12,7 @@ interface KVNamespaceLike {
 
 export interface CourseUploadRuntime {
   COURSE_MANAGEMENT_UPLOAD_QUEUE?: QueueLike<CourseManagementQueueMessage>;
-  COURSE_ASSETS?: {
+  SKILLPASSPORT_ASSETS?: {
     put(
       key: string,
       value: Uint8Array | ArrayBuffer | ReadableStream<Uint8Array>,

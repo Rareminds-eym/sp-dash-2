@@ -63,6 +63,7 @@ export const LTECourseUploadPage: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           uploadId: snapshot.uploadId,
+          expectedDraftRevision: snapshot.draftRevision,
           course: updatedCourse,
         }),
       });
