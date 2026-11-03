@@ -29,25 +29,30 @@ const CourseSchema = z.object({
     modules: z.array(z.any()).optional().default([])
 });
 
-
 /**
  * GET /api/courses - List all courses with pagination, search, and filters
+ * Supports both LMS management pages and Educator assignment forms.
  */
 export async function GET(request) {
     try {
-        const { error: authError } = await authenticateSSORequest(request, ['super_admin', 'admin', 'rm_admin']);
+        const { error: authError } = await authenticateSSORequest(request, [
+            'super_admin', 'admin', 'rm_admin', 'educator', 'college_admin', 'university_admin'
+        ]);
         if (authError) return authError;
 
         const url = new URL(request.url);
 
         // Pagination parameters (validated: positive ints, bounded limit)
         const page = parsePositiveInt(url.searchParams.get('page'), 1);
-        const limit = Math.min(parsePositiveInt(url.searchParams.get('limit'), 20), 100);
+        const limitParam = url.searchParams.get('limit');
+        // If departmentId is provided without a limit, default to 100 to show all courses in form
+        const limit = limitParam ? Math.min(parsePositiveInt(limitParam, 20), 100) : (url.searchParams.get('departmentId') ? 100 : 20);
         const offset = (page - 1) * limit;
         const fetchAll = url.searchParams.get('all') === 'true';
 
         // Filter parameters (using existing column names)
         const statusFilter = url.searchParams.get('approval_status'); // maps to status column
+        const status = url.searchParams.get('status');
         const searchTerm = url.searchParams.get('search');
         const sortBy = url.searchParams.get('sort') || 'date-newest';
 
@@ -57,7 +62,7 @@ export async function GET(request) {
             .from('courses')
             .select(`
                 course_id, title, code, description, thumbnail, status, approval_status, 
-                duration, university, category, credits, target_outcomes, skills_mapped, educator_id, 
+                duration, university, category, credits, course_type, target_outcomes, skills_mapped, educator_id, 
                 created_at, updated_at,
                 course_skills (skill_name),
                 admin_users (
@@ -73,6 +78,10 @@ export async function GET(request) {
         // Apply filters using approval_status column
         if (statusFilter) {
             query = query.eq('approval_status', statusFilter);
+        }
+
+        if (status) {
+            query = query.eq('status', status);
         }
 
         // Additional filters
@@ -124,6 +133,7 @@ export async function GET(request) {
             // Handle range error (offset beyond data) gracefully
             if (error.code === 'PGRST103' || error.message?.includes('range') || error.message?.includes('offset')) {
                 return NextResponse.json({
+                    success: true,
                     data: [],
                     pagination: {
                         page,
@@ -134,12 +144,13 @@ export async function GET(request) {
                 });
             }
             console.error('Error fetching courses:', error);
-            return NextResponse.json({ error: 'Failed to fetch courses', details: error.message }, { status: 500 });
+            return NextResponse.json({ success: false, error: 'Failed to fetch courses', details: error.message }, { status: 500 });
         }
 
         // If offset is beyond total count, return empty result
         if (!fetchAll && count !== null && offset >= count) {
             const response = NextResponse.json({
+                success: true,
                 data: [],
                 pagination: {
                     page,
@@ -160,7 +171,7 @@ export async function GET(request) {
         });
         const uniqueCourses = Array.from(uniqueCoursesMap.values());
 
-        // Map database columns to frontend expected fields
+        // Map database columns to frontend expected fields (compatible with both LMS and Educator forms)
         const mapped = uniqueCourses.map(c => {
             // Extract educator name from joined data
             const adminUser = c.admin_users;
@@ -171,14 +182,19 @@ export async function GET(request) {
             
             return {
                 id: c.course_id,
+                course_id: c.course_id,
                 name: c.title,
+                title: c.title,
                 course_code: c.code,
+                code: c.code,
+                course_type: c.course_type,
                 description: c.description,
                 university: c.university,
                 duration: c.duration,
                 credits: c.credits,
                 category: c.category,
                 thumbnail_url: c.thumbnail,
+                thumbnail: c.thumbnail,
                 target_outcomes: c.target_outcomes,
                 skillsCovered: (c.course_skills || []).map(skill => skill.skill_name).filter(Boolean),
                 approval_status: c.approval_status || 'pending',
@@ -198,12 +214,11 @@ export async function GET(request) {
         };
 
         if (fetchAll) {
-            // Bounded ID-only selection for bulk-select flows. Never loads full
-            // course objects + educator joins; hard-capped so the UI must
-            // narrow filters instead of downloading the whole catalog.
+            // Bounded ID-only selection for bulk-select flows.
             if (count !== null && count > FETCH_ALL_MAX_IDS) {
                 return NextResponse.json(
                     {
+                        success: false,
                         error: `Selection too large (${count} courses). Narrow filters to under ${FETCH_ALL_MAX_IDS} courses.`,
                         total: count,
                     },
@@ -217,7 +232,7 @@ export async function GET(request) {
             for (let currentPage = 1; currentPage <= totalPages; currentPage += 1) {
                 let idQuery = supabaseAdmin
                     .from('courses')
-                    .select('course_id, title', { count: 'exact' })
+                    .select('course_id, title, code', { count: 'exact' })
                     .is('deleted_at', null)
                     .range((currentPage - 1) * idPageSize, currentPage * idPageSize - 1);
 
@@ -239,14 +254,21 @@ export async function GET(request) {
                 const { data: pageCourses, error: pageError } = await idQuery;
                 if (pageError) {
                     console.error('Error fetching all courses:', pageError);
-                    return NextResponse.json({ error: 'Failed to fetch courses', details: pageError.message }, { status: 500 });
+                    return NextResponse.json({ success: false, error: 'Failed to fetch courses', details: pageError.message }, { status: 500 });
                 }
 
                 for (const course of pageCourses || []) {
-                    allCourses.push({ id: course.course_id, name: course.title });
+                    allCourses.push({
+                        id: course.course_id,
+                        course_id: course.course_id,
+                        name: course.title,
+                        title: course.title,
+                        code: course.code
+                    });
                     if (allCourses.length > FETCH_ALL_MAX_IDS) {
                         return NextResponse.json(
                             {
+                                success: false,
                                 error: `Selection too large. Narrow filters to under ${FETCH_ALL_MAX_IDS} courses.`,
                                 total: count,
                             },
@@ -257,12 +279,14 @@ export async function GET(request) {
             }
 
             return addCacheHeaders(NextResponse.json({
+                success: true,
                 data: allCourses,
                 pagination: { ...pagination, limit: idPageSize, totalPages },
             }), 'private');
         }
 
         const response = NextResponse.json({
+            success: true,
             data: mapped,
             pagination
         });

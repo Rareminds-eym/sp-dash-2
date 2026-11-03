@@ -1,7 +1,7 @@
 /**
- * Course Management R2 bucket accessor (COURSE_ASSETS).
+ * Shared application R2 bucket accessor (SKILLPASSPORT_ASSETS).
  *
- * Separate bucket from LTE_ASSETS to isolate course management resources.
+ * Reuses the existing SkillPassport bucket for course resources and trainer documents.
  *
  * Fail-closed contract (P0): deployed environments MUST resolve the
  * Cloudflare R2 binding. A silent in-memory fallback would report a
@@ -120,15 +120,15 @@ function isExplicitLocalFallbackAllowed(): boolean {
   return String(flag).trim() === '1';
 }
 
-export async function getCourseAssetsBucket(): Promise<CourseAssetBucketLike> {
+export async function getSharedAssetsBucket(): Promise<CourseAssetBucketLike> {
   let bucket: CourseAssetBucketLike | undefined;
 
   try {
     const { getCloudflareContext } = await import('@opennextjs/cloudflare');
     const context = (await getCloudflareContext({ async: true })) as unknown as {
-      env?: { COURSE_ASSETS?: CourseAssetBucketLike };
+      env?: { SKILLPASSPORT_ASSETS?: CourseAssetBucketLike };
     };
-    bucket = context?.env?.COURSE_ASSETS;
+    bucket = context?.env?.SKILLPASSPORT_ASSETS;
   } catch {
     // Cloudflare context unavailable in standard Node.js dev server
   }
@@ -144,8 +144,8 @@ export async function getCourseAssetsBucket(): Promise<CourseAssetBucketLike> {
   }
 
   throw new CourseAssetsBindingError(
-    'COURSE_ASSETS R2 binding is not configured. ' +
-      'Verify wrangler.toml [[r2_buckets]] (course-assets / course-assets-dev) ' +
+    'SKILLPASSPORT_ASSETS R2 binding is not configured. ' +
+      'Verify wrangler.toml [[r2_buckets]] (skill-echosystem / skill-echosystem-demo) ' +
       'and deployment bindings. Set COURSE_ASSETS_LOCAL_FALLBACK=1 only for local development.',
   );
 }
@@ -179,3 +179,6 @@ export function isAllowedCourseAssetKey(key: string): boolean {
   if (key.includes('..') || key.includes('\\') || key.startsWith('/')) return false;
   return COURSE_ASSET_KEY_RE.test(key);
 }
+
+// Compatibility alias for existing course upload callers.
+export const getCourseAssetsBucket = getSharedAssetsBucket;

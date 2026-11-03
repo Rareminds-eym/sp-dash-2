@@ -50,7 +50,7 @@ async function streamToBytes(stream: ReadableStream<Uint8Array>): Promise<Uint8A
 }
 
 /**
- * GET /api/courses/assets?key={r2Key} - Serve files from the COURSE_ASSETS R2 bucket.
+ * GET /api/courses/assets?key={r2Key} - Serve files from the SKILLPASSPORT_ASSETS R2 bucket.
  *
  * Authenticated: course resources are private. Unpredictable R2 keys are NOT
  * treated as a security control — a valid SSO session with a course role is

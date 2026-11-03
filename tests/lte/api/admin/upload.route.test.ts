@@ -5,11 +5,7 @@ vi.mock('@/lib/middleware/sso-auth', () => ({
   authenticateSSORequest: vi.fn(),
 }));
 
-vi.mock('@/lib/supabase-lte', () => ({
-  supabaseLTE: {
-    from: vi.fn(),
-  },
-}));
+vi.mock('@/lib/lte-api', () => ({callLTE:vi.fn()}));
 
 vi.mock('@/lib/services/lte-ingestion-service', () => ({
   LTEIngestionService: {
@@ -28,7 +24,7 @@ vi.mock('crypto', () => ({
 import { POST } from '@/app/api/admin/lte/upload/route';
 import { NextRequest } from 'next/server';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
-import { supabaseLTE } from '@/lib/supabase-lte';
+import { callLTE } from '@/lib/lte-api';
 import { LTEIngestionService } from '@/lib/services/lte-ingestion-service';
 
 describe('POST /api/admin/lte/upload', () => {
@@ -71,25 +67,9 @@ describe('POST /api/admin/lte/upload', () => {
     data: { id: string; status?: string } | null;
     error: { message: string; code?: string } | null;
   }) {
-    vi.mocked(supabaseLTE.from).mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          order: vi.fn().mockReturnValue({
-            limit: vi.fn().mockReturnValue({
-              maybeSingle: vi.fn().mockResolvedValue({
-                data: { version_no: 1 },
-                error: null,
-              }),
-            }),
-          }),
-        }),
-      }),
-      insert: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue(result),
-        }),
-      }),
-    } as any);
+    vi.mocked(callLTE).mockImplementation(async () => result.error
+      ? Response.json({success:false,error:'Database insert failed: '+result.error.message}, {status:500})
+      : Response.json({success:true,uploadId:result.data!.id,snapshot:{...mockSnapshot,uploadId:result.data!.id}}));
   }
 
   beforeEach(() => {
@@ -215,7 +195,7 @@ describe('POST /api/admin/lte/upload', () => {
       mockUser.userId
     );
     // Verify database insert was called
-    expect(supabaseLTE.from).toHaveBeenCalledWith('catalog_versions');
+    expect(callLTE).toHaveBeenCalledWith(request, 'upload', expect.objectContaining({fileName:'test.xlsx', snapshot:mockSnapshot}));
   });
 
   it('should handle database insertion errors', async () => {

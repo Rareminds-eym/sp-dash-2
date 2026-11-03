@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import Logger, { getErrorMessage } from '@/lib/logger';
 import { LTEIngestionService } from '@/lib/services/lte-ingestion-service';
-import { LTEIngestionSnapshot, LTEUploadResponse } from '@/types/lte-ingestion';
+import { LTEUploadResponse } from '@/types/lte-ingestion';
 import { authenticateSSORequest } from '@/lib/middleware/sso-auth';
-import { supabaseLTE } from '@/lib/supabase-lte';
+import { callLTE } from '@/lib/lte-api';
 
 const logger = new Logger('LTEUploadAPI');
 
@@ -129,61 +129,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<LTEUpload
         );
       }
 
-      const { data: latestVersion, error: versionError } = await supabaseLTE
-        .from('catalog_versions')
-        .select('version_no')
-        .eq('entity_type', 'catalog')
-        .order('version_no', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const result = await callLTE(request, 'upload', { snapshot, sourceFileHash, fileName: file.name });
+      return new NextResponse(result.body, { status: result.status, headers: result.headers });
 
-      if (versionError) {
-        logger.error('Failed to read latest catalog version', { error: versionError });
-        throw new Error(`Database version lookup failed: ${versionError.message}`);
-      }
-
-      const nextVersionNo = (latestVersion?.version_no || 0) + 1;
-      const versionStatus = snapshot.status === 'validated' ? 'VALIDATED' : 'DRAFT';
-
-      // Store the parsed upload as the next catalog version snapshot.
-      const { data: uploadRecord, error: insertError } = await supabaseLTE
-        .from('catalog_versions')
-        .insert({
-          entity_type: 'catalog',
-          entity_id: null,
-          version_no: nextVersionNo,
-          status: versionStatus,
-          snapshot_hash: snapshot.snapshotHash,
-          snapshot_data: {
-            ...snapshot,
-            sourceFileHash,
-          },
-          change_reason: `UPLOAD:${file.name}`,
-          created_by: user.userId,
-        })
-        .select('id, status')
-        .single();
-
-      if (insertError) {
-        logger.error('Failed to insert upload record', { error: insertError });
-        throw new Error(`Database insert failed: ${insertError.message}`);
-      }
-
-      logger.info('Catalog version snapshot created', { uploadId: uploadRecord.id, versionNo: nextVersionNo });
-
-      // Update snapshot with the database-generated ID and reviewedSnapshotHash
-      const finalSnapshot: LTEIngestionSnapshot = {
-        ...snapshot,
-        uploadId: uploadRecord.id,
-        reviewedSnapshotHash: snapshot.snapshotHash,
-        status: uploadRecord.status === 'VALIDATED' ? 'validated' : 'validation_failed',
-      };
-
-      return NextResponse.json({
-        success: true,
-        uploadId: uploadRecord.id,
-        snapshot: finalSnapshot,
-      });
     }
 
     return NextResponse.json(

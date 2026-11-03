@@ -128,6 +128,7 @@ export interface LTELevelCourse {
 }
 
 export interface LTEIngestionSnapshot {
+  draftRevision?: number;
   uploadId: string;
   sourceType: 'google_sheets' | 'xlsx';
   sourceName: string;
