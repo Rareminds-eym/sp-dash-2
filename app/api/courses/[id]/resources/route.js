@@ -104,7 +104,7 @@ export async function GET(request, { params }) {
     const resourceIds = resourceRows.map(resource => resource.resource_id);
     for (const chunk of chunkArray(resourceIds, SUPABASE_IN_CHUNK_SIZE)) {
       if (!chunk.length) continue;
-      const result = await supabaseAdmin.from('ppt_slide_quizzes').select('resource_id, slide_number, questions').in('resource_id', chunk).order('slide_number');
+      const result = await supabaseAdmin.from('quizzes').select('resource_id, slide_number, questions').in('resource_id', chunk).order('slide_number');
       if (result.error) return NextResponse.json({ error: 'Failed to load slide quizzes' }, { status: 500 });
       for (const quiz of result.data || []) {
         const list = quizzesByResource.get(quiz.resource_id) || [];
