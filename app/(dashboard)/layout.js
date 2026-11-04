@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/tooltip'
 import { useToast } from '@/hooks/use-toast'
 import { authClient } from '@/lib/auth-client'
+import { loginUrl } from '@/lib/auth-redirect'
 import Logger, { getErrorMessage } from '@/lib/logger'
 import { cn } from '@/lib/utils'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -233,6 +234,9 @@ const titleDividerVariants = {
 export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [user, setUser] = useState(null)
+  const [authPending, setAuthPending] = useState(true)
+  const [authError, setAuthError] = useState('')
+  const [authAttempt, setAuthAttempt] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const [expandedNav, setExpandedNav] = useState(null) // null = main nav, or parent nav item
   const [isDesktop, setIsDesktop] = useState(false)
@@ -402,19 +406,28 @@ export default function DashboardLayout({ children }) {
   }, [pathname, expandedNav])
 
   useEffect(() => {
+    let cancelled = false
+    setAuthPending(true)
+    setAuthError('')
     authClient.checkAuth()
       .then(data => {
+        if (cancelled) return
         if (data.authenticated && data.user) {
           setUser(data.user)
+        } else if (data.retryable) {
+          setAuthError(data.error || 'Authentication service temporarily unavailable')
         } else {
-          router.push('/login')
+          router.replace(loginUrl(window.location.pathname + window.location.search))
         }
-        setLoading(false)
       })
       .catch(() => {
-        router.push('/login')
+        if (!cancelled) setAuthError('Authentication service temporarily unavailable')
       })
-  }, [])
+      .finally(() => {
+        if (!cancelled) setAuthPending(false)
+      })
+    return () => { cancelled = true }
+  }, [authAttempt, router])
 
   const handleRefresh = () => {
     setRefreshing(true)
@@ -473,6 +486,15 @@ export default function DashboardLayout({ children }) {
 
   const canShowMenu = () => {
     return pathname === '/passports'
+  }
+
+  if (authPending || authError || !user) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 p-6" aria-live="polite">
+        <p role={authError ? 'alert' : 'status'}>{authError || 'Checking your session…'}</p>
+        {authError && <Button onClick={() => setAuthAttempt(attempt => attempt + 1)}>Try again</Button>}
+      </main>
+    )
   }
 
   return (

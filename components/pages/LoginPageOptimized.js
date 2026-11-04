@@ -8,8 +8,9 @@ import { AlertCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { authClient } from '@/lib/auth-client'
+import { safeReturnTo } from '@/lib/auth-redirect'
 
-export default function LoginPageOptimized() {
+export default function LoginPageOptimized({ returnTo = '/dashboard' }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -32,7 +33,7 @@ export default function LoginPageOptimized() {
         if (data.success) {
           // Add a small delay for smoother transition
           await new Promise(resolve => setTimeout(resolve, 100))
-          window.location.href = '/dashboard'
+          window.location.replace(safeReturnTo(returnTo))
         }
       } catch (err) {
         setError('Network error. Please try again.')
