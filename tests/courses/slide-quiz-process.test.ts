@@ -10,7 +10,7 @@ vi.mock('@/lib/supabase-admin', () => ({ supabaseAdmin: { from(table: string) {
   return {
     select: () => ({ in: async () => ({ data: [], error: null }) }),
     insert: (value: any) => {
-      if (table === 'ppt_slide_quizzes') {
+      if (table === 'quizzes') {
         mocks.quizRows.push(...value);
         return Promise.resolve({ error: mocks.failQuiz ? { message: 'quiz insert failed' } : null });
       }
