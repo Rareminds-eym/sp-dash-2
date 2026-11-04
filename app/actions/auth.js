@@ -243,23 +243,24 @@ export async function refreshAction() {
       })
     } catch (err) {
       console.error('[Token Refresh Action] RPC error:', err)
-      cookieStore.delete(COOKIE_REFRESH)
-      cookieStore.delete(COOKIE_ACCESS)
-      cookieStore.delete(COOKIE_USER)
-
-      const errorMessage = /PGRST002|503|Could not query the database|schema cache/.test(err.message || '')
-        ? 'Authentication service temporarily unavailable'
-        : (err.message || 'Token refresh failed')
-      return { success: false, error: errorMessage, status: 503 }
+      return { success: false, error: 'Authentication service temporarily unavailable', status: 503, retryable: true }
     }
 
-    if (!outcome || (outcome.kind !== 'rotated' && outcome.kind !== 'overlap')) {
+    if (outcome?.kind === 'rejected') {
       cookieStore.delete(COOKIE_REFRESH)
       cookieStore.delete(COOKIE_ACCESS)
       cookieStore.delete(COOKIE_USER)
-      const statusCode = outcome?.kind === 'rate_limited' ? 429 : 401
-      const errorMessage = outcome?.kind === 'rejected' ? 'Session expired. Please log in again.' : 'Token refresh failed'
-      return { success: false, error: errorMessage, status: statusCode }
+      return { success: false, error: 'Session expired. Please log in again.', status: 401, retryable: false }
+    }
+    if (!outcome || (outcome.kind !== 'rotated' && outcome.kind !== 'overlap')) {
+      const limited = outcome?.kind === 'rate_limited'
+      return {
+        success: false,
+        error: limited ? 'Too many session recovery attempts. Please try again shortly.' : 'Authentication service temporarily unavailable',
+        status: limited ? 429 : 503,
+        retryable: true,
+        ...(outcome?.retryAfterSeconds ? { retryAfterSeconds: outcome.retryAfterSeconds } : {}),
+      }
     }
 
     const newAccessToken = outcome.session?.accessToken
@@ -318,7 +319,7 @@ export async function refreshAction() {
     }
   } catch (error) {
     console.error('[Token Refresh Action] Error:', error)
-    return { success: false, error: 'An error occurred during token refresh', status: 500 }
+    return { success: false, error: 'An error occurred during token refresh', status: 503, retryable: true }
   }
 }
 

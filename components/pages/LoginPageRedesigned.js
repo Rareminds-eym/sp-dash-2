@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { AlertCircle, Mail, Lock, ArrowRight, KeyRound, X, Check, Eye, EyeOff } from 'lucide-react'
 import { forgotPasswordAction } from '@/app/actions/auth'
 import { authClient } from '@/lib/auth-client'
+import { safeReturnTo } from '@/lib/auth-redirect'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -20,7 +21,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
-export default function LoginPageRedesigned() {
+export default function LoginPageRedesigned({ returnTo = '/dashboard' }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -50,7 +51,7 @@ export default function LoginPageRedesigned() {
 
         if (data.success) {
           await new Promise(resolve => setTimeout(resolve, 100))
-          window.location.href = '/dashboard'
+          window.location.replace(safeReturnTo(returnTo))
         }
       } catch (err) {
         setError('Network error. Please try again.')
