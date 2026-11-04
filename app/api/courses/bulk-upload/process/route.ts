@@ -442,8 +442,8 @@ export async function POST(request: NextRequest) {
                     questions.push(question);
                     bySlide.set(question.slide_number, questions);
                   }
-                  const quizRows = Array.from(bySlide, ([slide_number, questions]) => ({ resource_id: insertedResource.resource_id, slide_number, questions }));
-                  const { error: quizError } = await supabaseAdmin.from('ppt_slide_quizzes').insert(quizRows);
+                  const quizRows = Array.from(bySlide, ([slide_number, questions]) => ({ lesson_id: lessonId, title: `Slide ${slide_number} quiz`, resource_id: insertedResource.resource_id, slide_number, questions }));
+                  const { error: quizError } = await supabaseAdmin.from('quizzes').insert(quizRows);
                   if (quizError) throw new Error(`Slide quiz creation failed: ${quizError.message}`);
                 }
                 totalResourcesInserted++;
