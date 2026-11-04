@@ -6,6 +6,7 @@ workers_dev = false
 preview_urls = false
 
 [vars]
+ENVIRONMENT = "production"
 LTE_API_BASE_URL = "https://lte.rareminds.in"
 NEXT_PUBLIC_SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
 SKILLPASSPORT_SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
@@ -91,6 +92,7 @@ workers_dev = true
 preview_urls = true
 
 [env.dev.vars]
+ENVIRONMENT = "development"
 LTE_API_BASE_URL = "https://lte-dev-b42.pages.dev"
 # Local development: LTE_API_BASE_URL=http://localhost:8789
 NEXT_PUBLIC_SUPABASE_URL = "https://qidmndjtlbajwswufghf.supabase.co"
@@ -151,6 +153,7 @@ bucket_name = "skill-echosystem-dev"
 # Branch previews share the development resources below.
 # Queue consumers stay on the persistent dev Worker.
 [env.dev.previews.vars]
+ENVIRONMENT = "preview"
 LTE_API_BASE_URL = "https://lte-dev-b42.pages.dev"
 NEXT_PUBLIC_SUPABASE_URL = "https://qidmndjtlbajwswufghf.supabase.co"
 SKILLPASSPORT_SUPABASE_URL = "https://qidmndjtlbajwswufghf.supabase.co"
@@ -211,6 +214,7 @@ workers_dev = true
 preview_urls = false
 
 [env.qa.vars]
+ENVIRONMENT = "qa"
 LTE_API_BASE_URL = "https://lte-qa.pages.dev"
 # Local development: LTE_API_BASE_URL=http://localhost:8789
 NEXT_PUBLIC_SUPABASE_URL = "https://qidmndjtlbajwswufghf.supabase.co"
@@ -267,3 +271,129 @@ bucket_name = "lte-qa"
 [[env.qa.r2_buckets]]
 binding = "SKILLPASSPORT_ASSETS"
 bucket_name = "skill-echosystem-qa"
+
+# Zoho background handlers run in this existing deployment only.
+[triggers]
+crons = ["*/2 * * * *"]
+
+[[queues.producers]]
+binding = "ZOHO_DISCOVERY_QUEUE"
+queue = "zoho-recruit-discovery"
+
+[[queues.consumers]]
+queue = "zoho-recruit-discovery"
+max_batch_size = 1
+max_concurrency = 1
+max_retries = 8
+dead_letter_queue = "zoho-recruit-discovery-dlq"
+
+[[queues.producers]]
+binding = "ZOHO_APPROVED_QUEUE"
+queue = "zoho-recruit-approved"
+
+[[queues.consumers]]
+queue = "zoho-recruit-approved"
+max_batch_size = 1
+max_concurrency = 1
+max_retries = 8
+dead_letter_queue = "zoho-recruit-approved-dlq"
+
+# Zoho background handlers run in this existing deployment only.
+[env.dev.triggers]
+crons = ["*/2 * * * *"]
+
+[[env.dev.queues.producers]]
+binding = "ZOHO_DISCOVERY_QUEUE"
+queue = "zoho-recruit-discovery-dev"
+
+[[env.dev.queues.consumers]]
+queue = "zoho-recruit-discovery-dev"
+max_batch_size = 1
+max_concurrency = 1
+max_retries = 8
+dead_letter_queue = "zoho-recruit-discovery-dev-dlq"
+
+[[env.dev.queues.producers]]
+binding = "ZOHO_APPROVED_QUEUE"
+queue = "zoho-recruit-approved-dev"
+
+[[env.dev.queues.consumers]]
+queue = "zoho-recruit-approved-dev"
+max_batch_size = 1
+max_concurrency = 1
+max_retries = 8
+dead_letter_queue = "zoho-recruit-approved-dev-dlq"
+
+# Zoho background handlers run in this existing deployment only.
+[env.qa.triggers]
+crons = ["*/2 * * * *"]
+
+[[env.qa.queues.producers]]
+binding = "ZOHO_DISCOVERY_QUEUE"
+queue = "zoho-recruit-discovery-qa"
+
+[[env.qa.queues.consumers]]
+queue = "zoho-recruit-discovery-qa"
+max_batch_size = 1
+max_concurrency = 1
+max_retries = 8
+dead_letter_queue = "zoho-recruit-discovery-qa-dlq"
+
+[[env.qa.queues.producers]]
+binding = "ZOHO_APPROVED_QUEUE"
+queue = "zoho-recruit-approved-qa"
+
+[[env.qa.queues.consumers]]
+queue = "zoho-recruit-approved-qa"
+max_batch_size = 1
+max_concurrency = 1
+max_retries = 8
+dead_letter_queue = "zoho-recruit-approved-qa-dlq"
+
+# Provision the environment-specific Zoho queues and DLQs before deploying this
+# configuration. Remote code profiles stay disabled until migration, credential and
+# tenant/no-email preflight passes. Preview profiles disable all Zoho operations.
+# Zoho credentials/keys: ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_TOKEN_ENCRYPTION_KEY,
+# ZOHO_TOKEN_ENCRYPTION_KEYS, ZOHO_TOKEN_ENCRYPTION_ACTIVE_KEY_ID,
+# ZOHO_DISCOVERY_DB_TOKEN (signed, expiring zoho_discovery role JWT).
+# Discovery additionally uses NEXT_PUBLIC_SUPABASE_ANON_KEY as gateway API key.
+# It never falls back to the host service-role credential. Rotate the reader JWT
+# before expiry; readiness fails closed with less than a minute remaining.
+# Existing SkillPassport database secrets remain in the trusted host for admin/ledger operations.
+# No ZOHO_DISCOVERY / ZOHO_APPROVED_EXECUTOR service bindings or new Worker services.
+# Future canonical destinations must use narrow entrypoints on existing deployments;
+# execution stays false until their trusted approval and no-email guarantees pass.
+
+# Restricted reader on the existing SSO deployment; not a new Worker.
+[[services]]
+binding = "ZOHO_APPROVER_AUTHORITY"
+service = "sso-api"
+entrypoint = "ZohoApproverAuthority"
+
+# Restricted reader on the existing SSO deployment; not a new Worker.
+[[env.dev.services]]
+binding = "ZOHO_APPROVER_AUTHORITY"
+service = "sso-api-dev"
+entrypoint = "ZohoApproverAuthority"
+
+# Restricted reader on the existing SSO deployment; not a new Worker.
+[[env.qa.services]]
+binding = "ZOHO_APPROVER_AUTHORITY"
+service = "sso-api-qa"
+entrypoint = "ZohoApproverAuthority"
+
+# Restricted canonical destination on existing SSO; readiness and flags remain off.
+[[services]]
+binding = "ZOHO_CANDIDATE_DESTINATION"
+service = "sso-api"
+entrypoint = "ZohoCandidateProvisioner"
+
+[[env.dev.services]]
+binding = "ZOHO_CANDIDATE_DESTINATION"
+service = "sso-api-dev"
+entrypoint = "ZohoCandidateProvisioner"
+
+[[env.qa.services]]
+binding = "ZOHO_CANDIDATE_DESTINATION"
+service = "sso-api-qa"
+entrypoint = "ZohoCandidateProvisioner"

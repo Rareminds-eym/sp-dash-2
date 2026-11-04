@@ -71,6 +71,7 @@ export async function GET(request) {
     const { data: students, error, count } = await query;
 
     if (error) {
+      if(['PGRST205','42P01','42703'].includes(error.code))return NextResponse.json({error:'Student review data is unavailable in this environment.',code:'REVIEW_SOURCE_UNAVAILABLE'},{status:503});
       // Handle range error gracefully
       if (error.code === 'PGRST103' || error.message?.includes('range')) {
         return NextResponse.json({
