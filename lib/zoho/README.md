@@ -651,3 +651,35 @@ capture/approval timestamps while fresh staged data and unknown effects survive.
 SQL suites pass. Migrations must precede bundles, and the existing candidate-source
 binding must retain its subject-policy method during pauses. Flags stay off and all
 feature migrations/seeds remain unapplied. Full CI and the broader rollout gates remain.
+
+
+## Configuration ownership (4 November 2026)
+
+Use [config.js](./config.js) to maintain the dashboard's immutable Zoho profiles,
+callback URLs, queue identity, processing policy and transport defaults. SSO owns
+its provisioning/projection profile in [zoho-config.ts](../../../sso-worker/src/lib/zoho-config.ts);
+SkillPassport owns its receiver profile in [zoho-config.ts](../../../skillpassport/functions/lib/zoho-config.ts).
+These server modules contain no credentials and must not enter browser bundles.
+
+All Zoho-specific nonsecret switches now come from code. Old environment flags,
+preview/queue identity, callback and cron variables cannot override profiles.
+Existing platform identity and local loopback database wiring select the profile;
+remote profiles stay disabled and their callbacks remain unset until the actual
+origins are supplied. Local preparation selects the disabled review profile;
+the enable command verifies dependency wiring before activating the local profile.
+Changing a profile requires a reviewed code change and rebuild/restart.
+
+See [ENVIRONMENT.md](./ENVIRONMENT.md) for the six remaining credential/key names,
+shared infrastructure settings, bindings and retired names. Secrets, keyring
+rotation, live authority, exact approvals and no-email enforcement retain their
+existing independent validators. Source quotas, retention, mappings and pause
+controls remain database-backed operator settings. SQL retains durable lease,
+transactional and quota enforcement.
+
+Source controls and their consumer share processing readiness; the background
+gate also fences nested runtime adapters. Existing queue/service/R2 resources and
+recovery schedules remain in Wrangler. No new worker or migration is required.
+
+After changing workspace tooling, synchronize the versioned copies in
+SkillPassport's `workspace-support/zoho/` directory. The read-only installer should
+report zero missing or conflicting files in the configured workspace.
