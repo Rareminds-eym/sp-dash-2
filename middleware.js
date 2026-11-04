@@ -1,75 +1,45 @@
 import { NextResponse } from 'next/server'
+import { loginUrl, safeReturnTo, RECOVERY_PARAM } from './lib/auth-redirect'
 
-/**
- * Cookie name helper — __Host- prefix requires Secure flag, which browsers
- * reject on plain HTTP (localhost dev). Fall back to unprefixed names in dev.
- */
 const isSecure = process.env.NODE_ENV === 'production'
 const COOKIE_ACCESS = isSecure ? '__Host-sso_access_token' : 'sso_access_token'
 const COOKIE_USER = isSecure ? '__Host-sso_user' : 'sso_user'
 const COOKIE_REFRESH = isSecure ? '__Host-sso_refresh_token' : 'sso_refresh_token'
 
-const protectedRoutes = ['/dashboard', '/users', '/passports', '/recruiters', '/reports', '/audit-logs', '/integrations', '/settings', '/course-management', '/student-dashboard', '/sales-dashboard', '/educator-subscriptions', '/lte-course-upload', '/organizations']
-const publicRoutes = ['/login', '/reset-password']
+const protectedRoutes = ['/dashboard', '/users', '/passports', '/recruiters', '/reports', '/audit-logs', '/integrations', '/settings', '/course-management', '/student-dashboard', '/sales-dashboard', '/educator-subscriptions', '/lte-course-upload', '/organizations', '/approvals', '/educators', '/educator']
 
-/**
- * Enhanced middleware with automatic token refresh
- */
-export async function middleware(req) {
+export function middleware(req) {
+  // Server Actions include session checks and refresh. They must be able to
+  // run with an expired access cookie; their handlers enforce authorization.
+  if (req.method === 'POST' && req.headers.get('next-action')) return NextResponse.next()
+
   const path = req.nextUrl.pathname
-  const isProtectedRoute = protectedRoutes.some(route => path.startsWith(route))
-  const isPublicRoute = publicRoutes.includes(path)
+  if (!protectedRoutes.some(route => path === route || path.startsWith(route + '/'))) return NextResponse.next()
 
-  // Quick check: if not a protected or public route, skip middleware
-  if (!isProtectedRoute && !isPublicRoute) {
+  const accessToken = req.cookies.get(COOKIE_ACCESS)?.value
+  const user = req.cookies.get(COOKIE_USER)?.value
+  let unexpired = false
+  try {
+    const payload = JSON.parse(atob(accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+    unexpired = Number.isFinite(payload.exp) && payload.exp > Math.floor(Date.now() / 1000)
+  } catch {
+    // Missing or malformed tokens need recovery, just like expired tokens.
+  }
+
+  // This is a routing gate; server session checks verify the signature.
+  // Public pages must never redirect based on cookie presence alone.
+  const recovered = req.nextUrl.searchParams.has(RECOVERY_PARAM)
+  const returnTo = safeReturnTo(path + req.nextUrl.search)
+  if (user && unexpired) {
+    // Remove the one-attempt marker after cookies have reached the browser.
+    if (recovered) return NextResponse.redirect(new URL(returnTo, req.url), 303)
     return NextResponse.next()
   }
 
-  // Check for SSO session cookies
-  const ssoAccessToken = req.cookies.get(COOKIE_ACCESS)?.value
-  const ssoUser = req.cookies.get(COOKIE_USER)?.value
-  const ssoRefreshToken = req.cookies.get(COOKIE_REFRESH)?.value
-
-  const hasValidSession = !!(ssoAccessToken && ssoUser)
-
-  // For protected routes
-  if (isProtectedRoute) {
-    if (!hasValidSession) {
-      // No session - redirect to login
-      const redirectUrl = new URL('/login', req.url)
-      return NextResponse.redirect(redirectUrl)
-    }
-
-    // Check if token is about to expire (within 5 minutes)
-    try {
-      if (ssoAccessToken) {
-        const base64 = ssoAccessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
-        const payload = JSON.parse(atob(base64))
-        const now = Math.floor(Date.now() / 1000)
-        const expiresIn = payload.exp - now
-
-        // If token expires in less than 5 minutes and we have a refresh token
-        if (expiresIn < 300 && ssoRefreshToken) {
-          console.log('[Middleware] Token expires soon, will refresh on next API call')
-          // Note: We don't refresh here to avoid blocking the middleware
-          // The frontend will handle refresh on the next API call
-        }
-      }
-    } catch (error) {
-      console.error('[Middleware] Error checking token expiry:', error)
-      // If we can't decode the token, redirect to login
-      const redirectUrl = new URL('/login', req.url)
-      return NextResponse.redirect(redirectUrl)
-    }
-  }
-
-  // For public routes - redirect to dashboard if already logged in
-  if (isPublicRoute && hasValidSession) {
-    const redirectUrl = new URL('/dashboard', req.url)
-    return NextResponse.redirect(redirectUrl)
-  }
-
-  return NextResponse.next()
+  const destination = !recovered && req.cookies.get(COOKIE_REFRESH)?.value
+    ? '/auth/refresh?' + new URLSearchParams({ next: returnTo })
+    : loginUrl(returnTo)
+  return NextResponse.redirect(new URL(destination, req.url))
 }
 
 export const config = {
