@@ -1,7 +1,8 @@
+import { integrationFailure } from '@/lib/zoho/diagnostics';
 import {operatorActions,operatorSnapshot,runOperatorAction,canonicalAdministrationPage} from '@/lib/zoho/operator-actions';
 import {operatorHistoryPage} from '@/lib/zoho/operator-history';
 import { z } from 'zod';
-import { configureJobPolicy, readJobPolicy } from '@/lib/zoho/job-policy';
+import { configureJobPolicy, readJobPolicy, readJobSurfacePage } from '@/lib/zoho/job-policy';
 import { previewCandidateReview } from '@/lib/zoho/candidate-review';
 import { recordHumanApproval } from '@/lib/zoho/approval-evidence';
 import { requireZohoAdmin } from '@/lib/zoho/admin';
@@ -35,7 +36,8 @@ async function body(request) {
 async function handle(request) {
   const auth = await requireZohoAdmin(request);
   if (auth.error) return auth.error;
-  let service; let selection;
+  let service; let selection; let action;
+  const view = new URL(request.url).searchParams.get('view');
   try {
     // Lazy import: missing database configuration is an explicit unavailable state.
     const { supabaseAdmin } = await import('@/lib/supabase-admin');
@@ -54,6 +56,8 @@ async function handle(request) {
       }
       if (url.searchParams.get('view') === 'operations') return json({operations:await operatorSnapshot(supabaseAdmin,url.searchParams.get('connectionId'),auth.env,auth.user.id)});
       if (url.searchParams.get('view') === 'privacy') return json({ privacy: await service.privacy(url.searchParams.get('connectionId')) });
+      if (view === 'job_surface') return json({ surface: await readJobSurfacePage(supabaseAdmin,Object.fromEntries([...url.searchParams].filter(([key])=>key!=='view'))) });
+      if (view === 'record_window') return json(await service.reviewWindow(Object.fromEntries([...url.searchParams].filter(([key])=>key!=='view'))));
       if (url.searchParams.get('view') === 'job_policy') return json({ policy: await readJobPolicy(supabaseAdmin, url.searchParams.get('connectionId')), emailPolicy: 'forbidden' });
       const historyInput=Object.fromEntries([...url.searchParams].filter(([key])=>key!=='view'));
       if (url.searchParams.get('view') === 'deferred') return json({ deferred: await service.deferred(historyInput) });
@@ -63,9 +67,11 @@ async function handle(request) {
         const input = Object.fromEntries([...url.searchParams].filter(([key]) => key !== 'view'));
         return json({ ...await service.reviewPage(input), emailPolicy: 'forbidden' });
       }
+      if (view && view !== 'summary') return json({ error: 'Unknown integration view' }, 400);
       return json({ ...await service.summary(), emailPolicy: 'forbidden', capabilities: { oauth: oauthConfiguration({ ...process.env, ...auth.env }).success, discovery: await discoveryStatus(runtime.discovery, auth.env.ZOHO_DISCOVERY_QUEUE), execution: await executorStatus(runtime.executor, auth.env.ZOHO_APPROVED_QUEUE) } });
     }
     const payload = z.object({ action: z.enum([...operatorActions,'configure', 'decide', 'connect', 'discover', 'control_discovery', 'review_candidate', 'configure_job_policy', 'suppress_source', 'configure_retention', 'cleanup_payloads', 'control_connection']), input: z.unknown() }).strict().parse(await body(request));
+    action = payload.action;
     if(payload.action==='control_discovery') {
       const result=await service.controlDiscovery(payload.input,auth.user.id);
       let delivery='not_required';
@@ -144,11 +150,20 @@ async function handle(request) {
       } catch (lookupError) { error = lookupError; }
     }
     if (error.integrationUnavailable) return json({ error: 'Silent approved execution is not deployed. Review, hold and reject remain available.' }, 503);
+    const reviewRecovery = {
+      SOURCE_PAUSED: 'Source is paused. Resume connection in Source privacy, then run fresh discovery before checking accounts.',
+      SOURCE_NOT_CONNECTED: 'Connect this source, then run discovery before checking accounts.',
+      SOURCE_CONFIG_CHANGED: 'Source configuration changed. Run fresh discovery before checking this record.',
+      PAYLOAD_EXPIRED: 'Source review data expired. Run fresh discovery before checking this record.',
+    };
+    if (Object.hasOwn(reviewRecovery,error.reviewReason)) return json({error:reviewRecovery[error.reviewReason],code:error.reviewReason},error.code==='22023'?422:409);
     if (error instanceof z.ZodError || error instanceof SyntaxError) return json({ error: 'Invalid integration request' }, 400);
     if (error instanceof RangeError) return json({ error: 'Request too large' }, 413);
     if (error.code === '40001' || error.code === '23505') return json({ error: 'The reviewed selection changed. Refresh and review again.' }, 409);
     if (error.code === '22023') return json({ error: 'This selection is blocked or is not eligible for this decision.' }, 422);
-    return json({ error: 'Integration storage is unavailable. Check the migration and server configuration.' }, 503);
+    const requestId = integrationFailure('zoho_route_error', error, { action, view });
+    const storageFailure = /^(08|53|57|PGRST)/.test(error?.code || '');
+    return json({ error: storageFailure ? 'Integration storage is unavailable. Please retry.' : 'The integration request could not be completed. Please retry.', requestId }, storageFailure ? 503 : 500);
   }
 }
 export const GET = handle;

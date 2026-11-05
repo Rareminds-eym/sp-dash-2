@@ -31,8 +31,11 @@ key ID. Retain keys needed to decrypt existing records during rotation.
 Each module exports immutable deployment profiles. Production, development, QA,
 preview and unknown deployments remain disabled. Existing local loopback database
 configuration selects the enabled local profile; `local-review` keeps operations
-disabled during local preparation. The local enable command verifies dependency
-wiring before selecting the existing `development` platform context. Database,
+disabled during local preparation. The isolated acceptance launcher verifies dependency
+wiring before selecting the existing `development` platform context. Normal
+dashboard development uses `npm run dev`, which starts the existing BFF runtime
+and UI with the standard private local settings; see
+[local development](../../LOCAL_DEVELOPMENT.md). Database,
 credential, source-state, queue and exact-approval checks remain mandatory.
 Dashboard background disablement also blocks its nested processing adapters.
 

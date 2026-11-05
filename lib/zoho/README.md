@@ -616,21 +616,21 @@ and daily reconciliation through the existing schedule.
 The dashboard includes source suppression, review retention, cleanup, pause/resume and
 disconnect. Suppression/expiry never silently renew an approval. Unknown effects retain
 their reconciliation evidence. Deferred payload copies follow the same retention policy.
-`ZOHO_PRIVACY_CLEANUP_ENABLED` permits cleanup independently of new import permission;
-its default remains false. Disconnect removes local credentials, not provider access.
+The code profile’s `privacyCleanup` setting permits the dedicated scheduled cleanup path independently of new import permission; manual operator cleanup and deferred-recovery retention enforcement remain separate. The retired environment variable does not control these actions;
+Deployment profiles default that scheduled path to false; the local profile enables it. Disconnect removes local credentials, not provider access.
 
 Run `npm run test:zoho:local` from [SkillPassport](../../../skillpassport) for synthetic
-acceptance. See the [local test guide](../../../ZOHO_LOCAL_TESTING.md). 314 module and
-two-database cases pass, along with the SQL suites; the final deferred-retention SQL
+acceptance. See the [local test guide](../../../ZOHO_LOCAL_TESTING.md). The module and
+two-database suites pass, along with the SQL suites; the final deferred-retention SQL
 check also passes. Builds cover dashboard/API bundles, Pages Functions and SSO dry run.
-Full repository typing/CI, broader source deletion/bulk and canonical erasure/account
-contexts, real provider/browser/no-email acceptance and rollout remain open. All flags
-stay off and all feature migrations/seeds remain unapplied. No new Worker or RLS was added.
+These paragraphs record the earlier implementation audit, not current rollout readiness.
+Current behavior and validation are described in the dated operator-page audit below.
+No new Worker or RLS was added.
 
-## Subsequent audit — three open findings
+## Historical subsequent audit — three findings
 
 Section 59 of the [root plan](../../../ZOHO_RECRUIT_INTEGRATION_PLAN.md) records reproduced
-gaps missed by the 314-case suite: later imported OAuth sign-in can replay generic
+gaps missed by the earlier suite: later imported OAuth sign-in can replay generic
 membership sync and create an unmarked learner; capture-time-expired reviews can still
 be approved before cleanup; and fresh staging can retain historical completed-operation
 payload copies beyond retention. Temporary unit/real-database probes reproduce them;
@@ -683,3 +683,84 @@ recovery schedules remain in Wrangler. No new worker or migration is required.
 After changing workspace tooling, synchronize the versioned copies in
 SkillPassport's `workspace-support/zoho/` directory. The read-only installer should
 report zero missing or conflicting files in the configured workspace.
+
+## Dynamic plan detection and source allocation
+
+`source-license.js` reads Recruit's organization `license_details.plan_type` and
+`license_details.no_of_users` after verifying the exact source organization ID.
+Verified live India bundle responses omit `plan_type` and instead return
+`paid_type: "Zoho One"` and `subscription: "Zoho One"`. This alternative requires
+`paid: true` and `trial: false`; conflicting edition fields, malformed flags and
+trial-only labels never grant a paid estimate. Licensed totals use `no_of_users`,
+not the `$users.used` count. `trial_type` and support-plan labels are not editions.
+OAuth completion reuses its already verified organization response. The existing
+source-operations scheduler and discovery queue refresh metadata every 24 hours;
+no new worker, secret or OAuth scope is introduced.
+
+Apply SkillPassport migration `20270220000000_zoho_dynamic_source_allocation.sql`
+before releasing this code. Existing quota rows remain manual overrides. New quota
+rows default to automatic allocation: 20% of the documented base allowance,
+excluding add-ons, with concurrency at half the documented primary limit, capped
+at five. The percentage is configurable from 1–100 in Advanced → Shared API budget.
+Saving the existing budget/concurrency fields selects manual mode. Metadata
+refresh never replaces a manual override or resets rolling usage/provider cooldown.
+
+The UI shows detected plan, licensed users, estimate, freshness and connector
+usage. These are not provider-wide remaining credits: connector read costs remain
+conservative and other applications' consumption is unknown. Unsupported plans,
+invalid user counts or observations older than 24 hours grant no paid estimate;
+automatic requests fall back to at most 1000 units and two concurrent calls, while
+preserving lower allocations. A refreshed downgrade applies on the next reservation.
+Refresh failure backs off without fabricating plan data. Metadata requests use the
+same budget, so an exhausted manual cap must replenish or be explicitly changed
+before an already connected legacy source can first detect its plan.
+
+Refresh leases are shared per region/organization and fenced by connection and
+credential generation. Provider responses cannot change source identity. Private
+RPCs remain service-only; no RLS policy or browser database access is introduced.
+
+## Operator-page audit — 2026-11-05
+
+The settings dialog and advanced operations mount their panels only when opened.
+Job policy reads return a fingerprint, object count and counts by kind; definitions
+are fetched ten at a time, with explicit truncation notices. The complete catalog
+remains the server-side execution boundary. Catalog names use text throughout and
+fingerprint ordering is deterministic. Existing job policy attestations must be
+reviewed again after the new DDL; source approval/configuration fences still apply.
+
+Long discovery cooldowns check about once a minute while the tab is visible;
+active discovery checks about every three seconds. Failures back off to a maximum
+of two minutes. A conditional record-window read revalidates every loaded record
+and returns no payload rows when the window has not changed. State changes,
+redaction and records leaving filters still invalidate affected selections.
+
+Manual global cleanup requires a separate confirmation and reason. Its service-only
+transaction stores the authenticated actor, a reason hash and result counts in
+`zoho_payload_cleanup_audit`; automated retention enforcement remains independent.
+No email is introduced by these actions.
+
+Run `npm run test:zoho`, `npm run test:zoho-ui` and `npm run test:zoho-scripts`
+from this repository. CI runs these suites independently of sibling repositories.
+UI suites run sequentially with a 512 MB heap per process. LOW-8 (migration to the
+shared auth packages) is explicitly excluded; neither auth package was added.
+The audit migration is applied to the local SkillPassport DB only. Deployment and
+remote database changes remain outside this work.
+
+
+### Retry visibility follow-up — 2026-11-05
+
+Advanced bulk/deletion polling follows persisted next-attempt timestamps: runnable
+work checks about every five seconds, near retries every fifteen seconds, long waits
+once a minute. Outages back off up to two minutes. This changes UI checks only, not
+source scheduling. OAuth callback authority/refresh outages show temporary service
+unavailability rather than claiming session expiry.
+
+The shared quota snapshot reports local remaining units, the next usage expiry,
+and earliest budget/cooldown-compatible three-unit read. Concurrent leases, token
+refreshes, other work and scheduling can still postpone execution. An allocation
+below three units explicitly reports that a read cannot fit. These read-only
+estimates exclude provider-wide remaining credits and never reset usage/cooldowns.
+Midnight, restarting discovery and pausing do not reset the rolling 24-hour ledger.
+New scan record counts are independent of usage shared across scans and record types.
+
+Migration `20270222000000_zoho_retry_visibility.sql` is applied locally only.
