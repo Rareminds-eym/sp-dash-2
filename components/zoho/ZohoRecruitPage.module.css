@@ -153,8 +153,17 @@
 .sectionHeading>span { color:var(--zoho-ink);font-size:12px; }
 .sectionHeading>em { margin-left:auto;font-size:12px;font-style:normal;color:var(--zoho-accent); }
 
-/* Keep review independent of the record table's scroll area. */
-.reviewCard { overscroll-behavior-y:contain;scrollbar-gutter:stable; }
+/* Desktop scroll reaches the page at panel edges; modal drawers stay contained. */
+.reviewCard { overscroll-behavior-y:auto;scrollbar-gutter:stable; }
+.reviewEmptyContent { display:grid;gap:10px;padding-top:18px; }
+.reviewEmptyHeading { display:flex;align-items:center;gap:9px; }
+.reviewEmptyHeading svg { flex-shrink:0;color:inherit;opacity:.7; }
+.reviewEmptyHeading h4 { font-size:14px;font-weight:600;line-height:20px; }
+.reviewEmptyContent>p { font-size:13px;line-height:20px;color:#6e617e; }
+.reviewPolicy { margin-top:24px;border-top:1px solid var(--zoho-border);padding-top:16px; }
+.reviewEmpty>.reviewPolicy { margin-top:18px; }
+:global(.dark) .reviewEmptyContent>p { color:#b9b2cb; }
+
 .profileHeader { padding-right:24px; }
 .reviewToolbar>button { display:grid;place-items:center;min-width:44px;min-height:44px;flex-shrink:0; }
 @media (min-width:1024px) {
@@ -171,9 +180,10 @@
   .workspaceSide {
     position:sticky;
     top:var(--zoho-review-top,88px);
-    align-self:stretch;
-    max-height:none;
+    align-self:start;
+    max-height:max(360px,calc(100dvh - var(--zoho-review-top,88px) - 16px));
   }
+  .workspaceSideEmpty { height:auto;max-height:none; }
   .workspaceSide>.overviewCard { flex-shrink:0; }
   .reviewCard {
     position:relative;
@@ -186,6 +196,9 @@
     margin:-18px -18px 0;padding:8px 12px;
     border-bottom:1px solid var(--zoho-border);background:var(--zoho-surface);
   }
+  /* Clip rounded corners without creating a scroll container for the empty card. */
+  .reviewCard.reviewEmpty { flex:0 0 auto;overflow:clip;scrollbar-gutter:auto; }
+  .reviewEmpty>.reviewToolbar { position:static;padding:12px 18px; }
   .reviewToolbar>h3 { position:static;width:auto;height:auto;margin:0;overflow:visible;clip:auto;white-space:normal; }
   .profileHeader { padding-right:0; }
 }
@@ -195,7 +208,7 @@
     display:block;position:fixed;inset:auto 0 0;z-index:50;
     width:100%;max-width:none;max-height:88dvh;margin:0;
     padding:0 20px calc(20px + env(safe-area-inset-bottom,0px));
-    overflow-y:auto;border-radius:22px 22px 0 0;
+    overflow-y:auto;overscroll-behavior-y:contain;border-radius:22px 22px 0 0;
     box-shadow:0 -12px 48px #100c2440;
   }
   .reviewMobile>.reviewToolbar {
@@ -214,3 +227,8 @@
   }
   .reviewMobile .profileHeader { padding-right:0;margin-top:16px; }
 }
+
+.overviewTotals { min-width:0; }
+.overviewTotalsHeading { display:flex;align-items:center;gap:9px;margin-bottom:12px; }
+.overviewTotalsHeading h2 { font-size:17px;line-height:22px;font-weight:650; }
+.overviewTotalsHeading svg { flex-shrink:0; }

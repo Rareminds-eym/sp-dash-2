@@ -567,12 +567,18 @@ export default function ZohoRecruitPage() {
     } catch (e) { setError(e.message); }
     finally { setBusy(false); }
   }
-  const sourceCounts = snapshot?.countsByConnection?.[connectionId] || {};
-  const pending = sourceCounts.pending_approval || 0;
-  const counts = [
-    ['Awaiting approval', pending], ['Approved', sourceCounts.approved || 0],
-    ['Completed', sourceCounts.completed || 0], ['Staged exceptions', (sourceCounts.held || 0) + (sourceCounts.failed || 0) + (sourceCounts.reconciliation_required || 0)],
-  ];
+  const pending = snapshot?.countsByConnection?.[connectionId]?.pending_approval || 0;
+  const moduleCountsAvailable = Boolean(snapshot?.countsByConnectionAndModule);
+  const sourceModuleCounts = snapshot?.countsByConnectionAndModule?.[connectionId] || {};
+  const overviewGroups = tabs.map(tab => {
+    const totals = sourceModuleCounts[tab.id] || {};
+    return { ...tab, counts: [
+      ['Awaiting approval', moduleCountsAvailable ? totals.pending_approval || 0 : null],
+      ['Approved', moduleCountsAvailable ? totals.approved || 0 : null],
+      ['Completed', moduleCountsAvailable ? totals.completed || 0 : null],
+      ['Staged exceptions', moduleCountsAvailable ? (totals.held || 0) + (totals.failed || 0) + (totals.reconciliation_required || 0) : null],
+    ] };
+  });
   const approvalIssues = selection.map(selected => {
     const record = records.find(row => row.id === selected.id);
     return { id: selected.id, record, message: candidateReviewUnavailable(record, connection) || selectionApprovalIssue(record, selected, candidateReviews[selected.id]) };
@@ -634,10 +640,14 @@ export default function ZohoRecruitPage() {
           <div className={styles.overviewFacts}><div className={styles.sourcePicker}><label htmlFor="zoho-source-selector">Selected source</label><select id="zoho-source-selector" value={connectionId} onChange={e=>selectSource(e.target.value)} className={styles.sourceSelect} disabled={!snapshot.connections.length}>{!snapshot.connections.length&&<option value="">No source registered</option>}{snapshot.connections.map(row=><option key={row.id} value={row.id}>{row.name} · {row.region.toUpperCase()}</option>)}</select></div><div><span>Current activity</span><strong>{sourceActivity || (connection?.status==='connected'?'Awaiting operator action':connection?.status==='paused'?'Connection paused':'Connection required')}</strong></div><div><span>Email policy</span><strong className={styles.safeText}><LockKeyhole size={13}/>No emails sent</strong></div></div>
         </section>
         <section id="zoho-panel-overview" role="tabpanel" aria-labelledby="zoho-tab-overview" tabIndex={0} hidden={activeSection!=='overview'} className={styles.sectionPanel}>
-        <p className="text-xs text-muted-foreground">Source totals · all record types (candidates and jobs). These cards show selected review states; use the table filter for rejected or stale reviews.</p>
-        <div className={styles.metrics} aria-label="Source record totals — all record types">
-          {counts.map(([label,value],index)=>{const MetricIcon=[UsersRound,ListChecks,CheckCircle2,AlertTriangle][index];return <article key={label} className={`${styles.metric} ${index===0?styles.metricFeatured:''}`}><span className={`${styles.metricIcon} ${styles[`metricIcon${index}`]}`}><MetricIcon size={20} aria-hidden="true"/></span><p>{label}</p><strong>{value.toLocaleString()}</strong></article>;})}
-        </div>
+        <p className="text-xs text-muted-foreground">Selected source totals, separated by record type. These cards show selected review states; use the table filter for rejected or stale reviews.</p>
+        {!moduleCountsAvailable && <p role="status" className="text-sm text-muted-foreground">Separate record totals are currently unavailable. Refresh status to try again.</p>}
+        {overviewGroups.map(group => <section key={group.id} className={styles.overviewTotals} aria-labelledby={`zoho-totals-${group.id}`}>
+          <div className={styles.overviewTotalsHeading}>{group.id==='Candidates'?<UsersRound aria-hidden="true" size={20}/>:<BriefcaseBusiness aria-hidden="true" size={20}/>}<h2 id={`zoho-totals-${group.id}`}>{group.label}</h2></div>
+          <div className={styles.metrics} aria-label={`${group.label} totals for selected source`}>
+            {group.counts.map(([label,value],index)=>{const MetricIcon=[group.id==='Candidates'?UsersRound:BriefcaseBusiness,ListChecks,CheckCircle2,AlertTriangle][index];return <article key={label} className={`${styles.metric} ${index===0?styles.metricFeatured:''}`}><span className={`${styles.metricIcon} ${styles[`metricIcon${index}`]}`}><MetricIcon size={20} aria-hidden="true"/></span><p>{label}</p><strong>{value===null?'—':value.toLocaleString()}</strong></article>;})}
+          </div>
+        </section>)}
         <section className={styles.pipeline} aria-label="Approval workflow">
           <ol className={styles.pipelineSteps}>{[[Database,'Discover','Stage source records'],[ShieldCheck,'Validate & review','Check identity and access'],[ListChecks,'Approve','Explicit operator decision'],[FileCheck2,'Create / update','Confirm destination receipt']].map(([Icon,title,description],index)=><li key={title}><span className={styles.stepIcon}><Icon size={21}/><small>{index+1}</small></span><div><strong>{title}</strong><span>{description}</span></div>{index<3&&<ArrowRight size={17} aria-hidden="true" className={styles.stepArrow}/>}</li>)}</ol>
         </section>
@@ -674,7 +684,7 @@ export default function ZohoRecruitPage() {
           <div className={styles.recordsFooter}>            <p className="text-xs text-muted-foreground" role="status">{recordsLoading?'Loading records…':<>{records.length} displayed{recordTotal!==null?` of ${recordTotal} matching records`:''}</>}</p><span>Review batch · up to 50 records</span></div>
         </section>
           </div>
-          <div className={styles.workspaceSide}>
+          <div className={`${styles.workspaceSide} ${!detail ? styles.workspaceSideEmpty : ''}`}>
           <section className={styles.overviewCard} aria-label="Integration health">
             <div className={styles.cardHeading}><span className={styles.sectionIcon}><ShieldCheck size={21}/></span><div><h2>Integration health</h2><p>Connection and delivery readiness</p></div></div>
             <div className={styles.healthRows}><div><span>Source authorization</span><span className={`${styles.statusChip} ${connection?.status==='connected'?styles.connected:styles.neutral}`}>{connection?.status==='connected'?'Connected':connection?.status?.replaceAll('_',' ')||(loading?'Loading status…':!snapshot?'Status unavailable':'No source selected')}</span></div><div><span>Account / job execution</span><span className={`${styles.statusChip} ${executionReady?styles.connected:styles.neutral}`}>{executionReady?'Ready':'Unavailable'}</span></div></div>
@@ -686,8 +696,8 @@ export default function ZohoRecruitPage() {
                 unavailableReason={candidateReviewUnavailable(detail,connection)} error={reviewErrors[detail.id]}
                 acknowledged={candidateApprovalReady(detail, candidateReviews[detail.id], selection.find(item => item.id === detail.id)?.candidateReviewHash)}
                 onReview={() => reviewCandidate(detail)} onAcknowledge={() => acknowledgeCandidate(detail, candidateReviews[detail.id])} />}{compact&&detail.module==='Candidates'&&<Button className="mt-4" variant="outline" onClick={()=>{activateSection('advanced');requestAnimationFrame(()=>document.querySelector('#zoho-source-operations textarea')?.focus({preventScroll:true}));}}>Go to candidate administration</Button>}
-              {detail.validation_errors.length > 0 && <ul className="mt-5 list-inside list-disc space-y-2 text-xs text-destructive">{detail.validation_errors.map(message => <li key={message}>{message}</li>)}</ul>}</> : <p className="mt-4 text-sm leading-6 text-muted-foreground">Choose a record to inspect its source details and validation findings. Approval applies only to selected records and revisions.</p>}
-              <p className="mt-7 border-t border-border pt-4 text-xs leading-5 text-muted-foreground">New learners receive Discover. Existing access is preserved. No invitation, password, verification or job email is sent.</p>
+              {detail.validation_errors.length > 0 && <ul className="mt-5 list-inside list-disc space-y-2 text-xs text-destructive">{detail.validation_errors.map(message => <li key={message}>{message}</li>)}</ul>}</> : <div className={styles.reviewEmptyContent}><div className={styles.reviewEmptyHeading}><FileCheck2 aria-hidden="true" size={20}/><h4>No record selected</h4></div><p>Choose a record to inspect its source details and validation findings. Approval applies only to selected records and revisions.</p></div>}
+              <p className={`${styles.reviewPolicy} text-muted-foreground`}>New learners receive Discover. Existing access is preserved. No invitation, password, verification or job email is sent.</p>
             </aside>
           </div>
         </div>

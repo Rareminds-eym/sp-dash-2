@@ -8,6 +8,16 @@ now have synthetic local acceptance; candidate readiness independently checks bo
 database boundaries and installed runtime dependencies. Real provider/browser and
 release acceptance remain required. See the current checkpoint at the end below.
 
+## Overview counts
+
+Overview shows separate Candidates and Job openings KPI rows for the selected
+source: awaiting approval, approved, completed and staged exceptions. Counts come
+from the complete database snapshot, independent of table pagination or filters.
+`countsByConnectionAndModule` groups states by connection and module; existing
+combined snapshot fields remain available to the Approvals queue and older callers.
+If grouped counts are absent, the UI shows unavailable values rather than copying
+combined counts or presenting an unverified zero.
+
 ## Implemented runtime wiring
 
 - The existing [sp-dash runtime](../../workers/sp-dash-worker.js) now has explicit

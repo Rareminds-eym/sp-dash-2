@@ -18,7 +18,7 @@ before(async()=>{
 
 const id='a5700000-0000-4000-8000-000000000001';
 async function fixture({ candidate = false, recordCount = 2, sources = null, compact = false, reviewTtl = 600000, discoveryAvailable = false, summaryError = false } = {}) {
-  const state={reads:[],approved:false,complete:false,changed:false,historyGets:0, failures:{}, posts:[], decisionError:null, run:null};
+  const state={reads:[],approved:false,complete:false,changed:false,historyGets:0, failures:{}, posts:[], decisionError:null, run:null, moduleCounts:null, moduleCountsAvailable:true};
   const timers=new Map(),timerDelays=new Map();let sequence=0;
   const dom=new JSDOM('<div id="root"></div>',{url:'http://localhost/',runScripts:'outside-only',pretendToBeVisual:true});
   const w=dom.window;w.IS_REACT_ACT_ENVIRONMENT=true;
@@ -56,7 +56,7 @@ async function fixture({ candidate = false, recordCount = 2, sources = null, com
     else if(url.searchParams.get('view')==='executions'){state.historyGets++;data={executions:state.approved?[{id,state:state.complete?'completed':'queued',execution_attempts:1,record_revision:1,zoho_staged_records:{module:candidate?'Candidates':'Job_Openings',external_id:'999'}}]:[]};}
     else if(url.searchParams.get('view')==='runs')data={runs:state.runs||(state.run?[state.run]:[])};
     else if(url.searchParams.get('view')==='deferred')data={deferred:[]};
-    else data={connections:sources||[{id,name:'Audit fixture',region:'in',status:'connected'}],counts:{},countsByConnection:{[id]:{completed:state.complete?1:0}},capabilities:{oauth:false,discovery:discoveryAvailable,execution:{ready:true,modules:['Candidates','Job_Openings']}}};
+    else data={connections:sources||[{id,name:'Audit fixture',region:'in',status:'connected'}],counts:{},countsByConnection:{[id]:{completed:state.complete?1:0}},countsByConnectionAndModule:state.moduleCountsAvailable?(state.moduleCounts||{[id]:{[candidate?'Candidates':'Job_Openings']:{completed:state.complete?1:0}}}):undefined,capabilities:{oauth:false,discovery:discoveryAvailable,execution:{ready:true,modules:['Candidates','Job_Openings']}}};
     return Response.json(data);
   };
   w.eval(bundle);
@@ -156,6 +156,42 @@ test('keyboard tabs have associated panels and switch on arrow keys',async()=>{
   const selected=f.w.document.querySelector('[role="tab"][aria-selected="true"]');
   assert.equal(selected.textContent,'Job openings');assert.equal(selected.tabIndex,0);
   assert.equal(f.w.document.getElementById(selected.getAttribute('aria-controls')).getAttribute('role'),'tabpanel');
+ }finally{await f.close();}
+});
+
+test('overview separates complete source totals by candidate and job type and refreshes each independently',async()=>{
+ const f=await fixture({candidate:true});try{
+  f.state.moduleCounts={[id]:{Candidates:{pending_approval:125,approved:4,completed:7,held:2,failed:3,reconciliation_required:1},Job_Openings:{pending_approval:45,approved:6,completed:9,held:1,failed:3,reconciliation_required:4}}};
+  await f.act(()=>f.button('Refresh status').click());await f.act(()=>f.button('Overview').click());
+  const totals=label=>[...f.w.document.querySelector(`[aria-label="${label} totals for selected source"]`).querySelectorAll('article')].map(el=>[el.querySelector('p').textContent,el.querySelector('strong').textContent]);
+  assert.deepEqual(totals('Candidates'),[['Awaiting approval','125'],['Approved','4'],['Completed','7'],['Staged exceptions','6']]);
+  assert.deepEqual(totals('Job openings'),[['Awaiting approval','45'],['Approved','6'],['Completed','9'],['Staged exceptions','8']]);
+  assert.equal(f.w.document.querySelectorAll('tbody tr').length,2);
+  f.state.moduleCounts[id].Job_Openings.completed=10;await f.act(()=>f.button('Refresh status').click());
+  assert.equal(totals('Job openings')[2][1],'10');assert.equal(totals('Candidates')[2][1],'7');
+  assert.equal(f.state.posts.length,0);
+ }finally{await f.close();}
+});
+test('overview isolates selected sources and shows zero for a type with no staged records',async()=>{
+ const other='a5700000-0000-4000-8000-000000000002';
+ const f=await fixture({candidate:true,sources:[{id,name:'First source',region:'in',status:'connected'},{id:other,name:'Second source',region:'in',status:'connected'}]});try{
+  f.state.moduleCounts={[id]:{Candidates:{completed:7},Job_Openings:{completed:9}},[other]:{Candidates:{pending_approval:3,completed:2}}};
+  await f.act(()=>f.button('Refresh status').click());await f.act(()=>f.button('Overview').click());
+  await f.act(()=>{const select=f.w.document.querySelector('#zoho-source-selector');select.value=other;select.dispatchEvent(new f.w.Event('change',{bubbles:true}));});
+  const values=label=>[...f.w.document.querySelector(`[aria-label="${label} totals for selected source"]`).querySelectorAll('strong')].map(el=>el.textContent);
+  assert.deepEqual(values('Candidates'),['3','0','2','0']);assert.deepEqual(values('Job openings'),['0','0','0','0']);
+ }finally{await f.close();}
+});
+test('overview distinguishes missing module totals from a confirmed empty source without borrowing combined totals',async()=>{
+ const f=await fixture({candidate:true});try{
+  f.state.moduleCountsAvailable=false;f.state.complete=true;
+  await f.act(()=>f.button('Refresh status').click());await f.act(()=>f.button('Overview').click());
+  const overview=f.w.document.querySelector('#zoho-panel-overview');
+  assert.match(overview.textContent,/Separate record totals are currently unavailable/);
+  assert.deepEqual([...overview.querySelectorAll('article strong')].map(el=>el.textContent),Array(8).fill('—'));
+  f.state.moduleCountsAvailable=true;f.state.moduleCounts={};await f.act(()=>f.button('Refresh status').click());
+  assert.doesNotMatch(overview.textContent,/Separate record totals are currently unavailable/);
+  assert.deepEqual([...overview.querySelectorAll('article strong')].map(el=>el.textContent),Array(8).fill('0'));
  }finally{await f.close();}
 });
 
@@ -371,6 +407,37 @@ test('filter changes show loading instead of an empty result and stale total',as
   assert.equal(f.w.document.querySelector('[role="tabpanel"]:not([hidden])').getAttribute('aria-busy'),'false');
  }finally{await f.close();}
 });
+test('empty review preserves native page scrolling without changing record-list position',async()=>{
+ const f=await fixture({candidate:true});try{
+  const panel=f.w.document.querySelector('[aria-label="Record review"]'),table=f.w.document.querySelector('[aria-label="Source records"]');
+  Object.defineProperties(table,{clientHeight:{value:200},scrollHeight:{value:1000}});
+  for(const position of [0,300,800]){
+   table.scrollTop=position;
+   for(const options of [{deltaY:150},{deltaY:-150},{deltaY:1,deltaMode:1},{deltaY:1,deltaMode:2},{deltaX:150,deltaY:0},{deltaY:150,ctrlKey:true}]){
+    const event=new f.w.WheelEvent('wheel',{bubbles:true,cancelable:true,...options});panel.dispatchEvent(event);
+    assert.equal(event.defaultPrevented,false);assert.equal(table.scrollTop,position);
+   }
+  }
+  assert.equal(f.state.posts.length,0);
+ }finally{await f.close();}
+});
+test('empty review retains native page scrolling after an initial integration outage recovers',async()=>{
+ const f=await fixture({candidate:true,summaryError:true});try{
+  assert.equal(Boolean(f.w.document.querySelector('[aria-label="Record review"]')),false);
+  const original=f.w.fetch;
+  f.w.fetch=async(url,options)=>new URL(url,'http://localhost').searchParams.has('view')?original(url,options):Response.json({
+   connections:[{id,name:'Recovered source',region:'in',status:'connected'}],countsByConnection:{},
+   capabilities:{oauth:false,discovery:true,execution:{ready:true,modules:['Candidates','Job_Openings']}}
+  });
+  await f.act(()=>f.button('Refresh status').click());
+  const panel=f.w.document.querySelector('[aria-label="Record review"]'),table=f.w.document.querySelector('[aria-label="Source records"]');
+  assert.ok(panel);assert.ok(table);
+  Object.defineProperties(table,{clientHeight:{value:200},scrollHeight:{value:1000}});table.scrollTop=300;
+  const event=new f.w.WheelEvent('wheel',{deltaY:150,bubbles:true,cancelable:true});panel.dispatchEvent(event);
+  assert.equal(event.defaultPrevented,false);assert.equal(table.scrollTop,300);
+ }finally{await f.close();}
+});
+
 test('closing a mobile review keeps its selected candidate available',async()=>{
  const f=await fixture({candidate:true,compact:true});try{
   await f.act(()=>f.button('Audit candidate 999').click());
