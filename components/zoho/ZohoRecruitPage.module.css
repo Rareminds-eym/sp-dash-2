@@ -232,3 +232,22 @@
 .overviewTotalsHeading { display:flex;align-items:center;gap:9px;margin-bottom:12px; }
 .overviewTotalsHeading h2 { font-size:17px;line-height:22px;font-weight:650; }
 .overviewTotalsHeading svg { flex-shrink:0; }
+
+.bulkDialog { --zoho-border:#e3dcef;--zoho-surface:#fff;--zoho-accent:#6a36dc; }
+.bulkDialog .decisionFooter { flex-wrap:wrap;gap:12px; }
+.bulkDialog .decisionFooter>div { min-width:0;flex-shrink:1;flex-wrap:wrap;justify-content:flex-end; }
+.bulkDialog .decisionFooter button { max-width:100%;height:auto;white-space:normal; }
+:global(.dark) .bulkDialog { --zoho-border:#43364f;--zoho-surface:#1c1823;--zoho-accent:#b291f1; }
+.bulkProgress { display:flex;align-items:center;gap:10px;padding:12px 0;font-weight:600; }
+.bulkProgress p { margin:0; }
+.bulkProgress svg { flex-shrink:0; }
+.bulkSearch { display:grid;gap:6px;padding:12px 16px;font-size:12px; }
+.bulkSearch input { min-width:0;width:100%;padding:8px 10px;border:1px solid var(--zoho-border);border-radius:8px;background:var(--zoho-surface);color:inherit;font:inherit; }
+.bulkPagination { display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid var(--zoho-border);padding:10px 16px;font-size:12px; }
+.bulkAcknowledge { display:flex;align-items:flex-start;gap:10px;margin:20px 0;font-size:13px;line-height:1.6; }
+.bulkAcknowledge input { flex-shrink:0;width:18px;height:18px;margin-top:2px;accent-color:var(--zoho-accent); }
+.bulkHelp { margin-top:16px;font-size:12px;line-height:1.6;opacity:.8; }
+@media(max-width:600px) {
+  .bulkDialog .decisionFooter>div { display:grid;grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .bulkRestart { grid-column:1/-1; }
+}

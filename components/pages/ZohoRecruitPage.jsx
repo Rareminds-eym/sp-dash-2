@@ -1,7 +1,10 @@
 'use client';
 import { browserResponse } from '@/lib/zoho/browser-response';
+import ExecutionRecovery from '@/components/zoho/ExecutionRecovery';
+import { executionRecoveryStatus } from '@/lib/zoho/execution-recovery-status';
 import OperationsPanel from '@/components/zoho/OperationsPanel';
 import styles from '@/components/zoho/ZohoRecruitPage.module.css';
+import SyncSettings from '@/components/zoho/SyncSettings';
 import DiscoveryProgress from '@/components/zoho/DiscoveryProgress';
 import DiscoveryActions from '@/components/zoho/DiscoveryActions';
 import { discoveryProgress, discoveryTiming, discoveryPollDelay, discoveryErrorText } from '@/lib/zoho/discovery-progress';
@@ -12,6 +15,7 @@ import { ArrowLeft, ArrowRight, Check, CheckCircle2, Database, FileCheck2, ListC
 import { Button } from '@/components/ui/button';
 import JobPolicyPanel from '@/components/zoho/JobPolicyPanel';
 import CandidateReview from '@/components/zoho/CandidateReview';
+import BulkCandidateApproval from '@/components/zoho/BulkCandidateApproval';
 import SourcePrivacyPanel from '@/components/zoho/SourcePrivacyPanel';
 import { candidateApprovalReady, selectionApprovalIssue, candidateReviewUnavailable, repeatedCandidateName } from '@/lib/zoho/candidate-review-selection';
 import { ZOHO_REGIONS, ZOHO_POLICY } from '@/lib/zoho/contracts';
@@ -42,10 +46,11 @@ export default function ZohoRecruitPage() {
   const [snapshot, setSnapshot] = useState(null);
   const [connectionId, setConnectionId] = useState('');
   const [module, setModule] = useState('Candidates');
-  const [activeSection, setActiveSection] = useState('Candidates');
+  const [activeSection, setActiveSection] = useState('overview');
   const recordSection = tabs.some(tab => tab.id === activeSection);
   const [records, setRecords] = useState([]);
   const [runs, setRuns] = useState([]);
+  const [liveDiscovery, setLiveDiscovery] = useState(null);
   const [discoveryRequest, setDiscoveryRequest] = useState(null);
   const [historyUpdatedAt, setHistoryUpdatedAt] = useState(null);
   const [executions, setExecutions] = useState([]);
@@ -159,12 +164,20 @@ export default function ZohoRecruitPage() {
   const loadedRecordCount = useRef(records.length);
   loadedRecordCount.current = records.length;
   const backgroundPoll = useRef(false);
+  const visibleSection = useRef(activeSection);
+  visibleSection.current = activeSection;
+  const historyActivity = useRef(null);
+
+  const historyReadAt = useRef({});
   const decisionAttempt = useRef(null);
   const connection = snapshot?.connections?.find(item => item.id === connectionId);
-  const progress = discoveryProgress(runs, discoveryRequest, connectionId, module);
+  const statusRuns = liveDiscovery?.connectionId === connectionId ? liveDiscovery.latestRuns : runs;
+  const captures = liveDiscovery?.connectionId === connectionId ? liveDiscovery.captures : undefined;
+  historyActivity.current = { executions, deferred, pendingHistoryConnection, runs: statusRuns };
+  const progress = discoveryProgress(statusRuns, discoveryRequest, connectionId, module);
   const discoveryActive = Boolean(progress?.active);
   const discoveryPaused=progress?.phase==='paused';
-  const sourceDiscoveries = tabs.map(tab => ({...tab, progress:discoveryProgress(runs, discoveryRequest, connectionId, tab.id)}))
+  const sourceDiscoveries = tabs.map(tab => ({...tab, progress:discoveryProgress(statusRuns, discoveryRequest, connectionId, tab.id)}))
     .filter(item => item.progress?.active || item.progress?.phase === 'paused');
   const sourceActivity = sourceDiscoveries.map(item => `${item.label}: ${discoveryTiming(item.progress).waiting?'Waiting to retry':item.progress.active?'Discovery in progress':'Discovery paused'}`).join(' · ');
   useEffect(()=>{setReviewErrors({});},[connectionId,connection?.status,connection?.configRevision]);
@@ -341,14 +354,15 @@ export default function ZohoRecruitPage() {
     }
   }, [connectionId, module,search,stateFilter]);
   useEffect(() => { loadRecords().catch(e => setError(e.message)); }, [loadRecords]);
-  const loadRuns = useCallback(async () => {
+  const loadRuns = useCallback(async ({ kinds = ['runs', 'executions', 'deferred'] } = {}) => {
     const generation = ++historyGeneration.current;
     if (!connectionId) { setRuns([]); setExecutions([]); setDeferred([]); return; }
     try {
-      const results=await Promise.allSettled(['runs','executions','deferred'].map(async kind=>{
+      const results=await Promise.allSettled(kinds.map(async kind=>{
         try{
-          const result=await api(`?view=${kind}&connectionId=${encodeURIComponent(connectionId)}`);
+          const result=await api(`?view=${kind}&connectionId=${encodeURIComponent(connectionId)}${kind === 'runs' ? '&live=1' : ''}`);
           if(generation!==historyGeneration.current||activeConnection.current!==connectionId)return;
+          historyReadAt.current[`${connectionId}:${kind}`] = Date.now();
           const items=result[kind];
           const limit=kind==='deferred'?50:20;
           const timestamp=kind==='deferred'?'updated_at':'created_at';
@@ -358,7 +372,7 @@ export default function ZohoRecruitPage() {
           const merge=previous=>items.length<limit?items:[...items,...previous.filter(item=>
             !items.some(fresh=>fresh.id===item.id)&&(item[timestamp]<boundary[timestamp]||
               (item[timestamp]===boundary[timestamp]&&item.id<boundary.id)))];
-          if(kind==='runs'){setRuns(merge);setHistoryUpdatedAt(Date.now());}
+          if(kind==='runs'){setRuns(merge);if(result.latestRuns)setLiveDiscovery({connectionId,latestRuns:result.latestRuns,captures:result.captures || []});setHistoryUpdatedAt(Date.now());}
           if(kind==='executions')setExecutions(merge);if(kind==='deferred')setDeferred(merge);
           setHistoryMore(previous=>({...previous,[kind]:items.length===(kind==='deferred'?50:20)}));
           setHistoryErrors(previous=>({...previous,[kind]:''}));
@@ -376,6 +390,43 @@ export default function ZohoRecruitPage() {
     const failure = results.find(result => result.status === 'rejected');
     if (failure) throw failure.reason;
   }, [loadSummary, loadRecords, loadRuns]);
+  const pollViews = useCallback(async () => {
+    await loadSummary(); // Live authority still gates all reads in this tick.
+    if (activeConnection.current !== connectionId) return;
+    const section = visibleSection.current, activity = historyActivity.current;
+    const kinds = ['runs']; // Discovery progress is shared by the page header.
+    const pendingExecution = activity.pendingHistoryConnection === connectionId || activity.executions.some(item =>
+      ['queued', 'processing'].includes(item.state) || item.state === 'failed' && item.execution_attempts < 8);
+    const pendingDeferred = activity.deferred.some(item => item.state === 'waiting_execution');
+    // Fast discovery ticks must not also fetch secondary histories every three seconds.
+    // Without active discovery the existing fifteen-second tick already bounds these reads.
+    const fastDiscovery = activity.runs.some(run => ['queued','running'].includes(run.state) && run.control_state !== 'paused');
+    const due = kind => !fastDiscovery || Date.now() - (historyReadAt.current[`${connectionId}:${kind}`] || 0) >= 15000;
+    if ((section === 'approvals' || pendingExecution) && due('executions')) kinds.push('executions');
+    if ((section === 'advanced' || pendingDeferred) && due('deferred')) kinds.push('deferred');
+    const requests = [loadRuns({ kinds })];
+    if (tabs.some(tab => tab.id === section)) requests.push(loadRecords({ background: true }));
+    const results = await Promise.allSettled(requests);
+    const failure = results.find(result => result.status === 'rejected');
+    if (failure) throw failure.reason;
+  }, [connectionId, loadSummary, loadRecords, loadRuns]);
+  const previousSection = useRef(activeSection);
+  const previousModule = useRef(module);
+  useEffect(() => {
+    const previous = previousSection.current;
+    previousSection.current = activeSection;
+    const moduleChanged = previousModule.current !== module;
+    previousModule.current = module;
+    if (previous === activeSection) return;
+    if (tabs.some(tab => tab.id === activeSection)) {
+      // A module change already triggers the initial record load. Returning from
+      // another section revalidates the cached window before it can be approved.
+      if (!moduleChanged && !tabs.some(tab => tab.id === previous)) loadRecords({ background: true }).catch(e => setError(e.message));
+    } else {
+      const kind = { approvals: 'executions', history: 'runs', advanced: 'deferred' }[activeSection];
+      if (kind) loadRuns({ kinds: [kind] }).catch(e => setError(e.message));
+    }
+  }, [activeSection, module, loadRecords, loadRuns]);
   useEffect(() => {
     setRuns([]);
     setExecutions([]);
@@ -404,26 +455,36 @@ export default function ZohoRecruitPage() {
       await loadRuns();
     }catch(error){if(activeConnection.current===source)setError(error.message);}finally{setBusy(false);}
   }
-  const pollNeeded = discoveryActive || pendingHistoryConnection===connectionId && Boolean(connectionId) ||
+  const sourceCounts = snapshot?.countsByConnection?.[connectionId] || {};
+  const sourceExecutionPending = ['approved', 'processing', 'reconciliation_required'].some(state => sourceCounts[state] > 0);
+  const pollNeeded = sourceExecutionPending || discoveryActive || pendingHistoryConnection===connectionId && Boolean(connectionId) ||
     deferred.some(item=>item.state==='waiting_execution') ||
-    runs.some(run=>['queued','running'].includes(run.state)&&run.control_state!=='paused') ||
+    statusRuns.some(run=>['queued','running'].includes(run.state)&&run.control_state!=='paused') ||
     executions.some(item=>['queued','processing'].includes(item.state)||(item.state==='failed'&&item.execution_attempts<8));
   const activeDiscoveries = sourceDiscoveries.filter(item => item.progress.active);
   const pollDelay = Math.min(...(activeDiscoveries.length ? activeDiscoveries.map(item => item.progress) : [progress])
     .map(item => discoveryPollDelay(item,pollFailures)));
   useEffect(()=>setPollFailures(0),[connectionId]);
   useEffect(() => {
-    if(!pollNeeded)return;
-    let cancelled=false;
-    const timer=setInterval(async()=>{
-      if(document.hidden||backgroundPoll.current)return;
-      backgroundPoll.current=true;
-      try{await refreshViews(true);if(!cancelled)setPollFailures(0);}
-      catch(e){if(!cancelled&&activeConnection.current===connectionId){setError(e.message);setPollFailures(value=>value+1);}}
-      finally{backgroundPoll.current=false;}
-    },pollDelay);
-    return()=>{cancelled=true;clearInterval(timer);};
-  },[pollNeeded,pollDelay,refreshViews,connectionId]);
+    if (!connectionId) return;
+    let cancelled = false, idleTimer;
+    const idleDelay = Math.min(120000, 45000 * 2 ** Math.min(pollFailures, 2));
+    const tick = async () => {
+      if (cancelled) return;
+      if (!document.hidden && !backgroundPoll.current) {
+        backgroundPoll.current = true;
+        try { await pollViews(); if (!cancelled) setPollFailures(0); }
+        catch (e) { if (!cancelled && activeConnection.current === connectionId) { setError(e.message); setPollFailures(value => value + 1); } }
+        finally { backgroundPoll.current = false; }
+      }
+      if (!pollNeeded && !cancelled) idleTimer = setTimeout(tick, idleDelay);
+    };
+    const timer = pollNeeded ? setInterval(tick, pollDelay) : null;
+    if (!pollNeeded) idleTimer = setTimeout(tick, idleDelay);
+    const wake = () => { if (!document.hidden && !backgroundPoll.current) { clearTimeout(idleTimer); void tick(); } };
+    window.addEventListener('focus', wake); document.addEventListener('visibilitychange', wake);
+    return () => { cancelled = true; clearInterval(timer); clearTimeout(idleTimer); window.removeEventListener('focus', wake); document.removeEventListener('visibilitychange', wake); };
+  },[pollNeeded,pollDelay,pollViews,connectionId,pollFailures]);
   async function discover() {
     if (discoveryActive||discoveryPaused) return;
     const scope = { connectionId, module, startedAt: new Date().toISOString() };
@@ -576,7 +637,7 @@ export default function ZohoRecruitPage() {
       ['Awaiting approval', moduleCountsAvailable ? totals.pending_approval || 0 : null],
       ['Approved', moduleCountsAvailable ? totals.approved || 0 : null],
       ['Completed', moduleCountsAvailable ? totals.completed || 0 : null],
-      ['Staged exceptions', moduleCountsAvailable ? (totals.held || 0) + (totals.failed || 0) + (totals.reconciliation_required || 0) : null],
+      ['Needs attention', moduleCountsAvailable ? (totals.held || 0) + (totals.failed || 0) + (totals.reconciliation_required || 0) : null],
     ] };
   });
   const approvalIssues = selection.map(selected => {
@@ -655,11 +716,11 @@ export default function ZohoRecruitPage() {
         </section>
         <section id={`zoho-panel-${module==='Candidates'?'Job_Openings':'Candidates'}`} role="tabpanel" aria-labelledby={`zoho-tab-${module==='Candidates'?'Job_Openings':'Candidates'}`} hidden />
         <section id={`zoho-panel-${module}`} role="tabpanel" aria-labelledby={`zoho-tab-${module}`} tabIndex={0} aria-busy={recordsLoading} hidden={!recordSection} className={styles.sectionPanel}>
-          <DiscoveryProgress connection={connection} progress={progress} errorText={progress?.run?.last_error ? discoveryErrorText(progress.run.last_error) : ''} updatedAt={historyUpdatedAt} pollDelay={pollDelay} onViewHistory={()=>activateSection('history',true)} />
+          <DiscoveryProgress capture={captures?.find(item => item.module === module && item.config_revision === connection?.configRevision)} checkpointKnown={captures !== undefined} connection={connection} progress={progress} errorText={progress?.run?.last_error ? discoveryErrorText(progress.run.last_error) : ''} updatedAt={historyUpdatedAt} pollDelay={pollDelay} onViewHistory={()=>activateSection('history',true)} />
         <div ref={workspaceRoot} className={styles.workspace}>
           <div className={styles.workspaceMain}>
         <section id="zoho-record-workspace" tabIndex={-1} className={`${styles.recordCard} rounded-2xl border border-border bg-background`}>
-          <div className={styles.recordsTitle}><div><h2>{module==='Candidates'?'Candidate records':'Job opening records'} <span>({recordTotal??records.length})</span></h2></div><div className={styles.recordToolbar}><span className="sr-only">{selection.length} selected · maximum 50 per decision</span><DiscoveryActions key={`${connectionId}:${module}`} progress={progress} busy={busy} connected={connection?.status === 'connected'} available={Boolean(snapshot.capabilities?.discovery)} onStart={discover} onControl={controlDiscovery} /></div></div>
+          <div className={styles.recordsTitle}><div><h2>{module==='Candidates'?'Candidate records':'Job opening records'} <span>({recordTotal??records.length})</span></h2></div><div className={styles.recordToolbar}><span className="sr-only">{selection.length} selected · maximum 50 per decision</span>{module==='Candidates'&&<BulkCandidateApproval api={api} connection={connection} available={executionReady} disabled={busy || recordsLoading} onQueued={sourceId=>{setPendingHistoryConnection(sourceId);refreshViews(true).catch(error=>setError(`Approvals recorded. Refreshing the view failed: ${error.message}`));}}/>}<DiscoveryActions key={`${connectionId}:${module}`} progress={progress} busy={busy} connected={connection?.status === 'connected'} available={Boolean(snapshot.capabilities?.discovery)} onStart={discover} onControl={controlDiscovery} /></div></div>
           <div className={styles.recordFilters}>
             <label className="min-w-0 flex-1 text-xs font-medium">Search records<input aria-label="Search records" type="search" maxLength={100} value={searchDraft} onChange={event=>setSearchDraft(event.target.value)} placeholder="Name, email, job title or Zoho ID" className="mt-1 w-full rounded-lg border border-border bg-background p-2 text-sm" /></label>
             <label className="text-xs font-medium">Review state<select aria-label="Review state" value={stateFilter} onChange={event=>setStateFilter(event.target.value)} className="mt-1 block rounded-lg border border-border bg-background p-2 text-sm"><option value="">All states</option>{Object.entries(captions).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
@@ -727,6 +788,7 @@ export default function ZohoRecruitPage() {
             <div className="md:col-span-2"><Button disabled={busy} type="submit">Register disconnected source</Button><p className="mt-2 text-xs text-muted-foreground">Registration does not authorize access, import data, or create accounts.</p></div>
           </form>}
         </section>
+        {settingsOpen && connectionId && <SyncSettings key={`sync-${connectionId}`} connectionId={connectionId} refreshVersion={settingsRefreshVersion} captures={captures} />}
         {settingsOpen && connectionId && <JobPolicyPanel connectionId={connectionId} refreshVersion={settingsRefreshVersion} onSaved={async () => {
           setNotice('Job publication policy saved. Previous reviews are stale. Run fresh job discovery, inspect the mapped proposal, then approve it.');
           await loadSummary(); await loadRecords(); await loadRuns();
@@ -748,12 +810,15 @@ export default function ZohoRecruitPage() {
           {activeSection==='approvals' && selectionControls}
         <section className={styles.historyCard} aria-label="Approved execution history"><header className={styles.sectionHeading}><CheckCircle2 size={15}/><h2>Approved execution history</h2><span>Approved operations for this source.</span><em>{executions.length} loaded items</em></header><div className={styles.historyContent}>
           <p className="mt-1 text-xs text-muted-foreground">Approved operations for this source, newest first. Load older operations below. Completion requires a confirmed destination receipt.</p>
+          <ExecutionRecovery key={connectionId} active={activeSection==='approvals'} connectionId={connectionId} api={api} onChanged={()=>refreshViews(true)} />
           {!executions.length ? <p className="mt-5 text-sm text-muted-foreground">No approved execution recorded.</p> : <div className="mt-4 space-y-3">{executions.map(item => {
-            const unresolved = item.state === 'processing' && (item.last_error === 'OUTCOME_UNKNOWN' || new Date(item.lease_expires_at).getTime() <= Date.now());
+            const recoveryStatus = executionRecoveryStatus(item);
+            const unresolved = item.state === 'processing' && item.destination_phase !== 'projection_pending' && (item.last_error === 'OUTCOME_UNKNOWN' || new Date(item.lease_expires_at).getTime() <= Date.now());
             return <div key={item.id} className="flex flex-wrap justify-between gap-3 border-t border-border pt-3 text-sm">
               <div><p className="font-medium">{item.zoho_staged_records.module === 'Candidates' ? 'Candidate' : 'Job opening'} · {item.zoho_staged_records.external_id}</p><p className="mt-1 font-mono text-xs text-muted-foreground">{item.id}</p></div>
-              <div className="text-right text-xs text-muted-foreground"><p>{unresolved ? 'Awaiting receipt reconciliation' : item.state.replaceAll('_', ' ')}</p><p className="mt-1">Attempt {item.execution_attempts} of 8 · reviewed revision {item.record_revision}</p>
-                {item.state === 'failed' && <p className="mt-1 text-destructive">{item.execution_attempts >= 8 ? 'Retry limit reached. Operator review required.' : `Retry eligible after ${new Date(item.next_attempt_at).toLocaleString()}.`}</p>}
+              <div className="text-right text-xs text-muted-foreground"><p>{recoveryStatus.label}</p><p className="mt-1">Attempt {item.execution_attempts} of 8 · reviewed revision {item.record_revision}</p>
+                <p className="mt-1 max-w-md">{recoveryStatus.detail}</p>
+                {item.state === 'failed' && Date.parse(item.expires_at)>Date.now() && item.execution_attempts<8 && <p className="mt-1 text-destructive">{`Retry eligible after ${new Date(item.next_attempt_at).toLocaleString()}.`}</p>}
                 {unresolved && <p className="mt-1 text-destructive">Outcome is unconfirmed. No automatic repeat write.</p>}
                 {item.state === 'approval_stale' && item.last_error === 'JOB_REVIEW_REQUIRED' && <p className="mt-1 text-muted-foreground">No job change was applied. Refresh records, resolve the job policy, ownership or quota issue, then review and approve again.</p>}
               </div>

@@ -20,6 +20,100 @@ combined counts or presenting an unverified zero.
 
 ## Implemented runtime wiring
 
+### Recovering approved operations
+
+Recovery throughput and phase reporting require
+[the recovery migration](../../../skillpassport/supabase/migrations/20270225000000_zoho_recovery_throughput.sql).
+A positively matched SSO `projection_pending` receipt now records a lease-fenced
+`destination_phase` marker. This is observability only: it cannot authorize another
+write or mark the operation completed. The progress partition adds **Syncing
+application** so a confirmed account is not described as an unknown creation.
+Legacy pending receipts acquire that marker during reconciliation. Overdue counts
+warn about operations past their retry time or lease by ten minutes, independently
+of terminal attention counts.
+
+Scheduled recovery reserves up to 100 receipt reads and processes them directly,
+three at a time, with a 15-second window for starting/awaiting reads. This prevents
+receipt acknowledgement from sitting behind a large execution queue. Failed or
+unstarted reads retain durable queue fallback; queue sends are chunked to at most
+100 messages. Manual source recovery likewise checks up to 25 receipts immediately
+and distinguishes checked receipts/confirmed completions from scheduled work.
+New execution remains on the existing queue and retains every approval fence.
+
+SSO projection recovery drains up to ten leased batches of ten references per run,
+stopping between batches after 15 seconds, an incomplete batch, or a completely
+failed publication batch. It does not increase the per-record retry budget and
+does not send identity/profile data or emails on that queue.
+
+Local service discovery also matters: the pinned SSO development toolchain is
+Wrangler 4.151.1 with compatible Worker types. Older 4.120.1 Miniflare heartbeats
+do not recreate deleted registry entries; the HTTP port may remain open while RPC
+bindings report `Worker not found`. Start the existing SSO `dev:stack` using its
+installed CLI so all companion services use that toolchain. Readiness requires a
+working named service binding, not only a listening port.
+
+Execution progress reads every saved operation for the selected source and record
+type through the private `zoho_execution_progress` RPC. Apply
+[the progress migration](../../../skillpassport/supabase/migrations/20270224000000_zoho_execution_progress.sql)
+to the application database before deploying this panel. The local migration
+catalog includes it. Counts are independent of the loaded history page and include
+earlier revisions/runs: completed, queued, active processing, checking unknown
+outcomes, waiting for retry, and needs attention form an exclusive partition.
+Expired/exhausted details are subsets of attention and can overlap.
+
+Only confirmed receipts advance the completion percentage. The panel refreshes
+every 15 seconds while visible with pending work, backs off outages to 60 seconds,
+retains previous counts with a stale-data warning, and stops polling when no
+automatic work remains. Switching source/type discards the prior scope's response.
+Reloading reads persisted database progress; no browser session state establishes
+completion. Scheduling recovery is reported separately from execution progress.
+
+The Approvals tab includes **Recover approved operations**, separately for candidates
+and jobs. This authenticated, source-scoped command schedules at most 25 due retries
+and 25 interrupted-operation receipt checks through the existing approved queue.
+It never creates a new approval, resets attempts, extends expiry, or treats a missing
+receipt as proof that an account was not created. Repeated delivery uses the same
+operation IDs and remains protected by SQL claims and destination receipt idempotency.
+Transport failures can safely be retried. A scheduling acknowledgement is not a
+completion acknowledgement.
+
+Queued/failed operations require an unexpired approval, fewer than eight attempts,
+and a due retry time. Background retry selection also excludes expired approvals,
+so expired rows cannot consume its first 25 recovery slots. Interrupted operations
+remain receipt-only even after expiry or writer unavailability. No receipt means
+the outcome remains unresolved and requires investigation; recovery does not invent
+a safe-to-retry result. The history now distinguishes active processing, interrupted
+operations, expiry, exhausted retries, queued work, and confirmed completion.
+
+The overview's **Needs attention** count includes held records, failed executions,
+and unresolved outcomes; it is not limited to source validation errors.
+
+### Approve all staged candidates
+
+The Candidate records toolbar offers **Approve all staged candidates**. It loads
+every `pending_approval` candidate for the selected source, independently of table
+filters and pagination. Held, rejected and previously approved records are excluded.
+Loading uses the existing indexed, 50-record review-page API instead of one large
+review-window response. Progress shows the number loaded and pages received. A
+failed or stopped load resumes from its last successful timestamp/ID cursor.
+Incomplete, duplicate or changed lists are refused before account checks begin;
+the overall review limit remains 100,000 records. The list is frozen before account
+checking, so new discoveries are not silently included in the decision.
+
+Account checks run with three concurrent requests. The dialog lists eligible and
+blocked candidates, provides searchable paged results, and requires explicit bulk
+acknowledgement and a decision reason before any approvals are recorded. Confirming
+once queues the eligible set through existing authenticated BFF decisions in batches
+of up to 50. Each batch rechecks canonical state; unchanged hashes renew their review
+expiry, while changed records remain staged for another review. Existing server
+verification, audit evidence, ledger recovery and the no-email policy still apply.
+
+Keep the page open while approvals are queued. Stop finishes in-flight requests and
+prevents subsequent batches; queued approvals are retained. Continue resumes the
+remaining frozen list. Transport failures retain the exact request ID and manifest
+for idempotent retry. A definitive refusal requires a fresh review of the remaining
+staged candidates. Completion is reported separately in execution history.
+
 - The existing [sp-dash runtime](../../workers/sp-dash-worker.js) now has explicit
   environment-scoped Zoho queue routing and scheduled recovery. Existing course-upload
   and LTE handlers are preserved. Deploy through the existing [configuration](../../wrangler.toml).
@@ -774,3 +868,109 @@ Midnight, restarting discovery and pausing do not reset the rolling 24-hour ledg
 New scan record counts are independent of usage shared across scans and record types.
 
 Migration `20270222000000_zoho_retry_visibility.sql` is applied locally only.
+
+
+### Large imports: bounded network batching
+
+Discovery uses Zoho Recruit's documented maximum of 200 records per request for
+new candidate scans. Job scans use 20 because full descriptions are large. Both
+conversion streams share the persisted `zoho_discovery_runs.page_size`; a commit
+contains at most twice that size. Existing scans/checkpoint continuations preserve
+their original page size. A legacy worker cannot claim a run using larger pages.
+Provider responses retain a 1 MB limit except allowlisted Job_Openings collection
+GETs, which allow 3 MB for full descriptions. Only private staging commits allow
+8 MB to carry both bounded streams; other staging commands retain 1 MB. Provider quota reservations, cooldowns and explicit approvals are unchanged.
+
+Bulk account reviews use one authenticated BFF request per ten candidates, with at
+most five independent canonical checks in flight. The request shares its source
+and staging reads. Each payload freshness check and canonical review still runs
+independently. Approval rechecks share staging reads across the selected fifty
+records but independently verify every canonical review hash before recording
+human evidence. Source changes/outages stop the batch; record conflicts are
+reported as exclusions. Lost approval responses replay the original request ID.
+
+Queue invocations coalesce destination readiness probes for at most five seconds.
+This cache exists only within that invocation. Live approver, approval evidence,
+lease and destination checks still run for each operation. Candidate creation and
+job publication remain independent idempotent transactions with their own receipts.
+
+Projection publication sends ten immutable references in one queue batch and
+acknowledges them through one private SQL batch. Every acknowledgement retains its
+original operation/lease/expiry fence. An ambiguous batch send does not trigger
+individual fallback sends. Queue acceptance never means application completion;
+private projection proof is still required for each record. Legacy adapters that
+only implement `send` retain the individual transport path.
+
+Request-count regressions cover these reductions (excluding OAuth refresh,
+metadata retries, failures and final short/empty pages):
+
+| Stage | Previous | Current |
+| --- | --- | --- |
+| Candidate discovery per full stream page | 10 records/request | 200 records/request |
+| Job discovery per full stream page | 10 records/request | 20 records/request |
+| Browser reviews for 123 candidates, initial + renewal | 246 requests | 26 requests |
+| Staging metadata reads for 50 approval-time checks | 100 reads | 2 reads |
+| Publication of 100 candidate projections | 210 calls: reserve + send + acknowledgement | 30 calls: 10 reservations + 10 queue batches + 10 SQL batches |
+
+Apply the application migration
+[`20270226000000_zoho_discovery_batch_pages.sql`](../../../skillpassport/supabase/migrations/20270226000000_zoho_discovery_batch_pages.sql)
+and the canonical migration
+[`20270226010000_zoho_publication_batch.sql`](../../../sso-worker/supabase/migrations/20270226010000_zoho_publication_batch.sql)
+before deploying the new services. Both are included in the local migration catalog.
+Only the local databases were migrated during this change. The pagination SQL
+fixture stages 400 synthetic candidates, tests legacy and large-page checkpoint
+continuations, mixed workers, pause controls, oversized pages and private grants.
+
+
+### Polling and response-budget follow-up
+
+During discovery, background refresh reads the summary and shared run progress.
+It revalidates the record window only while a record tab is visible. Execution
+and deferred histories refresh while visible or while their known work is pending;
+fast discovery ticks throttle these secondary reads to fifteen seconds. Selecting
+a tab refreshes its content immediately. Explicit status refresh and mutation
+follow-ups retain complete revalidation. Authority failures still stop request
+fan-out and trigger backoff; hidden documents and overlapping ticks are skipped.
+Source-wide approved/processing/reconciliation totals keep progress polling alive
+even when the first twenty execution-history rows are already completed.
+
+Full-size Unicode job tests exercise both twenty-record streams, including a
+normalized commit above the former 4 MB staging limit. Streaming reads are
+cancelled above the 3 MB job limit, and OAuth, candidates, metadata, non-GET and
+untrusted-host requests retain the smaller budget. No checkpoint geometry or
+approval/receipt behavior changes in this follow-up.
+
+The database staging budget is 128 KB for jobs and remains 64 KB for candidates.
+The additive `20270227000000_zoho_job_payload_budget.sql` migration updates only
+the inner size guard, preserving publisher policy and the outer privacy/retention
+fences. Its SQL fixture stages forty full-size Unicode jobs, checks stable
+revisions, retains mapping blockers and rejects oversized jobs/candidates.
+
+### Durable incremental synchronization
+
+Integration settings → Synchronization configures candidates and job openings independently:
+
+- Automatic checks default to 15 minutes after the first manually started discovery. Disabling automation stops new scheduled scans; use Pause/Stop for an active scan.
+- Full reconciliation defaults to seven days, capped by source payload retention. Delta scans replay a ten-minute overlap from the last durably captured scan start. Known IDs may be fetched again when modified; unchanged normalized data preserves the existing revision and approval.
+- Capture completion is separate from approval/execution. Normalized deferred proposals remain recoverable without invalidating the entire baseline. Schema-invalid rows prevent checkpoint advancement. Counts distinguish new, changed, unchanged and suppressed records; deferred work is shown separately.
+- The first baseline prefers Bulk Read when the existing encrypted private artifact store, source-operation runtime and OAuth configuration are available. REST is the fallback. A successful bulk export is followed by a canonical REST coverage pass before the incremental checkpoint advances: Recruit does not document equivalent conversion/approval filters for Bulk Read. This deliberately avoids claiming complete coverage from an ambiguous export. Provider permission errors, unsupported/oversized exports and validation failures never imply a complete baseline. Export POSTs with unknown outcomes are not blindly retried.
+- Bulk archives retain the existing bounded archive/expanded-file limits; jobs stage in 20-row chunks and candidates in 200-row chunks. The archive is decompressed and indexed once into independently authenticated encrypted batches in one tracked private object. Resumed batches use ETag-fenced R2 byte ranges to read the encrypted index and their own batch; they do not rescan the CSV. Legacy encrypted ZIPs are upgraded atomically at the same key. Indexed objects are capped at 24 MiB plus a bounded index; oversize preparation falls back to REST. Exports exceeding those bounds fall back to paginated REST rather than increasing Worker memory without a bound.
+- Existing database leases, organization-wide quota accounting, retry deadlines, approval evidence, receipts and execution outboxes remain authoritative. Restarting a process or closing the browser does not reset them. Paused/cancelled scans are not automatically restarted.
+
+Workflow notifications are optional acceleration. In Integration settings, generate a webhook secret, then configure Zoho Recruit workflow POST actions for both modules at `/api/integrations/zoho-recruit/webhook`. Send `connectionId`, `module` (`Candidates` or `Job_Openings`) and `secret` in a JSON or URL-encoded body; an optional numeric `externalId` is accepted but not persisted. Do not include credentials in the URL. Only a SHA-256 digest of the random 256-bit secret is stored. Rotation invalidates the old secret immediately; relevant source configuration changes also invalidate it.
+
+The endpoint stores one coalesced hint per source/module, not candidate data. The existing recovery cron dispatches conditional discovery after an active scan finishes, with a minimum one-minute debounce. Scheduled polling repairs lost notifications. Provider deletion evidence is checked separately (daily or after a hint); absence from an incomplete inventory never deletes anything. Lifecycle effects retain their explicit approval requirements. No account, job or email is created by webhook acceptance.
+
+Deploy the additive `20270228000000_zoho_sync_coordinator.sql` and `20270301000000_zoho_bulk_capture_coverage.sql` and `20270302000000_zoho_sync_recovery_fences.sql` and `20270303000000_zoho_bulk_index_upgrade.sql` migrations before the updated dashboard/runtime. Production processing still follows the existing deployment profiles; installing this change does not turn disabled environments on. Migration rollback must account for the function wrappers and captured checkpoints; use a forward fix rather than replaying old migrations.
+
+The recovery-fence migration retires obsolete-configuration scan intents before a fresh manual start and during scheduled housekeeping. It does not restart paused/cancelled work or mint new approvals. The planner pins transport on run creation; REST commits also verify transport ownership. A manually running export is skipped by automatic module planning, and a bulk run with a live lease cannot consume a discovery dispatch slot. Source-local serialization conflicts do not abort other sources' scheduling.
+
+Legacy ZIP replacement has its own durable write marker before changing the object. Cleanup cannot acknowledge deletion while that replacement is unconfirmed. Recovery requires the indexed object's exact write token; merely observing the previous ZIP does not prove the replacement finished. Old writer acknowledgements cannot clear an index-upgrade marker. Erasure racing a late replacement therefore retains a tracked pointer until the new write can be confirmed and deleted.
+
+### Discovery status consistency
+
+The initial discovery-history read can request `live=1`. Its history page and cursor stay unchanged; separate bounded per-module heads and completed capture checkpoints prevent a busy candidate history from hiding job activity. Status reads require the same live administrator authorization as history reads. A failed status read is an outage, never an empty successful checkpoint.
+
+Visible idle pages revalidate every 45 seconds, with outage backoff capped at two minutes, and refresh on window focus or visibility return. Active work retains its faster existing cadence. Hidden pages skip polling. Checkpoints update open synchronization settings without resetting unsaved form edits or the one-time webhook secret. Checkpoints from older source configuration revisions are excluded.
+
+The discovery card labels metrics as belonging to this scan and uses the original `scan_started_at` across checkpoint continuations. Legacy or incomplete classification counters are shown as unavailable instead of inventing a zero breakdown. Received/staged counts remain intact. Cancellation preserves staged records and does not establish a completed capture checkpoint or cancel approved execution.
