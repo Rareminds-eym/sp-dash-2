@@ -10,7 +10,11 @@ module.exports = async function run() {
   const body = '{}';
   const timestamp = String(Date.now());
   const signature = createHmac('sha256', secret).update(`POST\n${url.pathname}\n${timestamp}\n${body}`).digest('hex');
-  const response = await fetch(url, {method:'POST', body, redirect:'error', signal:AbortSignal.timeout(30000), headers:{'Content-Type':'application/json','x-lte-timestamp':timestamp,'x-lte-signature':signature}});
+  const response = await fetch(url, {method:'POST', body, redirect:'manual', signal:AbortSignal.timeout(30000), headers:{'Content-Type':'application/json','x-lte-timestamp':timestamp,'x-lte-signature':signature}});
+  if ([301,302,303,307,308].includes(response.status)) {
+    await response.body?.cancel();
+    throw new Error('LTE returned an unexpected redirect');
+  }
   if (!response.ok) {
     const failure = await response.json().catch(() => ({}));
     throw new Error(`LTE diagnostics returned HTTP ${response.status}${typeof failure.error === 'string' ? `: ${failure.error}` : ''}`);

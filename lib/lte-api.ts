@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { lteEndpoint, type LTEConnection } from './lte-http';
+import { fetchLTE, lteEndpoint, type LTEConnection } from './lte-http';
 
 export async function lteConnection(): Promise<LTEConnection> {
   // Resolve at request time so absent LTE configuration never breaks app boot/build.
@@ -60,7 +60,7 @@ export async function callLTE(request: NextRequest, operation: string, payload?:
       }) : undefined;
       headers.set('Content-Type', request.headers.get('content-type') || 'application/json');
     }
-    const result = await fetch(endpoint, {method:request.method, headers, body, ...(body instanceof ReadableStream ? {duplex:'half'} : {}), redirect:'error', signal:AbortSignal.timeout(120000)});
+    const result = await fetchLTE(endpoint, {method:request.method, headers, body, ...(body instanceof ReadableStream ? {duplex:'half'} : {}), signal:AbortSignal.timeout(120000)});
     // Do not forward upstream cookies, CORS policy or transport headers.
     return new Response(result.body, {status:result.status, headers:{'Content-Type':result.headers.get('Content-Type') || 'application/json', 'Cache-Control':'no-store'}});
   } catch {
@@ -77,7 +77,7 @@ export async function proxyLTEAsset(request: NextRequest): Promise<Response> {
   try {
     const endpoint = lteEndpoint(await lteConnection(), '/api/v1/catalog/assets');
     endpoint.search = new URL(request.url).search;
-    const response = await fetch(endpoint, {redirect:'error', signal:AbortSignal.timeout(30000)});
+    const response = await fetchLTE(endpoint, {signal:AbortSignal.timeout(30000)});
     const headers = new Headers();
     for (const name of ['Content-Type', 'Cache-Control', 'X-Content-Type-Options']) {
       const value = response.headers.get(name); if (value) headers.set(name,value);
