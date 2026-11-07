@@ -2,13 +2,44 @@ import {beforeEach, afterEach, describe, it, expect, vi} from 'vitest';
 import {NextRequest} from 'next/server';
 import {callLTE, lteConnection, proxyLTEAsset} from '@/lib/lte-api';
 import {getCloudflareContext} from '@opennextjs/cloudflare';
-import {signedLTERequest} from '@/lib/lte-http';
+import {fetchLTE, signedLTERequest} from '@/lib/lte-http';
 import consumer from '@/workers/lte-asset-validation-consumer';
 vi.mock('@opennextjs/cloudflare', () => ({getCloudflareContext:vi.fn()}));
 const secret = 'test-secret-longer-than-thirty-two-characters';
 beforeEach(() => {vi.mocked(getCloudflareContext).mockResolvedValue({env:{LTE_API_BASE_URL:'https://lte.example.com'}} as never);});
 afterEach(() => {vi.unstubAllEnvs();vi.unstubAllGlobals();});
 describe('LTE API boundary', () => {
+ it('supports Workers fetch for admin, asset and signed requests',async()=>{
+  const upstream=vi.fn(async(_input:RequestInfo|URL,init?:RequestInit)=>{
+   if(init?.redirect==='error') throw new TypeError('Invalid redirect value');
+   return Response.json({error:'Unauthorized'},{status:401});
+  });vi.stubGlobal('fetch',upstream);
+  expect((await callLTE(new NextRequest('https://dash.example.com/api/admin/lte/workspace',{headers:{authorization:'Bearer jwt'}}),'workspace')).status).toBe(401);
+  expect((await proxyLTEAsset(new NextRequest('https://dash.example.com/api/admin/lte/assets?key=test'))).status).toBe(401);
+  expect((await signedLTERequest({LTE_API_BASE_URL:'https://lte.example.com',LTE_INTERNAL_SECRET:secret},'/api/v1/internal/catalog/health',{})).status).toBe(401);
+  expect(upstream).toHaveBeenCalledTimes(3);
+  for(const [,init] of upstream.mock.calls) expect(init?.redirect).toBe('manual');
+ });
+ it.each([301,302,303,307,308])('rejects HTTP %i redirects without forwarding credentials or payloads',async status=>{
+  const cancel=vi.fn();
+  const upstream=vi.fn(async(_input:RequestInfo|URL,_init?:RequestInit)=>new Response(new ReadableStream({cancel}),{status,headers:{Location:'https://other.example.com'}}));
+  vi.stubGlobal('fetch',upstream);
+  await expect(fetchLTE(new URL('https://lte.example.com/api'),{headers:{Authorization:'Bearer jwt'},redirect:'follow'})).rejects.toThrow('unexpected redirect');
+  expect(upstream).toHaveBeenCalledTimes(1);
+  expect(upstream.mock.calls[0][1]?.redirect).toBe('manual');
+  expect(cancel).toHaveBeenCalledOnce();
+ });
+ it.each([200,204,300,304,305,306,400,401,403,404,500,503])('preserves non-redirect HTTP %i responses',async status=>{
+  const response=new Response(null,{status});
+  vi.stubGlobal('fetch',vi.fn(async()=>response));
+  expect(await fetchLTE(new URL('https://lte.example.com/api'),{})).toBe(response);
+ });
+ it('passes Not Modified through both proxies instead of returning service unavailable',async()=>{
+  vi.stubGlobal('fetch',vi.fn(async()=>new Response(null,{status:304})));
+  const request=new NextRequest('https://dash.example.com/api/admin/lte/workspace',{headers:{authorization:'Bearer jwt'}});
+  expect((await callLTE(request,'workspace')).status).toBe(304);
+  expect((await proxyLTEAsset(new NextRequest('https://dash.example.com/api/admin/lte/assets?key=test'))).status).toBe(304);
+ });
  it('uses Cloudflare bindings and prevents Node dev from inheriting a production LTE target',async()=>{
   vi.stubEnv('NODE_ENV','development');vi.stubEnv('LTE_API_BASE_URL','https://unexpected-process-env.example.com');
   vi.mocked(getCloudflareContext).mockResolvedValue({env:{LTE_API_BASE_URL:'https://lte.rareminds.in',LTE_INTERNAL_SECRET:secret}} as never);
