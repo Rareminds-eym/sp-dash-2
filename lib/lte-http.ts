@@ -1,6 +1,17 @@
 /** Server-only LTE transport, also used by the existing queue consumer. */
 export interface LTEConnection { LTE_API_BASE_URL?: string; LTE_INTERNAL_SECRET?: string }
 
+export async function fetchLTE(endpoint: URL, init: RequestInit): Promise<Response> {
+  // Workers supports manual/follow only. Never follow redirects with user tokens
+  // or signed internal payloads, even when the destination is another LTE URL.
+  const response = await fetch(endpoint, {...init, redirect:'manual'});
+  if ([301,302,303,307,308].includes(response.status)) {
+    await response.body?.cancel();
+    throw new Error('LTE returned an unexpected redirect');
+  }
+  return response;
+}
+
 export async function readLTEBody(request: Request, limit: number): Promise<string> {
   if (Number(request.headers.get('content-length')) > limit) throw new RangeError('Request too large');
   const reader=request.body?.getReader();if(!reader)return '';
@@ -32,8 +43,8 @@ export async function signedLTERequest(config: LTEConnection, path: string, payl
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), {name:'HMAC', hash:'SHA-256'}, false, ['sign']);
   const bytes = new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`POST\n${endpoint.pathname}\n${timestamp}\n${body}`)));
   const signature = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
-  return fetch(endpoint, {
-    method: 'POST', body, redirect: 'error', signal: AbortSignal.timeout(120000),
+  return fetchLTE(endpoint, {
+    method: 'POST', body, signal: AbortSignal.timeout(120000),
     headers: {'Content-Type':'application/json', 'x-lte-timestamp':timestamp, 'x-lte-signature':signature},
   });
 }
