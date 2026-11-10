@@ -1,4 +1,6 @@
 'use client';
+import { jobSelectionIssues } from '@/lib/zoho/job-approval';
+import JobDescription from '@/components/zoho/JobDescription';
 import { browserResponse } from '@/lib/zoho/browser-response';
 import ExecutionRecovery from '@/components/zoho/ExecutionRecovery';
 import { executionRecoveryStatus } from '@/lib/zoho/execution-recovery-status';
@@ -78,7 +80,11 @@ export default function ZohoRecruitPage() {
   const [detailOpen,setDetailOpen]=useState(false);
   const [profileTab,setProfileTab]=useState('profile');
   useEffect(()=>setProfileTab('profile'),[detail?.id]);
+  const [jobPolicy, setJobPolicy] = useState(null);
+  const [jobPolicyError, setJobPolicyError] = useState('');
+  const [jobPolicyVersion, setJobPolicyVersion] = useState(0);
   const [candidateReviews, setCandidateReviews] = useState({});
+  const [candidateAcknowledgements, setCandidateAcknowledgements] = useState({});
   const [reviewNow, setReviewNow] = useState(() => Date.now());
   const [reviewing, setReviewing] = useState({});
   const [reviewErrors, setReviewErrors] = useState({});
@@ -173,6 +179,16 @@ export default function ZohoRecruitPage() {
   const historyReadAt = useRef({});
   const decisionAttempt = useRef(null);
   const connection = snapshot?.connections?.find(item => item.id === connectionId);
+  useEffect(() => {
+    const controller = new AbortController();
+    setJobPolicy(null);setJobPolicyError('');
+    if (module !== 'Job_Openings' || !connectionId || connection?.status !== 'connected') return;
+    api(`?${new URLSearchParams({view:'job_policy',connectionId})}`, {signal:controller.signal})
+      .then(result => {if (!controller.signal.aborted) setJobPolicy(result.policy);})
+      .catch(error => {if (!controller.signal.aborted) setJobPolicyError(error.message);});
+    return () => controller.abort();
+  }, [module, connectionId, connection?.configRevision, connection?.status, jobPolicyVersion]);
+
   const statusRuns = liveDiscovery?.connectionId === connectionId ? liveDiscovery.latestRuns : runs;
   const captures = liveDiscovery?.connectionId === connectionId ? liveDiscovery.captures : undefined;
   historyActivity.current = { executions, deferred, pendingHistoryConnection, runs: statusRuns };
@@ -315,7 +331,7 @@ export default function ZohoRecruitPage() {
     const current=()=>generation===requestGeneration.current&&read===recordRead.current&&activeConnection.current===connectionId;
     if (!background) {
       recordWindow.current = null;
-      setSelection([]); setRecords([]); setDetail(null); setCandidateReviews({}); setReviewing({}); setReviewErrors({}); candidateRequests.current.clear();
+      setSelection([]); setRecords([]); setDetail(null); setCandidateReviews({}); setCandidateAcknowledgements({}); setReviewing({}); setReviewErrors({}); candidateRequests.current.clear();
       setDetailOpen(false);setRecordTotal(null);setRecordsLoading(Boolean(connectionId));
     }
     if (!connectionId) return;
@@ -536,6 +552,7 @@ export default function ZohoRecruitPage() {
     } catch (e) { setError(e.message); setBusy(false); }
   }
   async function refresh() {
+    setJobPolicyVersion(value => value + 1);
     setError(''); setBusy(true);
     try { await refreshViews(true); } catch (e) { setError(e.message); }
     finally { setBusy(false); }
@@ -550,6 +567,7 @@ export default function ZohoRecruitPage() {
     const sequence = (candidateRequests.current.get(record.id) || 0) + 1;
     candidateRequests.current.set(record.id, sequence);
     const current = () => generation === requestGeneration.current && activeConnection.current === connectionId && candidateRequests.current.get(record.id) === sequence;
+    setCandidateAcknowledgements(previous => {const next={...previous};delete next[record.id];return next;});
     setReviewing(previous => ({ ...previous, [record.id]: true })); setReviewErrors(previous => ({...previous,[record.id]:''})); setError('');
     try {
       const { review } = await api('', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
@@ -573,6 +591,7 @@ export default function ZohoRecruitPage() {
   function acknowledgeCandidate(record, review) {
     if (candidateReviewUnavailable(record, connection)) return;
     if (!candidateApprovalReady(record, review, review?.reviewHash)) return;
+    setCandidateAcknowledgements(previous => ({...previous,[record.id]:review.reviewHash}));
     if(selection.length>=ZOHO_POLICY.maxApprovalBatch&&!selection.some(item=>item.id===record.id)){setError('Select at most 50 records per decision.');return;}
     setSelection(previous => [...previous.filter(item => item.id !== record.id), { id: record.id, revision: record.revision,
       sourceHash: record.source_hash, configRevision: record.config_revision, targetId: record.target_id,
@@ -582,10 +601,15 @@ export default function ZohoRecruitPage() {
     return JSON.stringify(items.map(item=>({id:item.id,revision:item.revision,sourceHash:item.sourceHash,configRevision:item.configRevision,
       targetId:item.targetId,candidateReviewHash:item.candidateReviewHash})).sort((a,b)=>a.id.localeCompare(b.id)));
   }
-  function openDecision(action) {
+  function recordDecisionItem(record) {
+    return {id:record.id,revision:record.revision,sourceHash:record.source_hash,configRevision:record.config_revision,
+      targetId:record.target_id,...(record.module === 'Candidates' ? {candidateReviewHash:candidateAcknowledgements[record.id]} : {})};
+  }
+  function openDecision(action, record = null) {
+    const items = record ? [recordDecisionItem(record)] : selection;
     decisionTrigger.current=document.activeElement;
-    setDecisionContext({connectionId,module,sourceName:connection?.name||'Selected source',fingerprint:selectionFingerprint(selection),
-      items:selection.map(item=>{const row=records.find(record=>record.id===item.id);const review=candidateReviews[item.id];return {...item,
+    setDecisionContext({connectionId,module,scope:record?'record':'selection',requestItems:items,sourceName:connection?.name||'Selected source',fingerprint:selectionFingerprint(items),
+      items:items.map(item=>{const row=records.find(record=>record.id===item.id);const review=candidateReviews[item.id];return {...item,
         name:row?.proposed_data?.name||row?.proposed_data?.title||'Selected record',email:row?.proposed_data?.email,
         externalId:row?.external_id,outcome:review?.decision==='create'?'Create learner · Discover (free)':review?.decision==='preserve_existing'?'Preserve existing learner access':module==='Job_Openings'?'Apply reviewed job changes':'Review required'};})});
     setReason('');setDecisionError('');setDecision(action);
@@ -599,23 +623,31 @@ export default function ZohoRecruitPage() {
     if (!decision || !connectionId) return;
     if(selectionChanged){setDecisionError('The reviewed selection changed. Close this dialog and review the current records before confirming.');return;}
     if(reason.trim().length<3||reason.trim().length>500){setDecisionError('Enter a decision reason between 3 and 500 characters.');return;}
-    if(!selection.length){setDecisionError('The selection changed. Close this dialog and select current records before confirming.');return;}
-    if(selection.length>ZOHO_POLICY.maxApprovalBatch){setDecisionError('Select at most 50 records per decision.');return;}
-    if (decision === 'approve' && !canApprove) { setDecisionError('Refresh and acknowledge every candidate review before approval.'); return; }
+    if(!decisionItems.length){setDecisionError('The selection changed. Close this dialog and select current records before confirming.');return;}
+    if(decisionItems.length>ZOHO_POLICY.maxApprovalBatch){setDecisionError('Select at most 50 records per decision.');return;}
+    if (decision === 'approve' && !canApproveDecision) { setDecisionError(module === 'Candidates' ? 'Refresh and acknowledge every candidate review before approval.' : 'Resolve the job publication requirements before approval.'); return; }
     setBusy(true); setError('');setDecisionError('');
-    const command = { connectionId, items: selection, decision, reason:reason.trim() };
+    const command = { connectionId, items: decisionItems, decision, reason:reason.trim() };
     const fingerprint = JSON.stringify(command);
-    if (decisionAttempt.current?.fingerprint !== fingerprint) decisionAttempt.current = { fingerprint, requestId: crypto.randomUUID() };
-    const input = { ...command, requestId: decisionAttempt.current.requestId };
+    const retrying = decisionAttempt.current?.fingerprint === fingerprint;
     try {
+      if (decision === 'approve' && module === 'Job_Openings' && !retrying) {
+        const fresh = await api(`?${new URLSearchParams({view:'job_policy',connectionId})}`, {signal:AbortSignal.timeout(30000)});
+        setJobPolicy(fresh.policy);
+        const issues = jobSelectionIssues(decisionItems.map(item => records.find(row => row.id === item.id)),connection,fresh.policy);
+        if (issues.length) throw new Error(issues[0].message);
+      }
+      if (!retrying) decisionAttempt.current = {fingerprint,requestId:crypto.randomUUID()};
+      const input = {...command,requestId:decisionAttempt.current.requestId};
       const { result } = await api('', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'decide', input }) });
       decisionAttempt.current = null;
+      if (module === 'Job_Openings') setJobPolicyVersion(value => value + 1);
       closeDecision();
       if (decision === 'approve') setPendingHistoryConnection(connectionId);
       setNotice(result.replayed ? 'Original decision recovered. No new action was applied. Check execution history for the current outcome.' : result.decision === 'approve'
         ? `${result.count} record(s) approved. ${result.delivery === 'pending' ? 'Queue delivery is pending automatic recovery.' : 'Execution is queued.'} Creation is reported separately. No email will be sent.`
         : `${result.count} record(s) ${result.decision === 'hold' ? 'put on hold' : 'rejected'}.`);
-      try{await refreshViews();}catch(error){setError(`Decision recorded. Refreshing the view failed: ${error.message}`);}
+      try{await refreshViews(decisionContext?.scope === 'record');}catch(error){setError(`Decision recorded. Refreshing the view failed: ${error.message}`);}
     } catch (e) { setDecisionError(e.message); }
     finally { setBusy(false); }
   }
@@ -642,16 +674,38 @@ export default function ZohoRecruitPage() {
       ['Needs attention', moduleCountsAvailable ? (totals.held || 0) + (totals.failed || 0) + (totals.reconciliation_required || 0) : null],
     ] };
   });
+  const selectedJobIssues = module === 'Job_Openings' ? jobSelectionIssues(selection.map(item => records.find(row => row.id === item.id)),connection,jobPolicy) : [];
   const approvalIssues = selection.map(selected => {
     const record = records.find(row => row.id === selected.id);
-    return { id: selected.id, record, message: candidateReviewUnavailable(record, connection) || selectionApprovalIssue(record, selected, candidateReviews[selected.id]) };
+    return { id: selected.id, record, message: candidateReviewUnavailable(record, connection) || selectionApprovalIssue(record, selected, candidateReviews[selected.id]) || selectedJobIssues.find(item => item.id === selected.id)?.message };
   }).filter(item => item.message);
   const nextCandidateReview = approvalIssues.find(item => item.record?.module === 'Candidates');
   const executionReady = snapshot?.capabilities?.execution?.ready && snapshot.capabilities.execution.modules.includes(module);
   const canApprove = executionReady && selection.length > 0 && selection.length<=ZOHO_POLICY.maxApprovalBatch &&
     connection?.status === 'connected' && approvalIssues.length === 0;
-
-  const selectionChanged=Boolean(decisionContext&&(decisionContext.connectionId!==connectionId||decisionContext.module!==module||decisionContext.fingerprint!==selectionFingerprint(selection)));
+  const detailItem = detail ? recordDecisionItem(detail) : null;
+  const detailApprovalIssue = !detail ? null : busy ? 'An operation is in progress. Wait for it to finish.' :
+    candidateReviewUnavailable(detail, connection) ||
+    (!executionReady ? 'Account / job execution is unavailable. Refresh status after restoring the required services.' : null) ||
+    selectionApprovalIssue(detail, detailItem, candidateReviews[detail.id]) ||
+    (detail.module === 'Job_Openings' ? jobSelectionIssues([detail],connection,jobPolicy)[0]?.message : null) || null;
+  const canDecideDetail = detail && !busy && !detail.payload_redacted_at && !detail.suppressed &&
+    ['pending_approval','held','rejected'].includes(detail.decision);
+  const decisionItems = decisionContext?.scope === 'record' ? decisionContext.requestItems : selection;
+  const currentDecisionItems = decisionContext?.scope === 'record' ? decisionItems.map(item => {
+    const row = records.find(record => record.id === item.id);
+    return row ? recordDecisionItem(row) : {...item,revision:null};
+  }) : selection;
+  const decisionJobIssues = module === 'Job_Openings' ? jobSelectionIssues(decisionItems.map(item => records.find(row => row.id === item.id)),connection,jobPolicy) : [];
+  const decisionIssues = decisionItems.map(selected => {
+    const record = records.find(row => row.id === selected.id);
+    return {id:selected.id,record,message:candidateReviewUnavailable(record,connection) ||
+      selectionApprovalIssue(record,selected,candidateReviews[selected.id]) ||
+      decisionJobIssues.find(item => item.id === selected.id)?.message};
+  }).filter(item => item.message);
+  const canApproveDecision = executionReady && connection?.status === 'connected' && decisionItems.length > 0 &&
+    decisionItems.length <= ZOHO_POLICY.maxApprovalBatch && decisionIssues.length === 0;
+  const selectionChanged=Boolean(decisionContext&&(decisionContext.connectionId!==connectionId||decisionContext.module!==module||decisionContext.fingerprint!==selectionFingerprint(currentDecisionItems)));
   const decisionCount=decisionContext?.items.length||0;
   const decisionLabel=decision==='approve'?`Approve ${decisionCount} ${decisionContext?.module==='Candidates'?(decisionCount===1?'candidate':'candidates'):(decisionCount===1?'job':'jobs')}`:decision==='hold'?`Hold ${decisionCount} records`:`Reject ${decisionCount} records`;
 
@@ -722,12 +776,13 @@ export default function ZohoRecruitPage() {
         <div ref={workspaceRoot} className={styles.workspace}>
           <div className={styles.workspaceMain}>
         <section id="zoho-record-workspace" tabIndex={-1} className={`${styles.recordCard} rounded-2xl border border-border bg-background`}>
-          <div className={styles.recordsTitle}><div><h2>{module==='Candidates'?'Candidate records':'Job opening records'} <span>({recordTotal??records.length})</span></h2></div><div className={styles.recordToolbar}><span className="sr-only">{selection.length} selected · maximum 50 per decision</span>{module==='Candidates'&&<BulkCandidateApproval api={api} connection={connection} available={executionReady} disabled={busy || recordsLoading} onQueued={sourceId=>{setPendingHistoryConnection(sourceId);refreshViews(true).catch(error=>setError(`Approvals recorded. Refreshing the view failed: ${error.message}`));}}/>}<DiscoveryActions key={`${connectionId}:${module}`} progress={progress} busy={busy} connected={connection?.status === 'connected'} available={Boolean(snapshot.capabilities?.discovery)} onStart={discover} onControl={controlDiscovery} /></div></div>
+          <div className={styles.recordsTitle}><div><h2>{module==='Candidates'?'Candidate records':'Job opening records'} <span>({recordTotal??records.length})</span></h2></div><div className={styles.recordToolbar}><span className="sr-only">{selection.length} selected · maximum 50 per decision</span>{<BulkCandidateApproval key={`bulk-${connectionId}-${module}`} module={module} api={api} connection={connection} available={executionReady} disabled={busy || recordsLoading} onQueued={sourceId=>{setPendingHistoryConnection(sourceId);refreshViews(true).catch(error=>setError(`Approvals recorded. Refreshing the view failed: ${error.message}`));}}/>}<DiscoveryActions key={`${connectionId}:${module}`} progress={progress} configRevision={connection?.configRevision} busy={busy} connected={connection?.status === 'connected'} available={Boolean(snapshot.capabilities?.discovery)} onStart={discover} onControl={controlDiscovery} /></div></div>
           <div className={styles.recordFilters}>
             <label className="min-w-0 flex-1 text-xs font-medium">Search records<input aria-label="Search records" type="search" maxLength={100} value={searchDraft} onChange={event=>setSearchDraft(event.target.value)} placeholder="Name, email, job title or Zoho ID" className="mt-1 w-full rounded-lg border border-border bg-background p-2 text-sm" /></label>
             <label className="text-xs font-medium">Review state<ZohoSelect aria-label="Review state" value={stateFilter} onValueChange={setStateFilter} className="min-w-40" options={[{value:'',label:'All states'},...Object.entries(captions).map(([value,label])=>({value,label}))]}/></label>
 
           </div>
+          {module === 'Job_Openings' && jobPolicyError && <p role="alert" className="px-4 text-sm text-destructive">Job publication checks are unavailable: {jobPolicyError} Refresh status to retry.</p>}
           {recordSection && selectionControls}
           <div className={styles.recordsPanel}>
             <div aria-label="Source records" tabIndex={0} className={styles.tableScroller}>
@@ -755,12 +810,12 @@ export default function ZohoRecruitPage() {
             {detail&&detailOpen&&compact&&<button type="button" data-review-backdrop tabIndex={-1} aria-label="Close record review backdrop" className={styles.reviewBackdrop} onClick={closeDetail}/>}
             <aside ref={detailPanel} hidden={compact && (!detail || !detailOpen)} tabIndex={-1} onKeyDown={detailKeys} role={compact&&detail&&detailOpen?'dialog':undefined} aria-modal={compact&&detail&&detailOpen?true:undefined} className={`${styles.reviewCard} ${detail&&(!compact||detailOpen)?styles.reviewVisible:styles.reviewEmpty} ${compact&&detail&&detailOpen?styles.reviewMobile:''}`} aria-label="Record review">
               <div className={styles.reviewToolbar}><h3 className="text-xs font-semibold text-muted-foreground">Review before approval</h3>{detail&&<button type="button" aria-label="Close record review" onClick={closeDetail} className="rounded p-2 hover:bg-muted"><X size={18}/></button>}</div>
-              {detail ? <><div className={styles.profileHeader}><span className={styles.avatar}>{(detail.proposed_data.name||detail.proposed_data.title||'?').split(' ').filter(Boolean).slice(0,2).map(word=>word[0]).join('')}</span><div><h3>{detail.proposed_data.name || detail.proposed_data.title || detail.external_id}</h3><p>{detail.proposed_data.job_title||detail.proposed_data.designation||detail.proposed_data.role||'Zoho Recruit source record'}</p><span className={`${styles.recordState} ${styles.neutral}`}>{detail.payload_redacted_at||detail.suppressed?'Erased / suppressed':captions[detail.decision]||detail.decision}</span></div></div><div className={styles.profileActions}><Button type="button" className={styles.primaryAction} size="sm" disabled={busy||!canApprove||selection.length!==1||selection[0]?.id!==detail.id} onClick={()=>openDecision('approve')}><Check size={13}/>Approve</Button><Button type="button" className={styles.rejectAction} variant="outline" size="sm" disabled={busy||selection.length!==1||selection[0]?.id!==detail.id} onClick={()=>openDecision('reject')}><X size={13}/>Reject</Button></div><p className={styles.profileActionHelp}>These actions apply only when this is the single selected record. Review and acknowledge before approval.</p><div role="tablist" aria-label={module==='Candidates'?'Candidate detail views':'Job detail views'} className={styles.profileTabs} onKeyDown={event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const keys=['profile','activity'];const index=event.key==='Home'?0:event.key==='End'?1:(keys.indexOf(profileTab)+1)%2;setProfileTab(keys[index]);event.currentTarget.querySelectorAll('[role="tab"]')[index]?.focus();}}>{['profile','activity'].map(key=><button key={key} type="button" role="tab" id={`zoho-profile-tab-${key}`} aria-selected={profileTab===key} aria-controls={`zoho-profile-panel-${key}`} tabIndex={profileTab===key?0:-1} onClick={()=>setProfileTab(key)}>{key[0].toUpperCase()+key.slice(1)}</button>)}</div><div role="tabpanel" id="zoho-profile-panel-profile" aria-labelledby="zoho-profile-tab-profile" hidden={profileTab!=='profile'}>{repeatedCandidateName(detail)&&<p role="status" className="mt-3 rounded-lg border border-amber-300 p-3 text-sm text-amber-900 dark:text-amber-200">The source name contains repeated parts. Verify the name in Zoho before approval. The imported name has not been changed.</p>}<h4 className={styles.profileSectionTitle}><UserRound size={13}/>Basic information</h4><p className="mt-3 break-all text-xs text-muted-foreground">{detail.target_id ? `Existing target: ${detail.target_id}` : 'No target linked. Canonical identity matching still requires review before provisioning.'}</p><dl className={styles.profileFields}>{Object.entries(detail.proposed_data).filter(([, value]) => value).map(([key, value]) => <div key={key}><dt className="text-xs text-muted-foreground">{key.replaceAll('_', ' ')}</dt><dd className="mt-1 break-words text-sm">{typeof value === 'string' ? value : JSON.stringify(value)}</dd></div>)}</dl><h4 className={styles.profileSectionTitle}><Database size={13}/>Source information</h4><dl className={styles.profileFields}><div><dt>Source</dt><dd>{connection?.name||'Zoho Recruit'}</dd></div><div><dt>Zoho record ID</dt><dd>{detail.external_id}</dd></div><div><dt>Reviewed revision</dt><dd>v{detail.revision}</dd></div></dl></div><div role="tabpanel" id="zoho-profile-panel-activity" aria-labelledby="zoho-profile-tab-activity" hidden={profileTab!=='activity'} className={styles.profileTabContent}><h4>Record activity</h4><dl>{[['Staged',detail.created_at],['Last updated',detail.updated_at],['Source modified',detail.source_modified_at]].filter(([,value])=>value&&Number.isFinite(Date.parse(value))).map(([label,value])=><div key={label}><dt>{label}</dt><dd>{new Date(value).toLocaleString()}</dd></div>)}<div><dt>Review state</dt><dd>{detail.payload_redacted_at||detail.suppressed?'Erased / suppressed':captions[detail.decision]||detail.decision}</dd></div><div><dt>Revision</dt><dd>v{detail.revision}</dd></div></dl></div>{detail.module === 'Candidates' && <CandidateReview record={detail} review={candidateReviews[detail.id]} loading={Boolean(reviewing[detail.id])}
+              {detail ? <><div className={styles.profileHeader}><span className={styles.avatar}>{(detail.proposed_data.name||detail.proposed_data.title||'?').split(' ').filter(Boolean).slice(0,2).map(word=>word[0]).join('')}</span><div><h3>{detail.proposed_data.name || detail.proposed_data.title || detail.external_id}</h3><p>{detail.proposed_data.job_title||detail.proposed_data.designation||detail.proposed_data.role||'Zoho Recruit source record'}</p><span className={`${styles.recordState} ${styles.neutral}`}>{detail.payload_redacted_at||detail.suppressed?'Erased / suppressed':captions[detail.decision]||detail.decision}</span></div></div><div className={styles.profileActions}><Button type="button" className={styles.primaryAction} size="sm" aria-describedby="zoho-detail-approval-requirement" disabled={!canDecideDetail||Boolean(detailApprovalIssue)} onClick={()=>openDecision('approve',detail)}><Check size={13}/>Approve</Button><Button type="button" className={styles.rejectAction} variant="outline" size="sm" disabled={!canDecideDetail} onClick={()=>openDecision('reject',detail)}><X size={13}/>Reject</Button></div><p id="zoho-detail-approval-requirement" role="status" className={styles.profileActionHelp}>{detailApprovalIssue || (detail.module === 'Candidates' ? 'Account review acknowledged. Approve opens a confirmation for this candidate.' : 'Ready for review confirmation. Approve opens a confirmation for this job opening.')}</p><div role="tablist" aria-label={module==='Candidates'?'Candidate detail views':'Job detail views'} className={styles.profileTabs} onKeyDown={event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const keys=['profile','activity'];const index=event.key==='Home'?0:event.key==='End'?1:(keys.indexOf(profileTab)+1)%2;setProfileTab(keys[index]);event.currentTarget.querySelectorAll('[role="tab"]')[index]?.focus();}}>{['profile','activity'].map(key=><button key={key} type="button" role="tab" id={`zoho-profile-tab-${key}`} aria-selected={profileTab===key} aria-controls={`zoho-profile-panel-${key}`} tabIndex={profileTab===key?0:-1} onClick={()=>setProfileTab(key)}>{key[0].toUpperCase()+key.slice(1)}</button>)}</div><div role="tabpanel" id="zoho-profile-panel-profile" aria-labelledby="zoho-profile-tab-profile" hidden={profileTab!=='profile'}>{repeatedCandidateName(detail)&&<p role="status" className="mt-3 rounded-lg border border-amber-300 p-3 text-sm text-amber-900 dark:text-amber-200">The source name contains repeated parts. Verify the name in Zoho before approval. The imported name has not been changed.</p>}<h4 className={styles.profileSectionTitle}><UserRound size={13}/>Basic information</h4><p className="mt-3 break-all text-xs text-muted-foreground">{detail.target_id ? `Existing target: ${detail.target_id}` : detail.module === 'Candidates' ? 'No target linked. Canonical identity matching still requires review before provisioning.' : 'No destination job linked. The publication policy determines whether this job can be created.'}</p><dl className={styles.profileFields}>{Object.entries(detail.proposed_data).filter(([key, value]) => value && key !== 'description').map(([key, value]) => <div key={key}><dt className="text-xs text-muted-foreground">{key.replaceAll('_', ' ')}</dt><dd className="mt-1 break-words text-sm">{typeof value === 'string' ? value : JSON.stringify(value)}</dd></div>)}</dl>{detail.module === 'Job_Openings' && detail.proposed_data.description && <section className={styles.jobDescription}><h4 className={styles.profileSectionTitle}>Job description</h4><JobDescription value={detail.proposed_data.description}/></section>}<h4 className={styles.profileSectionTitle}><Database size={13}/>Source information</h4><dl className={styles.profileFields}><div><dt>Source</dt><dd>{connection?.name||'Zoho Recruit'}</dd></div><div><dt>Zoho record ID</dt><dd>{detail.external_id}</dd></div><div><dt>Reviewed revision</dt><dd>v{detail.revision}</dd></div></dl></div><div role="tabpanel" id="zoho-profile-panel-activity" aria-labelledby="zoho-profile-tab-activity" hidden={profileTab!=='activity'} className={styles.profileTabContent}><h4>Record activity</h4><dl>{[['Staged',detail.created_at],['Last updated',detail.updated_at],['Source modified',detail.source_modified_at]].filter(([,value])=>value&&Number.isFinite(Date.parse(value))).map(([label,value])=><div key={label}><dt>{label}</dt><dd>{new Date(value).toLocaleString()}</dd></div>)}<div><dt>Review state</dt><dd>{detail.payload_redacted_at||detail.suppressed?'Erased / suppressed':captions[detail.decision]||detail.decision}</dd></div><div><dt>Revision</dt><dd>v{detail.revision}</dd></div></dl></div>{detail.module === 'Candidates' && <CandidateReview record={detail} review={candidateReviews[detail.id]} loading={Boolean(reviewing[detail.id])}
                 unavailableReason={candidateReviewUnavailable(detail,connection)} error={reviewErrors[detail.id]}
-                acknowledged={candidateApprovalReady(detail, candidateReviews[detail.id], selection.find(item => item.id === detail.id)?.candidateReviewHash)}
+                acknowledged={candidateApprovalReady(detail, candidateReviews[detail.id], candidateAcknowledgements[detail.id])}
                 onReview={() => reviewCandidate(detail)} onAcknowledge={() => acknowledgeCandidate(detail, candidateReviews[detail.id])} />}{compact&&detail.module==='Candidates'&&<Button className="mt-4" variant="outline" onClick={()=>{activateSection('advanced');requestAnimationFrame(()=>document.querySelector('#zoho-source-operations textarea')?.focus({preventScroll:true}));}}>Go to candidate administration</Button>}
               {detail.validation_errors.length > 0 && <ul className="mt-5 list-inside list-disc space-y-2 text-xs text-destructive">{detail.validation_errors.map(message => <li key={message}>{message}</li>)}</ul>}</> : <div className={styles.reviewEmptyContent}><div className={styles.reviewEmptyHeading}><FileCheck2 aria-hidden="true" size={20}/><h4>No record selected</h4></div><p>Choose a record to inspect its source details and validation findings. Approval applies only to selected records and revisions.</p></div>}
-              <p className={`${styles.reviewPolicy} text-muted-foreground`}>New learners receive Discover. Existing access is preserved. No invitation, password, verification or job email is sent.</p>
+              <p className={`${styles.reviewPolicy} text-muted-foreground`}>{module === 'Candidates' ? 'New learners receive Discover. Existing access is preserved. No invitation, password, verification or job email is sent.' : 'Only approved job revisions are applied. Publication status, organization capacity and destination ownership are checked before creation or updates. No emails are sent.'}</p>
             </aside>
           </div>
         </div>
@@ -858,12 +913,12 @@ export default function ZohoRecruitPage() {
             <div className={styles.decisionSafety}><LockKeyhole aria-hidden="true" size={18}/><div><strong>No emails will be sent</strong><p>{decision==='approve'&&decisionContext?.module==='Candidates'?'New learners receive Discover and remain activation pending. Existing sign-in and paid or organization access are preserved.':'This decision does not send invitations, verification emails or notifications.'}</p></div></div>
             {selectionChanged&&<p role="alert" className={styles.decisionAlert}>The reviewed selection changed while this dialog was open. Close and review the current records before confirming.</p>}
             {decisionError&&<p role="alert" className={styles.decisionAlert}>{decisionError}</p>}
-        {decision==='approve'&&!canApprove&&<div role="alert" className="mt-3 space-y-2 text-sm text-destructive">
+        {decision==='approve'&&!canApproveDecision&&<div role="alert" className="mt-3 space-y-2 text-sm text-destructive">
           <p>Approval is no longer ready. Close this dialog and resolve the following before confirming.</p>
           {!executionReady&&<p>Account/job execution is unavailable. Refresh status after restoring the required services.</p>}
           {connection?.status!=='connected'&&<p>Connect or resume this source, then run fresh discovery and review.</p>}
-          {!selection.length&&<p>The selection changed. Select current records again.</p>}
-          {approvalIssues.length>0&&<ul className="list-inside list-disc">{approvalIssues.slice(0,5).map(item=><li key={item.id}>{item.record?.proposed_data?.name||item.record?.proposed_data?.title||'Selected record'}: {item.message}</li>)}</ul>}
+          {!decisionItems.length&&<p>The selection changed. Select current records again.</p>}
+          {decisionIssues.length>0&&<ul className="list-inside list-disc">{decisionIssues.slice(0,5).map(item=><li key={item.id}>{item.record?.proposed_data?.name||item.record?.proposed_data?.title||'Selected record'}: {item.message}</li>)}</ul>}
           {nextCandidateReview&&<Button type="button" variant="outline" size="sm" disabled={busy} onClick={()=>{closeDecision();openRecord(nextCandidateReview.record,document.querySelector(`[data-review-record="${nextCandidateReview.id}"]`));}}>Close and review selection</Button>}
         </div>}
             <label htmlFor="zoho-decision-reason" className={styles.decisionReason}>Decision reason <span>Required</span></label>
@@ -871,7 +926,7 @@ export default function ZohoRecruitPage() {
               aria-describedby="zoho-decision-reason-help" placeholder="Explain why these records should be approved, held or rejected…" onChange={e=>setReason(e.target.value)} className={styles.decisionTextarea}/>
             <div id="zoho-decision-reason-help" className={styles.decisionReasonHelp}><span>{reason.trim().length<3?'Enter at least 3 characters to confirm.':'This reason will be saved in the decision history.'}</span><span>{reason.length}/500</span></div>
           </div>
-          <footer className={styles.decisionFooter}><p>Only the listed records and reviewed revisions are included.</p><div><Button type="button" variant="outline" disabled={busy} onClick={closeDecision}>Cancel</Button><Button data-confirm-decision type="submit" className={styles.primaryAction} disabled={busy || !decisionContext || selectionChanged || !selection.length || reason.trim().length < 3 || (decision === 'approve' && !canApprove)}>{busy ? <><RefreshCw aria-hidden="true" size={16} className="animate-spin"/> Recording…</> : <><Check aria-hidden="true" size={16}/>{decisionLabel}</>}</Button></div></footer>
+          <footer className={styles.decisionFooter}><p>Only the listed records and reviewed revisions are included.</p><div><Button type="button" variant="outline" disabled={busy} onClick={closeDecision}>Cancel</Button><Button data-confirm-decision type="submit" className={styles.primaryAction} disabled={busy || !decisionContext || selectionChanged || !decisionItems.length || reason.trim().length < 3 || (decision === 'approve' && !canApproveDecision)}>{busy ? <><RefreshCw aria-hidden="true" size={16} className="animate-spin"/> Recording…</> : <><Check aria-hidden="true" size={16}/>{decisionLabel}</>}</Button></div></footer>
         </form>
       </dialog>
     </div>

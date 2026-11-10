@@ -228,6 +228,13 @@
   .reviewMobile .profileHeader { padding-right:0;margin-top:16px; }
 }
 
+.jobDescription { min-width:0; }
+.jobDescriptionBody { min-width:0;overflow-wrap:anywhere;white-space:normal;font-size:13px;line-height:1.65;color:var(--zoho-ink); }
+.jobDescriptionBody>*+* { margin-top:12px; }
+.jobDescriptionBody h5 { font-size:13px;font-weight:600;line-height:1.5; }
+.jobDescriptionBody p { white-space:pre-line; }
+.jobDescriptionBody ul { list-style:disc;padding-left:20px; }
+.jobDescriptionBody li+li { margin-top:6px; }
 .overviewTotals { min-width:0; }
 .overviewTotalsHeading { display:flex;align-items:center;gap:9px;margin-bottom:12px; }
 .overviewTotalsHeading h2 { font-size:17px;line-height:22px;font-weight:650; }

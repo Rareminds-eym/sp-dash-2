@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Play, Pause, Square, LoaderCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-export default function DiscoveryActions({ progress, busy, connected, available, onStart, onControl }) {
+export default function DiscoveryActions({ progress, configRevision, busy, connected, available, onStart, onControl }) {
   const [command, setCommand] = useState(null);
   const [reason, setReason] = useState('');
   const dialog = useRef(null);
@@ -13,6 +13,7 @@ export default function DiscoveryActions({ progress, busy, connected, available,
   const runId = progress?.run?.id;
   const controllable = Boolean(runId && ['queued', 'running', 'paused'].includes(phase));
   const paused = phase === 'paused';
+  const outdated = controllable && Number.isInteger(configRevision) && Number.isInteger(progress.run.config_revision) && progress.run.config_revision !== configRevision;
   const starting = phase === 'submitting' || (progress?.active && !runId);
   useEffect(() => { setCommand(null); setReason(''); }, [runId, phase, connected]);
   useEffect(() => {
@@ -24,13 +25,15 @@ export default function DiscoveryActions({ progress, busy, connected, available,
   return <>
     <div className="flex flex-wrap gap-2" aria-label="Discovery actions">
       <Button ref={primary} id="zoho-discovery-action" type="button" variant="outline" size="sm"
-        disabled={busy || starting || !connected || ((!controllable || paused) && !available)}
-        onClick={() => controllable ? ask(paused ? 'resume' : 'pause') : onStart()}>
-        {starting ? <LoaderCircle aria-hidden="true" size={14} className="mr-2 animate-spin motion-reduce:animate-none" /> : controllable && !paused ? <Pause aria-hidden="true" size={14} className="mr-2" /> : <Play aria-hidden="true" size={14} className="mr-2" />}
-        {starting ? 'Starting discovery…' : controllable ? paused ? 'Resume discovery' : 'Pause discovery' : 'Start discovery'}
+        disabled={busy || starting || (!outdated && (!connected || ((!controllable || paused) && !available)))}
+        onClick={() => controllable ? ask(outdated ? 'cancel' : paused ? 'resume' : 'pause') : onStart()}>
+        {starting ? <LoaderCircle aria-hidden="true" size={14} className="mr-2 animate-spin motion-reduce:animate-none" /> : outdated ? <Square aria-hidden="true" size={14} className="mr-2" /> : controllable && !paused ? <Pause aria-hidden="true" size={14} className="mr-2" /> : <Play aria-hidden="true" size={14} className="mr-2" />}
+        {starting ? 'Starting discovery…' : outdated ? 'Stop outdated discovery' : controllable ? paused ? 'Resume discovery' : 'Pause discovery' : 'Start discovery'}
       </Button>
-      {controllable && <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => ask('cancel')}><Square aria-hidden="true" size={13} className="mr-2" />Stop discovery</Button>}
+      {controllable && !outdated && <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => ask('cancel')}><Square aria-hidden="true" size={13} className="mr-2" />Stop discovery</Button>}
     </div>
+    {outdated && <p className="text-xs text-muted-foreground">Source settings changed. Stop this outdated scan, then start fresh discovery. Staged records are retained.</p>}
+    {!available && !outdated && <p className="text-xs text-muted-foreground">Discovery service is unavailable. Refresh status after restoring its credentials and runtime.</p>}
     <dialog ref={dialog} aria-labelledby="discovery-action-title" aria-describedby="discovery-action-description"
       onCancel={event => { if (busy) event.preventDefault(); else setCommand(null); }}
       className="w-[min(92vw,480px)] rounded-2xl border border-violet-200 bg-background p-6 text-foreground shadow-xl backdrop:bg-slate-950/50 dark:border-violet-400/25">

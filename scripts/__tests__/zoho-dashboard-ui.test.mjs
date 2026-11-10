@@ -21,7 +21,7 @@ async function fixture({ initialSection = 'records', initialUrl = 'http://localh
   const state={reads:[],approved:false,complete:false,changed:false,historyGets:0, failures:{}, posts:[], decisionError:null, run:null, moduleCounts:null, moduleCountsAvailable:true};
   const timers=new Map(),timerDelays=new Map();let sequence=0;
   const dom=new JSDOM('<div id="root"></div>',{url:initialUrl,runScripts:'outside-only',pretendToBeVisual:true});
-  const w=dom.window;w.IS_REACT_ACT_ENVIRONMENT=true;
+  const w=dom.window;w.IS_REACT_ACT_ENVIRONMENT=true;w.TextEncoder=TextEncoder;
   const mediaListeners=new Set(),media={matches:compact,addEventListener(_,listener){mediaListeners.add(listener);},removeEventListener(_,listener){mediaListeners.delete(listener);}};
   w.matchMedia=()=>media;
   w.ResizeObserver=class { observe(){} unobserve(){} disconnect(){} };
@@ -34,13 +34,13 @@ async function fixture({ initialSection = 'records', initialUrl = 'http://localh
   if(progressTimers){const later=w.setTimeout.bind(w),cancel=w.clearTimeout.bind(w);w.setTimeout=(fn,delay,...args)=>{if([15000,30000,60000].includes(delay)){timers.set(++sequence,fn);timerDelays.set(sequence,delay);return sequence;}return later(fn,delay,...args);};w.clearTimeout=key=>{if(timers.has(key)){timers.delete(key);timerDelays.delete(key);}else cancel(key);};}
   if(idleTimers){const later=w.setTimeout.bind(w),cancel=w.clearTimeout.bind(w);w.setTimeout=(fn,delay,...args)=>{if(delay===45000){timers.set(++sequence,fn);timerDelays.set(sequence,delay);return sequence;}return later(fn,delay,...args);};w.clearTimeout=key=>{if(timers.has(key)){timers.delete(key);timerDelays.delete(key);}else cancel(key);};}
   w.HTMLDialogElement.prototype.showModal=function(){this.open=true;};w.HTMLDialogElement.prototype.close=function(){this.open=false;};
-  const row=(external)=>({id:external==='999'?id:'a5700000-0000-4000-8000-000000000002',external_id:external,module:candidate?'Candidates':'Job_Openings',revision:external==='888'&&state.changed?2:1,source_hash:'a'.repeat(64),config_revision:1,target_id:null,proposed_data:candidate?{name:'Audit candidate '+external}:{title:'Audit job '+external},validation_errors:[],decision:external==='999'&&state.approved?(state.complete?'completed':'approved'):'pending_approval',created_at:new Date().toISOString()});
+  const row=(external)=>({id:external==='999'?id:'a5700000-0000-4000-8000-000000000002',external_id:external,module:candidate?'Candidates':'Job_Openings',revision:external==='888'&&state.changed?2:1,source_hash:'a'.repeat(64),config_revision:1,target_id:null,proposed_data:candidate?{name:'Audit candidate '+external}:{title:'Audit job '+external,source_status:'In-progress',employment_type:'Full time',...state.jobFields},validation_errors:[],decision:external==='999'&&state.approved?(state.complete?'completed':'approved'):'pending_approval',created_at:new Date().toISOString()});
   w.fetch=async(input,init={})=>{
     const url=new URL(input,'http://localhost');let data;
     state.reads.push(url.searchParams.get('view')||'summary');
     const rawView=url.searchParams.get('view')||'summary';const view=rawView==='record_window'?'records':rawView;
     if(view==='summary'&&summaryError)return Response.json({error:'Administrator authority is unavailable'},{status:503});
-    if(state.approved && state.failures[view]>0){state.failures[view]--;return Response.json({error:'Injected '+view+' outage'},{status:503});}
+    if((state.approved || view==='job_policy') && state.failures[view]>0){state.failures[view]--;return Response.json({error:'Injected '+view+' outage'},{status:503});}
     if(init.method==='POST'){
       const command=JSON.parse(init.body);state.posts.push(command);
       if(command.action==='decide'&&state.decisionError)return Response.json({error:state.decisionError},{status:503});
@@ -68,6 +68,13 @@ async function fixture({ initialSection = 'records', initialUrl = 'http://localh
       const all=recordCount===2?[row('999'),row('888')]:Array.from({length:recordCount},(_,i)=>({...row(String(1000+i)),id:`b5700000-0000-4000-8000-${String(i+1).padStart(12,'0')}`}));
       data={records:url.searchParams.get('module')===(candidate?'Candidates':'Job_Openings')?all.slice(url.searchParams.has('before')?50:0,url.searchParams.get('view')==='record_window'?Number(url.searchParams.get('limit')||50):url.searchParams.has('before')?100:50):[],total:all.length};
     }
+    else if(url.searchParams.get('view')==='job_policy') {
+      const connectionId=url.searchParams.get('connectionId');
+      const configRevision=sources?.find(source=>source.id===connectionId)?.configRevision||1;
+      data={policy:{connectionId,configRevision,emailPolicy:'forbidden',triggerFingerprint:'f'.repeat(64),
+        policy:{enabled:true,noEmailReviewed:true,triggerFingerprint:'f'.repeat(64),statusMap:{'In-progress':'open',Inactive:'closed','On-Hold':'draft'},employmentMap:{'Full time':'job'}},
+        publishing:{entitlementReady:true,remainingSlots:null,activeTargetIds:[]},...state.jobContext}};
+    }
     else if(url.searchParams.get('view')==='execution_progress') {
       if(state.progressError)return Response.json({error:'Progress storage unavailable'},{status:503});
       data={progress:{connectionId:id,module:url.searchParams.get('module'),checkedAt:new Date().toISOString(),total:0,completed:0,queued:0,processing:0,checking:0,retrying:0,attention:0,expired:0,exhausted:0,nextRetryAt:null,emailPolicy:'forbidden',...state.progress}};
@@ -75,7 +82,7 @@ async function fixture({ initialSection = 'records', initialUrl = 'http://localh
     else if(url.searchParams.get('view')==='executions'){state.historyGets++;data={executions:state.approved?[{id,state:state.complete?'completed':'queued',execution_attempts:1,record_revision:1,zoho_staged_records:{module:candidate?'Candidates':'Job_Openings',external_id:'999'}}]:[]};}
     else if(url.searchParams.get('view')==='runs')data={runs:state.runs||(state.run?[state.run]:[]),...(state.latestRuns ? {latestRuns:state.latestRuns,captures:state.captures || []}: {})};
     else if(url.searchParams.get('view')==='deferred')data={deferred:[]};
-    else data={connections:sources||[{id,name:'Audit fixture',region:'in',status:'connected'}],counts:{},countsByConnection:{[id]:{completed:state.complete?1:0}},countsByConnectionAndModule:state.moduleCountsAvailable?(state.moduleCounts||{[id]:{[candidate?'Candidates':'Job_Openings']:{completed:state.complete?1:0}}}):undefined,capabilities:{oauth:false,discovery:discoveryAvailable,execution:{ready:true,modules:['Candidates','Job_Openings']}}};
+    else data={connections:(sources||[{id,name:'Audit fixture',region:'in',status:'connected'}]).map(source=>({configRevision:1,...source})),counts:{},countsByConnection:{[id]:{completed:state.complete?1:0}},countsByConnectionAndModule:state.moduleCountsAvailable?(state.moduleCounts||{[id]:{[candidate?'Candidates':'Job_Openings']:{completed:state.complete?1:0}}}):undefined,capabilities:{oauth:false,discovery:discoveryAvailable,execution:{ready:true,modules:['Candidates','Job_Openings']}}};
     return Response.json(data);
   };
   w.eval(bundle);
@@ -99,6 +106,89 @@ async function fixture({ initialSection = 'records', initialUrl = 'http://localh
   }
   return {w,state,timers,timerDelays,act,approve,button,chooseSource,chooseDropdown,async resize(compact){await act(()=>{media.matches=compact;for(const listener of mediaListeners)listener();});},async close(){await act(()=>w.auditRoot.unmount());w.close();}};
 }
+
+test('Next compiler recognizes every edited job review component as a client boundary',async()=>{
+ const {readFileSync}=dashRequire('node:fs');
+ const swc=dashRequire('next/dist/build/swc');
+ const {getLoaderSWCOptions}=dashRequire('next/dist/build/swc/options');
+ for(const name of ['components/pages/ZohoRecruitPage.jsx','components/zoho/BulkCandidateApproval.jsx','components/zoho/JobDescription.jsx']){
+  const filename=resolve(root,name);
+  const options=getLoaderSWCOptions({filename,relativeFilePathFromRoot:name,development:true,isServer:true,
+   pagesDir:resolve(root,'pages'),appDir:resolve(root,'app'),isPageFile:false,serverComponents:true,bundleLayer:'rsc',
+   serverReferenceHashSalt:'directive-regression',isCacheComponents:false,useCacheEnabled:false,compilerOptions:{},jsConfig:{compilerOptions:{}}});
+  const result=await swc.transform(readFileSync(filename,'utf8'),options);
+  assert.ok(result.code.includes('__next_internal_client_entry_do_not_use__'),`${name} must retain its Next client boundary`);
+ }
+});
+
+test('detail approval submits only the displayed job independently of table selection',async()=>{
+  const f=await fixture();try{
+    await f.act(()=>f.w.document.querySelector('[data-review-record]').click());
+    assert.equal(f.button('Approve').disabled,false);
+    assert.equal([...f.w.document.querySelectorAll('button')].filter(node=>node.textContent.trim()==='Reject').at(-1).disabled,false);
+    await f.act(()=>f.w.document.querySelector('[aria-label="Select source 888"]').click());
+    await f.act(()=>f.button('Approve').click());
+    assert.match(f.w.document.querySelector('[aria-label="Records in this decision"]').textContent,/Audit job 999/);
+    assert.doesNotMatch(f.w.document.querySelector('[aria-label="Records in this decision"]').textContent,/Audit job 888/);
+    // Checkbox changes while a single-record confirmation is open do not change its scope.
+    await f.act(()=>f.w.document.querySelector('[aria-label="Select source 888"]').click());
+    await f.act(()=>{const field=f.w.document.querySelector('#zoho-decision-reason');Object.getOwnPropertyDescriptor(f.w.HTMLTextAreaElement.prototype,'value').set.call(field,'Reviewed this job');field.dispatchEvent(new f.w.Event('input',{bubbles:true}));});
+    assert.equal(f.button('Confirm decision').disabled,false);
+    await f.act(()=>f.button('Confirm decision').click());
+    const command=f.state.posts.find(item=>item.action==='decide');
+    assert.equal(command.input.items.length,1);
+    assert.equal(command.input.items[0].id,id);
+  }finally{await f.close();}
+});
+
+test('detail rejection affects only its displayed record and preserves another checkbox selection',async()=>{
+  const f=await fixture();try{
+    await f.act(()=>f.w.document.querySelector('[data-review-record]').click());
+    await f.act(()=>f.w.document.querySelector('[aria-label="Select source 888"]').click());
+    const reject=[...f.w.document.querySelectorAll('button')].filter(node=>node.textContent.trim()==='Reject').at(-1);
+    await f.act(()=>reject.click());
+    await f.act(()=>{const field=f.w.document.querySelector('#zoho-decision-reason');Object.getOwnPropertyDescriptor(f.w.HTMLTextAreaElement.prototype,'value').set.call(field,'Reject this job');field.dispatchEvent(new f.w.Event('input',{bubbles:true}));});
+    await f.act(()=>f.button('Confirm decision').click());
+    const command=f.state.posts.find(item=>item.action==='decide');
+    assert.equal(command.input.decision,'reject');
+    assert.equal(command.input.items.length,1);
+    assert.equal(command.input.items[0].id,id);
+    assert.equal(f.w.document.querySelector('[aria-label="Select source 888"]').checked,true);
+  }finally{await f.close();}
+});
+
+test('individual approval confirmation rejects a changed displayed revision',async()=>{
+  const f=await fixture();try{
+    await f.act(()=>f.button('Audit job 888').click());
+    await f.act(()=>f.button('Approve').click());
+    await f.act(()=>{const field=f.w.document.querySelector('#zoho-decision-reason');Object.getOwnPropertyDescriptor(f.w.HTMLTextAreaElement.prototype,'value').set.call(field,'Reviewed this revision');field.dispatchEvent(new f.w.Event('input',{bubbles:true}));});
+    assert.equal(f.button('Confirm decision').disabled,false);
+    f.state.changed=true;
+    await f.act(()=>f.button('Refresh status').click());
+    assert.equal(f.button('Confirm decision').disabled,true);
+    assert.match(f.w.document.querySelector('dialog[aria-labelledby="decision-title"]').textContent,/reviewed selection changed/i);
+    assert.equal(f.state.posts.some(item=>item.action==='decide'),false);
+  }finally{await f.close();}
+});
+
+test('candidate detail approval preserves explicit account acknowledgement after unchecking the table',async()=>{
+  const f=await fixture({candidate:true});try{
+    await f.act(()=>f.button('Audit candidate 999').click());
+    assert.equal(f.button('Approve').disabled,true);
+    await f.act(()=>f.button('Check canonical account').click());
+    assert.equal(f.button('Approve').disabled,true);
+    await f.act(()=>f.button('Acknowledge and select').click());
+    await f.act(()=>f.w.document.querySelector('[aria-label="Select source 999"]').click());
+    assert.equal(f.button('Approve selection').disabled,true);
+    assert.equal(f.button('Approve').disabled,false);
+    await f.act(()=>f.button('Approve').click());
+    await f.act(()=>{const field=f.w.document.querySelector('#zoho-decision-reason');Object.getOwnPropertyDescriptor(f.w.HTMLTextAreaElement.prototype,'value').set.call(field,'Reviewed account');field.dispatchEvent(new f.w.Event('input',{bubbles:true}));});
+    await f.act(()=>f.button('Confirm decision').click());
+    const command=f.state.posts.find(item=>item.action==='decide');
+    assert.equal(command.input.items.length,1);
+    assert.equal(command.input.items[0].candidateReviewHash,'b'.repeat(64));
+  }finally{await f.close();}
+});
 
 test('a new approval refreshes history and starts polling from idle',async()=>{
   const f=await fixture();try{assert.equal(f.state.historyGets,1);await f.approve();assert.ok(f.state.historyGets>=2);assert.equal(f.timers.size,1);assert.ok(!f.w.document.body.textContent.includes('No approved execution recorded.'));}finally{await f.close();}
@@ -243,7 +333,7 @@ test('bulk approval reviews candidates beyond the loaded page and requires one e
   await f.act(()=>f.button('Done').click());assert.equal(dialog.open,false);assert.equal(f.w.document.body.style.overflow,'');
  }finally{await f.close();}
 });
-test('bulk approval is available only for connected candidate execution and does not affect job selections',async()=>{
+test('candidate bulk approval follows candidate execution availability and does not affect job selections',async()=>{
  const f=await fixture({candidate:true,sources:[{id,name:'Paused source',region:'in',status:'paused'}]});try{
   assert.equal(f.button('Approve all staged candidates').disabled,true);
   await f.act(()=>f.button('Job openings').click());assert.equal(f.button('Approve all staged candidates'),undefined);
@@ -897,7 +987,7 @@ test('profile tabs are keyboard accessible and single-record approval retains ca
   await f.act(()=>f.button('Check canonical account').click());assert.equal(f.button('Approve').disabled,true);
   await f.act(()=>f.button('Acknowledge and select').click());assert.equal(f.button('Approve').disabled,false);
   await f.act(()=>f.w.document.querySelector('[aria-label="Select source 888"]').click());
-  assert.equal(f.button('Approve').disabled,true);
+  assert.equal(f.button('Approve').disabled,false);
   assert.ok(f.state.posts.every(p=>p.action==='review_candidate'));
  }finally{await f.close();}
 });
@@ -1157,7 +1247,7 @@ test('changing the record module from a hidden tab makes one initial record requ
  const f=await fixture({candidate:true});try{
   await f.act(()=>f.button('Advanced').click());const before=f.state.reads.length;
   await f.act(()=>f.button('Job openings').click());
-  assert.deepEqual(f.state.reads.slice(before),['records']);
+  assert.deepEqual(f.state.reads.slice(before).sort(),['job_policy','records']);
  }finally{await f.close();}
 });
 
@@ -1241,5 +1331,129 @@ test('source selector disables selection when no source is registered', async ()
   assert.equal(trigger.disabled,true);
   assert.match(trigger.textContent,/No source registered/);
   assert.equal(f.w.document.querySelector('[role=listbox]'),null);
+ }finally{await f.close();}
+});
+
+
+test('outdated paused discovery offers stop even when discovery credentials are unavailable',async()=>{
+ const f=await fixture({candidate:true,discoveryAvailable:false,sources:[{id,name:'Current source',region:'in',status:'connected',configRevision:10}]});try{
+  f.state.run={id,connection_id:id,module:'Candidates',config_revision:9,state:'queued',control_state:'paused',next_page:6,created_at:new Date().toISOString()};
+  await f.act(()=>f.button('Refresh status').click());
+  assert.equal(f.button('Resume discovery'),undefined);
+  assert.equal(f.button('Stop outdated discovery').disabled,false);
+  assert.match(f.w.document.body.textContent,/Stop this outdated scan, then start fresh discovery/);
+  await f.act(()=>f.button('Stop outdated discovery').click());
+  await f.act(()=>{const field=f.w.document.querySelector('[aria-label="Discovery control reason"]');Object.getOwnPropertyDescriptor(f.w.HTMLInputElement.prototype,'value').set.call(field,'Restart with current settings');field.dispatchEvent(new f.w.Event('input',{bubbles:true}));});
+  assert.equal(f.button('Confirm stop').disabled,false);
+  await f.act(()=>f.button('Confirm stop').click());
+  assert.equal(f.state.posts.at(-1).input.command,'cancel');
+  assert.equal(f.state.posts.some(post=>post.action==='discover'),false);
+  assert.equal(f.button('Start discovery').disabled,true);
+ }finally{await f.close();}
+});
+
+test('bulk job approval reviews all staged job pages and queues eligible jobs after explicit confirmation',async()=>{
+ const f=await fixture({candidate:false,sources:[{id,name:'Job source',region:'in',status:'connected',configRevision:1}]});try{
+  const original=f.w.fetch,posted=[];
+  const rows=Array.from({length:53},(_,i)=>({id:`d5700000-0000-4000-8000-${String(i+1).padStart(12,'0')}`,connection_id:id,module:'Job_Openings',external_id:String(3000+i),
+   created_at:new Date(Date.UTC(2026,0,1)-i*1000).toISOString(),revision:1,source_hash:'a'.repeat(64),config_revision:1,target_id:null,decision:'pending_approval',
+   validation_errors:i===0?['location mapping is required.']:[],proposed_data:{title:`Engineer ${i}`,company_name:'Example client',location:i===0?'':'Chennai',department:'',description:'<h3>Responsibilities</h3><p>Review this job description</p><ul><li>Own delivery.</li></ul><script>evil()</script>',employment_type:'Full time',source_status:i===1?'Inactive':'In-progress',application_link:''}}));
+  f.w.fetch=async(input,options={})=>{
+   const url=new URL(input,'http://localhost');
+   if(url.searchParams.get('view')==='job_policy')return Response.json({policy:{connectionId:id,configRevision:1,emailPolicy:'forbidden',publishing:{entitlementReady:true,remainingSlots:null,activeTargetIds:[]},triggerFingerprint:'b'.repeat(64),policy:{enabled:true,noEmailReviewed:true,triggerFingerprint:'b'.repeat(64),statusMap:{'In-progress':'open',Inactive:'closed'},employmentMap:{'Full time':'job'}}}});
+   if(url.searchParams.get('view')==='records'&&url.searchParams.get('state')==='pending_approval'){
+    assert.equal(url.searchParams.get('module'),'Job_Openings');assert.equal(url.searchParams.get('search'),null);
+    const offset=url.searchParams.has('beforeId')?rows.findIndex(row=>row.id===url.searchParams.get('beforeId'))+1:0;
+    return Response.json({total:rows.length,records:rows.slice(offset,offset+50)});
+   }
+   if(options.method==='POST'){
+    const command=JSON.parse(options.body);assert.notEqual(command.action,'review_candidates');
+    if(command.action==='decide'){posted.push(command.input);return Response.json({result:{decision:'approve',count:command.input.items.length,delivery:'queued'}});}
+   }
+   return original(input,options);
+  };
+  await f.act(()=>f.button('Approve all staged job openings').click());
+  const dialog=f.w.document.querySelector('#zoho-bulk-job-approval');assert.equal(dialog.open,true);
+  assert.match(dialog.textContent,/51 eligible · 2 skipped/);assert.match(dialog.textContent,/Create job · open · job/);assert.match(dialog.textContent,/Review this job description/);
+  assert.doesNotMatch(dialog.textContent,/New learners receive Discover|Account check results|<h3>|evil\(\)/);
+  assert.equal(dialog.querySelector('h5').textContent,'Responsibilities');
+  assert.equal([...dialog.querySelectorAll('li')].some(node=>node.textContent==='Own delivery.'),true);
+  assert.equal(posted.length,0);assert.equal(f.button('Approve 51 job openings').disabled,true);
+  await f.act(()=>{const field=dialog.querySelector('#zoho-bulk-reason');Object.getOwnPropertyDescriptor(f.w.HTMLTextAreaElement.prototype,'value').set.call(field,'Reviewed all job details and publication states');field.dispatchEvent(new f.w.Event('input',{bubbles:true}));});
+  await f.act(()=>dialog.querySelector('input[type="checkbox"]').click());
+  await f.act(()=>f.button('Approve 51 job openings').click());
+  assert.deepEqual(posted.map(input=>input.items.length),[50,1]);assert.equal(posted.flatMap(input=>input.items).some(item=>'candidateReviewHash' in item),false);
+  assert.match(dialog.textContent,/Finished: 51 job openings approved and queued. 2 skipped/);
+ }finally{await f.close();}
+});
+
+async function jobDecisionReason(f) {
+ await f.act(()=>{const field=f.w.document.querySelector('#zoho-decision-reason');Object.getOwnPropertyDescriptor(f.w.HTMLTextAreaElement.prototype,'value').set.call(field,'Reviewed job policy');field.dispatchEvent(new f.w.Event('input',{bubbles:true}));});
+}
+test('job policy blocks individual and checkbox approval for an unlinked closed job',async()=>{
+ const f=await fixture();try{
+  f.state.jobFields={source_status:'Inactive'};
+  await f.act(()=>f.button('Refresh status').click());
+  await f.act(()=>f.button('Audit job 999').click());
+  assert.equal(f.button('Approve').disabled,true);
+  assert.match(f.w.document.querySelector('#zoho-detail-approval-requirement').textContent,/Closed jobs cannot be created/);
+  await f.act(()=>f.w.document.querySelector('[aria-label="Select source 999"]').click());
+  assert.equal(f.button('Approve selection').disabled,true);
+  assert.equal(f.state.posts.some(item=>item.action==='decide'),false);
+ }finally{await f.close();}
+});
+test('job policy permits draft approval without entitlement and blocks an oversized open-job selection',async()=>{
+ const f=await fixture();try{
+  f.state.jobFields={source_status:'On-Hold'};
+  f.state.jobContext={publishing:{entitlementReady:false,remainingSlots:0,activeTargetIds:[]}};
+  await f.act(()=>f.button('Refresh status').click());await f.act(()=>f.button('Audit job 999').click());
+  assert.equal(f.button('Approve').disabled,false);
+  f.state.jobFields={source_status:'In-progress'};f.state.jobContext={publishing:{entitlementReady:true,remainingSlots:1,activeTargetIds:[]}};
+  await f.act(()=>f.button('Refresh status').click());await f.act(()=>f.button('Audit job 999').click());
+  await f.act(()=>f.w.document.querySelector('[aria-label="Select source 999"]').click());
+  await f.act(()=>f.w.document.querySelector('[aria-label="Select source 888"]').click());
+  assert.equal(f.button('Approve selection').disabled,true);assert.equal(f.button('Approve').disabled,false);
+ }finally{await f.close();}
+});
+test('job confirmation refreshes publishing entitlement before issuing a new decision',async()=>{
+ const f=await fixture();try{
+  await f.act(()=>f.button('Audit job 999').click());await f.act(()=>f.button('Approve').click());await jobDecisionReason(f);
+  f.state.jobContext={publishing:{entitlementReady:false,remainingSlots:0,activeTargetIds:[]}};
+  await f.act(()=>f.button('Confirm decision').click());
+  assert.match(f.w.document.querySelector('dialog[aria-labelledby="decision-title"]').textContent,/Publishing entitlement is unavailable/);
+  assert.equal(f.state.posts.some(item=>item.action==='decide'),false);
+ }finally{await f.close();}
+});
+test('job retry retains the original decision ID after an uncertain response even if capacity changed',async()=>{
+ const f=await fixture();try{
+  await f.act(()=>f.button('Audit job 999').click());await f.act(()=>f.button('Approve').click());await jobDecisionReason(f);
+  f.state.decisionError='Transport unavailable';await f.act(()=>f.button('Confirm decision').click());
+  const first=f.state.posts.find(item=>item.action==='decide');assert.ok(first);
+  f.state.decisionError=null;f.state.jobContext={publishing:{entitlementReady:true,remainingSlots:0,activeTargetIds:[]}};
+  await f.act(()=>f.button('Confirm decision').click());
+  const calls=f.state.posts.filter(item=>item.action==='decide');assert.equal(calls.length,2);assert.deepEqual(calls[0].input,calls[1].input);
+ }finally{await f.close();}
+});
+test('job sidebar formats rich descriptions safely and uses job-specific instructions',async()=>{
+ const f=await fixture();try{
+  f.state.jobFields={description:'<h3>Responsibilities</h3><p>Build products.</p><ul><li>Own delivery.</li></ul><script>evil()</script>'};
+  await f.act(()=>f.button('Refresh status').click());await f.act(()=>f.button('Audit job 999').click());
+  const panel=f.w.document.querySelector('aside');
+  assert.equal([...panel.querySelectorAll('h5')].some(node=>node.textContent==='Responsibilities'),true);
+  assert.equal(panel.querySelector('li').textContent,'Own delivery.');
+  assert.doesNotMatch(panel.textContent,/<h3>|evil\(\)|Canonical identity matching|New learners receive Discover/);
+  assert.match(panel.textContent,/No destination job linked/);
+ }finally{await f.close();}
+});
+
+test('job policy fetch failure blocks approval and refresh retries the policy check',async()=>{
+ const f=await fixture();try{
+  f.state.failures.job_policy=1;
+  await f.act(()=>f.button('Refresh status').click());await f.act(()=>f.button('Audit job 999').click());
+  assert.equal(f.button('Approve').disabled,true);
+  assert.match(f.w.document.body.textContent,/Job publication checks are unavailable/);
+  assert.equal(f.state.posts.some(item=>item.action==='decide'),false);
+  await f.act(()=>f.button('Refresh status').click());await f.act(()=>f.button('Audit job 999').click());
+  assert.equal(f.button('Approve').disabled,false);
  }finally{await f.close();}
 });
