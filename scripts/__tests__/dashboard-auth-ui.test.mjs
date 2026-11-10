@@ -8,7 +8,7 @@ const root = fileURLToPath(new URL('../../../', import.meta.url));
 const require = createRequire(resolve(root, 'sp-dash/package.json'));
 const { build } = require('esbuild');
 // Use the shared workspace's existing jsdom installation for this mounted UI harness.
-const { JSDOM } = createRequire(resolve(root, 'skillpassport/package.json'))('jsdom');
+const { JSDOM } = require('jsdom');
 let bundle;
 before(async () => {
   const react = JSON.stringify(require.resolve('react'));
@@ -31,16 +31,16 @@ before(async () => {
   mocks['lucide-react'] = pass + icons.map(name => `export const ${name}=()=>null;`).join('');
   const result = await build({
     stdin: { contents: `import React,{act} from 'react';import{createRoot}from'react-dom/client';import Layout from './app/(dashboard)/layout.js';window.act=act;window.root=createRoot(document.getElementById('root'));window.mount=()=>window.root.render(React.createElement(Layout,null,React.createElement('div',{'data-protected':true},'Protected reports')));`, resolveDir: resolve(root,'sp-dash'), loader:'jsx' },
-    bundle:true, write:false, format:'iife', platform:'browser', jsx:'automatic', loader:{'.js':'jsx'}, alias:{'@':resolve(root,'sp-dash')}, define:{'process.env.NODE_ENV':'"development"'},
+    bundle:true, write:false, outdir:resolve(root,'sp-dash/.wrangler/shell-test-build'), format:'iife', platform:'browser', jsx:'automatic', loader:{'.js':'jsx'}, alias:{'@':resolve(root,'sp-dash')}, define:{'process.env.NODE_ENV':'"development"'},
     plugins:[{name:'auth-fixture',setup(b){
       b.onResolve({filter:/.*/},args => mocks[args.path] ? {path:args.path,namespace:'fixture'} : undefined);
       b.onLoad({filter:/.*/,namespace:'fixture'},args=>({contents:mocks[args.path],resolveDir:resolve(root,'sp-dash')}));
     }}],
   });
-  bundle=result.outputFiles[0].text;
+  bundle=result.outputFiles.find(file=>file.path.endsWith('.js')).text;
 });
-async function fixture(results) {
-  const dom=new JSDOM('<div id="root"></div>',{url:'http://localhost:3010/reports?tab=placements',runScripts:'outside-only',pretendToBeVisual:true});
+async function fixture(results, destination='/reports?tab=placements') {
+  const dom=new JSDOM('<div id="root"></div>',{url:'http://localhost:3010'+destination,runScripts:'outside-only',pretendToBeVisual:true});
   const w=dom.window, navigations=[];
   w.IS_REACT_ACT_ENVIRONMENT=true;
   w.MessageChannel=class{constructor(){this.port1={onmessage:null};this.port2={postMessage:()=>setTimeout(()=>this.port1.onmessage?.(),0)};}};
@@ -91,4 +91,19 @@ test('transport exceptions show retry instead of redirecting',async()=>{
     assert.ok(f.w.document.querySelector('[role="alert"]'));
     assert.equal(f.w.document.querySelector('[data-protected]'),null);
   } finally {await f.close();}
+});
+
+test('Zoho route retains the original page header and navigation',async()=>{
+ const f=await fixture([{authenticated:true,user:{id:'admin',email:'admin@example.test',role:'super_admin'}}],'/integrations/zoho-recruit');
+ try{
+  assert.ok(f.w.document.querySelector('[data-protected]'));
+  const header=f.w.document.querySelector('header');
+  assert.equal(header.querySelector('[data-page-title]').textContent.trim(),'Zoho Recruit');
+  assert.ok(header.className.includes('backdrop-blur-xl'));
+  assert.equal(Boolean(header.querySelector('[aria-label="Breadcrumb"]')),false);
+  assert.equal(Boolean(header.querySelector('[aria-label="Your account"]')),false);
+  assert.ok(f.w.document.querySelector('a[href="/integrations"]'));
+  assert.equal(f.w.document.querySelector('a[href="/integrations/zoho-recruit"]'),null,'Drawer must retain its original navigation entries');
+  assert.deepEqual(f.navigations,[]);
+ }finally{await f.close();}
 });

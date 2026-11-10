@@ -1,5 +1,7 @@
 'use client'
 
+import zohoShell from './zoho-shell.module.css'
+
 import { ApprovalViewProvider } from '@/components/approvals/ApprovalViewContext'
 import { Button } from '@/components/ui/button'
 import {
@@ -242,6 +244,7 @@ export default function DashboardLayout({ children }) {
   const [isDesktop, setIsDesktop] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
+  const isZohoRecruit = pathname === '/integrations/zoho-recruit'
   const searchParams = useSearchParams()
   const { toast } = useToast()
 
@@ -499,7 +502,7 @@ export default function DashboardLayout({ children }) {
 
   return (
     <ApprovalViewProvider>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 transition-colors duration-300">
+      <div className={cn("min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 transition-colors duration-300", isZohoRecruit && zohoShell.shell)}>
         {/* Mobile sidebar overlay */}
         <AnimatePresence>
           {sidebarOpen && (
@@ -560,14 +563,14 @@ export default function DashboardLayout({ children }) {
                   </motion.span>
                 </motion.div>
                 <div>
-                  <motion.h1
+                  <motion.p
                     className="font-bold text-lg bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent"
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
                   >
                     Rareminds
-                  </motion.h1>
+                  </motion.p>
                   <motion.p
                     className="text-xs text-muted-foreground"
                     initial={{ opacity: 0 }}
@@ -869,9 +872,9 @@ export default function DashboardLayout({ children }) {
         </motion.aside>
 
         {/* Main content */}
-        <div className="min-w-0 lg:pl-64">
+        <div data-dashboard-content className="min-w-0 lg:pl-64">
           {/* Top bar */}
-          <header className="sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-white/20 dark:border-slate-700/50 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50">
+          <header data-dashboard-topbar className="sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-white/20 dark:border-slate-700/50 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50">
             <div className="flex items-center justify-between px-6 py-4">
               <div className="flex items-center gap-4">
                 <Button
@@ -883,9 +886,9 @@ export default function DashboardLayout({ children }) {
                 >
                   <Menu className="h-5 w-5" />
                 </Button>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+                <div data-page-title role={pathname.startsWith('/integrations/zoho-recruit')?undefined:'heading'} aria-level={pathname.startsWith('/integrations/zoho-recruit')?undefined:1} className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
                   {getPageTitle()}
-                </h1>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <TooltipProvider>
@@ -934,7 +937,7 @@ export default function DashboardLayout({ children }) {
           </header>
 
           {/* Page content */}
-          <main className="p-6">
+          <main data-dashboard-main className="p-6">
             {children}
           </main>
         </div>
