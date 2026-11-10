@@ -8,13 +8,13 @@ const require=createRequire(resolve(root,'package.json'));
 const {build}=require('esbuild'),{JSDOM}=require('jsdom');
 const id='10000000-0000-4000-8000-000000000001';
 async function fixture(component,fetcher){
- const built=await build({stdin:{contents:`import React,{act}from'react';import{createRoot}from'react-dom/client';import Panel from './components/zoho/${component}.jsx';window.act=act;window.root=createRoot(document.getElementById('root'));window.mount=()=>window.root.render(React.createElement(Panel,{connectionId:'${id}',onSaved:async()=>{},onChanged:async()=>{}}));`,resolveDir:root,loader:'jsx'},bundle:true,write:false,platform:'browser',format:'iife',jsx:'automatic',alias:{'@':root},define:{'process.env.NODE_ENV':'"development"'}});
+ const built=await build({stdin:{contents:`import React,{act}from'react';import{createRoot}from'react-dom/client';import Panel from './components/zoho/${component}.jsx';window.act=act;window.root=createRoot(document.getElementById('root'));window.mount=()=>window.root.render(React.createElement(Panel,{connectionId:'${id}',onSaved:async()=>{},onChanged:async()=>{}}));`,resolveDir:root,loader:'jsx'},bundle:true,write:false,outdir:resolve(root,'.wrangler/ui-test-build'),platform:'browser',format:'iife',jsx:'automatic',alias:{'@':root},define:{'process.env.NODE_ENV':'"development"'}});
  const dom=new JSDOM('<div id="root"></div>',{url:'http://localhost/',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window;
- w.IS_REACT_ACT_ENVIRONMENT=true;w.MessageChannel=class{constructor(){this.port1={onmessage:null};this.port2={postMessage:()=>setTimeout(()=>this.port1.onmessage?.(),0)};}};
+ w.IS_REACT_ACT_ENVIRONMENT=true;w.ResizeObserver=class{observe(){}unobserve(){}disconnect(){}};w.HTMLElement.prototype.scrollIntoView=function(){};w.MessageChannel=class{constructor(){this.port1={onmessage:null};this.port2={postMessage:()=>setTimeout(()=>this.port1.onmessage?.(),0)};}};
  w.HTMLDialogElement.prototype.showModal=function(){this.open=true;};w.HTMLDialogElement.prototype.close=function(){this.open=false;this.dispatchEvent(new w.Event('close'));};
  const requests=[];w.fetch=async(url,options={})=>{requests.push({url,options});return fetcher(url,options);};
  const act=async fn=>w.act(async()=>{await fn();await new Promise(r=>setTimeout(r,10));});
- w.eval(built.outputFiles[0].text);await act(()=>w.mount());
+ w.eval(built.outputFiles.find(file=>file.path.endsWith('.js')).text);await act(()=>w.mount());
  const button=text=>[...w.document.querySelectorAll('button')].find(b=>b.textContent.trim()===text);
  return {w,act,requests,button,async close(){await act(()=>w.root.unmount());w.close();}};
 }

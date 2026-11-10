@@ -9,14 +9,14 @@ const {build}=require('esbuild');
 const {JSDOM}=createRequire(resolve(repo,'../skillpassport/package.json'))('jsdom');
 let bundle;
 before(async()=>{
- const result=await build({stdin:{contents:`import React,{act}from'react';import{createRoot}from'react-dom/client';import Panel from './components/zoho/SourcePrivacyPanel.jsx';window.act=act;window.root=createRoot(document.getElementById('root'));window.mount=props=>window.root.render(React.createElement(Panel,props));`,resolveDir:repo,loader:'jsx'},bundle:true,write:false,platform:'browser',format:'iife',jsx:'automatic',define:{'process.env.NODE_ENV':'"development"'},alias:{'@':repo},plugins:[{name:'button',setup(b){
+ const result=await build({stdin:{contents:`import React,{act}from'react';import{createRoot}from'react-dom/client';import Panel from './components/zoho/SourcePrivacyPanel.jsx';window.act=act;window.root=createRoot(document.getElementById('root'));window.mount=props=>window.root.render(React.createElement(Panel,props));`,resolveDir:repo,loader:'jsx'},bundle:true,write:false,outdir:resolve(repo,'.wrangler/ui-test-build'),platform:'browser',format:'iife',jsx:'automatic',define:{'process.env.NODE_ENV':'"development"'},alias:{'@':repo},plugins:[{name:'button',setup(b){
   b.onResolve({filter:/^@\/components\/ui\/button$/},()=>({path:'button',namespace:'fixture'}));
   b.onLoad({filter:/.*/,namespace:'fixture'},()=>({contents:`import React from ${JSON.stringify(require.resolve('react'))};export const Button=React.forwardRef(({variant,size,...props},ref)=>React.createElement('button',{...props,ref}));`,resolveDir:repo}));
- }}]});bundle=result.outputFiles[0].text;
+ }}]});bundle=result.outputFiles.find(file=>file.path.endsWith('.js')).text;
 });
 async function fixture(){
  const dom=new JSDOM('<div id="root"></div><button id="zoho-discovery-action">Discover candidates</button>',{url:'http://localhost:3010',runScripts:'outside-only',pretendToBeVisual:true});
- const w=dom.window;w.IS_REACT_ACT_ENVIRONMENT=true;
+ const w=dom.window;w.IS_REACT_ACT_ENVIRONMENT=true;w.ResizeObserver=class{observe(){}unobserve(){}disconnect(){}};w.HTMLElement.prototype.scrollIntoView=function(){};
  w.MessageChannel=class{constructor(){this.port1={onmessage:null};this.port2={postMessage:()=>setTimeout(()=>this.port1.onmessage?.(),0)};}};
  w.HTMLDialogElement.prototype.showModal=function(){this.open=true;};w.HTMLDialogElement.prototype.close=function(){this.open=false;};
  const state={status:'paused',configRevision:7,posts:[],conflict:false,gets:0};

@@ -1,4 +1,5 @@
 'use client';
+import ZohoSelect from './ZohoSelect';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import styles from './ExecutionRecovery.module.css';
@@ -60,7 +61,7 @@ export default function ExecutionRecovery({ connectionId, active, api, onChanged
     <h3 className="text-sm font-semibold">Recover approved operations</h3>
     <p className="mt-2 text-xs text-muted-foreground">Approvals survive server restarts. Recovery reuses saved approvals, retries confirmed failures, and checks receipts for interrupted operations. It never approves more records or resets retry limits.</p>
     <div className="mt-3 flex flex-wrap items-end gap-3">
-      <label className="text-xs">Record type<select value={module} disabled={busy} onChange={event=>setModule(event.target.value)} className="mt-1 block rounded-md border border-border bg-background px-3 py-2 text-sm"><option value="Candidates">Candidates</option><option value="Job_Openings">Job openings</option></select></label>
+      <label className="text-xs">Record type<ZohoSelect aria-label="Recovery record type" value={module} disabled={busy} onValueChange={setModule} options={[{value:'Candidates',label:'Candidates'},{value:'Job_Openings',label:'Job openings'}]}/></label>
       <Button type="button" variant="outline" disabled={busy || !connectionId} onClick={recover}>{busy ? 'Scheduling recovery…' : 'Recover approved operations'}</Button>
     </div>
     <p className="mt-2 text-xs text-muted-foreground">Up to 25 retries and 25 receipt checks per request. Remaining work stays saved for background recovery. Expired approvals and exhausted retries require operator review.</p>

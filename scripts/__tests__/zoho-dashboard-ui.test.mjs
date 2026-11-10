@@ -24,6 +24,11 @@ async function fixture({ initialSection = 'records', initialUrl = 'http://localh
   const w=dom.window;w.IS_REACT_ACT_ENVIRONMENT=true;
   const mediaListeners=new Set(),media={matches:compact,addEventListener(_,listener){mediaListeners.add(listener);},removeEventListener(_,listener){mediaListeners.delete(listener);}};
   w.matchMedia=()=>media;
+  w.ResizeObserver=class { observe(){} unobserve(){} disconnect(){} };
+  w.HTMLElement.prototype.scrollIntoView=function(){};
+  w.HTMLElement.prototype.hasPointerCapture=function(){return false;};
+  w.HTMLElement.prototype.setPointerCapture=function(){};
+  w.HTMLElement.prototype.releasePointerCapture=function(){};
   w.MessageChannel=class { constructor(){this.port1={onmessage:null};this.port2={postMessage:()=>setTimeout(()=>this.port1.onmessage?.(),0)};} };
   w.setInterval=(fn,delay)=>{timers.set(++sequence,fn);timerDelays.set(sequence,delay);return sequence;};w.clearInterval=key=>{timers.delete(key);timerDelays.delete(key);};
   if(progressTimers){const later=w.setTimeout.bind(w),cancel=w.clearTimeout.bind(w);w.setTimeout=(fn,delay,...args)=>{if([15000,30000,60000].includes(delay)){timers.set(++sequence,fn);timerDelays.set(sequence,delay);return sequence;}return later(fn,delay,...args);};w.clearTimeout=key=>{if(timers.has(key)){timers.delete(key);timerDelays.delete(key);}else cancel(key);};}
@@ -78,6 +83,13 @@ async function fixture({ initialSection = 'records', initialUrl = 'http://localh
   await act(()=>w.auditMount());
   const button=text=>text==='Confirm decision'?w.document.querySelector('[data-confirm-decision]'):[...w.document.querySelectorAll('button')].find(node=>node.textContent.trim()===text);
   if(initialSection === 'records' && button(candidate ? 'Candidates' : 'Job openings')) await act(()=>button(candidate ? 'Candidates' : 'Job openings').click());
+  async function chooseDropdown(selector,name) {
+    await act(()=>w.document.querySelector(selector).dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true})));
+    const option=[...w.document.querySelectorAll('[role=option]')].find(item=>item.textContent.includes(name));
+    assert.ok(option, `Dropdown option ${name} must exist`);
+    await act(()=>option.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Enter',bubbles:true})));
+  }
+  const chooseSource=name=>chooseDropdown('#zoho-source-selector',name);
   async function approve(){
     if(!candidate) await act(()=>w.document.querySelector('[aria-label="Select source 999"]').click());
     await act(()=>button('Approve selection').click());
@@ -85,7 +97,7 @@ async function fixture({ initialSection = 'records', initialUrl = 'http://localh
     assert.equal(button('Confirm decision').disabled,false);
     await act(()=>button('Confirm decision').click());
   }
-  return {w,state,timers,timerDelays,act,approve,button,async resize(compact){await act(()=>{media.matches=compact;for(const listener of mediaListeners)listener();});},async close(){await act(()=>w.auditRoot.unmount());w.close();}};
+  return {w,state,timers,timerDelays,act,approve,button,chooseSource,chooseDropdown,async resize(compact){await act(()=>{media.matches=compact;for(const listener of mediaListeners)listener();});},async close(){await act(()=>w.auditRoot.unmount());w.close();}};
 }
 
 test('a new approval refreshes history and starts polling from idle',async()=>{
@@ -302,7 +314,7 @@ test('overview isolates selected sources and shows zero for a type with no stage
  const f=await fixture({candidate:true,sources:[{id,name:'First source',region:'in',status:'connected'},{id:other,name:'Second source',region:'in',status:'connected'}]});try{
   f.state.moduleCounts={[id]:{Candidates:{completed:7},Job_Openings:{completed:9}},[other]:{Candidates:{pending_approval:3,completed:2}}};
   await f.act(()=>f.button('Refresh status').click());await f.act(()=>f.button('Overview').click());
-  await f.act(()=>{const select=f.w.document.querySelector('#zoho-source-selector');select.value=other;select.dispatchEvent(new f.w.Event('change',{bubbles:true}));});
+  await f.chooseSource('Second source');
   const values=label=>[...f.w.document.querySelector(`[aria-label="${label} totals for selected source"]`).querySelectorAll('strong')].map(el=>el.textContent);
   assert.deepEqual(values('Candidates'),['3','0','2','0']);assert.deepEqual(values('Job openings'),['0','0','0','0']);
  }finally{await f.close();}
@@ -396,7 +408,7 @@ test('mobile candidate administration switches to Advanced and releases the revi
   assert.equal(f.w.document.querySelector('[aria-label="Record review"]').hidden,true);
   assert.equal(f.w.document.body.style.overflow,'');
   assert.equal(f.w.document.querySelectorAll('[inert]').length,0);
-  assert.equal(f.w.document.querySelector('#zoho-source-selector').value,id);
+  assert.match(f.w.document.querySelector('#zoho-source-selector').textContent,/Audit fixture/);
  }finally{await f.close();}
 });
 
@@ -472,9 +484,9 @@ test('both record types report their own activity and running work keeps fast po
 test('source selection survives leaving and remounting the page',async()=>{
  const second='a5700000-0000-4000-8000-000000000002';
  const f=await fixture({sources:[{id,name:'First',region:'in',status:'connected'},{id:second,name:'Second',region:'in',status:'connected'}]});try{
-  await f.act(()=>{const select=f.w.document.querySelector('#zoho-source-selector');select.value=second;select.dispatchEvent(new f.w.Event('change',{bubbles:true}));});
+  await f.chooseSource('Second');
   await f.act(()=>f.w.auditRoot.render(null));await f.act(()=>f.w.auditMount());
-  assert.equal(f.w.document.querySelector('#zoho-source-selector').value,second);
+  assert.match(f.w.document.querySelector('#zoho-source-selector').textContent,/Second/);
   assert.equal(new URL(f.w.location.href).searchParams.get('source'),second);
  }finally{await f.close();}
 });
@@ -490,7 +502,7 @@ test('discovery progress updates when execution history fails',async()=>{
 
 test('background refresh removes records that stopped matching across loaded pages',async()=>{
  const f=await fixture({recordCount:51});try{
-  await f.act(()=>{const select=f.w.document.querySelector('[aria-label="Review state"]');select.value='pending_approval';select.dispatchEvent(new f.w.Event('change',{bubbles:true}));});
+  await f.chooseDropdown('[aria-label="Review state"]','Awaiting review');
   await f.act(()=>f.button('Load more records').click());
   assert.equal(f.w.document.querySelectorAll('tbody tr').length,51);
   const original=f.w.fetch;
@@ -524,7 +536,7 @@ test('filter changes show loading instead of an empty result and stale total',as
  const f=await fixture();let release;try{
   const original=f.w.fetch;
   f.w.fetch=async(url,options)=>['records','record_window'].includes(new URL(url,'http://localhost').searchParams.get('view'))?new Promise(resolve=>{release=async()=>resolve(await original(url,options));}):original(url,options);
-  await f.act(()=>{const select=f.w.document.querySelector('[aria-label="Review state"]');select.value='held';select.dispatchEvent(new f.w.Event('change',{bubbles:true}));});
+  await f.chooseDropdown('[aria-label="Review state"]','On hold');
   assert.match(f.w.document.body.textContent,/Loading records…/);
   assert.doesNotMatch(f.w.document.body.textContent,/No matching records|0 displayed of/);
   assert.equal(f.w.document.querySelector('[role="tabpanel"]:not([hidden])').getAttribute('aria-busy'),'true');
@@ -1073,8 +1085,7 @@ test('execution progress retains stale counts during an outage and resets scope 
     assert.match(panel.textContent,/2 of 10 completed/);
     assert.match(panel.querySelector('[role="alert"]').textContent,/may be stale/);
     f.state.progressError=false;f.state.progress=null;
-    const select=f.w.document.querySelector('[aria-label="Recover approved operations"] select');
-    await f.act(()=>{select.value='Job_Openings';select.dispatchEvent(new f.w.Event('change',{bubbles:true}));});
+    await f.chooseDropdown('[aria-label="Recovery record type"]','Job openings');
     assert.match(panel.textContent,/All approved job opening operations/);
     assert.match(panel.textContent,/0 of 0 completed/);
     assert.doesNotMatch(panel.textContent,/2 of 10 completed/);
@@ -1205,4 +1216,30 @@ test('focus revalidates an idle discovery card and explains missing legacy class
     assert.equal(card.querySelector('time').dateTime,'2026-11-04T00:00:00.000Z');
     assert.doesNotMatch(card.textContent,/0 new/);
   }finally{await f.close();}
+});
+
+test('source selector exposes source details and Escape closes without changing selection', async () => {
+ const second='a5700000-0000-4000-8000-000000000002';
+ const f=await fixture({initialSection:'overview',sources:[{id,name:'Primary source',region:'in',status:'connected'},{id:second,name:'Paused source',region:'eu',status:'paused'}]});try{
+  const trigger=f.w.document.querySelector('#zoho-source-selector');
+  assert.equal(trigger.getAttribute('role'),'combobox');
+  await f.act(()=>trigger.dispatchEvent(new f.w.KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true})));
+  const list=f.w.document.querySelector('[role=listbox]');
+  assert.match(list.textContent,/India data center · connected/);
+  assert.match(list.textContent,/Europe data center · paused/);
+  assert.equal(list.querySelectorAll('[aria-selected=true]').length,1);
+  await f.act(()=>f.w.document.activeElement.dispatchEvent(new f.w.KeyboardEvent('keydown',{key:'Escape',bubbles:true})));
+  assert.equal(f.w.document.querySelector('[role=listbox]'),null);
+  assert.match(trigger.textContent,/Primary source/);
+  assert.equal(f.w.document.activeElement,trigger);
+  assert.equal(f.state.posts.length,0);
+ }finally{await f.close();}
+});
+test('source selector disables selection when no source is registered', async () => {
+ const f=await fixture({initialSection:'overview',sources:[]});try{
+  const trigger=f.w.document.querySelector('#zoho-source-selector');
+  assert.equal(trigger.disabled,true);
+  assert.match(trigger.textContent,/No source registered/);
+  assert.equal(f.w.document.querySelector('[role=listbox]'),null);
+ }finally{await f.close();}
 });

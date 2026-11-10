@@ -5,6 +5,8 @@ import { executionRecoveryStatus } from '@/lib/zoho/execution-recovery-status';
 import OperationsPanel from '@/components/zoho/OperationsPanel';
 import styles from '@/components/zoho/ZohoRecruitPage.module.css';
 import SyncSettings from '@/components/zoho/SyncSettings';
+import SourceSelector from '@/components/zoho/SourceSelector';
+import ZohoSelect from '@/components/zoho/ZohoSelect';
 import DiscoveryProgress from '@/components/zoho/DiscoveryProgress';
 import DiscoveryActions from '@/components/zoho/DiscoveryActions';
 import { discoveryProgress, discoveryTiming, discoveryPollDelay, discoveryErrorText } from '@/lib/zoho/discovery-progress';
@@ -698,7 +700,7 @@ export default function ZohoRecruitPage() {
         </nav>
         <section id="zoho-overview" className={styles.overviewCard} aria-label="Integration overview">
           <div className={styles.cardHeading}><span className={styles.sectionIcon}><RefreshCw size={21}/></span><div><h2>Discovery overview</h2><p>Controlled imports · explicit approval</p></div><span className={`${styles.statusChip} ${styles.neutral}`}>Manual discovery</span></div>
-          <div className={styles.overviewFacts}><div className={styles.sourcePicker}><label htmlFor="zoho-source-selector">Selected source</label><select id="zoho-source-selector" value={connectionId} onChange={e=>selectSource(e.target.value)} className={styles.sourceSelect} disabled={!snapshot.connections.length}>{!snapshot.connections.length&&<option value="">No source registered</option>}{snapshot.connections.map(row=><option key={row.id} value={row.id}>{row.name} · {row.region.toUpperCase()}</option>)}</select></div><div><span>Current activity</span><strong>{sourceActivity || (connection?.status==='connected'?'Awaiting operator action':connection?.status==='paused'?'Connection paused':'Connection required')}</strong></div><div><span>Email policy</span><strong className={styles.safeText}><LockKeyhole size={13}/>No emails sent</strong></div></div>
+          <div className={styles.overviewFacts}><div className={styles.sourcePicker}><label htmlFor="zoho-source-selector">Selected source</label><SourceSelector connections={snapshot.connections} value={connectionId} onValueChange={selectSource}/></div><div><span>Current activity</span><strong>{sourceActivity || (connection?.status==='connected'?'Awaiting operator action':connection?.status==='paused'?'Connection paused':'Connection required')}</strong></div><div><span>Email policy</span><strong className={styles.safeText}><LockKeyhole size={13}/>No emails sent</strong></div></div>
         </section>
         <section id="zoho-panel-overview" role="tabpanel" aria-labelledby="zoho-tab-overview" tabIndex={0} hidden={activeSection!=='overview'} className={styles.sectionPanel}>
         <p className="text-xs text-muted-foreground">Selected source totals, separated by record type. These cards show selected review states; use the table filter for rejected or stale reviews.</p>
@@ -723,7 +725,7 @@ export default function ZohoRecruitPage() {
           <div className={styles.recordsTitle}><div><h2>{module==='Candidates'?'Candidate records':'Job opening records'} <span>({recordTotal??records.length})</span></h2></div><div className={styles.recordToolbar}><span className="sr-only">{selection.length} selected · maximum 50 per decision</span>{module==='Candidates'&&<BulkCandidateApproval api={api} connection={connection} available={executionReady} disabled={busy || recordsLoading} onQueued={sourceId=>{setPendingHistoryConnection(sourceId);refreshViews(true).catch(error=>setError(`Approvals recorded. Refreshing the view failed: ${error.message}`));}}/>}<DiscoveryActions key={`${connectionId}:${module}`} progress={progress} busy={busy} connected={connection?.status === 'connected'} available={Boolean(snapshot.capabilities?.discovery)} onStart={discover} onControl={controlDiscovery} /></div></div>
           <div className={styles.recordFilters}>
             <label className="min-w-0 flex-1 text-xs font-medium">Search records<input aria-label="Search records" type="search" maxLength={100} value={searchDraft} onChange={event=>setSearchDraft(event.target.value)} placeholder="Name, email, job title or Zoho ID" className="mt-1 w-full rounded-lg border border-border bg-background p-2 text-sm" /></label>
-            <label className="text-xs font-medium">Review state<select aria-label="Review state" value={stateFilter} onChange={event=>setStateFilter(event.target.value)} className="mt-1 block rounded-lg border border-border bg-background p-2 text-sm"><option value="">All states</option>{Object.entries(captions).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
+            <label className="text-xs font-medium">Review state<ZohoSelect aria-label="Review state" value={stateFilter} onValueChange={setStateFilter} className="min-w-40" options={[{value:'',label:'All states'},...Object.entries(captions).map(([value,label])=>({value,label}))]}/></label>
 
           </div>
           {recordSection && selectionControls}
@@ -784,7 +786,7 @@ export default function ZohoRecruitPage() {
           </div> : <p className="mt-5 text-sm text-muted-foreground">No source registered. Add your organization details to begin setup.</p>}
           {showSetup && <form onSubmit={configure} className="mt-5 grid gap-4 border-t border-border pt-5 md:grid-cols-2">
             {[['name', 'Connection name'], ['sourceOrgId', 'Zoho organization ID'], ['publisherOrganizationId', 'Platform publishing organization UUID']].map(([key, label]) => <label key={key} className="text-xs font-medium">{label}<input required value={configuration[key]} onChange={e => setConfiguration(value => ({ ...value, [key]: e.target.value }))} className="mt-2 block w-full rounded-lg border border-border bg-background p-2.5 text-sm" /></label>)}
-            <label className="text-xs font-medium">Data center<select value={configuration.region} onChange={e => setConfiguration(value => ({ ...value, region: e.target.value }))} className="mt-2 block w-full rounded-lg border border-border bg-background p-2.5 text-sm">{ZOHO_REGIONS.map(region => <option key={region} value={region}>{region.toUpperCase()}</option>)}</select></label>
+            <label className="text-xs font-medium">Data center<ZohoSelect aria-label="Data center" value={configuration.region} onValueChange={region => setConfiguration(value => ({ ...value, region }))} options={ZOHO_REGIONS.map(region => ({value:region,label:region.toUpperCase()}))}/></label>
             <div className="md:col-span-2"><Button disabled={busy} type="submit">Register disconnected source</Button><p className="mt-2 text-xs text-muted-foreground">Registration does not authorize access, import data, or create accounts.</p></div>
           </form>}
         </section>

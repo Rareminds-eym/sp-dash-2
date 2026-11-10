@@ -17,7 +17,7 @@
     "test:sql:timeout": "bash tests/sql/run-tests.sh --with-timeout",
     "test:sql:direct": "psql \"$LTE_TEST_DATABASE_URL\" -v ON_ERROR_STOP=1 -f tests/sql/publish_lte_catalog_snapshot_v2_1.test.sql",
     "test:zoho": "vitest run lib/zoho --maxWorkers=1",
-    "test:zoho-ui": "node --max-old-space-size=512 --test --test-concurrency=1 scripts/__tests__/zoho-dashboard-ui.test.mjs scripts/__tests__/zoho-sync-settings.test.mjs scripts/__tests__/zoho-operator-ui.test.mjs scripts/__tests__/zoho-policy-ui.test.mjs scripts/__tests__/zoho-audit-ui.test.mjs",
+    "test:zoho-ui": "node --max-old-space-size=512 --test --test-concurrency=1 scripts/__tests__/zoho-dashboard-ui.test.mjs scripts/__tests__/zoho-sync-settings.test.mjs scripts/__tests__/zoho-select-ui.test.mjs scripts/__tests__/zoho-operator-ui.test.mjs scripts/__tests__/zoho-policy-ui.test.mjs scripts/__tests__/zoho-audit-ui.test.mjs",
     "test:zoho-scripts": "node --max-old-space-size=512 --test --test-concurrency=1 scripts/__tests__/zoho-source-controls.test.mjs scripts/__tests__/dashboard-auth-ui.test.mjs scripts/__tests__/local-dashboard.test.mjs scripts/__tests__/local-recovery.test.mjs"
   },
   "dependencies": {

@@ -1,4 +1,5 @@
 'use client';
+import ZohoSelect from './ZohoSelect';
 import { browserResponse } from '@/lib/zoho/browser-response';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -119,7 +120,7 @@ export default function SourcePrivacyPanel({ connectionId, connectionStatus, con
         <Button className={control} type="submit" variant="outline" disabled={!ready || reason.trim().length < 3}>Save retention</Button>
       </form>
       <form className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border border-violet-200/60 bg-violet-50/30 p-4 dark:border-violet-400/15 dark:bg-violet-400/5" onSubmit={event => { event.preventDefault(); update('suppress_source', { connectionId, module, externalId, suppressed: true, reason }); }}>
-        <label className="text-xs font-medium">Record type<select className={field} value={module} onChange={event => setModule(event.target.value)} disabled={busy}><option value="Candidates">Candidate</option><option value="Job_Openings">Job opening</option></select></label>
+        <label className="text-xs font-medium">Record type<ZohoSelect aria-label="Suppression record type" value={module} onValueChange={setModule} disabled={busy} options={[{value:'Candidates',label:'Candidate'},{value:'Job_Openings',label:'Job opening'}]}/></label>
         <label className="text-xs font-medium">Zoho record ID<input className={field} value={externalId} onChange={event => setExternalId(event.target.value)} pattern="[0-9]{1,40}" required disabled={busy} /></label>
         <Button className={control} type="submit" variant="outline" disabled={!ready || reason.trim().length < 3}>Suppress record</Button>
       </form>

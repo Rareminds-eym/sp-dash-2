@@ -1,4 +1,5 @@
 'use client';
+import ZohoSelect from './ZohoSelect';
 import { browserResponse } from '@/lib/zoho/browser-response';
 
 import { useEffect, useRef, useState } from 'react';
@@ -22,11 +23,10 @@ function MappingRows({ title, entries, destinations, disabled, onChange }) {
       <input aria-label={`${title} source ${index + 1}`} maxLength={100} value={row.source}
         placeholder="Exact Zoho label" className="min-w-32 flex-1 rounded-lg border border-border bg-background p-2 text-sm"
         onChange={event => onChange(entries.map((value, position) => position === index ? { ...value, source: event.target.value } : value))} />
-      <select aria-label={`${title} destination ${index + 1}`} value={row.destination}
-        className="rounded-lg border border-border bg-background p-2 text-sm"
-        onChange={event => onChange(entries.map((value, position) => position === index ? { ...value, destination: event.target.value } : value))}>
-        <option value="">Choose mapping</option>{destinations.map(value => <option key={value} value={value}>{value}</option>)}
-      </select>
+      <ZohoSelect aria-label={`${title} destination ${index + 1}`} value={row.destination} disabled={disabled}
+        className="min-w-40 flex-1"
+        onValueChange={destination => onChange(entries.map((value, position) => position === index ? { ...value, destination } : value))}
+        options={[{value:'',label:'Choose mapping'},...destinations.map(value => ({value,label:value}))]}/>
       <button type="button" aria-label={`Remove ${title.toLowerCase()} mapping ${index + 1}`} className="px-2 text-xs underline" onClick={() => onChange(entries.filter((_, position) => position !== index))}>Remove</button>
     </div>)}
     <Button type="button" size="sm" variant="outline" disabled={disabled || entries.length >= 50} onClick={() => onChange([...entries, blankRow()])}>Add mapping</Button>
