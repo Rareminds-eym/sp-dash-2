@@ -16,7 +16,7 @@
 .trigger[data-state=open] .chevron { transform:rotate(180deg); }
 .menu {
   --source-accent:#6335ec;--source-hover:#f7f5ff;--source-selected:#f0eaff;--source-border:#e9e3fa;--source-muted:#766b89;
-  z-index:80;width:var(--radix-select-trigger-width);max-width:calc(100vw - 24px);
+  z-index:80;width:max-content;min-width:min(max(240px,var(--radix-select-trigger-width)),calc(100vw - 24px));max-width:calc(100vw - 24px);
   max-height:var(--radix-select-content-available-height);overflow:hidden;padding:5px;
   border:1px solid var(--source-border);border-radius:12px;background:#fff;color:#21183d;
   box-shadow:0 12px 32px #21183d18,0 2px 6px #21183d08;font-size:13px;
