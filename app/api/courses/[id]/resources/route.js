@@ -41,7 +41,7 @@ export async function GET(request, { params }) {
 
     const modulesResult = await supabaseAdmin
       .from('course_modules')
-      .select('module_id, title, description, order_index')
+      .select('module_id, title, description, order_index, skill_tags, activities')
       .eq('course_id', id)
       .order('order_index', { ascending: true })
       .order('title', { ascending: true });
@@ -61,7 +61,7 @@ export async function GET(request, { params }) {
         if (chunk.length === 0) continue;
         const lessonsResult = await supabaseAdmin
           .from('lessons')
-          .select('lesson_id, module_id, title, description, duration, order_index')
+          .select('lesson_id, module_id, title, description, content, duration, order_index')
           .in('module_id', chunk)
           .order('order_index', { ascending: true });
 
@@ -80,7 +80,7 @@ export async function GET(request, { params }) {
         if (chunk.length === 0) continue;
         const resourcesResult = await supabaseAdmin
           .from('lesson_resources')
-          .select('resource_id, lesson_id, name, type, url, file_size, thumbnail_url, embed_url, order_index')
+          .select('resource_id, lesson_id, name, type, url, file_size, thumbnail_url, embed_url, order_index, content')
           .in('lesson_id', chunk)
           .order('order_index', { ascending: true });
 
@@ -100,6 +100,18 @@ export async function GET(request, { params }) {
     }
 
     const resourcesByLesson = new Map();
+    const quizzesByResource = new Map();
+    const resourceIds = resourceRows.map(resource => resource.resource_id);
+    for (const chunk of chunkArray(resourceIds, SUPABASE_IN_CHUNK_SIZE)) {
+      if (!chunk.length) continue;
+      const result = await supabaseAdmin.from('quizzes').select('resource_id, slide_number, questions').in('resource_id', chunk).order('slide_number');
+      if (result.error) return NextResponse.json({ error: 'Failed to load slide quizzes' }, { status: 500 });
+      for (const quiz of result.data || []) {
+        const list = quizzesByResource.get(quiz.resource_id) || [];
+        list.push({ slide_number: quiz.slide_number, questions: quiz.questions });
+        quizzesByResource.set(quiz.resource_id, list);
+      }
+    }
     for (const resource of resourceRows) {
       const lessonResources = resourcesByLesson.get(resource.lesson_id) || [];
       lessonResources.push(resource);
@@ -111,12 +123,15 @@ export async function GET(request, { params }) {
       title: module.title,
       description: module.description || '',
       orderIndex: module.order_index,
+      skillTags: module.skill_tags || [],
+      activities: module.activities || [],
       lessons: (lessonsByModule.get(module.module_id) || [])
         .sort((a, b) => Number(a.order_index) - Number(b.order_index))
         .map(lesson => ({
           id: lesson.lesson_id,
           title: lesson.title,
           description: lesson.description || '',
+          content: lesson.content || '',
           duration: lesson.duration || '',
           orderIndex: lesson.order_index,
           resources: (resourcesByLesson.get(lesson.lesson_id) || [])
@@ -129,6 +144,8 @@ export async function GET(request, { params }) {
               fileSize: resource.file_size,
               thumbnailUrl: resource.thumbnail_url,
               embedUrl: resource.embed_url,
+              content: resource.content,
+              slideQuizzes: quizzesByResource.get(resource.resource_id) || [],
               orderIndex: resource.order_index,
             })),
         })),

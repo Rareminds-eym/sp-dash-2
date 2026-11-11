@@ -55,6 +55,7 @@ interface ParsedResource {
   resource_url?: string;
   file_path?: string;
   rowNumber: number;
+  slide_questions?: Array<{ slide_number: number; question: string; options: string[]; correct_option: string }>;
 }
 
 function cellValue(cell: ExcelJS.Cell): string {
@@ -358,6 +359,52 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Attach validated question rows to the matching resource for the importer.
+    const quizSheet = workbook.getWorksheet('Quiz');
+    let totalQuizQuestions = 0;
+    const quizErrors: Array<{ row: number; error: string }> = [];
+    if (quizSheet && quizSheet.rowCount > 1) {
+      const columns = new Map<string, number>();
+      quizSheet.getRow(1).eachCell((cell, col) => columns.set(cellValue(cell).trim().toLowerCase(), col));
+      const fields = ['course_code', 'module_order', 'lesson_order', 'resource_name', 'slide_number', 'question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option'];
+      const missing = fields.filter(field => !columns.has(field));
+      if (missing.length) quizErrors.push({ row: 1, error: `Quiz sheet is missing columns: ${missing.join(', ')}` });
+      if (!missing.length) quizSheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return;
+        const getQuiz = (field: string) => cellValue(row.getCell(columns.get(field)!)).trim();
+        if (fields.every(field => !getQuiz(field))) return;
+        totalQuizQuestions++;
+        if (totalQuizQuestions > BULK_PREVIEW_MAX_ROWS) {
+          if (totalQuizQuestions === BULK_PREVIEW_MAX_ROWS + 1) quizErrors.push({ row: rowNumber, error: 'Quiz sheet has too many rows' });
+          return;
+        }
+        const empty = fields.find(field => !getQuiz(field));
+        if (empty) { quizErrors.push({ row: rowNumber, error: `${empty} is required` }); return; }
+        for (const field of ['module_order', 'lesson_order', 'slide_number']) {
+          const value = Number(getQuiz(field));
+          if (!Number.isInteger(value) || value < 1) { quizErrors.push({ row: rowNumber, error: `${field} must be a positive whole number` }); return; }
+        }
+        if (!['A', 'B', 'C', 'D'].includes(getQuiz('correct_option').toUpperCase())) {
+          quizErrors.push({ row: rowNumber, error: 'correct_option must be A, B, C or D' }); return;
+        }
+        const course = courseMap.get(getQuiz('course_code'));
+        const module = course?.modules.find(item => item.module_order === Number(getQuiz('module_order')));
+        const lesson = module?.lessons.find(item => item.lesson_order === Number(getQuiz('lesson_order')));
+        const matches = (lesson?.resources || []).filter(item => item.resource_name.toLowerCase() === getQuiz('resource_name').toLowerCase());
+        if (matches.length !== 1) { quizErrors.push({ row: rowNumber, error: 'resource_name must match exactly one resource in the specified lesson' }); return; }
+        const resource = matches[0];
+        const isPptx = [resource.resource_name, resource.file_path || '', resource.resource_url || ''].some(value => /\.pptx(?:$|[?#])/i.test(value))
+          || /^https:\/\/docs\.google\.com\/presentation\/d\//i.test(resource.resource_url || '');
+        if (resource.resource_type !== 'document' || !isPptx) { quizErrors.push({ row: rowNumber, error: 'Quiz resource must be a PPTX presentation' }); return; }
+        (resource.slide_questions ||= []).push({
+          slide_number: Number(getQuiz('slide_number')), question: getQuiz('question'),
+          options: ['option_a', 'option_b', 'option_c', 'option_d'].map(getQuiz),
+          correct_option: getQuiz('correct_option').toUpperCase(),
+        });
+      });
+    }
+    if (quizErrors.length) return NextResponse.json({ success: false, error: 'Quiz sheet validation failed', errors: quizErrors }, { status: 400 });
+
     const totalModules = courses.reduce((sum, c) => sum + c.modules.length, 0);
     const totalLessons = courses.reduce((sum, c) => sum + c.modules.reduce((s, m) => s + m.lessons.length, 0), 0);
     const totalResources = courses.reduce(
@@ -401,6 +448,7 @@ export async function POST(request: NextRequest) {
       totalModules,
       totalLessons,
       totalResources,
+      totalQuizQuestions,
       filesToUpload,
       courses,
       errors,

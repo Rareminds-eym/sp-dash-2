@@ -1,16 +1,9 @@
 import openNextWorker from '../.open-next/worker.js';
-import lteAssetValidationConsumer from './lte-asset-validation-consumer.ts';
-import courseUploadConsumer from './course-upload-consumer.ts';
+import { dashboardRuntime } from '../lib/dashboard-runtime';
 
-export default {
-  fetch(request, env, ctx) {
-    return openNextWorker.fetch(request, env, ctx);
-  },
+export default dashboardRuntime(openNextWorker);
 
-  queue(batch, env, ctx) {
-    if (batch.queue?.startsWith('course-management-uploads')) {
-      return courseUploadConsumer.queue(batch, env, ctx);
-    }
-    return lteAssetValidationConsumer.queue(batch, env, ctx);
-  },
-};
+export { ZohoExecutionAuthority } from './zoho-execution-authority';
+
+export { JobIndexService } from './job-index-service';
+export { JobIndexCoordinator } from '../lib/job-index/coordinator';

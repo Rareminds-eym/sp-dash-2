@@ -12,6 +12,15 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
   AlertCircle,
   BookOpen,
   Building2,
@@ -23,6 +32,8 @@ import {
   Award,
   ChevronDown,
   ChevronUp,
+  Filter,
+  X,
 } from 'lucide-react'
 import { formatSlotLabel } from '@/components/educators/CollegeAssignmentForm'
 import { useEffect, useState } from 'react'
@@ -367,31 +378,140 @@ export default function EducatorAssignmentsModal({ educator, onClose }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState('teaching')
+  const [filterOptions, setFilterOptions] = useState({ 
+    colleges: [], 
+    departments: [], 
+    courses: [],
+    attendanceHistoryOptions: [],
+    taskNames: [],
+    taskColleges: [],
+    taskDepartments: [],
+    taskTypes: [],
+    taskCourses: [],
+    taskStatuses: [],
+  })
+  
+  // Filter states for Teaching & Attendance tab
+  const [filters, setFilters] = useState({
+    status: 'all',
+    collegeId: '',
+    departmentId: '',
+    startDateFrom: '',
+    startDateTo: '',
+    courseId: '',
+    sessionStatus: ''
+  })
+  
+  // Filter states for Tasks & Evaluations tab
+  const [taskFilters, setTaskFilters] = useState({
+    taskId: '',
+    taskType: '',
+    taskCollegeId: '',
+    taskDepartmentId: '',
+    taskCourseId: '',
+    taskStatus: 'all',
+  })
+  
+  const [showFilters, setShowFilters] = useState(false)
+  const [showTaskFilters, setShowTaskFilters] = useState(false)
 
-  useEffect(() => {
+  const fetchAssignments = async () => {
     if (!educator) return
-    let alive = true
     setLoading(true)
     setError('')
-    fetch(`/api/educators/${educator.id}/assignments`, { cache: 'no-store' })
-      .then(async response => {
-        const body = await response.json()
-        if (!response.ok) throw new Error(body.error || 'Failed to load assignments')
-        if (alive) {
-          setAssignments(body.data?.assignments || [])
-          setTasks(body.data?.tasks || [])
-        }
+    
+    try {
+      // Build query params
+      const params = new URLSearchParams()
+      
+      // Teaching & Attendance filters
+      if (filters.status && filters.status !== 'all') params.append('status', filters.status)
+      if (filters.collegeId) params.append('collegeId', filters.collegeId)
+      if (filters.departmentId) params.append('departmentId', filters.departmentId)
+      if (filters.startDateFrom) params.append('startDateFrom', filters.startDateFrom)
+      if (filters.startDateTo) params.append('startDateTo', filters.startDateTo)
+      if (filters.courseId) params.append('courseId', filters.courseId)
+      if (filters.sessionStatus) params.append('sessionStatus', filters.sessionStatus)
+      
+      // Tasks & Evaluations filters
+      if (taskFilters.taskId) params.append('taskId', taskFilters.taskId)
+      if (taskFilters.taskType) params.append('taskType', taskFilters.taskType)
+      if (taskFilters.taskCollegeId) params.append('taskCollegeId', taskFilters.taskCollegeId)
+      if (taskFilters.taskDepartmentId) params.append('taskDepartmentId', taskFilters.taskDepartmentId)
+      if (taskFilters.taskCourseId) params.append('taskCourseId', taskFilters.taskCourseId)
+      if (taskFilters.taskStatus && taskFilters.taskStatus !== 'all') params.append('taskStatus', taskFilters.taskStatus)
+      
+      const queryString = params.toString()
+      const url = `/api/educators/${educator.id}/assignments${queryString ? `?${queryString}` : ''}`
+      
+      const response = await fetch(url, { cache: 'no-store' })
+      const body = await response.json()
+      
+      if (!response.ok) throw new Error(body.error || 'Failed to load assignments')
+      
+      setAssignments(body.data?.assignments || [])
+      setTasks(body.data?.tasks || [])
+      setFilterOptions(body.data?.filterOptions || { 
+        colleges: [], 
+        departments: [], 
+        courses: [], 
+        attendanceHistoryOptions: [],
+        taskColleges: [], 
+        taskDepartments: [], 
+        taskTypes: [], 
+        taskCourses: [], 
+        taskStatuses: [], 
       })
-      .catch(e => {
-        if (alive) setError(e.message)
-      })
-      .finally(() => {
-        if (alive) setLoading(false)
-      })
-    return () => {
-      alive = false
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
     }
-  }, [educator])
+  }
+
+  useEffect(() => {
+    fetchAssignments()
+  }, [educator, filters, taskFilters])
+  
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }))
+  }
+  
+  const clearFilters = () => {
+    setFilters({
+      status: 'all',
+      collegeId: '',
+      departmentId: '',
+      startDateFrom: '',
+      startDateTo: '',
+      courseId: '',
+      sessionStatus: ''
+    })
+  }
+  
+  const handleTaskFilterChange = (key, value) => {
+    setTaskFilters(prev => ({ ...prev, [key]: value }))
+  }
+  const clearTaskFilters = () => {
+    setTaskFilters({
+      taskId: '',
+      taskType: '',
+      taskCollegeId: '',
+      taskDepartmentId: '',
+      taskCourseId: '',
+      taskStatus: 'all',
+    })
+  }
+  
+  const activeFilterCount = Object.entries(filters).filter(([key, value]) => {
+    if (key === 'status') return value !== 'all'
+    return value !== '' && value !== null && value !== undefined
+  }).length
+  
+  const activeTaskFilterCount = Object.entries(taskFilters).filter(([key, value]) => {
+    if (key === 'taskStatus') return value !== 'all'
+    return value !== '' && value !== null && value !== undefined
+  }).length
 
   return (
     <Sheet open={!!educator} onOpenChange={open => !open && onClose()}>
@@ -451,26 +571,356 @@ export default function EducatorAssignmentsModal({ educator, onClose }) {
             </TabsList>
 
             <TabsContent value="teaching" className="space-y-4 mt-2">
+              {/* Filter Section */}
+              <div className="space-y-3 border-b border-gray-200 dark:border-gray-800 pb-4">
+                <div className="flex items-center justify-between">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="gap-2"
+                  >
+                    <Filter className="h-4 w-4" />
+                    <span>Filters</span>
+                    {activeFilterCount > 0 && (
+                      <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5">
+                        {activeFilterCount}
+                      </Badge>
+                    )}
+                    {showFilters ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                  </Button>
+                  
+                  {activeFilterCount > 0 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearFilters}
+                      className="gap-1 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3 w-3" />
+                      Clear filters
+                    </Button>
+                  )}
+                </div>
+                
+                {showFilters && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800">
+                    {/* Status Filter */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="filter-status" className="text-xs font-medium">Status</Label>
+                      <Select value={filters.status} onValueChange={(v) => handleFilterChange('status', v)}>
+                        <SelectTrigger id="filter-status" className="h-9 text-xs">
+                          <SelectValue placeholder="All statuses" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All statuses</SelectItem>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="upcoming">Upcoming</SelectItem>
+                          <SelectItem value="ended">Ended</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {/* College Filter */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="filter-college" className="text-xs font-medium">College</Label>
+                      <Select value={filters.collegeId} onValueChange={(v) => handleFilterChange('collegeId', v)}>
+                        <SelectTrigger id="filter-college" className="h-9 text-xs">
+                          <SelectValue placeholder="All colleges" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">All colleges</SelectItem>
+                          {filterOptions.colleges.map(c => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {/* Department Filter */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="filter-department" className="text-xs font-medium">Department</Label>
+                      <Select value={filters.departmentId} onValueChange={(v) => handleFilterChange('departmentId', v)}>
+                        <SelectTrigger id="filter-department" className="h-9 text-xs">
+                          <SelectValue placeholder="All departments" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">All departments</SelectItem>
+                          {filterOptions.departments.map(d => (
+                            <SelectItem key={d.id} value={d.id}>
+                              {d.name} {d.code ? `(${d.code})` : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {/* Start Date From */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="filter-start-from" className="text-xs font-medium">Start Date From</Label>
+                      <Input
+                        id="filter-start-from"
+                        type="date"
+                        value={filters.startDateFrom}
+                        onChange={(e) => handleFilterChange('startDateFrom', e.target.value)}
+                        className="h-9 text-xs"
+                      />
+                    </div>
+                    
+                    {/* Start Date To */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="filter-start-to" className="text-xs font-medium">Start Date To</Label>
+                      <Input
+                        id="filter-start-to"
+                        type="date"
+                        value={filters.startDateTo}
+                        onChange={(e) => handleFilterChange('startDateTo', e.target.value)}
+                        className="h-9 text-xs"
+                      />
+                    </div>
+                    
+                    {/* Course Filter */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="filter-course" className="text-xs font-medium">Course</Label>
+                      <Select value={filters.courseId} onValueChange={(v) => handleFilterChange('courseId', v)}>
+                        <SelectTrigger id="filter-course" className="h-9 text-xs">
+                          <SelectValue placeholder="All courses" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">All courses</SelectItem>
+                          {filterOptions.courses.map(c => (
+                            <SelectItem key={c.course_id} value={c.course_id}>
+                              {c.title || c.code || c.course_id}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {/* Attendance Session Status Filter */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="filter-session-status" className="text-xs font-medium">Attendance Session Status</Label>
+                      <Select value={filters.sessionStatus} onValueChange={(v) => handleFilterChange('sessionStatus', v)}>
+                        <SelectTrigger id="filter-session-status" className="h-9 text-xs">
+                          <SelectValue placeholder="All sessions" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">All sessions</SelectItem>
+                          {filterOptions.attendanceHistoryOptions.map(option => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Results */}
               {assignments.length === 0 ? (
                 <div className="p-8 text-center rounded-xl border border-dashed border-gray-200 dark:border-gray-800 space-y-2">
                   <BookOpen className="h-8 w-8 text-muted-foreground mx-auto" />
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">No teaching allocations found</p>
-                  <p className="text-xs text-muted-foreground">This educator has not been allocated to any colleges or batches yet.</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {activeFilterCount > 0 ? 'No assignments match the filters' : 'No teaching allocations found'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {activeFilterCount > 0 
+                      ? 'Try adjusting your filters to see more results.' 
+                      : 'This educator has not been allocated to any colleges or batches yet.'}
+                  </p>
+                  {activeFilterCount > 0 && (
+                    <Button variant="outline" size="sm" onClick={clearFilters} className="mt-2">
+                      Clear all filters
+                    </Button>
+                  )}
                 </div>
               ) : (
-                assignments.map(a => <AssignmentCard key={a.id} assignment={a} />)
+                <>
+                  <div className="text-xs text-muted-foreground px-1">
+                    Showing {assignments.length} assignment{assignments.length === 1 ? '' : 's'}
+                  </div>
+                  {assignments.map(a => <AssignmentCard key={a.id} assignment={a} />)}
+                </>
               )}
             </TabsContent>
 
             <TabsContent value="tasks" className="space-y-4 mt-2">
+              {/* Task Filter Section */}
+              <div className="space-y-3 border-b border-gray-200 dark:border-gray-800 pb-4">
+                <div className="flex items-center justify-between">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowTaskFilters(!showTaskFilters)}
+                    className="gap-2"
+                  >
+                    <Filter className="h-4 w-4" />
+                    <span>Filters</span>
+                    {activeTaskFilterCount > 0 && (
+                      <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5">
+                        {activeTaskFilterCount}
+                      </Badge>
+                    )}
+                    {showTaskFilters ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                  </Button>
+                  
+                  {activeTaskFilterCount > 0 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearTaskFilters}
+                      className="gap-1 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3 w-3" />
+                      Clear filters
+                    </Button>
+                  )}
+                </div>
+                
+                {showTaskFilters && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800">
+                    {/* Task Name Filter */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="task-name" className="text-xs font-medium">Task Name</Label>
+                      <Select value={taskFilters.taskId} onValueChange={(v) => handleTaskFilterChange('taskId', v)}>
+                        <SelectTrigger id="task-name" className="h-9 text-xs">
+                          <SelectValue placeholder="All tasks" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">All tasks</SelectItem>
+                          {filterOptions.taskNames.map(task => (
+                            <SelectItem key={task.id} value={task.id}>
+                              {task.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {/* Assignment Type Filter */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="task-type" className="text-xs font-medium">Assignment Type</Label>
+                      <Select value={taskFilters.taskType} onValueChange={(v) => handleTaskFilterChange('taskType', v)}>
+                        <SelectTrigger id="task-type" className="h-9 text-xs">
+                          <SelectValue placeholder="All types" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">All types</SelectItem>
+                          {filterOptions.taskTypes.map(type => (
+                            <SelectItem key={type} value={type} className="capitalize">
+                              {type}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {/* College Filter */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="task-college" className="text-xs font-medium">College</Label>
+                      <Select value={taskFilters.taskCollegeId} onValueChange={(v) => handleTaskFilterChange('taskCollegeId', v)}>
+                        <SelectTrigger id="task-college" className="h-9 text-xs">
+                          <SelectValue placeholder="All colleges" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">All colleges</SelectItem>
+                          {filterOptions.taskColleges.map(c => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {/* Department Filter */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="task-department" className="text-xs font-medium">Department</Label>
+                      <Select value={taskFilters.taskDepartmentId} onValueChange={(v) => handleTaskFilterChange('taskDepartmentId', v)}>
+                        <SelectTrigger id="task-department" className="h-9 text-xs">
+                          <SelectValue placeholder="All departments" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">All departments</SelectItem>
+                          {filterOptions.taskDepartments.map(d => (
+                            <SelectItem key={d.id} value={d.id}>
+                              {d.name} {d.code ? `(${d.code})` : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {/* Course Filter */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="task-course" className="text-xs font-medium">Course</Label>
+                      <Select value={taskFilters.taskCourseId} onValueChange={(v) => handleTaskFilterChange('taskCourseId', v)}>
+                        <SelectTrigger id="task-course" className="h-9 text-xs">
+                          <SelectValue placeholder="All courses" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">All courses</SelectItem>
+                          {filterOptions.taskCourses.map(course => (
+                            <SelectItem key={course.id || course} value={course.id || course}>
+                              {course.title || course.name || course}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {/* Status Filter */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="task-status" className="text-xs font-medium">Status/Progress</Label>
+                      <Select value={taskFilters.taskStatus} onValueChange={(v) => handleTaskFilterChange('taskStatus', v)}>
+                        <SelectTrigger id="task-status" className="h-9 text-xs">
+                          <SelectValue placeholder="All tasks" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All tasks</SelectItem>
+                          {/* Actual database status values from backend only */}
+                          {filterOptions.taskStatuses.map(status => (
+                            <SelectItem key={status} value={status} className="capitalize">
+                              {status === 'in-progress' ? 'In Progress' : status.charAt(0).toUpperCase() + status.slice(1)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                  </div>
+                )}
+              </div>
+              
+              {/* Results */}
               {tasks.length === 0 ? (
                 <div className="p-8 text-center rounded-xl border border-dashed border-gray-200 dark:border-gray-800 space-y-2">
                   <ClipboardList className="h-8 w-8 text-muted-foreground mx-auto" />
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">No tasks created yet</p>
-                  <p className="text-xs text-muted-foreground">Tasks and student evaluations created by this external trainer will appear here.</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {activeTaskFilterCount > 0 ? 'No tasks match the filters' : 'No tasks created yet'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {activeTaskFilterCount > 0 
+                      ? 'Try adjusting your filters to see more results.' 
+                      : 'Tasks and student evaluations created by this external trainer will appear here.'}
+                  </p>
+                  {activeTaskFilterCount > 0 && (
+                    <Button variant="outline" size="sm" onClick={clearTaskFilters} className="mt-2">
+                      Clear all filters
+                    </Button>
+                  )}
                 </div>
               ) : (
-                tasks.map(t => <TaskCard key={t.id} task={t} />)
+                <>
+                  <div className="text-xs text-muted-foreground px-1">
+                    Showing {tasks.length} task{tasks.length === 1 ? '' : 's'}
+                  </div>
+                  {tasks.map(t => <TaskCard key={t.id} task={t} />)}
+                </>
               )}
             </TabsContent>
           </Tabs>

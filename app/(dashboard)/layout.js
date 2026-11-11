@@ -1,5 +1,7 @@
 'use client'
 
+import zohoShell from './zoho-shell.module.css'
+
 import { ApprovalViewProvider } from '@/components/approvals/ApprovalViewContext'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,6 +21,7 @@ import {
 } from '@/components/ui/tooltip'
 import { useToast } from '@/hooks/use-toast'
 import { authClient } from '@/lib/auth-client'
+import { loginUrl } from '@/lib/auth-redirect'
 import Logger, { getErrorMessage } from '@/lib/logger'
 import { cn } from '@/lib/utils'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -233,11 +236,15 @@ const titleDividerVariants = {
 export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [user, setUser] = useState(null)
+  const [authPending, setAuthPending] = useState(true)
+  const [authError, setAuthError] = useState('')
+  const [authAttempt, setAuthAttempt] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const [expandedNav, setExpandedNav] = useState(null) // null = main nav, or parent nav item
   const [isDesktop, setIsDesktop] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
+  const isZohoRecruit = pathname === '/integrations/zoho-recruit'
   const searchParams = useSearchParams()
   const { toast } = useToast()
 
@@ -278,27 +285,11 @@ export default function DashboardLayout({ children }) {
     const fetchApprovalCounts = async () => {
       try {
         if (isMounted) {
-          const endpoints = [
-            { type: 'universities', url: '/api/universities?approval_status=pending&page=1&limit=1' },
-            { type: 'recruiters', url: '/api/recruiters?approval_status=pending&page=1&limit=1' },
-            { type: 'colleges', url: '/api/colleges?approval_status=pending&page=1&limit=1' },
-            { type: 'students', url: '/api/students?approval_status=pending&page=1&limit=1' },
-            { type: 'courses', url: '/api/courses?approval_status=pending&page=1&limit=1' }
-          ]
-
-          const responses = await Promise.all(
-            endpoints.map(endpoint =>
-              fetch(endpoint.url).then(res => {
-                if (!res.ok) {
-                  throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-                }
-                return res.json();
-              }).catch(error => {
-                logger.warn(`Failed to fetch ${endpoint.type}`, { error: getErrorMessage(error), endpoint: endpoint.url });
-                return { pagination: { total: 0 } };
-              })
-            )
-          )
+          const response=await fetch('/api/approval-counts',{cache:'no-store'});
+          if(!response.ok)throw new Error('Approval counts are unavailable');
+          const snapshot=await response.json();
+          const types=['universities','recruiters','colleges','students','courses'];
+          const responses=types.map(type=>snapshot.sources?.[type]||{status:'unavailable',count:null});
 
           // Update navigation with counts only if component is still mounted
           if (isMounted) {
@@ -308,10 +299,10 @@ export default function DashboardLayout({ children }) {
               return prevNav.map(navItem => {
                 if (navItem.name === 'Approval Center' && navItem.subItems) {
                   const updatedSubItems = navItem.subItems.map((subItem, index) => {
-                    const count = responses[index]?.pagination?.total || 0
+                    const count = responses[index]?.status==='available'?responses[index].count:null
                     return {
                       ...subItem,
-                      pendingCount: count
+                      pendingCount: count, countsUnavailable:count===null
                     }
                   })
                   return {
@@ -325,7 +316,7 @@ export default function DashboardLayout({ children }) {
           }
         }
       } catch (error) {
-        logger.error('Failed to fetch approval counts', { error: getErrorMessage(error) });
+        setNavigation(previous=>previous.map(item=>item.name==='Approval Center'?{...item,subItems:item.subItems.map(sub=>({...sub,countsUnavailable:true}))}:item));
         // Retry logic
         if (retryCount < maxRetries && isMounted) {
           retryCount++;
@@ -418,19 +409,28 @@ export default function DashboardLayout({ children }) {
   }, [pathname, expandedNav])
 
   useEffect(() => {
+    let cancelled = false
+    setAuthPending(true)
+    setAuthError('')
     authClient.checkAuth()
       .then(data => {
+        if (cancelled) return
         if (data.authenticated && data.user) {
           setUser(data.user)
+        } else if (data.retryable) {
+          setAuthError(data.error || 'Authentication service temporarily unavailable')
         } else {
-          router.push('/login')
+          router.replace(loginUrl(window.location.pathname + window.location.search))
         }
-        setLoading(false)
       })
       .catch(() => {
-        router.push('/login')
+        if (!cancelled) setAuthError('Authentication service temporarily unavailable')
       })
-  }, [])
+      .finally(() => {
+        if (!cancelled) setAuthPending(false)
+      })
+    return () => { cancelled = true }
+  }, [authAttempt, router])
 
   const handleRefresh = () => {
     setRefreshing(true)
@@ -476,6 +476,7 @@ export default function DashboardLayout({ children }) {
   }
 
   const getPageTitle = () => {
+    if (pathname.startsWith('/integrations/zoho-recruit')) return 'Zoho Recruit'
     if (pathname === '/educator-subscriptions') return 'Educator Subscriptions'
     const currentNav = navigation.find(nav => nav.href === pathname)
     return currentNav ? currentNav.name : 'Dashboard'
@@ -490,9 +491,18 @@ export default function DashboardLayout({ children }) {
     return pathname === '/passports'
   }
 
+  if (authPending || authError || !user) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 p-6" aria-live="polite">
+        <p role={authError ? 'alert' : 'status'}>{authError || 'Checking your session…'}</p>
+        {authError && <Button onClick={() => setAuthAttempt(attempt => attempt + 1)}>Try again</Button>}
+      </main>
+    )
+  }
+
   return (
     <ApprovalViewProvider>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 transition-colors duration-300">
+      <div className={cn("min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 transition-colors duration-300", isZohoRecruit && zohoShell.shell)}>
         {/* Mobile sidebar overlay */}
         <AnimatePresence>
           {sidebarOpen && (
@@ -553,14 +563,14 @@ export default function DashboardLayout({ children }) {
                   </motion.span>
                 </motion.div>
                 <div>
-                  <motion.h1
+                  <motion.p
                     className="font-bold text-lg bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent"
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
                   >
                     Rareminds
-                  </motion.h1>
+                  </motion.p>
                   <motion.p
                     className="text-xs text-muted-foreground"
                     initial={{ opacity: 0 }}
@@ -625,9 +635,10 @@ export default function DashboardLayout({ children }) {
                                 {item.name === 'Approval Center' && item.subItems && (
                                   (() => {
                                     const totalCount = item.subItems.reduce((sum, sub) => sum + (sub.pendingCount || 0), 0);
-                                    return totalCount > 0 ? (
+                                    const partial=item.subItems.some(sub=>sub.countsUnavailable);
+                                    return totalCount > 0 || partial ? (
                                       <span className="bg-red-500 text-white text-xs rounded-full h-5 min-w-[1.25rem] px-1.5 flex items-center justify-center font-semibold">
-                                        {totalCount}
+                                        <span title={partial?'Partial count: some approval queues are unavailable':'Pending approvals'}>{totalCount}{partial?'+':''}</span>
                                       </span>
                                     ) : null;
                                   })()
@@ -800,6 +811,7 @@ export default function DashboardLayout({ children }) {
                                 <span className="flex items-center gap-2">
                                   {subItem.name}
                                   {/* Badge showing pending count */}
+                                  {subItem.countsUnavailable&&<span className="text-xs text-amber-700 dark:text-amber-300" title="This approval queue is unavailable in the current environment">Unavailable</span>}
                                   {subItem.pendingCount > 0 && (
                                     <span className="bg-red-500 text-white text-xs rounded-full h-5 min-w-[1.25rem] px-1.5 flex items-center justify-center font-semibold">
                                       {subItem.pendingCount}
@@ -860,22 +872,23 @@ export default function DashboardLayout({ children }) {
         </motion.aside>
 
         {/* Main content */}
-        <div className="lg:pl-64">
+        <div data-dashboard-content className="min-w-0 lg:pl-64">
           {/* Top bar */}
-          <header className="sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-white/20 dark:border-slate-700/50 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50">
+          <header data-dashboard-topbar className="sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-white/20 dark:border-slate-700/50 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50">
             <div className="flex items-center justify-between px-6 py-4">
               <div className="flex items-center gap-4">
                 <Button
                   variant="ghost"
                   size="icon"
                   className="lg:hidden hover:bg-white/50 dark:hover:bg-slate-800/50"
+                  aria-label="Open navigation"
                   onClick={() => setSidebarOpen(true)}
                 >
                   <Menu className="h-5 w-5" />
                 </Button>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+                <div data-page-title role={pathname.startsWith('/integrations/zoho-recruit')?undefined:'heading'} aria-level={pathname.startsWith('/integrations/zoho-recruit')?undefined:1} className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
                   {getPageTitle()}
-                </h1>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <TooltipProvider>
@@ -885,6 +898,7 @@ export default function DashboardLayout({ children }) {
                         variant="ghost"
                         size="icon"
                         onClick={handleRefresh}
+                        aria-label="Refresh current page"
                         disabled={refreshing}
                         className="w-10 h-10 rounded-md flex items-center justify-center"
                       >
@@ -923,7 +937,7 @@ export default function DashboardLayout({ children }) {
           </header>
 
           {/* Page content */}
-          <main className="p-6">
+          <main data-dashboard-main className="p-6">
             {children}
           </main>
         </div>

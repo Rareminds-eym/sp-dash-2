@@ -6,6 +6,24 @@ import { requireEducatorAdmin } from '@/lib/educator-admin';
  * GET /api/educators/[id]/assignments
  * Full assignment detail for one educator, each with attendance history.
  * Lazy-loaded by the "View all" assignments modal so the list stays light.
+ * 
+ * Query Parameters (Teaching & Attendance):
+ * - status: active|upcoming|ended|all (default: all)
+ * - collegeId: filter by college
+ * - departmentId: filter by department
+ * - startDateFrom: start date >= this value (YYYY-MM-DD)
+ * - startDateTo: start date <= this value (YYYY-MM-DD)
+ * - courseId: filter assignments that include this course
+ * - sessionStatus: scheduled|ongoing|completed|cancelled (filter by attendance session status)
+ * 
+ * Query Parameters (Tasks & Evaluations):
+ * - taskId: filter by specific task ID
+ * - taskType: filter by assignment type (quiz, assignment, project, exam)
+ * - taskCollegeId: filter tasks by college
+ * - taskDepartmentId: filter tasks by department
+ * - taskCourseId: filter by course name
+ * - taskStatus: all|has_submissions|pending_review|fully_graded|no_submissions
+ * - taskDueDate: all|overdue|due_this_week|due_this_month
  */
 export async function GET(request, { params }) {
   const auth = await requireEducatorAdmin(request);
@@ -13,6 +31,24 @@ export async function GET(request, { params }) {
 
   try {
     const { id } = await params;
+    
+    // Parse query parameters for Teaching & Attendance
+    const { searchParams } = new URL(request.url);
+    const statusFilter = searchParams.get('status') || 'all';
+    const collegeId = searchParams.get('collegeId');
+    const departmentId = searchParams.get('departmentId');
+    const startDateFrom = searchParams.get('startDateFrom');
+    const startDateTo = searchParams.get('startDateTo');
+    const courseId = searchParams.get('courseId');
+    const sessionStatus = searchParams.get('sessionStatus');
+    
+    // Parse query parameters for Tasks & Evaluations
+    const taskId = searchParams.get('taskId');
+    const taskType = searchParams.get('taskType');
+    const taskCollegeId = searchParams.get('taskCollegeId');
+    const taskDepartmentId = searchParams.get('taskDepartmentId');
+    const taskCourseId = searchParams.get('taskCourseId');
+    const taskStatus = searchParams.get('taskStatus') || 'all';
 
     const { data: staff, error: staffError } = await supabaseAdmin
       .from('organization_staff')
@@ -24,7 +60,8 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Educator not found' }, { status: 404 });
     }
 
-    const { data: assignments, error: assignError } = await supabaseAdmin
+    // Build query with filters
+    let query = supabaseAdmin
       .from('organization_staff_assignments')
       .select(`
         id,
@@ -41,8 +78,31 @@ export async function GET(request, { params }) {
         programs:program_id(id, name, code),
         sections:section_id(id, section, semester)
       `)
-      .eq('staff_id', id)
-      .order('start_date', { ascending: false });
+      .eq('staff_id', id);
+
+    // Apply filters
+    if (collegeId) {
+      query = query.eq('college_id', collegeId);
+    }
+    
+    if (departmentId) {
+      query = query.eq('department_id', departmentId);
+    }
+    
+    if (startDateFrom) {
+      query = query.gte('start_date', startDateFrom);
+    }
+    
+    if (startDateTo) {
+      query = query.lte('start_date', startDateTo);
+    }
+    
+    // Note: Course filter is applied after fetching since Supabase JSONB array filtering can be tricky
+    // We'll filter it in post-processing
+
+    query = query.order('start_date', { ascending: false });
+
+    let { data: assignments, error: assignError } = await query;
 
     if (assignError) {
       return NextResponse.json({ error: 'Failed to fetch assignments', details: assignError.message }, { status: 500 });
@@ -51,7 +111,7 @@ export async function GET(request, { params }) {
     // Fetch tasks created by this external educator
     let rawTasks = [];
     if (staff.user_id) {
-      const { data: taskRows } = await supabaseAdmin
+      let taskQuery = supabaseAdmin
         .from('college_assignments')
         .select(`
           assignment_id,
@@ -74,8 +134,24 @@ export async function GET(request, { params }) {
           sections:program_section_id(id, section, semester)
         `)
         .eq('external_educator_id', staff.user_id)
-        .eq('is_deleted', false)
-        .order('created_date', { ascending: false });
+        .eq('is_deleted', false);
+      
+      // Apply task filters at database level where possible
+      if (taskType) {
+        taskQuery = taskQuery.eq('assignment_type', taskType);
+      }
+      
+      if (taskCollegeId) {
+        taskQuery = taskQuery.eq('college_id', taskCollegeId);
+      }
+      
+      if (taskDepartmentId) {
+        taskQuery = taskQuery.eq('department_id', taskDepartmentId);
+      }
+      
+      taskQuery = taskQuery.order('created_date', { ascending: false });
+      
+      const { data: taskRows } = await taskQuery;
 
       if (taskRows) rawTasks = taskRows;
     }
@@ -187,6 +263,46 @@ export async function GET(request, { params }) {
           learners: subs,
         };
       });
+      
+      // Apply post-processing filters for tasks
+      const today = new Date().toISOString().slice(0, 10);
+      
+      // Task ID filter (by specific task)
+      if (taskId) {
+        tasks = tasks.filter(t => t.id === taskId);
+      }
+      
+      // Course filter (by course name/code)
+      if (taskCourseId) {
+        tasks = tasks.filter(t => 
+          t.courseName === taskCourseId || 
+          t.courseCode === taskCourseId
+        );
+      }
+      
+      // Task status filter - filter learners within each task by status
+      if (taskStatus && taskStatus !== 'all') {
+        tasks = tasks.map(t => {
+          const filteredLearners = (t.learners || []).filter(l => l.status === taskStatus);
+          
+          // Recalculate stats based on filtered learners
+          const totalAssigned = filteredLearners.length;
+          const submittedCount = filteredLearners.filter(s => s.status === 'submitted' || s.status === 'graded').length;
+          const gradedCount = filteredLearners.filter(s => s.status === 'graded' || (s.gradePercentage !== null && s.gradePercentage !== undefined)).length;
+          const pendingCount = filteredLearners.filter(s => s.status === 'submitted').length;
+          
+          return {
+            ...t,
+            learners: filteredLearners,
+            stats: {
+              totalAssigned,
+              submittedCount,
+              gradedCount,
+              pendingCount,
+            }
+          };
+        }).filter(t => t.learners.length > 0); // Remove tasks with no matching learners
+      }
     }
 
     const assignmentIds = (assignments || []).map(a => a.id);
@@ -244,7 +360,7 @@ export async function GET(request, { params }) {
       coursesById = Object.fromEntries((courses || []).map(c => [c.course_id, c]));
     }
 
-    const data = (assignments || []).map(assignment => {
+    let data = (assignments || []).map(assignment => {
       const specs = Array.isArray(assignment.metadata?.specializations)
         ? assignment.metadata.specializations.map(s => String(s).trim()).filter(Boolean)
         : [];
@@ -257,6 +373,9 @@ export async function GET(request, { params }) {
       const history = (sessionsByAssignment[assignment.id] || []).slice(0, 50);
       const allocatedIds = assignment.assigned_courses || [];
       const taughtIds = new Set(history.map(s => s.courseId).filter(Boolean));
+      const status = start && start > today ? 'upcoming' : (end && end < today ? 'ended' : 'active');
+      const historyTotal = (sessionsByAssignment[assignment.id] || []).length;
+      
       return {
         id: assignment.id,
         collegeId: assignment.college_id,
@@ -281,15 +400,148 @@ export async function GET(request, { params }) {
         startDate: start,
         endDate: end,
         isActive: assignment.is_active,
-        status: start && start > today ? 'upcoming' : (end && end < today ? 'ended' : 'active'),
+        status,
         timeSlots: slotsByAssignment[assignment.id] || [],
         history,
-        historyTotal: (sessionsByAssignment[assignment.id] || []).length,
+        historyTotal,
         tasks: tasks.filter(t => t.programSectionId && t.programSectionId === assignment.section_id),
       };
     });
 
-    return NextResponse.json({ success: true, data: { educator: staff, assignments: data, tasks } });
+    // Apply course filter (post-processing)
+    if (courseId) {
+      data = data.filter(a => {
+        const assignedCourses = a.assignedCourses || [];
+        return assignedCourses.includes(courseId);
+      });
+    }
+
+    // Apply post-processing filters
+    if (statusFilter && statusFilter !== 'all') {
+      data = data.filter(a => a.status === statusFilter);
+    }
+    
+    // Filter by session status (attendance history)
+    if (sessionStatus && sessionStatus !== '' && sessionStatus !== 'all') {
+      data = data.filter(a => {
+        const sessions = a.history || [];
+        // Filter assignments that have at least one session with the specified status
+        return sessions.some(s => s.status === sessionStatus);
+      });
+    }
+
+    // Fetch filter options for dropdowns
+    const allColleges = [...new Set((assignments || []).map(a => a.college_id).filter(Boolean))];
+    const allDepartments = [...new Set((assignments || []).map(a => a.department_id).filter(Boolean))];
+    const allCourses = [...new Set((assignments || []).flatMap(a => a.assigned_courses || []).filter(Boolean))];
+    
+    // Extract unique session statuses from actual attendance sessions data
+    const allSessionStatuses = [...new Set(
+      Object.values(sessionsByAssignment)
+        .flat()
+        .map(s => s.status)
+        .filter(Boolean)
+    )];
+    
+    // Generate attendance history filter options based on actual session statuses in database
+    const attendanceHistoryOptions = [];
+    if (allSessionStatuses.length > 0) {
+      // Add each unique status found in the data
+      allSessionStatuses.forEach(status => {
+        attendanceHistoryOptions.push({
+          value: status,
+          label: status.charAt(0).toUpperCase() + status.slice(1) // Capitalize first letter
+        });
+      });
+    }
+    
+    // Task filter options
+    const taskColleges = [...new Set(rawTasks.map(t => t.college_id).filter(Boolean))];
+    const taskDepartments = [...new Set(rawTasks.map(t => t.department_id).filter(Boolean))];
+    const taskTypes = [...new Set(rawTasks.map(t => t.assignment_type).filter(Boolean))];
+    const taskCourseNames = [...new Set(rawTasks.map(t => t.course_name).filter(Boolean))];
+    const taskNames = rawTasks.map(t => ({ id: t.assignment_id, title: t.title }));
+    
+    // Get actual status values from the database for this educator's tasks
+    // Extract unique statuses from the learner submissions already fetched above
+    const taskStatusSet = new Set();
+    for (const task of tasks) {
+      for (const learner of task.learners || []) {
+        if (learner.status) taskStatusSet.add(learner.status);
+      }
+    }
+    // Status display order: todo → in-progress → submitted → graded
+    const STATUS_ORDER = ['todo', 'in-progress', 'submitted', 'graded'];
+    const taskStatuses = STATUS_ORDER.filter(s => taskStatusSet.has(s));
+    
+    let filterOptions = {
+      colleges: [],
+      departments: [],
+      courses: [],
+      attendanceHistoryOptions: attendanceHistoryOptions,
+      taskNames: taskNames,
+      taskColleges: [],
+      taskDepartments: [],
+      taskTypes: taskTypes,
+      taskCourses: taskCourseNames.map(name => ({ id: name, title: name, name: name })),
+      taskStatuses: taskStatuses,
+    };
+    
+    if (allColleges.length > 0) {
+      const { data: collegeOptions } = await supabaseAdmin
+        .from('organizations')
+        .select('id, name')
+        .in('id', allColleges)
+        .order('name');
+      filterOptions.colleges = collegeOptions || [];
+    }
+    
+    if (allDepartments.length > 0) {
+      const { data: deptOptions } = await supabaseAdmin
+        .from('departments')
+        .select('id, name, code')
+        .in('id', allDepartments)
+        .order('name');
+      filterOptions.departments = deptOptions || [];
+    }
+    
+    if (allCourses.length > 0) {
+      const { data: courseOptions } = await supabaseAdmin
+        .from('courses')
+        .select('course_id, title, code')
+        .in('course_id', allCourses)
+        .order('title');
+      filterOptions.courses = courseOptions || [];
+    }
+    
+    // Task-specific filter options
+    if (taskColleges.length > 0) {
+      const { data: taskCollegeOptions } = await supabaseAdmin
+        .from('organizations')
+        .select('id, name')
+        .in('id', taskColleges)
+        .order('name');
+      filterOptions.taskColleges = taskCollegeOptions || [];
+    }
+    
+    if (taskDepartments.length > 0) {
+      const { data: taskDeptOptions } = await supabaseAdmin
+        .from('departments')
+        .select('id, name, code')
+        .in('id', taskDepartments)
+        .order('name');
+      filterOptions.taskDepartments = taskDeptOptions || [];
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      data: { 
+        educator: staff, 
+        assignments: data, 
+        tasks,
+        filterOptions 
+      } 
+    });
   } catch (error) {
     console.error('❌ [ASSIGNMENT DETAIL API] Error:', error);
     return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 });
