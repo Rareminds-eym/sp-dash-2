@@ -6,9 +6,13 @@ const path = require('path');
 // Local server bindings come from .dev.vars through Wrangler.
 // Must be called here, not inside an async function, per @opennextjs/cloudflare docs.
 const { initOpenNextCloudflareForDev } = require('@opennextjs/cloudflare');
-initOpenNextCloudflareForDev(process.env.CLOUDFLARE_LOCAL_CONFIG_PATH
-  ? { configPath: process.env.CLOUDFLARE_LOCAL_CONFIG_PATH }
-  : undefined);
+// Production builds do not run our app worker's named entrypoints. Starting a
+// stub Miniflare here makes self-bindings fail before compilation can finish.
+if (process.env.NODE_ENV !== 'production') {
+  initOpenNextCloudflareForDev(process.env.CLOUDFLARE_LOCAL_CONFIG_PATH
+    ? { configPath: process.env.CLOUDFLARE_LOCAL_CONFIG_PATH }
+    : undefined);
+}
 
 const nextConfig = {
   // OAuth callback query strings contain short-lived authorization codes.

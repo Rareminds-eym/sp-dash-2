@@ -15,3 +15,6 @@ export default dashboardRuntime({
     return fetch(new Request(target, request), { redirect: 'manual' });
   },
 });
+
+export { JobIndexService } from './job-index-service';
+export { JobIndexCoordinator } from '../lib/job-index/coordinator';

@@ -82,3 +82,13 @@ test('conflicting local endpoints fail before rewriting database settings', () =
   const local = create({ ...settings, SKILLPASSPORT_SUPABASE_URL: 'http://localhost:54321' });
   assert.equal(local.variables.NEXT_PUBLIC_SUPABASE_URL, 'http://localhost:54321');
 });
+
+test('app owns indexing objects; the UI proxy references the existing app worker namespace', () => {
+  const withIndex = { ...infrastructure, durable_objects: { bindings: [{ name: 'JOB_INDEX_COORDINATOR', class_name: 'JobIndexCoordinator' }] },
+    migrations: [{ tag: 'index-app-v1', new_sqlite_classes: ['JobIndexCoordinator'] }] };
+  const local = localDashboardConfig(withIndex, services, settings, { port: 3010, main: '/fixture/local.js' });
+  assert.deepEqual(local.worker.durable_objects, withIndex.durable_objects);
+  assert.deepEqual(local.worker.migrations, withIndex.migrations);
+  assert.equal(local.proxy.durable_objects.bindings[0].script_name, local.worker.name);
+  assert.equal(local.proxy.migrations, undefined);
+});

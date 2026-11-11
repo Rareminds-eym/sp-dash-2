@@ -1,3 +1,5 @@
+import { readJobIndexHealth } from '@/lib/job-index/health';
+import { wakeJobIndex } from '@/lib/zoho/wake-job-index';
 import { syncCoordinator, bulkDiscoveryAvailable } from '@/lib/zoho/sync-coordinator';
 import { recoverSourceExecutions } from '@/lib/zoho/execution-recovery';
 import { readExecutionProgress } from '@/lib/zoho/execution-progress';
@@ -48,6 +50,12 @@ async function handle(request) {
     const runtime = integrationRuntime(auth.env);
     const url = new URL(request.url);
     if (request.method === 'GET') {
+      if (view === 'job_index') {
+        const id = z.string().uuid().parse(url.searchParams.get('connectionId'));
+        const { data, error } = await supabaseAdmin.rpc('zoho_job_index_progress', { p_connection_id: id });
+        if (error) throw new Error('Search indexing progress unavailable');
+        return json({ progress: data, processor: await readJobIndexHealth(auth.env) });
+      }
       if (view === 'sync') return json({ sync: await syncCoordinator(supabaseAdmin).snapshot(url.searchParams.get('connectionId')) });
       if (view === 'execution_progress') return json({ progress: await readExecutionProgress(supabaseAdmin,
         Object.fromEntries([...url.searchParams].filter(([key])=>key!=='view'))) });
@@ -82,8 +90,15 @@ async function handle(request) {
       if (view && view !== 'summary') return json({ error: 'Unknown integration view' }, 400);
       return json({ ...await service.summary(), emailPolicy: 'forbidden', capabilities: { oauth: oauthConfiguration({ ...process.env, ...auth.env }).success, discovery: await discoveryStatus(runtime.discovery, auth.env.ZOHO_DISCOVERY_QUEUE), execution: await executorStatus(runtime.executor, auth.env.ZOHO_APPROVED_QUEUE) } });
     }
-    const payload = z.object({ action: z.enum([...operatorActions,'configure_sync','rotate_webhook','recover_executions','configure', 'decide', 'connect', 'discover', 'control_discovery', 'review_candidate', 'review_candidates', 'configure_job_policy', 'suppress_source', 'configure_retention', 'cleanup_payloads', 'control_connection']), input: z.unknown() }).strict().parse(await body(request));
+    const payload = z.object({ action: z.enum([...operatorActions,'configure_sync','rotate_webhook','retry_job_index', 'recover_executions','configure', 'decide', 'connect', 'discover', 'control_discovery', 'review_candidate', 'review_candidates', 'configure_job_policy', 'suppress_source', 'configure_retention', 'cleanup_payloads', 'control_connection']), input: z.unknown() }).strict().parse(await body(request));
     action = payload.action;
+    if (action === 'retry_job_index') {
+      const { connectionId } = z.object({ connectionId: z.string().uuid() }).strict().parse(payload.input);
+      const result = await supabaseAdmin.rpc('retry_zoho_job_index', { p_connection_id: connectionId });
+      if (result.error) throw new Error('Search indexing retry unavailable');
+      await wakeJobIndex(auth.env);
+      return json({ retried: result.data });
+    }
     if (action === 'configure_sync') return json({ result: await syncCoordinator(supabaseAdmin).configure(payload.input, auth.user.id) });
     if (action === 'rotate_webhook') return json({ result: await syncCoordinator(supabaseAdmin).rotateWebhook(payload.input, auth.user.id) });
     if (action === 'recover_executions') return json({ result: await recoverSourceExecutions(supabaseAdmin, auth.env, payload.input), emailPolicy: 'forbidden' }, 202);

@@ -68,6 +68,7 @@ async function fixture({ initialSection = 'records', initialUrl = 'http://localh
       const all=recordCount===2?[row('999'),row('888')]:Array.from({length:recordCount},(_,i)=>({...row(String(1000+i)),id:`b5700000-0000-4000-8000-${String(i+1).padStart(12,'0')}`}));
       data={records:url.searchParams.get('module')===(candidate?'Candidates':'Job_Openings')?all.slice(url.searchParams.has('before')?50:0,url.searchParams.get('view')==='record_window'?Number(url.searchParams.get('limit')||50):url.searchParams.has('before')?100:50):[],total:all.length};
     }
+    else if(url.searchParams.get('view')==='job_index') data={progress:state.indexProgress||{total:2,verified:2,queued:0,processing:0,retry:0,failed:0}};
     else if(url.searchParams.get('view')==='job_policy') {
       const connectionId=url.searchParams.get('connectionId');
       const configRevision=sources?.find(source=>source.id===connectionId)?.configRevision||1;
@@ -1238,7 +1239,7 @@ test('returning to a hidden record tab refreshes stale revisions and selection i
   assert.equal(f.w.document.querySelector('[aria-label="Select source 888"]').checked,true);
   await f.act(()=>f.button('Advanced').click());f.state.changed=true;
   const before=f.state.reads.length;await f.act(()=>f.button('Job openings').click());
-  assert.deepEqual(f.state.reads.slice(before),['record_window']);
+  assert.deepEqual(f.state.reads.slice(before).sort(),['job_index','record_window']);
   assert.equal(f.w.document.querySelector('[aria-label="Select source 888"]').checked,false);
   assert.match(f.w.document.querySelector('tbody').textContent,/v2/);
  }finally{await f.close();}
@@ -1247,7 +1248,7 @@ test('changing the record module from a hidden tab makes one initial record requ
  const f=await fixture({candidate:true});try{
   await f.act(()=>f.button('Advanced').click());const before=f.state.reads.length;
   await f.act(()=>f.button('Job openings').click());
-  assert.deepEqual(f.state.reads.slice(before).sort(),['job_policy','records']);
+  assert.deepEqual(f.state.reads.slice(before).sort(),['job_index','job_policy','records']);
  }finally{await f.close();}
 });
 
@@ -1455,5 +1456,17 @@ test('job policy fetch failure blocks approval and refresh retries the policy ch
   assert.equal(f.state.posts.some(item=>item.action==='decide'),false);
   await f.act(()=>f.button('Refresh status').click());await f.act(()=>f.button('Audit job 999').click());
   assert.equal(f.button('Approve').disabled,false);
+ }finally{await f.close();}
+});
+
+test('job search progress reports indexing separately and stops reads on a hidden tab',async()=>{
+ const f=await fixture({progressTimers:true});
+ try {
+  assert.match(f.w.document.body.textContent,/2 of 2 published, eligible jobs indexed/);
+  const before=f.state.reads.filter(v=>v==='job_index').length;
+  await f.act(()=>f.button('Overview').click());
+  for(const [id,fn] of [...f.timers]) if(f.timerDelays.get(id)===60000) await f.act(()=>fn());
+  assert.equal(f.state.reads.filter(v=>v==='job_index').length,before);
+  assert.equal(f.state.posts.length,0);
  }finally{await f.close();}
 });

@@ -397,3 +397,63 @@ entrypoint = "ZohoCandidateProvisioner"
 binding = "ZOHO_CANDIDATE_DESTINATION"
 service = "sso-api-qa"
 entrypoint = "ZohoCandidateProvisioner"
+
+[[services]]
+binding = "EMBEDDING_SERVICE"
+service = "embedding-api"
+entrypoint = "EmbeddingService"
+
+[[env.dev.services]]
+binding = "EMBEDDING_SERVICE"
+service = "embedding-api-dev"
+entrypoint = "EmbeddingService"
+
+[[env.dev.previews.services]]
+binding = "EMBEDDING_SERVICE"
+service = "embedding-api-dev"
+entrypoint = "EmbeddingService"
+
+[[env.qa.services]]
+binding = "EMBEDDING_SERVICE"
+service = "embedding-api-qa"
+entrypoint = "EmbeddingService"
+
+[[services]]
+binding = "JOB_INDEX_SERVICE"
+service = "sp-dash-2"
+entrypoint = "JobIndexService"
+
+[[env.dev.services]]
+binding = "JOB_INDEX_SERVICE"
+service = "sp-dash-2"
+entrypoint = "JobIndexService"
+
+[[env.dev.previews.services]]
+binding = "JOB_INDEX_SERVICE"
+service = "sp-dash-2"
+entrypoint = "JobIndexService"
+
+[[env.qa.services]]
+binding = "JOB_INDEX_SERVICE"
+service = "sp-dash-2-qa"
+entrypoint = "JobIndexService"
+
+[[migrations]]
+tag = "job-index-app-v1"
+new_sqlite_classes = ["JobIndexCoordinator"]
+
+[[durable_objects.bindings]]
+name = "JOB_INDEX_COORDINATOR"
+class_name = "JobIndexCoordinator"
+
+[[env.dev.durable_objects.bindings]]
+name = "JOB_INDEX_COORDINATOR"
+class_name = "JobIndexCoordinator"
+
+[[env.qa.durable_objects.bindings]]
+name = "JOB_INDEX_COORDINATOR"
+class_name = "JobIndexCoordinator"
+
+[[env.dev.previews.durable_objects.bindings]]
+name = "JOB_INDEX_COORDINATOR"
+class_name = "JobIndexCoordinator"

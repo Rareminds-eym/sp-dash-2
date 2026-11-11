@@ -2,6 +2,7 @@
 import { jobSelectionIssues } from '@/lib/zoho/job-approval';
 import JobDescription from '@/components/zoho/JobDescription';
 import { browserResponse } from '@/lib/zoho/browser-response';
+import JobIndexProgress from '@/components/zoho/JobIndexProgress';
 import ExecutionRecovery from '@/components/zoho/ExecutionRecovery';
 import { executionRecoveryStatus } from '@/lib/zoho/execution-recovery-status';
 import OperationsPanel from '@/components/zoho/OperationsPanel';
@@ -773,6 +774,7 @@ export default function ZohoRecruitPage() {
         <section id={`zoho-panel-${module==='Candidates'?'Job_Openings':'Candidates'}`} role="tabpanel" aria-labelledby={`zoho-tab-${module==='Candidates'?'Job_Openings':'Candidates'}`} hidden />
         <section id={`zoho-panel-${module}`} role="tabpanel" aria-labelledby={`zoho-tab-${module}`} tabIndex={0} aria-busy={recordsLoading} hidden={!recordSection} className={styles.sectionPanel}>
           <DiscoveryProgress capture={captures?.find(item => item.module === module && item.config_revision === connection?.configRevision)} checkpointKnown={captures !== undefined} connection={connection} progress={progress} errorText={progress?.run?.last_error ? discoveryErrorText(progress.run.last_error) : ''} updatedAt={historyUpdatedAt} pollDelay={pollDelay} onViewHistory={()=>activateSection('history',true)} />
+          {module === 'Job_Openings' && <JobIndexProgress key={connectionId} connectionId={connectionId} active={recordSection} api={api} />}
         <div ref={workspaceRoot} className={styles.workspace}>
           <div className={styles.workspaceMain}>
         <section id="zoho-record-workspace" tabIndex={-1} className={`${styles.recordCard} rounded-2xl border border-border bg-background`}>

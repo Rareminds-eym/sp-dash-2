@@ -67,11 +67,17 @@ export function localDashboardConfig(infrastructure, canonicalServices, settings
     kv_namespaces: infrastructure.kv_namespaces.map(binding => ({ ...binding, remote: false })),
     r2_buckets: infrastructure.r2_buckets.map(binding => ({ ...binding, remote: false })),
     triggers: infrastructure.triggers,
+    ...(infrastructure.durable_objects ? { durable_objects: structuredClone(infrastructure.durable_objects) } : {}),
+    ...(infrastructure.migrations ? { migrations: structuredClone(infrastructure.migrations) } : {}),
   };
   const variables = { ...settings, ENVIRONMENT: 'development',
     NEXT_PUBLIC_SUPABASE_URL: database, SKILLPASSPORT_SUPABASE_URL: database,
     LOCAL_DASHBOARD_ORIGIN: config.vars.LOCAL_DASHBOARD_ORIGIN };
   const proxy = { ...config, name: `${config.name}-ui-local`, queues: { producers: config.queues.producers } };
+  if (proxy.durable_objects) proxy.durable_objects = { bindings: proxy.durable_objects.bindings.map(binding => ({
+    ...binding, script_name: binding.script_name || config.name,
+  })) };
+  delete proxy.migrations;
   delete proxy.main;
   delete proxy.triggers;
   return { worker: config, proxy, variables };
