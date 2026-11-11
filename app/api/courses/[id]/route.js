@@ -20,8 +20,14 @@ const CourseUpdateSchema = z.object({
         z.number().finite('Credits must be a valid number').min(0, 'Credits cannot be negative').nullable().optional()
     ),
     thumbnail: z.string().nullable().optional(),
-    university: z.string().nullable().optional(),
-    category: z.string().nullable().optional(),
+    university: z.preprocess(value => typeof value === 'string' && !value.trim() ? null : value, z.string().trim().max(500).nullable().optional()),
+    category: z.preprocess(value => typeof value === 'string' && !value.trim() ? null : value, z.string().trim().max(500).nullable().optional()),
+    status: z.enum(['Active', 'Draft', 'Upcoming', 'Archived']).optional(),
+    approval_status: z.enum(['pending', 'approved', 'rejected']).optional(),
+    skill_type: z.preprocess(value => value === '' ? null : value, z.enum(["technical","soft"]).nullable().optional()),
+    classification: z.preprocess(value => value === '' ? null : value, z.enum(["middle_school","high_school","higher_secondary","college","arts_and_science","biotechnology_research","clinical_diagnostic","digital_health_ai","engineering","entrepreneurship","management","medical_device_equipment","regulatory_compliance","teacher"]).nullable().optional()),
+    plan_type: z.preprocess(value => value === '' ? null : value, z.enum(["freemium","basic","professional","premium"]).nullable().optional()),
+    course_type: z.enum(['course', 'webinar']).optional(),
     target_outcomes: z.array(z.string()).optional().default([]),
     skillsCovered: z.array(z.string()).optional().default([]),
     linkedClasses: z.array(z.string()).optional().default([]),
@@ -65,6 +71,11 @@ export async function GET(request, { params }) {
 
         // Map database schema to frontend format
         const mapped = {
+            status: data.status,
+            skill_type: data.skill_type,
+            classification: data.classification,
+            plan_type: data.plan_type,
+            course_type: data.course_type,
             id: data.course_id,
             name: data.title,
             course_code: data.code,
@@ -75,7 +86,7 @@ export async function GET(request, { params }) {
             category: data.category,
             thumbnail_url: data.thumbnail,
             target_outcomes: data.target_outcomes,
-            approval_status: data.status === 'Draft' ? 'pending' : data.status === 'Active' ? 'approved' : data.status,
+            approval_status: data.approval_status || 'pending',
             created_at: data.created_at,
             updated_at: data.updated_at,
             created_by: data.educator_id,
@@ -122,8 +133,14 @@ export async function PUT(request, { params }) {
             duration: (body.duration || '').trim(),
             credits: body.credits,
             thumbnail: body.thumbnail || body.thumbnail_url || null,
-            university: body.university || null,
-            category: body.category || null,
+            category: body.category,
+            university: body.university,
+            skill_type: body.skill_type,
+            classification: body.classification,
+            plan_type: body.plan_type,
+            course_type: body.course_type,
+            status: body.status,
+            approval_status: body.approval_status,
             target_outcomes,
             skillsCovered: Array.isArray(body.skillsCovered || body.skills) ? (body.skillsCovered || body.skills) : [],
             linkedClasses: Array.isArray(body.linkedClasses) ? body.linkedClasses : [],
@@ -242,7 +259,13 @@ export async function PUT(request, { params }) {
             category,
             thumbnail,
             target_outcomes,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            status: validationResult.data.status,
+            approval_status: validationResult.data.approval_status,
+            skill_type: validationResult.data.skill_type,
+            classification: validationResult.data.classification,
+            plan_type: validationResult.data.plan_type,
+            course_type: validationResult.data.course_type
         };
 
         if (educator_id !== undefined) {
@@ -260,7 +283,7 @@ export async function PUT(request, { params }) {
             .update(updateFields)
             .eq('course_id', id)
             .is('deleted_at', null)
-            .select('course_id, title, code, description, university, duration, credits, category, thumbnail, target_outcomes, status, created_at, updated_at')
+            .select('course_id, title, code, description, university, duration, credits, category, thumbnail, target_outcomes, status, approval_status, created_at, updated_at, skill_type, classification, plan_type, course_type')
             .single();
 
         if (updateError) {
@@ -475,6 +498,11 @@ export async function PUT(request, { params }) {
 
         // Map response
         const mapped = {
+            status: data.status,
+            skill_type: data.skill_type,
+            classification: data.classification,
+            plan_type: data.plan_type,
+            course_type: data.course_type,
             id: data.course_id,
             name: data.title,
             course_code: data.code,
@@ -485,7 +513,7 @@ export async function PUT(request, { params }) {
             category: data.category,
             thumbnail_url: data.thumbnail,
             target_outcomes: data.target_outcomes,
-            approval_status: data.status === 'Draft' ? 'pending' : data.status === 'Active' ? 'approved' : data.status,
+            approval_status: data.approval_status || 'pending',
             created_at: data.created_at,
             updated_at: data.updated_at
         };

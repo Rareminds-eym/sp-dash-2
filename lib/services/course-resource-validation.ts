@@ -469,3 +469,23 @@ export function buildCourseAssetKey(
   const month = String(now.getMonth() + 1).padStart(2, '0');
   return `courses/resources/${year}/${month}/${safeStem.slice(0, 60)}-${contentHash.slice(0, 16)}${ext}`;
 }
+
+// Only catalog thumbnails are public. Lesson resources retain their authenticated endpoint.
+export function isCourseThumbnailKey(key: string): boolean {
+  return /^courses\/thumbnails\/\d{4}\/\d{2}\/[A-Za-z0-9][A-Za-z0-9._-]*\.(png|jpe?g|webp|gif)$/i.test(key)
+    && !key.includes('..') && key.length <= 512;
+}
+
+export function courseThumbnailUrl(key: string, origin: string, browserHost?: string | null): string {
+  if (!isCourseThumbnailKey(key)) throw new Error('Invalid course thumbnail key');
+  let base = new URL(origin);
+  // next dev --hostname 0.0.0.0 constructs internal request URLs with its
+  // bind address. Store a browser-reachable localhost URL instead.
+  if (['0.0.0.0', '[::]'].includes(base.hostname)) {
+    base = new URL(`${base.protocol}//${browserHost || `localhost${base.port ? `:${base.port}` : ''}`}`);
+  }
+  if (base.protocol !== 'https:' && !(base.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(base.hostname))) {
+    throw new Error('Course thumbnail origin must use HTTPS or local HTTP');
+  }
+  return `${base.origin}/api/courses/thumbnails?key=${encodeURIComponent(key)}`;
+}

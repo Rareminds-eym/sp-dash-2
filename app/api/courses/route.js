@@ -21,8 +21,14 @@ const CourseSchema = z.object({
         z.number().finite('Credits must be a valid number').min(0, 'Credits cannot be negative').nullable().optional()
     ),
     thumbnail: z.string().nullable().optional(),
-    university: z.string().nullable().optional(),
-    category: z.string().nullable().optional(),
+    university: z.preprocess(value => typeof value === 'string' && !value.trim() ? null : value, z.string().trim().max(500).nullable().optional()),
+    category: z.preprocess(value => typeof value === 'string' && !value.trim() ? null : value, z.string().trim().max(500).nullable().optional()),
+    status: z.enum(['Active', 'Draft', 'Upcoming', 'Archived']).optional(),
+    approval_status: z.enum(['pending', 'approved', 'rejected']).optional(),
+    skill_type: z.preprocess(value => value === '' ? null : value, z.enum(["technical","soft"]).nullable().optional()),
+    classification: z.preprocess(value => value === '' ? null : value, z.enum(["middle_school","high_school","higher_secondary","college","arts_and_science","biotechnology_research","clinical_diagnostic","digital_health_ai","engineering","entrepreneurship","management","medical_device_equipment","regulatory_compliance","teacher"]).nullable().optional()),
+    plan_type: z.preprocess(value => value === '' ? null : value, z.enum(["freemium","basic","professional","premium"]).nullable().optional()),
+    course_type: z.enum(['course', 'webinar']).optional(),
     target_outcomes: z.array(z.string()).optional().default([]),
     skillsCovered: z.array(z.string()).optional().default([]),
     linkedClasses: z.array(z.string()).optional().default([]),
@@ -41,6 +47,27 @@ export async function GET(request) {
         if (authError) return authError;
 
         const url = new URL(request.url);
+
+        if (url.searchParams.get('filter_options') === 'true') {
+        const categories = new Set();
+        const universities = new Set();
+        // Read all catalog values, rather than only the first visible page.
+        for (let offset = 0; ; offset += 1000) {
+            const { data, error } = await supabaseAdmin.from('courses')
+                .select('category, university').is('deleted_at', null)
+                .order('course_id').range(offset, offset + 999);
+            if (error) return NextResponse.json({ error: 'Failed to load course filters' }, { status: 500 });
+            for (const course of data || []) {
+                if (course.category?.trim()) categories.add(course.category);
+                if (course.university?.trim()) universities.add(course.university);
+            }
+            if (!data || data.length < 1000) break;
+        }
+        return NextResponse.json({ data: {
+            categories: [...categories].sort((a, b) => a.localeCompare(b)),
+            universities: [...universities].sort((a, b) => a.localeCompare(b)),
+        } }, { headers: { 'Cache-Control': 'private, no-store' } });
+        }
 
         // Pagination parameters (validated: positive ints, bounded limit)
         const page = parsePositiveInt(url.searchParams.get('page'), 1);
@@ -62,7 +89,7 @@ export async function GET(request) {
             .from('courses')
             .select(`
                 course_id, title, code, description, thumbnail, status, approval_status, 
-                duration, university, category, credits, course_type, target_outcomes, skills_mapped, educator_id, 
+                duration, university, category, credits, course_type, skill_type, classification, plan_type, target_outcomes, skills_mapped, educator_id,
                 created_at, updated_at,
                 course_skills (skill_name),
                 admin_users (
@@ -123,6 +150,7 @@ export async function GET(request) {
         }
 
         // Add pagination after the filters and sorting have been applied.
+        query = query.order('course_id', { ascending: true });
         if (!fetchAll) {
             query = query.range(offset, offset + limit - 1);
         }
@@ -180,7 +208,9 @@ export async function GET(request) {
                 ? [user.firstName, user.lastName].filter(Boolean).join(' ') 
                 : null;
             
-            return {
+            return {                skill_type: c.skill_type,
+                classification: c.classification,
+                plan_type: c.plan_type,
                 id: c.course_id,
                 course_id: c.course_id,
                 name: c.title,
@@ -237,6 +267,7 @@ export async function GET(request) {
                     .range((currentPage - 1) * idPageSize, currentPage * idPageSize - 1);
 
                 if (statusFilter) idQuery = idQuery.eq('approval_status', statusFilter);
+                if (status) idQuery = idQuery.eq('status', status);
                 if (universityFilter && universityFilter !== 'all') idQuery = idQuery.eq('university', universityFilter);
                 if (categoryFilter && categoryFilter !== 'all') idQuery = idQuery.eq('category', categoryFilter);
                 if (searchTerm) idQuery = idQuery.or(buildCourseSearchOrFilter(searchTerm));
@@ -251,6 +282,7 @@ export async function GET(request) {
                     default: idQuery = idQuery.order('created_at', { ascending: false }); break;
                 }
 
+                idQuery = idQuery.order('course_id', { ascending: true });
                 const { data: pageCourses, error: pageError } = await idQuery;
                 if (pageError) {
                     console.error('Error fetching all courses:', pageError);
@@ -327,8 +359,14 @@ export async function POST(request) {
             duration: (body.duration || '').trim(),
             credits: body.credits,
             thumbnail: body.thumbnail || body.thumbnail_url || null,
-            university: body.university || null,
-            category: body.category || null,
+            category: body.category,
+            university: body.university,
+            skill_type: body.skill_type,
+            classification: body.classification,
+            plan_type: body.plan_type,
+            course_type: body.course_type,
+            status: body.status,
+            approval_status: body.approval_status,
             target_outcomes,
             skillsCovered: Array.isArray(body.skillsCovered || body.skills) ? (body.skillsCovered || body.skills) : [],
             linkedClasses: Array.isArray(body.linkedClasses) ? body.linkedClasses : [],
@@ -371,8 +409,8 @@ export async function POST(request) {
 
         // Admins can specify custom status, approval_status, educator_id, school_id.
         // Non-admins are restricted to pending / Draft / caller's ID and caller scope.
-        const approval_status = isAdmin ? (body.approval_status ?? 'approved') : 'pending';
-        const status = isAdmin ? (body.status ?? 'Active') : 'Draft';
+        const approval_status = isAdmin ? (validationResult.data.approval_status ?? 'approved') : 'pending';
+        const status = isAdmin ? (validationResult.data.status ?? 'Active') : 'Draft';
         let educator_id = isAdmin
             ? (body.educatorId ?? body.educator_id ?? user?.id ?? null)
             : (user?.id ?? null);
@@ -418,12 +456,16 @@ export async function POST(request) {
                     university,
                     category,
                     target_outcomes,
-                    status,
-                    approval_status,
                     skills_mapped: skillsCovered.length,
                     total_skills: skillsCovered.length,
                     educator_id,
-                    school_id
+                    school_id,                    skill_type: validationResult.data.skill_type,
+                    classification: validationResult.data.classification,
+                    plan_type: validationResult.data.plan_type,
+                    course_type: validationResult.data.course_type,
+                    // Only admins may activate or approve content.
+                    status,
+                    approval_status
                 }
             ])
             .select()
@@ -559,6 +601,10 @@ export async function POST(request) {
 
         // Map inserted row to standard frontend response shape
         const mapped = {
+            skill_type: courseRow.skill_type,
+            classification: courseRow.classification,
+            plan_type: courseRow.plan_type,
+            course_type: courseRow.course_type,
             id: courseRow.course_id,
             name: courseRow.title,
             title: courseRow.title,

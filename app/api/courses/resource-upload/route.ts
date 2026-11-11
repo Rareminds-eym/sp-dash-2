@@ -10,6 +10,8 @@ import {
 } from '@/lib/services/course-upload-queue';
 import {
   buildCourseAssetKey,
+  courseThumbnailUrl,
+  isCourseThumbnailKey,
   extensionOf,
   formatFileSize,
   isUrlResourceType,
@@ -113,7 +115,14 @@ export async function POST(request: NextRequest) {
 
     const now = new Date();
     const stem = ext ? originalName.slice(0, -ext.length) : originalName;
-    const r2Key = buildCourseAssetKey(stem, contentHash, ext, now);
+    const resourceKey = buildCourseAssetKey(stem, contentHash, ext, now);
+    const r2Key = uploadTarget === 'course-image'
+      ? resourceKey.replace('courses/resources/', 'courses/thumbnails/') : resourceKey;
+    if (uploadTarget === 'course-image' && (!isCourseThumbnailKey(r2Key) || file.size > 5 * 1024 * 1024)) {
+      return NextResponse.json({ success: false, error: 'Thumbnail must be PNG, JPG, WebP or GIF, up to 5MB.' }, { status: 400 });
+    }
+    const thumbnailUrl = uploadTarget === 'course-image'
+      ? courseThumbnailUrl(r2Key, request.url, request.headers.get('host')) : undefined;
 
     const bucket = await getCourseAssetsBucket().catch((err) => {
       if (err instanceof CourseAssetsBindingError) return null;
@@ -143,7 +152,7 @@ export async function POST(request: NextRequest) {
 
     const queue = bindings?.COURSE_MANAGEMENT_UPLOAD_QUEUE;
     const kv = bindings?.RATE_LIMIT_KV;
-    if (!queue || !kv) {
+    if (process.env.NODE_ENV === 'development' || !queue || !kv) {
       if (process.env.NODE_ENV === 'development') {
         const localKey = r2Key;
         await bucket.put(localKey, bytes, {
@@ -157,11 +166,12 @@ export async function POST(request: NextRequest) {
             contentHash,
           },
         });
-        const r2Url = `/api/courses/assets?key=${encodeURIComponent(localKey)}`;
+        const r2Url = thumbnailUrl || `/api/courses/assets?key=${encodeURIComponent(localKey)}`;
         return NextResponse.json({
           success: true,
           r2Key: localKey,
           r2Url,
+          url: r2Url,
           fileName: originalName,
           fileSize: formatFileSize(file.size),
           fileSizeBytes: file.size,
@@ -189,6 +199,7 @@ export async function POST(request: NextRequest) {
       contentHash,
       resourceType,
       uploadTarget,
+      thumbnailUrl,
       uploaderId,
     };
     const job: CourseUploadJob = {
