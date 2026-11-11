@@ -4,6 +4,10 @@ compatibility_date = "2026-09-25"
 compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
 workers_dev = false
 preview_urls = false
+# next-themes serializes its initializer into an inline browser script. Name
+# preservation injects __name calls whose helper stays in the Worker scope.
+# https://opennext.js.org/cloudflare/howtos/keep_names
+keep_names = false
 
 [vars]
 ENVIRONMENT = "production"
