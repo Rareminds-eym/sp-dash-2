@@ -108,6 +108,29 @@ async function fixture({ initialSection = 'records', initialUrl = 'http://localh
   return {w,state,timers,timerDelays,act,approve,button,chooseSource,chooseDropdown,async resize(compact){await act(()=>{media.matches=compact;for(const listener of mediaListeners)listener();});},async close(){await act(()=>w.auditRoot.unmount());w.close();}};
 }
 
+test('source registration fixes imported job ownership to SkillPassport Platform',async()=>{
+  const f=await fixture({sources:[],initialSection:'overview'});
+  try{
+    await f.act(()=>f.button('Integration settings').click());
+    await f.act(()=>f.button('Register source').click());
+    const form=f.w.document.querySelector('dialog form');
+    assert.ok(form);
+    assert.match(form.textContent,/Imported jobs belong to SkillPassport Platform/);
+    assert.doesNotMatch(form.textContent,/publishing organization UUID/);
+    assert.equal(form.querySelectorAll('input').length,2);
+    await f.act(()=>{
+      for(const [index,value] of ['Zoho source','123'].entries()){
+        const field=form.querySelectorAll('input')[index];
+        Object.getOwnPropertyDescriptor(f.w.HTMLInputElement.prototype,'value').set.call(field,value);
+        field.dispatchEvent(new f.w.Event('input',{bubbles:true}));
+      }
+    });
+    await f.act(()=>form.dispatchEvent(new f.w.Event('submit',{bubbles:true,cancelable:true})));
+    const command=f.state.posts.find(item=>item.action==='configure');
+    assert.deepEqual(command.input,{name:'Zoho source',sourceOrgId:'123',region:'in'});
+  }finally{await f.close();}
+});
+
 test('Next compiler recognizes every edited job review component as a client boundary',async()=>{
  const {readFileSync}=dashRequire('node:fs');
  const swc=dashRequire('next/dist/build/swc');

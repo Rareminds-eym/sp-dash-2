@@ -39,7 +39,7 @@ const captions = {
   pending_approval: 'Awaiting review', held: 'On hold', rejected: 'Rejected', approved: 'Approved · queued',
   approval_stale: 'Review again', processing: 'Processing', completed: 'Completed', failed: 'Failed',
 };
-const initialConnection = { name: '', sourceOrgId: '', region: 'in', publisherOrganizationId: '' };
+const initialConnection = { name: '', sourceOrgId: '', region: 'in' };
 async function api(path = '', options) {
   const response = await fetch(`${API}${path}`, { credentials: 'same-origin', cache: 'no-store', ...options });
   const result = await browserResponse(response);
@@ -842,8 +842,9 @@ export default function ZohoRecruitPage() {
             <div><p className="text-xs font-medium">Last discovery</p><p className="mt-3 text-sm">{connection?.lastDiscoveredAt ? new Date(connection.lastDiscoveredAt).toLocaleString() : 'No completed discovery'}</p></div>
           </div> : <p className="mt-5 text-sm text-muted-foreground">No source registered. Add your organization details to begin setup.</p>}
           {showSetup && <form onSubmit={configure} className="mt-5 grid gap-4 border-t border-border pt-5 md:grid-cols-2">
-            {[['name', 'Connection name'], ['sourceOrgId', 'Zoho organization ID'], ['publisherOrganizationId', 'Platform publishing organization UUID']].map(([key, label]) => <label key={key} className="text-xs font-medium">{label}<input required value={configuration[key]} onChange={e => setConfiguration(value => ({ ...value, [key]: e.target.value }))} className="mt-2 block w-full rounded-lg border border-border bg-background p-2.5 text-sm" /></label>)}
+            {[['name', 'Connection name'], ['sourceOrgId', 'Zoho organization ID']].map(([key, label]) => <label key={key} className="text-xs font-medium">{label}<input required value={configuration[key]} onChange={e => setConfiguration(value => ({ ...value, [key]: e.target.value }))} className="mt-2 block w-full rounded-lg border border-border bg-background p-2.5 text-sm" /></label>)}
             <label className="text-xs font-medium">Data center<ZohoSelect aria-label="Data center" value={configuration.region} onValueChange={region => setConfiguration(value => ({ ...value, region }))} options={ZOHO_REGIONS.map(region => ({value:region,label:region.toUpperCase()}))}/></label>
+            <p className="text-xs text-muted-foreground md:col-span-2">Imported jobs belong to SkillPassport Platform. The company name remains the client name from Zoho.</p>
             <div className="md:col-span-2"><Button disabled={busy} type="submit">Register disconnected source</Button><p className="mt-2 text-xs text-muted-foreground">Registration does not authorize access, import data, or create accounts.</p></div>
           </form>}
         </section>
