@@ -28,8 +28,10 @@ key ID. Retain keys needed to decrypt existing records during rotation.
 | [SSO config](../../../sso-worker/src/lib/zoho-config.ts) | Candidate provisioning, projection delivery and dependency/delivery timeouts |
 | [Application config](../../../skillpassport/functions/lib/zoho-config.ts) | Projection delivery, dependency timeout and request-size limit |
 
-Each module exports immutable deployment profiles. Production, development, QA,
-preview and unknown deployments remain disabled. Existing local loopback database
+Each module exports immutable deployment profiles. The dashboard QA profile enables
+discovery, source operations and privacy cleanup; approved execution, job publishing
+and candidate projection delivery remain disabled. Production, development, preview
+and unknown deployments remain disabled. Existing local loopback database
 configuration selects the enabled local profile; `local-review` keeps operations
 disabled during local preparation. The isolated acceptance launcher verifies dependency
 wiring before selecting the existing `development` platform context. Normal
@@ -41,10 +43,10 @@ Dashboard background disablement also blocks its nested processing adapters.
 
 The local callback is
 `http://localhost:3010/api/integrations/zoho-recruit/oauth/callback`.
-Dev/QA/production callback constants are deliberately unset until the actual
-sp-dash origins are supplied; remote OAuth is unavailable until those constants
-are filled and the matching callback URLs are registered with Zoho. Changing a
-profile requires a code change and rebuild/restart. No remote profile was enabled.
+The QA callback is configured for `https://sp-dash-2-qa.subashini.workers.dev`;
+its exact callback URL must be registered with Zoho. Dev/production callbacks
+remain unset. Changing a profile requires a code change and rebuild/restart.
+QA discovery also requires its restricted role credential and provider credentials.
 Email prohibition and human approval remain enforced independently of profiles.
 
 ## Platform bindings, not string variables
