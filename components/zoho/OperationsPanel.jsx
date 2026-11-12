@@ -1,4 +1,5 @@
 'use client';
+import { cursorTimestamp } from '@/lib/zoho/cursor-timestamp';
 import ZohoSelect from './ZohoSelect';
 import { browserResponse } from '@/lib/zoho/browser-response';
 import {useCallback,useEffect,useRef,useState} from 'react';
@@ -24,7 +25,7 @@ export default function OperationsPanel({connectionId,module,record,onChanged,ac
   const token={};historyRequests.current[kind]=token;historyViews.current[kind]=view;
   setHistory(previous=>({...previous,[kind]:{...(append?previous[kind]:{items:[],nextCursor:null}),view,loading:true,error:''}}));
   try{
-   const query=new URLSearchParams({view:'operator_history',connectionId,kind,historyView:view});if(cursor)query.set('cursor',JSON.stringify(cursor));
+   const query=new URLSearchParams({view:'operator_history',connectionId,kind,historyView:view});if(cursor)query.set('cursor',JSON.stringify({...cursor,timestamp:cursorTimestamp(cursor.timestamp)}));
    const response=await fetch(`${API}?${query}`,{cache:'no-store'});const result=await browserResponse(response);
    if(scope.current!==started||historyRequests.current[kind]!==token)return;
    if(!response.ok)throw new Error(result.error||'Operator history unavailable');

@@ -1,4 +1,5 @@
 'use client';
+import { cursorTimestamp } from '@/lib/zoho/cursor-timestamp';
 import { jobSelectionIssues } from '@/lib/zoho/job-approval';
 import JobDescription from '@/components/zoho/JobDescription';
 import { browserResponse } from '@/lib/zoho/browser-response';
@@ -459,7 +460,7 @@ export default function ZohoRecruitPage() {
     const items=kind==='runs'?runs:kind==='executions'?executions:deferred,last=items.at(-1);if(!last)return;
     const generation=historyGeneration.current,source=connectionId;setBusy(true);
     try{
-      const params=new URLSearchParams({view:kind,connectionId,before:kind==='deferred'?last.updated_at:last.created_at,beforeId:last.id});
+      const params=new URLSearchParams({view:kind,connectionId,before:cursorTimestamp(kind==='deferred'?last.updated_at:last.created_at),beforeId:last.id});
       const result=await api(`?${params}`);if(generation!==historyGeneration.current||activeConnection.current!==source)return;
       const append=previous=>[...new Map([...previous,...result[kind]].map(item=>[item.id,item])).values()];
       if(kind==='runs')setRuns(append);if(kind==='executions')setExecutions(append);if(kind==='deferred')setDeferred(append);
@@ -528,7 +529,7 @@ export default function ZohoRecruitPage() {
     const current=()=>generation===requestGeneration.current&&read===recordRead.current&&activeConnection.current===connectionId;
     setBusy(true);
     try {
-      const params = new URLSearchParams({ view: 'records', connectionId, module, before: last.created_at, beforeId: last.id });
+      const params = new URLSearchParams({ view: 'records', connectionId, module, before: cursorTimestamp(last.created_at), beforeId: last.id });
       if(search)params.set('search',search);if(stateFilter)params.set('state',stateFilter);
       const result = await api(`?${params}`);
       if (current()) {
