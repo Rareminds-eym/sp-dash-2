@@ -1,24 +1,16 @@
 import { logAudit } from '@/lib/services/auditService';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { createRLSClient, getUserContext } from '@/lib/supabase-rls';
+import { requirePlatformAdmin } from '@/lib/platform-admin';
 import { NextResponse } from 'next/server';
 
 
 
 export async function PUT(request) {
   try {
-    const { supabase: rlsClient, user, error: authError } = await createRLSClient(request);
-    
-    if (!user || authError) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    
-    const userContext = await getUserContext(rlsClient, user);
-    
-    if (!userContext) {
-      return NextResponse.json({ error: 'User context not found' }, { status: 403 });
-    }
-    
+    const auth = await requirePlatformAdmin(request, ['super_admin', 'admin']);
+    if (auth.error) return auth.error;
+    const userContext = { id: auth.user.id };
+
     const body = await request.json();
     const { email, firstName, lastName, organizationName } = body;
 
@@ -29,8 +21,8 @@ export async function PUT(request) {
       );
     }
 
-    // First, find the user by email using RLS client
-    const { data: userData, error: userError } = await rlsClient
+    // First, find the user by email using the authorized server client
+    const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('id, organizationId, firstName, lastName')
       .eq('email', email)
@@ -51,7 +43,7 @@ export async function PUT(request) {
     if (firstName !== undefined) updateData.firstName = firstName;
     if (lastName !== undefined) updateData.lastName = lastName;
 
-    const { error: updateUserError } = await rlsClient
+    const { error: updateUserError } = await supabaseAdmin
       .from('users')
       .update(updateData)
       .eq('id', userData.id);
@@ -87,7 +79,7 @@ export async function PUT(request) {
     }
 
     // Log audit
-    await logAudit(user.id, 'update_profile', user.id, { firstName, lastName, organizationName });
+    await logAudit(userContext.id, 'update_profile', userData.id, { firstName, lastName, organizationName });
 
     return NextResponse.json({ 
       success: true, 

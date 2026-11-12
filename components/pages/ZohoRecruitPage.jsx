@@ -682,13 +682,16 @@ export default function ZohoRecruitPage() {
     return { id: selected.id, record, message: candidateReviewUnavailable(record, connection) || selectionApprovalIssue(record, selected, candidateReviews[selected.id]) || selectedJobIssues.find(item => item.id === selected.id)?.message };
   }).filter(item => item.message);
   const nextCandidateReview = approvalIssues.find(item => item.record?.module === 'Candidates');
-  const executionReady = snapshot?.capabilities?.execution?.ready && snapshot.capabilities.execution.modules.includes(module);
+  const candidateExecutionReady = Boolean(snapshot?.capabilities?.execution?.ready && snapshot.capabilities.execution.modules?.includes('Candidates'));
+  const jobExecutionReady = Boolean(snapshot?.capabilities?.execution?.ready && snapshot.capabilities.execution.modules?.includes('Job_Openings'));
+  const executionReady = module === 'Candidates' ? candidateExecutionReady : jobExecutionReady;
+  const executionLabel = module === 'Candidates' ? 'Candidate account creation' : 'Job creation';
   const canApprove = executionReady && selection.length > 0 && selection.length<=ZOHO_POLICY.maxApprovalBatch &&
     connection?.status === 'connected' && approvalIssues.length === 0;
   const detailItem = detail ? recordDecisionItem(detail) : null;
   const detailApprovalIssue = !detail ? null : busy ? 'An operation is in progress. Wait for it to finish.' :
     candidateReviewUnavailable(detail, connection) ||
-    (!executionReady ? 'Account / job execution is unavailable. Refresh status after restoring the required services.' : null) ||
+    (!executionReady ? `${executionLabel} is unavailable. Refresh status after restoring the required services.` : null) ||
     selectionApprovalIssue(detail, detailItem, candidateReviews[detail.id]) ||
     (detail.module === 'Job_Openings' ? jobSelectionIssues([detail],connection,jobPolicy)[0]?.message : null) || null;
   const canDecideDetail = detail && !busy && !detail.payload_redacted_at && !detail.suppressed &&
@@ -713,7 +716,7 @@ export default function ZohoRecruitPage() {
 
   const selectionControls = (
 <div id="zoho-selection-actions" tabIndex={-1} aria-label="Selection actions" className={styles.selectionActions}>
-            <p className="sr-only">{executionReady ? 'Approvals are recorded atomically. Completed creation is reported separately.' : 'Account/job execution is unavailable. Refresh status after restoring the required services. Review, hold and reject are available.'}</p>
+            <p className="sr-only">{executionReady ? 'Approvals are recorded atomically. Completed creation is reported separately.' : `${executionLabel} is unavailable. Refresh status after restoring the required services. Review, hold and reject are available.`}</p>
             <div className="flex gap-2"><Button variant="outline" size="sm" disabled={busy || !selection.length} onClick={() => openDecision('hold')}>Hold</Button><Button variant="outline" size="sm" disabled={busy || !selection.length} onClick={() => openDecision('reject')}>Reject</Button><Button className={styles.primaryAction} size="sm" disabled={busy || !canApprove} onClick={() => openDecision('approve')}><Check size={14} className="mr-2" /> Approve selection</Button></div>
             {selection.length>0&&connection?.status!=='connected'&&<p className="w-full text-xs text-destructive">Connect or resume this source before approving records.</p>}
             {approvalIssues.length>0&&<div className="w-full space-y-2 text-xs" aria-label="Approval requirements">
@@ -808,7 +811,7 @@ export default function ZohoRecruitPage() {
           <div className={`${styles.workspaceSide} ${!detail ? styles.workspaceSideEmpty : ''}`}>
           <section className={styles.overviewCard} aria-label="Integration health">
             <div className={styles.cardHeading}><span className={styles.sectionIcon}><ShieldCheck size={21}/></span><div><h2>Integration health</h2><p>Connection and delivery readiness</p></div></div>
-            <div className={styles.healthRows}><div><span>Source authorization</span><span className={`${styles.statusChip} ${connection?.status==='connected'?styles.connected:styles.neutral}`}>{connection?.status==='connected'?'Connected':connection?.status?.replaceAll('_',' ')||(loading?'Loading status…':!snapshot?'Status unavailable':'No source selected')}</span></div><div><span>Account / job execution</span><span className={`${styles.statusChip} ${executionReady?styles.connected:styles.neutral}`}>{executionReady?'Ready':'Unavailable'}</span></div></div>
+            <div className={styles.healthRows}><div><span>Source authorization</span><span className={`${styles.statusChip} ${connection?.status==='connected'?styles.connected:styles.neutral}`}>{connection?.status==='connected'?'Connected':connection?.status?.replaceAll('_',' ')||(loading?'Loading status…':!snapshot?'Status unavailable':'No source selected')}</span></div>{[['Candidate account creation',candidateExecutionReady],['Job creation',jobExecutionReady]].map(([label,ready])=><div key={label}><span>{label}</span><span className={`${styles.statusChip} ${ready?styles.connected:styles.neutral}`}>{ready?'Ready':'Unavailable'}</span></div>)}</div>
           </section>
             {detail&&detailOpen&&compact&&<button type="button" data-review-backdrop tabIndex={-1} aria-label="Close record review backdrop" className={styles.reviewBackdrop} onClick={closeDetail}/>}
             <aside ref={detailPanel} hidden={compact && (!detail || !detailOpen)} tabIndex={-1} onKeyDown={detailKeys} role={compact&&detail&&detailOpen?'dialog':undefined} aria-modal={compact&&detail&&detailOpen?true:undefined} className={`${styles.reviewCard} ${detail&&(!compact||detailOpen)?styles.reviewVisible:styles.reviewEmpty} ${compact&&detail&&detailOpen?styles.reviewMobile:''}`} aria-label="Record review">
@@ -919,7 +922,7 @@ export default function ZohoRecruitPage() {
             {decisionError&&<p role="alert" className={styles.decisionAlert}>{decisionError}</p>}
         {decision==='approve'&&!canApproveDecision&&<div role="alert" className="mt-3 space-y-2 text-sm text-destructive">
           <p>Approval is no longer ready. Close this dialog and resolve the following before confirming.</p>
-          {!executionReady&&<p>Account/job execution is unavailable. Refresh status after restoring the required services.</p>}
+          {!executionReady&&<p>{executionLabel} is unavailable. Refresh status after restoring the required services.</p>}
           {connection?.status!=='connected'&&<p>Connect or resume this source, then run fresh discovery and review.</p>}
           {!decisionItems.length&&<p>The selection changed. Select current records again.</p>}
           {decisionIssues.length>0&&<ul className="list-inside list-disc">{decisionIssues.slice(0,5).map(item=><li key={item.id}>{item.record?.proposed_data?.name||item.record?.proposed_data?.title||'Selected record'}: {item.message}</li>)}</ul>}

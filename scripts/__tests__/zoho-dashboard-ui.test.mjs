@@ -17,7 +17,7 @@ before(async()=>{
 });
 
 const id='a5700000-0000-4000-8000-000000000001';
-async function fixture({ initialSection = 'records', initialUrl = 'http://localhost/', candidate = false, recordCount = 2, sources = null, compact = false, reviewTtl = 600000, discoveryAvailable = false, summaryError = false, progressTimers = false, idleTimers = false } = {}) {
+async function fixture({ initialSection = 'records', initialUrl = 'http://localhost/', candidate = false, recordCount = 2, sources = null, compact = false, reviewTtl = 600000, discoveryAvailable = false, summaryError = false, progressTimers = false, idleTimers = false, executionModules = ['Candidates','Job_Openings'] } = {}) {
   const state={reads:[],approved:false,complete:false,changed:false,historyGets:0, failures:{}, posts:[], decisionError:null, run:null, moduleCounts:null, moduleCountsAvailable:true};
   const timers=new Map(),timerDelays=new Map();let sequence=0;
   const dom=new JSDOM('<div id="root"></div>',{url:initialUrl,runScripts:'outside-only',pretendToBeVisual:true});
@@ -83,7 +83,7 @@ async function fixture({ initialSection = 'records', initialUrl = 'http://localh
     else if(url.searchParams.get('view')==='executions'){state.historyGets++;data={executions:state.approved?[{id,state:state.complete?'completed':'queued',execution_attempts:1,record_revision:1,zoho_staged_records:{module:candidate?'Candidates':'Job_Openings',external_id:'999'}}]:[]};}
     else if(url.searchParams.get('view')==='runs')data={runs:state.runs||(state.run?[state.run]:[]),...(state.latestRuns ? {latestRuns:state.latestRuns,captures:state.captures || []}: {})};
     else if(url.searchParams.get('view')==='deferred')data={deferred:[]};
-    else data={connections:(sources||[{id,name:'Audit fixture',region:'in',status:'connected'}]).map(source=>({configRevision:1,...source})),counts:{},countsByConnection:{[id]:{completed:state.complete?1:0}},countsByConnectionAndModule:state.moduleCountsAvailable?(state.moduleCounts||{[id]:{[candidate?'Candidates':'Job_Openings']:{completed:state.complete?1:0}}}):undefined,capabilities:{oauth:false,discovery:discoveryAvailable,execution:{ready:true,modules:['Candidates','Job_Openings']}}};
+    else data={connections:(sources||[{id,name:'Audit fixture',region:'in',status:'connected'}]).map(source=>({configRevision:1,...source})),counts:{},countsByConnection:{[id]:{completed:state.complete?1:0}},countsByConnectionAndModule:state.moduleCountsAvailable?(state.moduleCounts||{[id]:{[candidate?'Candidates':'Job_Openings']:{completed:state.complete?1:0}}}):undefined,capabilities:{oauth:false,discovery:discoveryAvailable,execution:{ready:executionModules.length>0,modules:executionModules}}};
     return Response.json(data);
   };
   w.eval(bundle);
@@ -1491,5 +1491,19 @@ test('job search progress reports indexing separately and stops reads on a hidde
   for(const [id,fn] of [...f.timers]) if(f.timerDelays.get(id)===60000) await f.act(()=>fn());
   assert.equal(f.state.reads.filter(v=>v==='job_index').length,before);
   assert.equal(f.state.posts.length,0);
+ }finally{await f.close();}
+});
+
+test('health names candidate and job readiness separately when only job execution is ready',async()=>{
+ const f=await fixture({candidate:true,executionModules:['Job_Openings']});try{
+  const health=f.w.document.querySelector('[aria-label="Integration health"]');
+  const rows=[...health.querySelectorAll('div')];
+  const candidate=rows.find(row=>row.firstElementChild?.textContent==='Candidate account creation');
+  const jobs=rows.find(row=>row.firstElementChild?.textContent==='Job creation');
+  assert.ok(candidate&&jobs);
+  assert.match(candidate.textContent,/Unavailable/);
+  assert.match(jobs.textContent,/Ready/);
+  assert.doesNotMatch(health.textContent,/Account \/ job execution/);
+  assert.equal(f.button('Approve all staged candidates').disabled,true);
  }finally{await f.close();}
 });
