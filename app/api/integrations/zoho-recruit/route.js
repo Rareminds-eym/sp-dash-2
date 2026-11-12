@@ -183,6 +183,10 @@ async function handle(request) {
         if (recovered) return json({ result: recovered, emailPolicy: 'forbidden' });
       } catch (lookupError) { error = lookupError; }
     }
+    if (error.code === 'APPROVAL_EVIDENCE_UNAVAILABLE') return json({
+      error: 'Human approval verification is unavailable. Retry the pending batch to recover the same request.',
+      code: error.code,
+    }, 503);
     if (error.executionProgressUnavailable) return json({ error: error.message }, 503);
     if (error.integrationUnavailable && action === 'recover_executions') return json({ error: error.message }, 503);
     if (error.integrationUnavailable) return json({ error: 'Silent approved execution is not deployed. Review, hold and reject remain available.' }, 503);
