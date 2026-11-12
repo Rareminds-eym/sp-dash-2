@@ -118,7 +118,7 @@ export default function JobPolicyPanel({ connectionId, onSaved, refreshVersion =
     {notice&&<p role="status" className="mt-4 text-sm">{notice}</p>}
     {refreshWarning&&<p role="alert" className="mt-4 text-sm text-amber-700 dark:text-amber-300">{refreshWarning}</p>}
     {!snapshot ? <p className="mt-4 text-sm text-muted-foreground">{busy ? 'Loading publication policy…' : 'Refresh status to load the current policy.'}</p> : <form onSubmit={save} className="mt-5 space-y-5">
-      {!snapshot.policy && <p className="text-xs leading-5 text-muted-foreground">Default mappings are prefilled: In-progress → open and Full time → job. Review and save them for this source. Other Zoho labels require their own mappings.</p>}
+      {!snapshot.policy && <p className="text-xs leading-5 text-muted-foreground">Standard status and employment mappings are prefilled. Review and save them for this source. Unmapped Zoho labels stay blocked.</p>}
       <div className="grid gap-6 xl:grid-cols-2">
         <MappingRows title="Job status" entries={statusRows} destinations={['open', 'closed', 'draft']} disabled={busy} onChange={setStatusRows} />
         <MappingRows title="Employment type" entries={employmentRows} destinations={['job', 'internship', 'contract']} disabled={busy} onChange={setEmploymentRows} />

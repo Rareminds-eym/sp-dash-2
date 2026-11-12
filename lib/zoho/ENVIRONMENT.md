@@ -29,8 +29,8 @@ key ID. Retain keys needed to decrypt existing records during rotation.
 | [Application config](../../../skillpassport/functions/lib/zoho-config.ts) | Projection delivery, dependency timeout and request-size limit |
 
 Each module exports immutable deployment profiles. The dashboard QA profile enables
-discovery, source operations and privacy cleanup; approved execution, job publishing
-and candidate projection delivery remain disabled. Production, development, preview
+discovery, source operations, privacy cleanup and approved job execution. Candidate
+projection delivery remains disabled until its private boundary is configured. Production, development, preview
 and unknown deployments remain disabled. Existing local loopback database
 configuration selects the enabled local profile; `local-review` keeps operations
 disabled during local preparation. The isolated acceptance launcher verifies dependency
