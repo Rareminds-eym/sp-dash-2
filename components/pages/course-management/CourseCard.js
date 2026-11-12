@@ -10,11 +10,12 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { GraduationCap, MoreVertical, Eye, Edit, Trash2, Clock, Award, BookOpen, User, Calendar } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 export function CourseCard({ course, selected, onSelect, onEdit, onDelete, onViewDetails }) {
     const [imageError, setImageError] = useState(false)
     const [menuOpen, setMenuOpen] = useState(false)
+    useEffect(() => setImageError(false), [course.id, course.thumbnail_url])
 
     const getStatusConfig = (status) => {
         const configs = {
