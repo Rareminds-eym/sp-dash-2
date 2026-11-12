@@ -357,9 +357,19 @@ dead_letter_queue = "zoho-recruit-approved-qa-dlq"
 # Provision the environment-specific Zoho queues and DLQs before deploying this
 # configuration. Remote code profiles stay disabled until migration, credential and
 # tenant/no-email preflight passes. Preview profiles disable all Zoho operations.
-# Zoho credentials/keys: ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_TOKEN_ENCRYPTION_KEY,
-# ZOHO_TOKEN_ENCRYPTION_KEYS, ZOHO_TOKEN_ENCRYPTION_ACTIVE_KEY_ID,
-# ZOHO_DISCOVERY_DB_TOKEN (signed, expiring zoho_discovery role JWT).
+# Required Zoho secrets (configure independently for each deployment):
+#   wrangler secret put ZOHO_CLIENT_ID --env qa
+#   wrangler secret put ZOHO_CLIENT_SECRET --env qa
+#   wrangler secret put ZOHO_TOKEN_ENCRYPTION_KEY --env qa
+# The encryption key is base64-encoded, cryptographically random 32-byte AES material.
+# For rotation, optionally use ZOHO_TOKEN_ENCRYPTION_KEYS (JSON keyring) together
+# with ZOHO_TOKEN_ENCRYPTION_ACTIVE_KEY_ID. Keep old keys while tokens depend on them.
+# Discovery also requires:
+#   wrangler secret put ZOHO_DISCOVERY_DB_TOKEN --env qa
+#   wrangler secret put NEXT_PUBLIC_SUPABASE_ANON_KEY --env qa
+# ZOHO_DISCOVERY_DB_TOKEN is a signed, expiring zoho_discovery role JWT.
+# Replace --env qa with --env dev for development; omit it for production.
+# OAuth callbacks and processing switches are code-owned in lib/zoho/config.js.
 # Discovery additionally uses NEXT_PUBLIC_SUPABASE_ANON_KEY as gateway API key.
 # It never falls back to the host service-role credential. Rotate the reader JWT
 # before expiry; readiness fails closed with less than a minute remaining.
