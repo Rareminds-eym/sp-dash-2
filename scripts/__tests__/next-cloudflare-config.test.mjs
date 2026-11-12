@@ -21,10 +21,11 @@ test('production build does not start a stub runtime with unresolved named self-
 });
 test('normal Next development still initializes local Cloudflare bindings', () => {
  const result = config({ NODE_ENV: 'development' });
- assert.equal(result.calls.length,1); assert.equal(result.calls[0],undefined);
+ assert.equal(result.calls.length,1); assert.equal(result.calls[0].remoteBindings,false);
 });
 test('isolated dashboard development still uses its proxy config and separate build directory', () => {
  const result = config({ NODE_ENV:'development', CLOUDFLARE_LOCAL_CONFIG_PATH:'/fixture/proxy.json' });
  assert.equal(result.calls.length,1); assert.equal(result.calls[0].configPath,'/fixture/proxy.json');
+ assert.equal(result.calls[0].remoteBindings,false);
  assert.equal(result.value.distDir,'.next.zoho-local');
 });

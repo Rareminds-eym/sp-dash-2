@@ -33,6 +33,25 @@ import {
   isUrlResourceType,
 } from '@/lib/services/course-resource-validation'
 
+const COURSE_SETTING_FIELDS = [
+  { key: 'status', label: 'Course status', options: ['Active', 'Draft', 'Upcoming', 'Archived'], required: true },
+  { key: 'category', label: 'Course category', placeholder: 'e.g. Teacher Training' },
+  { key: 'skill_type', label: 'Skill type', options: ['technical', 'soft'] },
+  { key: 'classification', label: 'Course classification', options: [
+    'middle_school', 'high_school', 'higher_secondary', 'college', 'arts_and_science',
+    'biotechnology_research', 'clinical_diagnostic', 'digital_health_ai', 'engineering',
+    'entrepreneurship', 'management', 'medical_device_equipment', 'regulatory_compliance', 'teacher',
+  ] },
+  { key: 'plan_type', label: 'Required access plan', options: ['freemium', 'basic', 'professional', 'premium'] },
+  { key: 'course_type', label: 'Course type', options: ['course', 'webinar'] },
+];
+
+function courseSettingLabel(value) {
+  if (!value) return 'Not specified';
+  const labels = { soft: 'Soft skills', technical: 'Technical skills', freemium: 'Freemium', digital_health_ai: 'Digital Health & AI' };
+  return labels[value] || value.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+}
+
 const STEPS = [
   { id: 0, title: 'Course Source' },
   { id: 1, title: 'Basic Info' },
@@ -70,6 +89,7 @@ export function CreateCourseModal({
   const [importUrl, setImportUrl] = useState('')
   
   const [courseData, setCourseData] = useState({
+    category: '', skill_type: 'soft', classification: '', plan_type: '', course_type: 'course',
     title: '', code: '', description: '', duration: '', durationUnit: 'weeks', thumbnail: '',
     status: 'Active', credits: '',
     skillsCovered: [], targetOutcomes: [''], modules: []
@@ -96,6 +116,7 @@ export function CreateCourseModal({
   const resourceFileInputRef = useRef(null)
   const hierarchyAbortRef = useRef(null)
   const hierarchyRequestIdRef = useRef(0)
+  const hierarchySnapshotRef = useRef(null)
 
   const editingCourseId = editingCourse?.id || editingCourse?.course_id || null
 
@@ -105,9 +126,11 @@ export function CreateCourseModal({
         const data = await response.json()
         if (!response.ok) throw new Error(data.error || 'Failed to load course resources')
         if (hierarchyRequestIdRef.current !== requestId) return // stale request
+        const modules = normalizeCourseHierarchy(data.data || [])
+        hierarchySnapshotRef.current = JSON.stringify(modules)
         setCourseData(previous => ({
           ...previous,
-          modules: normalizeCourseHierarchy(data.data || [])
+          modules
         }))
         setHierarchyStatus('loaded')
         setHierarchyError('')
@@ -136,11 +159,16 @@ export function CreateCourseModal({
       hierarchyRequestIdRef.current = requestId
       // Parse duration string to extract value and unit (e.g., "12 weeks" -> { duration: "12", durationUnit: "weeks" })
       const durationStr = editingCourse.duration || ''
-      const durationMatch = durationStr.match(/^(\d+)\s*(minutes?|hours?|days?|weeks?|months?)$/i)
+      const durationMatch = durationStr.match(/^(\d+(?:\.\d+)?)\s*(minutes?|hours?|days?|weeks?|months?)$/i)
       const durationValue = durationMatch ? durationMatch[1] : durationStr
       const durationUnit = durationMatch ? durationMatch[2].toLowerCase().replace(/s$/, '') + 's' : 'weeks'
       
       setCourseData({
+        category: editingCourse.category ?? '',
+        skill_type: editingCourse.skill_type ?? '',
+        classification: editingCourse.classification ?? '',
+        plan_type: editingCourse.plan_type ?? '',
+        course_type: editingCourse.course_type || 'course',
         title: editingCourse.name || '',
         code: editingCourse.course_code || '',
         description: editingCourse.description || '',
@@ -182,6 +210,7 @@ export function CreateCourseModal({
     setImportPlatform('')
     setImportUrl('')
     setCourseData({
+      category: '', skill_type: 'soft', classification: '', plan_type: '', course_type: 'course',
       title: '', code: '', description: '', duration: '', durationUnit: 'weeks', thumbnail: '',
       status: 'Active', credits: '',
       skillsCovered: [], targetOutcomes: [''], modules: []
@@ -368,6 +397,10 @@ export function CreateCourseModal({
   }))
 
   const handleSubmit = async () => {
+    if (uploadingImage || uploadingResource) {
+      setErrors({ submit: 'Please wait for file uploads to finish before saving.' })
+      return
+    }
     // P0 guard: never submit hierarchy state that hasn't fully loaded.
     if (editingLessonIndex !== null || editingResourceIndex !== null || uploadingResource) {
       setErrors({ submit: 'Save the current lesson and resource changes before updating the course.' })
@@ -393,12 +426,16 @@ export function CreateCourseModal({
         credits: courseData.credits ? Number(courseData.credits) : null 
       }
       
+      // University is not managed by this form; omit it to preserve saved values.
+      delete payload.university
+      // Approval is managed separately, not through the course editor.
+      delete payload.approval_status
       const courseIdToUpdate = editingCourse?.id || editingCourse?.course_id
-      // Explicit hierarchy-replace intent: the backend only syncs modules when
-      // this flag accompanies a fully loaded array. Metadata-only edits still
-      // send the loaded hierarchy (preserving IDs); unloaded state is blocked above.
+      // Replace hierarchy only if the loaded module data was actually edited.
+      // Status and metadata changes preserve existing lesson IDs and learner progress.
       if (editingCourse) {
-        payload.updateHierarchy = true
+        if (JSON.stringify(payload.modules) !== hierarchySnapshotRef.current) payload.updateHierarchy = true
+        else delete payload.modules
         if (editingCourse.updated_at) payload.expectedUpdatedAt = editingCourse.updated_at
         // Editing a course must not transfer its ownership to the current admin.
         await updateCourse(courseIdToUpdate, payload, null)
@@ -546,8 +583,8 @@ export function CreateCourseModal({
           <BookOpen className="h-4 w-4 text-indigo-500" />
           <h3 className="font-semibold text-gray-900 dark:text-white">Course Identity</h3>
         </div>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="col-span-2 space-y-1.5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="sm:col-span-2 space-y-1.5 min-w-0">
             <Label htmlFor="title" className="text-sm">Course Title <span className="text-red-500">*</span></Label>
             <Input id="title" value={courseData.title} onChange={(e) => setCourseData(prev => ({ ...prev, title: e.target.value }))} placeholder="e.g., Introduction to Data Science" />
           </div>
@@ -571,7 +608,7 @@ export function CreateCourseModal({
           <Layers className="h-4 w-4 text-indigo-500" />
           <h3 className="font-semibold text-gray-900 dark:text-white">Course Settings</h3>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label htmlFor="duration" className="text-sm">Duration <span className="text-red-500">*</span></Label>
             <div className="flex gap-2">
@@ -600,8 +637,28 @@ export function CreateCourseModal({
         </div>
       </div>
 
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {COURSE_SETTING_FIELDS.map(field => (
+          <div key={field.key} className="space-y-1.5 min-w-0">
+            <Label htmlFor={`course-${field.key}`} className="text-sm">{field.label}</Label>
+            {field.options ? (
+              <Select value={courseData[field.key] || '__none'} onValueChange={next => setCourseData(previous => ({ ...previous, [field.key]: next === '__none' ? '' : next }))}>
+                <SelectTrigger id={`course-${field.key}`} className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {!field.required && field.key !== 'course_type' && <SelectItem value="__none">Not specified</SelectItem>}
+                  {field.options.map(option => <SelectItem key={option} value={option}>{courseSettingLabel(option)}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input id={`course-${field.key}`} value={courseData[field.key] || ''} maxLength={500}
+                placeholder={field.placeholder} onChange={event => setCourseData(previous => ({ ...previous, [field.key]: event.target.value }))} />
+            )}
+          </div>
+        ))}
+      </div>
+
       {/* Section: Media & Outcomes */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div className="space-y-3">
           <div className="flex items-center gap-2 pb-2 border-b border-gray-200 dark:border-gray-700">
             <ImageIcon className="h-4 w-4 text-indigo-500" />
@@ -621,6 +678,7 @@ export function CreateCourseModal({
             )}
           </div>
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+          {errors.thumbnail && <p role="alert" className="text-xs text-red-500">{errors.thumbnail}</p>}
         </div>
 
         <div className="space-y-3">
@@ -1002,12 +1060,20 @@ export function CreateCourseModal({
               <div>
                 <h3 className="font-bold text-gray-900 dark:text-white">{courseData.title}</h3>
                 <p className="text-sm text-gray-500">{courseData.code} • {courseData.duration} {courseData.durationUnit}</p>
-                <Badge variant="default" className="mt-1">Active</Badge>
+                <Badge variant="outline" className="mt-1">{courseSettingLabel(courseData.status)}</Badge>
               </div>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{courseData.description}</p>
           </div>
 
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 text-sm">
+            {COURSE_SETTING_FIELDS.filter(field => !['course_type', 'university', 'approval_status'].includes(field.key)).map(field => (
+              <div key={field.key} className="min-w-0">
+                <dt className="text-xs text-gray-500">{field.label}</dt>
+                <dd className="mt-1 break-words text-gray-900 dark:text-white">{field.options ? courseSettingLabel(courseData[field.key]) : (courseData[field.key] || 'Not specified')}</dd>
+              </div>
+            ))}
+          </dl>
           {courseData.credits && (
             <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
               <p className="text-xs text-gray-500 mb-1">Credits</p>
@@ -1027,7 +1093,7 @@ export function CreateCourseModal({
             <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1">Course Type</p>
             <div className="flex items-center gap-2">
               <Globe className="h-4 w-4 text-blue-500" />
-              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Platform Course</span>
+              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">{courseSettingLabel(courseData.course_type)}</span>
             </div>
           </div>
           <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
@@ -1055,7 +1121,7 @@ export function CreateCourseModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl p-0 gap-0 overflow-hidden [&>button[class]]:absolute [&>button[class]]:right-4 [&>button[class]]:top-4 [&>button[class]]:z-50 [&>button[class]]:h-8 [&>button[class]]:w-8 [&>button[class]]:rounded-full [&>button[class]]:bg-gray-100 [&>button[class]]:dark:bg-gray-800 [&>button[class]]:text-gray-500 [&>button[class]]:dark:text-gray-400 [&>button[class]]:opacity-100 [&>button[class]]:hover:bg-gray-200 [&>button[class]]:dark:hover:bg-gray-700 [&>button[class]]:flex [&>button[class]]:items-center [&>button[class]]:justify-center [&>button[class]]:transition-colors [&>button[class]]:border [&>button[class]]:border-gray-200 [&>button[class]]:dark:border-gray-700">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-4xl min-w-0 p-0 gap-0 overflow-hidden [&>button[class]]:absolute [&>button[class]]:right-4 [&>button[class]]:top-4 [&>button[class]]:z-50 [&>button[class]]:h-8 [&>button[class]]:w-8 [&>button[class]]:rounded-full [&>button[class]]:bg-gray-100 [&>button[class]]:dark:bg-gray-800 [&>button[class]]:text-gray-500 [&>button[class]]:dark:text-gray-400 [&>button[class]]:opacity-100 [&>button[class]]:hover:bg-gray-200 [&>button[class]]:dark:hover:bg-gray-700 [&>button[class]]:flex [&>button[class]]:items-center [&>button[class]]:justify-center [&>button[class]]:transition-colors [&>button[class]]:border [&>button[class]]:border-gray-200 [&>button[class]]:dark:border-gray-700">
         {/* Accessible title and description for screen readers */}
         <DialogTitle className="sr-only">
           {editingCourse ? 'Edit Course' : 'Create New Course'}
@@ -1078,7 +1144,7 @@ export function CreateCourseModal({
         </div>
 
         {/* Progress Steps */}
-        <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+        <div className="min-w-0 overflow-x-auto px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center">
             {visibleSteps.map((step, index) => {
               const isActive = currentStep === step.id
@@ -1119,7 +1185,7 @@ export function CreateCourseModal({
         </div>
 
         {/* Content */}
-        <ScrollArea className="max-h-[calc(90vh-200px)]">
+        <ScrollArea className="min-w-0 max-h-[calc(90vh-200px)]">
           {renderStepContent()}
         </ScrollArea>
 
@@ -1133,7 +1199,7 @@ export function CreateCourseModal({
               <span className="text-xs text-amber-600 dark:text-amber-400">Please complete required fields</span>
             )}
             {currentStep === 4 ? (
-              <Button onClick={handleSubmit} disabled={loading || !isHierarchyReady} className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white min-w-[140px]">
+              <Button onClick={handleSubmit} disabled={loading || uploadingImage || uploadingResource || !isHierarchyReady} className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white min-w-[140px]">
                 {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</> : <><Check className="h-4 w-4 mr-2" /> {editingCourse ? 'Update' : 'Create'} Course</>}
               </Button>
             ) : (

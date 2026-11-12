@@ -3,15 +3,17 @@ const path = require('path');
 // Enables local `next dev` to access Cloudflare bindings (the SSO service
 // binding, KV, queues, R2) via getCloudflareContext(), simulating them
 // locally instead of requiring `wrangler pages dev`/`opennextjs-cloudflare preview`.
-// Local server bindings come from .dev.vars through Wrangler.
+// Use the existing wrangler.toml bindings with local emulation only.
 // Must be called here, not inside an async function, per @opennextjs/cloudflare docs.
 const { initOpenNextCloudflareForDev } = require('@opennextjs/cloudflare');
-// Production builds do not run our app worker's named entrypoints. Starting a
-// stub Miniflare here makes self-bindings fail before compilation can finish.
+// Production builds must not start the local Cloudflare runtime.
 if (process.env.NODE_ENV !== 'production') {
-  initOpenNextCloudflareForDev(process.env.CLOUDFLARE_LOCAL_CONFIG_PATH
-    ? { configPath: process.env.CLOUDFLARE_LOCAL_CONFIG_PATH }
-    : undefined);
+  initOpenNextCloudflareForDev({
+    remoteBindings: false,
+    ...(process.env.CLOUDFLARE_LOCAL_CONFIG_PATH
+      ? { configPath: process.env.CLOUDFLARE_LOCAL_CONFIG_PATH }
+      : {}),
+  });
 }
 
 const nextConfig = {
@@ -102,7 +104,7 @@ const nextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
           { 
             key: "Content-Security-Policy", 
-            value: `default-src 'self'; connect-src ${connectSrc}; frame-ancestors 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';` 
+            value: `default-src 'self'; img-src 'self' data: blob: https://storage-sp.rareminds.in${supabaseOrigin ? ` ${supabaseOrigin}` : ''}; connect-src ${connectSrc}; frame-ancestors 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';`
           },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

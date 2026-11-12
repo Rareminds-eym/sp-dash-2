@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { isCourseThumbnailKey } from '../lib/services/course-resource-validation';
 import {
   COURSE_UPLOAD_JOB_TTL_SECONDS,
   courseUploadJobKey,
@@ -44,8 +44,6 @@ interface InternalWorkerBinding {
 interface Env {
   SKILLPASSPORT_ASSETS: R2BucketLike;
   RATE_LIMIT_KV: KVNamespaceLike;
-  NEXT_PUBLIC_SUPABASE_URL?: string;
-  SUPABASE_SERVICE_ROLE_KEY?: string;
   COURSE_UPLOAD_WORKER_TOKEN?: string;
   WORKER_SELF_REFERENCE?: InternalWorkerBinding;
 }
@@ -98,28 +96,14 @@ async function processFileUpload(
     if (!stagedObject?.body) throw new Error('Staged upload file is unavailable.');
 
     let resultUrl = `/api/courses/assets?key=${encodeURIComponent(body.r2Key)}`;
-    let resultKey = body.r2Key;
+    const resultKey = body.r2Key;
     if (body.uploadTarget === 'course-image') {
-      if (!env.NEXT_PUBLIC_SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
-        throw new Error('Course image queue requires NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
+      if (!isCourseThumbnailKey(body.r2Key) || !body.thumbnailUrl) {
+        throw new Error('Course image job requires a thumbnail R2 key and public URL. Please retry the upload.');
       }
-      const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
-        auth: { persistSession: false },
-      });
-      const imageBytes = new Uint8Array(await new Response(stagedObject.body).arrayBuffer());
-      const imagePath = `courses/${body.jobId}-${body.fileName}`;
-      const { error: storageError } = await supabase.storage
-        .from('course-images')
-        .upload(imagePath, imageBytes, {
-          cacheControl: '3600',
-          contentType: body.mimeType,
-          upsert: true,
-        });
-      if (storageError) throw new Error(`Course image storage failed: ${storageError.message}`);
-      resultUrl = supabase.storage.from('course-images').getPublicUrl(imagePath).data.publicUrl;
-      resultKey = imagePath;
-    } else {
-      await env.SKILLPASSPORT_ASSETS.put(body.r2Key, stagedObject.body, {
+      resultUrl = body.thumbnailUrl;
+    }
+    await env.SKILLPASSPORT_ASSETS.put(body.r2Key, stagedObject.body, {
         httpMetadata: { contentType: body.mimeType },
         customMetadata: {
           originalFileName: body.fileName,
@@ -129,8 +113,7 @@ async function processFileUpload(
           resourceName: body.resourceName,
           contentHash: body.contentHash,
         },
-      });
-    }
+    });
     await updateJob(env.RATE_LIMIT_KV, body.jobId, {
       status: 'completed',
       r2Key: resultKey,
