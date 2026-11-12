@@ -4,7 +4,7 @@ import { browserResponse } from '@/lib/zoho/browser-response';
 
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { jobPolicySchema } from '@/lib/zoho/job-policy';
+import { DEFAULT_JOB_POLICY_MAPPINGS, jobPolicySchema } from '@/lib/zoho/job-policy';
 
 const API = '/api/integrations/zoho-recruit';
 const blankRow = () => ({ source: '', destination: '' });
@@ -70,8 +70,9 @@ export default function JobPolicyPanel({ connectionId, onSaved, refreshVersion =
         const result = await browserResponse(response);
         if (!response.ok) throw new Error(result.error || 'Job publication policy unavailable.');
         if (generation.current !== current || activeConnection.current !== connectionId) return;
-        setSnapshot(result.policy); setStatusRows(rows(result.policy.policy?.statusMap));
-        setEmploymentRows(rows(result.policy.policy?.employmentMap)); setEnabled(result.policy.policy?.enabled === true);
+        const policy = result.policy.policy ?? DEFAULT_JOB_POLICY_MAPPINGS;
+        setSnapshot(result.policy); setStatusRows(rows(policy.statusMap));
+        setEmploymentRows(rows(policy.employmentMap)); setEnabled(result.policy.policy?.enabled === true);
       } catch (error) { if (!controller.signal.aborted && generation.current === current) setError(error.message); }
       finally { if (generation.current === current) setBusy(false); }
     })();
@@ -117,6 +118,7 @@ export default function JobPolicyPanel({ connectionId, onSaved, refreshVersion =
     {notice&&<p role="status" className="mt-4 text-sm">{notice}</p>}
     {refreshWarning&&<p role="alert" className="mt-4 text-sm text-amber-700 dark:text-amber-300">{refreshWarning}</p>}
     {!snapshot ? <p className="mt-4 text-sm text-muted-foreground">{busy ? 'Loading publication policy…' : 'Refresh status to load the current policy.'}</p> : <form onSubmit={save} className="mt-5 space-y-5">
+      {!snapshot.policy && <p className="text-xs leading-5 text-muted-foreground">Default mappings are prefilled: In-progress → open and Full time → job. Review and save them for this source. Other Zoho labels require their own mappings.</p>}
       <div className="grid gap-6 xl:grid-cols-2">
         <MappingRows title="Job status" entries={statusRows} destinations={['open', 'closed', 'draft']} disabled={busy} onChange={setStatusRows} />
         <MappingRows title="Employment type" entries={employmentRows} destinations={['job', 'internship', 'contract']} disabled={busy} onChange={setEmploymentRows} />
