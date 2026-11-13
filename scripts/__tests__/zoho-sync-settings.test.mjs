@@ -45,6 +45,16 @@ test('saves independently configured candidate and job policies with source/conf
     assert.deepEqual(f.posts[0], { action: 'configure_sync', input: { connectionId: id, expectedConfigRevision: 3, module: 'Job_Openings', enabled: false, intervalMinutes: 30, reconciliationDays: 14, preferBulk: false } });
   } finally { await f.close(); }
 });
+test('uses single-pass discovery even when a saved policy preferred bulk', async () => {
+  const f=await fixture();try {
+    assert.equal(f.w.document.querySelector('[name=bulk]'),null);
+    assert.match(f.w.document.body.textContent,/one resumable REST scan/);
+    const form=f.w.document.querySelector('form');
+    await f.act(()=>form.dispatchEvent(new f.w.Event('submit',{bubbles:true,cancelable:true})));
+    assert.equal(f.posts[0].input.module,'Candidates');
+    assert.equal(f.posts[0].input.preferBulk,false);
+  }finally{await f.close();}
+});
 test('shows the webhook secret once and supports explicitly hiding it', async () => {
   const f = await fixture(); try {
     const button = text => [...f.w.document.querySelectorAll('button')].find(button => button.textContent === text);

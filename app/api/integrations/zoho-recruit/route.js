@@ -1,6 +1,6 @@
 import { readJobIndexHealth } from '@/lib/job-index/health';
 import { wakeJobIndex } from '@/lib/zoho/wake-job-index';
-import { syncCoordinator, bulkDiscoveryAvailable } from '@/lib/zoho/sync-coordinator';
+import { syncCoordinator } from '@/lib/zoho/sync-coordinator';
 import { recoverSourceExecutions } from '@/lib/zoho/execution-recovery';
 import { readExecutionProgress } from '@/lib/zoho/execution-progress';
 import { integrationFailure } from '@/lib/zoho/diagnostics';
@@ -129,7 +129,7 @@ async function handle(request) {
     }
     if (payload.action === 'discover') {
       if (!await discoveryStatus(runtime.discovery, auth.env.ZOHO_DISCOVERY_QUEUE)) return json({ error: 'Background discovery is disabled or unavailable.' }, 503);
-      const result = await service.discover(payload.input, auth.user.id, bulkDiscoveryAvailable(auth.env));
+      const result = await service.discover(payload.input, auth.user.id);
       let delivery = 'pending';
       try {
         await auth.env.ZOHO_DISCOVERY_QUEUE.send(result.transport === 'bulk' ? { bulkRunId: result.bulkRunId } : { runId: result.runId });

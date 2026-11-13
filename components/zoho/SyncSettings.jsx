@@ -45,14 +45,13 @@ export default function SyncSettings({ connectionId, refreshVersion, captures })
       <div className="mt-4 grid gap-5 lg:grid-cols-2">{state.policies.map(policy => <form key={policy.module} className="space-y-3 rounded-xl border border-border p-4" onSubmit={event => {
         event.preventDefault(); const data = new FormData(event.currentTarget);
         submit('configure_sync', { module: policy.module, enabled: data.has('enabled'), intervalMinutes: Number(data.get('interval')),
-          reconciliationDays: Number(data.get('reconciliation')), preferBulk: data.has('bulk') });
+          reconciliationDays: Number(data.get('reconciliation')), preferBulk: false });
       }}>
         <h3 className="text-sm font-semibold">{policy.module === 'Candidates' ? 'Candidates' : 'Job openings'}</h3>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="enabled" defaultChecked={policy.enabled} disabled={busy}/>Automatic incremental discovery</label>
         <label className="block text-sm">Check every (minutes)<input name="interval" type="number" required min="5" max="1440" defaultValue={policy.intervalMinutes} disabled={busy} className="mt-1 block w-full rounded-lg border border-border bg-background p-2"/></label>
         <label className="block text-sm">Full reconciliation every (days)<input name="reconciliation" type="number" required min="1" max="30" defaultValue={policy.reconciliationDays} disabled={busy} className="mt-1 block w-full rounded-lg border border-border bg-background p-2"/></label>
-        <label className="flex items-center gap-2 text-sm"><input name="bulk" type="checkbox" defaultChecked={policy.preferBulk} disabled={busy}/>Prefer bulk export for the initial baseline</label>
-        <p className="text-xs text-muted-foreground">Bulk export requires private encrypted storage and Zoho access. REST verifies full coverage after the export, and takes over if it fails. Automatic checks begin after the first manual discovery.</p>
+        <p className="text-xs text-muted-foreground">Discovery uses one resumable REST scan covering both conversion states, followed by changed-record checks. Automatic checks begin after the first manual discovery.</p>
         <p className="text-xs text-muted-foreground">Captured through: {(() => { const through = captures === undefined ? policy.capturedThrough : captures.find(item => item.module === policy.module && item.config_revision === state.configRevision)?.scan_started_at; return through ? new Date(through).toLocaleString() : 'Baseline not established'; })()}</p>
         <Button type="submit" variant="outline" size="sm" disabled={busy}>Save {policy.module === 'Candidates' ? 'candidate' : 'job'} sync policy</Button>
       </form>)}</div>
