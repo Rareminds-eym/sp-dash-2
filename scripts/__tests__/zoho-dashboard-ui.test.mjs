@@ -1507,3 +1507,52 @@ test('health names candidate and job readiness separately when only job executio
   assert.equal(f.button('Approve all staged candidates').disabled,true);
  }finally{await f.close();}
 });
+
+for(const candidate of [false,true])test(`an idle refresh from ${candidate?'Candidates':'Job openings'} cannot replace rows after switching record tabs`,async()=>{
+ const f=await fixture({candidate,idleTimers:true});try{
+  const original=f.w.fetch;let releaseSummary;
+  f.w.fetch=async(input,options)=>{
+   const url=new URL(input,'http://localhost');
+   if(!url.searchParams.has('view'))await new Promise(resolve=>{releaseSummary=resolve;});
+   return original(input,options);
+  };
+  await f.act(()=>f.w.dispatchEvent(new f.w.Event('focus')));
+  assert.equal(typeof releaseSummary,'function');
+  await f.act(()=>f.button(candidate?'Job openings':'Candidates').click());
+  const before=f.state.reads.length;
+  await f.act(()=>releaseSummary());
+  assert.equal(f.w.document.querySelectorAll('tbody tr').length,0,'The previous module must never populate the new table');
+  assert.equal(f.state.reads.slice(before).includes('record_window'),false,'An old polling closure must not start another record query');
+ }finally{await f.close();}
+});
+
+test('an idle refresh started before a filter change cannot restore unfiltered rows',async()=>{
+ const f=await fixture({idleTimers:true});try{
+  const original=f.w.fetch;let releaseSummary;
+  f.w.fetch=async(input,options)=>{
+   const url=new URL(input,'http://localhost');
+   if(!url.searchParams.has('view'))await new Promise(resolve=>{releaseSummary=resolve;});
+   if(['records','record_window'].includes(url.searchParams.get('view'))&&url.searchParams.get('state')==='completed')return Response.json({records:[],total:0});
+   return original(input,options);
+  };
+  await f.act(()=>f.w.dispatchEvent(new f.w.Event('focus')));
+  await f.chooseDropdown('[aria-label="Review state"]','Completed');
+  assert.equal(f.w.document.querySelectorAll('tbody tr').length,0);
+  await f.act(()=>releaseSummary());
+  assert.equal(f.w.document.querySelectorAll('tbody tr').length,0,'A previous filter refresh must not restore unfiltered rows');
+ }finally{await f.close();}
+});
+
+test('a mobile review releases its page scroll lock when a refreshed record disappears',async()=>{
+ const f=await fixture({compact:true});try{
+  await f.act(()=>f.button('Audit job 999').click());
+  assert.equal(f.w.document.body.style.overflow,'hidden');
+  const original=f.w.fetch;
+  f.w.fetch=async(input,options)=>new URL(input,'http://localhost').searchParams.get('view')==='record_window'
+   ?Response.json({records:[],total:0}):original(input,options);
+  await f.act(()=>f.w.dispatchEvent(new f.w.Event('focus')));
+  assert.equal(f.w.document.querySelector('[aria-label="Record review"]').hidden,true);
+  assert.equal(f.w.document.querySelectorAll('[inert]').length,0);
+  assert.equal(f.w.document.body.style.overflow,'','An invisible review drawer must not lock page scrolling');
+ }finally{await f.close();}
+});

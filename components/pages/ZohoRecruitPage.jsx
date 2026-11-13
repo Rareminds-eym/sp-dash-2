@@ -81,6 +81,7 @@ export default function ZohoRecruitPage() {
   const [detail, setDetail] = useState(null);
   const [detailOpen,setDetailOpen]=useState(false);
   const [profileTab,setProfileTab]=useState('profile');
+  const reviewModalOpen = compact && recordSection && detailOpen && Boolean(detail);
   useEffect(()=>setProfileTab('profile'),[detail?.id]);
   const [jobPolicy, setJobPolicy] = useState(null);
   const [jobPolicyError, setJobPolicyError] = useState('');
@@ -112,11 +113,11 @@ export default function ZohoRecruitPage() {
     else if (settingsDialog.current?.open) settingsDialog.current.close();
   }, [settingsOpen]);
   useEffect(() => {
-    if (!settingsOpen && !(compact && detailOpen)) return;
+    if (!settingsOpen && !reviewModalOpen) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = previous; };
-  }, [settingsOpen, compact, detailOpen]);
+  }, [settingsOpen, reviewModalOpen]);
   async function refreshSettings() {
     const request = ++settingsRefreshRequest.current;
     setSettingsRefreshVersion(value => value + 1);
@@ -176,6 +177,8 @@ export default function ZohoRecruitPage() {
   const backgroundPoll = useRef(false);
   const visibleSection = useRef(activeSection);
   visibleSection.current = activeSection;
+  const activeRecordQuery = useRef(null);
+  activeRecordQuery.current = JSON.stringify([connectionId, module, search, stateFilter]);
   const historyActivity = useRef(null);
 
   const historyReadAt = useRef({});
@@ -253,7 +256,7 @@ export default function ZohoRecruitPage() {
     return () => { observer?.disconnect(); window.removeEventListener('resize', measure); };
   }, [loading, recordSection, compact, selection.length]);
   useEffect(() => {
-    if (!compact || !detailOpen || !detail?.id) return;
+    if (!reviewModalOpen) return;
     // Keep the page and shared navigation out of the modal's focus/accessibility tree.
     // Native confirmation dialogs remain available above the review drawer.
     const blocked = [];
@@ -270,7 +273,7 @@ export default function ZohoRecruitPage() {
         else element.setAttribute('inert', previous);
       }
     };
-  }, [compact, detailOpen, detail?.id]);
+  }, [reviewModalOpen, detail?.id]);
   useEffect(()=>{
     if(detail?.id&&detailOpen){
       detailPanel.current.scrollTop=0;
@@ -328,9 +331,13 @@ export default function ZohoRecruitPage() {
     return () => { active = false; };
   }, [loadSummary]);
   const loadRecords = useCallback(async ({ background = false } = {}) => {
+    const query = JSON.stringify([connectionId, module, search, stateFilter]);
+    // A polling tick may still be awaiting summary after its tab/filter changed.
+    // Reject the old closure before it can invalidate the new view's read.
+    if (activeRecordQuery.current !== query) return;
     const generation = background ? requestGeneration.current : ++requestGeneration.current;
     const read=++recordRead.current;
-    const current=()=>generation===requestGeneration.current&&read===recordRead.current&&activeConnection.current===connectionId;
+    const current=()=>generation===requestGeneration.current&&read===recordRead.current&&activeConnection.current===connectionId&&activeRecordQuery.current===query;
     if (!background) {
       recordWindow.current = null;
       setSelection([]); setRecords([]); setDetail(null); setCandidateReviews({}); setCandidateAcknowledgements({}); setReviewing({}); setReviewErrors({}); candidateRequests.current.clear();
@@ -523,10 +530,12 @@ export default function ZohoRecruitPage() {
     } finally { setBusy(false); }
   }
   async function loadMore() {
+    const query = JSON.stringify([connectionId, module, search, stateFilter]);
+    if (activeRecordQuery.current !== query) return;
     const last = records[records.length - 1];
     if (!last) return;
     const generation = requestGeneration.current,read=++recordRead.current;
-    const current=()=>generation===requestGeneration.current&&read===recordRead.current&&activeConnection.current===connectionId;
+    const current=()=>generation===requestGeneration.current&&read===recordRead.current&&activeConnection.current===connectionId&&activeRecordQuery.current===query;
     setBusy(true);
     try {
       const params = new URLSearchParams({ view: 'records', connectionId, module, before: cursorTimestamp(last.created_at), beforeId: last.id });
@@ -813,8 +822,8 @@ export default function ZohoRecruitPage() {
             <div className={styles.cardHeading}><span className={styles.sectionIcon}><ShieldCheck size={21}/></span><div><h2>Integration health</h2><p>Connection and delivery readiness</p></div></div>
             <div className={styles.healthRows}><div><span>Source authorization</span><span className={`${styles.statusChip} ${connection?.status==='connected'?styles.connected:styles.neutral}`}>{connection?.status==='connected'?'Connected':connection?.status?.replaceAll('_',' ')||(loading?'Loading status…':!snapshot?'Status unavailable':'No source selected')}</span></div>{[['Candidate account creation',candidateExecutionReady],['Job creation',jobExecutionReady]].map(([label,ready])=><div key={label}><span>{label}</span><span className={`${styles.statusChip} ${ready?styles.connected:styles.neutral}`}>{ready?'Ready':'Unavailable'}</span></div>)}</div>
           </section>
-            {detail&&detailOpen&&compact&&<button type="button" data-review-backdrop tabIndex={-1} aria-label="Close record review backdrop" className={styles.reviewBackdrop} onClick={closeDetail}/>}
-            <aside ref={detailPanel} hidden={compact && (!detail || !detailOpen)} tabIndex={-1} onKeyDown={detailKeys} role={compact&&detail&&detailOpen?'dialog':undefined} aria-modal={compact&&detail&&detailOpen?true:undefined} className={`${styles.reviewCard} ${detail&&(!compact||detailOpen)?styles.reviewVisible:styles.reviewEmpty} ${compact&&detail&&detailOpen?styles.reviewMobile:''}`} aria-label="Record review">
+            {reviewModalOpen&&<button type="button" data-review-backdrop tabIndex={-1} aria-label="Close record review backdrop" className={styles.reviewBackdrop} onClick={closeDetail}/>}
+            <aside ref={detailPanel} hidden={compact && !reviewModalOpen} tabIndex={-1} onKeyDown={detailKeys} role={reviewModalOpen?'dialog':undefined} aria-modal={reviewModalOpen?true:undefined} className={`${styles.reviewCard} ${detail&&(!compact||detailOpen)?styles.reviewVisible:styles.reviewEmpty} ${reviewModalOpen?styles.reviewMobile:''}`} aria-label="Record review">
               <div className={styles.reviewToolbar}><h3 className="text-xs font-semibold text-muted-foreground">Review before approval</h3>{detail&&<button type="button" aria-label="Close record review" onClick={closeDetail} className="rounded p-2 hover:bg-muted"><X size={18}/></button>}</div>
               {detail ? <><div className={styles.profileHeader}><span className={styles.avatar}>{(detail.proposed_data.name||detail.proposed_data.title||'?').split(' ').filter(Boolean).slice(0,2).map(word=>word[0]).join('')}</span><div><h3>{detail.proposed_data.name || detail.proposed_data.title || detail.external_id}</h3><p>{detail.proposed_data.job_title||detail.proposed_data.designation||detail.proposed_data.role||'Zoho Recruit source record'}</p><span className={`${styles.recordState} ${styles.neutral}`}>{detail.payload_redacted_at||detail.suppressed?'Erased / suppressed':captions[detail.decision]||detail.decision}</span></div></div><div className={styles.profileActions}><Button type="button" className={styles.primaryAction} size="sm" aria-describedby="zoho-detail-approval-requirement" disabled={!canDecideDetail||Boolean(detailApprovalIssue)} onClick={()=>openDecision('approve',detail)}><Check size={13}/>Approve</Button><Button type="button" className={styles.rejectAction} variant="outline" size="sm" disabled={!canDecideDetail} onClick={()=>openDecision('reject',detail)}><X size={13}/>Reject</Button></div><p id="zoho-detail-approval-requirement" role="status" className={styles.profileActionHelp}>{detailApprovalIssue || (detail.module === 'Candidates' ? 'Account review acknowledged. Approve opens a confirmation for this candidate.' : 'Ready for review confirmation. Approve opens a confirmation for this job opening.')}</p><div role="tablist" aria-label={module==='Candidates'?'Candidate detail views':'Job detail views'} className={styles.profileTabs} onKeyDown={event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const keys=['profile','activity'];const index=event.key==='Home'?0:event.key==='End'?1:(keys.indexOf(profileTab)+1)%2;setProfileTab(keys[index]);event.currentTarget.querySelectorAll('[role="tab"]')[index]?.focus();}}>{['profile','activity'].map(key=><button key={key} type="button" role="tab" id={`zoho-profile-tab-${key}`} aria-selected={profileTab===key} aria-controls={`zoho-profile-panel-${key}`} tabIndex={profileTab===key?0:-1} onClick={()=>setProfileTab(key)}>{key[0].toUpperCase()+key.slice(1)}</button>)}</div><div role="tabpanel" id="zoho-profile-panel-profile" aria-labelledby="zoho-profile-tab-profile" hidden={profileTab!=='profile'}>{repeatedCandidateName(detail)&&<p role="status" className="mt-3 rounded-lg border border-amber-300 p-3 text-sm text-amber-900 dark:text-amber-200">The source name contains repeated parts. Verify the name in Zoho before approval. The imported name has not been changed.</p>}<h4 className={styles.profileSectionTitle}><UserRound size={13}/>Basic information</h4><p className="mt-3 break-all text-xs text-muted-foreground">{detail.target_id ? `Existing target: ${detail.target_id}` : detail.module === 'Candidates' ? 'No target linked. Canonical identity matching still requires review before provisioning.' : 'No destination job linked. The publication policy determines whether this job can be created.'}</p><dl className={styles.profileFields}>{Object.entries(detail.proposed_data).filter(([key, value]) => value && key !== 'description').map(([key, value]) => <div key={key}><dt className="text-xs text-muted-foreground">{key.replaceAll('_', ' ')}</dt><dd className="mt-1 break-words text-sm">{typeof value === 'string' ? value : JSON.stringify(value)}</dd></div>)}</dl>{detail.module === 'Job_Openings' && detail.proposed_data.description && <section className={styles.jobDescription}><h4 className={styles.profileSectionTitle}>Job description</h4><JobDescription value={detail.proposed_data.description}/></section>}<h4 className={styles.profileSectionTitle}><Database size={13}/>Source information</h4><dl className={styles.profileFields}><div><dt>Source</dt><dd>{connection?.name||'Zoho Recruit'}</dd></div><div><dt>Zoho record ID</dt><dd>{detail.external_id}</dd></div><div><dt>Reviewed revision</dt><dd>v{detail.revision}</dd></div></dl></div><div role="tabpanel" id="zoho-profile-panel-activity" aria-labelledby="zoho-profile-tab-activity" hidden={profileTab!=='activity'} className={styles.profileTabContent}><h4>Record activity</h4><dl>{[['Staged',detail.created_at],['Last updated',detail.updated_at],['Source modified',detail.source_modified_at]].filter(([,value])=>value&&Number.isFinite(Date.parse(value))).map(([label,value])=><div key={label}><dt>{label}</dt><dd>{new Date(value).toLocaleString()}</dd></div>)}<div><dt>Review state</dt><dd>{detail.payload_redacted_at||detail.suppressed?'Erased / suppressed':captions[detail.decision]||detail.decision}</dd></div><div><dt>Revision</dt><dd>v{detail.revision}</dd></div></dl></div>{detail.module === 'Candidates' && <CandidateReview record={detail} review={candidateReviews[detail.id]} loading={Boolean(reviewing[detail.id])}
                 unavailableReason={candidateReviewUnavailable(detail,connection)} error={reviewErrors[detail.id]}
