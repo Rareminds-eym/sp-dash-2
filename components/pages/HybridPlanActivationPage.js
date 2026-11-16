@@ -43,6 +43,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
+import { hydrateHybridTerms } from '@/lib/hybrid-terms'
 import {
     AlertCircle,
     AlertTriangle,
@@ -266,7 +267,7 @@ function UnitEconomicsCard({ planAmount, seatCount, billingCycle }) {
                         {amount > 0 ? formatCurrency(amount) : '₹0'}
                     </p>
                     <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {billingCycle === 'yearly' ? 'Per annum' : billingCycle === 'monthly' ? 'Per month' : 'Perpetual'}
+                        {['yearly', 'annual'].includes(billingCycle) ? 'Per annum' : billingCycle === 'monthly' ? 'Per month' : 'Perpetual'}
                     </p>
                 </div>
 
@@ -757,7 +758,13 @@ export default function HybridPlanActivationPage({ currentUser }) {
     }, [rows, pagination.total])
 
     function openUpgradeDialog(org) {
-        setUpgradeForm(TERMS_INITIAL)
+        const editing = org.plan_code === 'hybrid' && ['active', 'pending'].includes(org.status)
+        try {
+            setUpgradeForm(editing ? hydrateHybridTerms(org) : TERMS_INITIAL)
+        } catch (error) {
+            toast({ title: 'Cannot edit terms', description: error.message, variant: 'destructive' })
+            return
+        }
         setUpgradeTab('commercials')
         setUpgradeDialog({ open: true, org })
         const role = ORG_TYPE_TO_ADMIN_ROLE[org?.organization_type]
@@ -801,7 +808,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
                     seat_count: seats,
                     billing_cycle: upgradeForm.billingCycle,
                     features: upgradeForm.features,
-                    notes: upgradeForm.notes || undefined,
+                    notes: upgradeForm.notes,
                 }),
             })
             const data = await response.json()
@@ -1186,6 +1193,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
                                     <TableHeader className="bg-muted/40">
                                         <TableRow>
                                             <TableHead className="font-semibold">Organization</TableHead>
+                                            <TableHead className="font-semibold">Admin Email</TableHead>
                                             <TableHead className="font-semibold">Type</TableHead>
                                             <TableHead className="font-semibold">Active Plan</TableHead>
                                             <TableHead className="font-semibold">Status</TableHead>
@@ -1226,6 +1234,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
                                                         </div>
                                                     </TableCell>
 
+                                                    <TableCell className="text-sm">{org.admin_email || 'Email unavailable'}</TableCell>
                                                     <TableCell>
                                                         <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border text-xs font-medium bg-background capitalize">
                                                             <TypeIcon className="h-3.5 w-3.5 text-muted-foreground" />
@@ -2089,7 +2098,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
                                             Billing Cadence
                                         </Label>
                                         <Select
-                                            value={upgradeForm.billingCycle}
+                                            value={upgradeForm.billingCycle === 'annual' ? 'yearly' : upgradeForm.billingCycle}
                                             onValueChange={(v) => setUpgradeForm((f) => ({ ...f, billingCycle: v }))}
                                         >
                                             <SelectTrigger id="up-cycle" className="h-9 text-xs bg-muted/20">
