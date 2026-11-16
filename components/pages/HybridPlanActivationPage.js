@@ -653,6 +653,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
     const isAuthorized = userRoles.some((role) => ADMIN_ROLES.includes(role))
 
     const [rows, setRows] = useState([])
+    const [metrics, setMetrics] = useState(null)
     const [loading, setLoading] = useState(true)
     const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 })
 
@@ -703,6 +704,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
     const fetchOrganizations = useCallback(
         async (page = 1) => {
             setLoading(true)
+            setMetrics(null)
             try {
                 const params = new URLSearchParams({ page: String(page), limit: String(pagination.limit) })
                 if (filters.search) params.set('search', filters.search)
@@ -713,6 +715,8 @@ export default function HybridPlanActivationPage({ currentUser }) {
                 const data = await response.json()
                 if (!response.ok) throw new Error(data.error || 'Failed to load organizations')
 
+                if (!data.summary || !['total', 'hybridCount', 'totalSeats', 'totalDealValue'].every(key => Number.isFinite(data.summary[key]))) throw new Error('Organization summary is unavailable')
+                setMetrics(data.summary)
                 setRows(data.data || [])
                 setPagination(data.pagination || { page: 1, limit: 20, total: 0, totalPages: 0 })
             } catch (err) {
@@ -739,23 +743,6 @@ export default function HybridPlanActivationPage({ currentUser }) {
         const codes = new Set(rows.map((r) => r.plan_code).filter(Boolean))
         return Array.from(codes)
     }, [rows])
-
-    // Executive Metrics
-    const metrics = useMemo(() => {
-        const total = pagination.total || rows.length
-        const hybridCount = rows.filter(
-            (r) => r.plan_code === 'hybrid' && (r.status === 'active' || r.status === 'pending')
-        ).length
-        const totalSeats = rows.reduce((acc, r) => acc + (Number(r.seat_count) || 0), 0)
-        const totalDealValue = rows.reduce((acc, r) => acc + (Number(r.plan_amount) || 0), 0)
-
-        return {
-            total,
-            hybridCount,
-            totalSeats,
-            totalDealValue,
-        }
-    }, [rows, pagination.total])
 
     function openUpgradeDialog(org) {
         const editing = org.plan_code === 'hybrid' && ['active', 'pending'].includes(org.status)
@@ -1040,7 +1027,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div className="space-y-1">
                             <p className="text-xs font-medium text-muted-foreground">Total Institutions</p>
-                            <p className="text-2xl font-bold tracking-tight">{metrics.total.toLocaleString()}</p>
+                            <p className="text-2xl font-bold tracking-tight">{metrics ? metrics.total.toLocaleString() : '—'}</p>
                             <p className="text-[11px] text-muted-foreground flex items-center gap-1">
                                 <Building2 className="h-3 w-3" /> All active accounts
                             </p>
@@ -1056,7 +1043,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
                         <div className="space-y-1">
                             <p className="text-xs font-medium text-muted-foreground">Active Hybrid Plans</p>
                             <p className="text-2xl font-bold tracking-tight text-primary">
-                                {metrics.hybridCount.toLocaleString()}
+                                {metrics ? metrics.hybridCount.toLocaleString() : '—'}
                             </p>
                             <p className="text-[11px] text-muted-foreground flex items-center gap-1">
                                 <Sparkles className="h-3 w-3 text-primary" /> Sales-negotiated
@@ -1073,7 +1060,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
                         <div className="space-y-1">
                             <p className="text-xs font-medium text-muted-foreground">Contracted Seats</p>
                             <p className="text-2xl font-bold tracking-tight">
-                                {metrics.totalSeats.toLocaleString()}
+                                {metrics ? metrics.totalSeats.toLocaleString() : '—'}
                             </p>
                             <p className="text-[11px] text-muted-foreground flex items-center gap-1">
                                 <Users className="h-3 w-3" /> Provisioned capacity
@@ -1090,7 +1077,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
                         <div className="space-y-1">
                             <p className="text-xs font-medium text-muted-foreground">Contract Pipeline Value</p>
                             <p className="text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">
-                                {formatCurrency(metrics.totalDealValue)}
+                                {metrics ? formatCurrency(metrics.totalDealValue) : '—'}
                             </p>
                             <p className="text-[11px] text-muted-foreground flex items-center gap-1">
                                 <TrendingUp className="h-3 w-3 text-emerald-500" /> Billed &amp; contracted
