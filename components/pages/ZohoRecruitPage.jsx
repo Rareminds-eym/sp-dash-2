@@ -111,7 +111,10 @@ export default function ZohoRecruitPage() {
   const settingsDialog = useRef(null), settingsTrigger = useRef(null);
   useEffect(() => {
     if (settingsOpen) settingsDialog.current?.showModal();
-    else if (settingsDialog.current?.open) settingsDialog.current.close();
+    else if (settingsDialog.current?.open) {
+      settingsDialog.current.close();
+      settingsTrigger.current?.focus({preventScroll:true});
+    }
   }, [settingsOpen]);
   useEffect(() => {
     if (!settingsOpen && !reviewModalOpen) return;
@@ -458,11 +461,15 @@ export default function ZohoRecruitPage() {
       // A module change already triggers the initial record load. Returning from
       // another section revalidates the cached window before it can be approved.
       if (!moduleChanged && !tabs.some(tab => tab.id === previous)) loadRecords({ background: true }).catch(e => setError(e.message));
+    } else if (activeSection === 'overview') {
+      // Execution can finish while another section is open. Revalidate the
+      // totals on entry instead of showing the last approval-time snapshot.
+      loadSummary().catch(e => setError(e.message));
     } else {
       const kind = { approvals: 'executions', history: 'runs', advanced: 'deferred' }[activeSection];
       if (kind) loadRuns({ kinds: [kind] }).catch(e => setError(e.message));
     }
-  }, [activeSection, module, loadRecords, loadRuns]);
+  }, [activeSection, module, loadRecords, loadRuns, loadSummary]);
   useEffect(() => {
     setRuns([]);
     setExecutions([]);
@@ -845,6 +852,7 @@ export default function ZohoRecruitPage() {
         </div>
         </section>
         <dialog id="zoho-connection-settings" ref={settingsDialog} className={`${styles.integrationSetup} ${styles.settingsDialog}`} aria-labelledby="zoho-settings-title" aria-describedby="zoho-settings-description"
+          onKeyDown={event=>{if(event.key!=='Escape'||event.defaultPrevented)return;event.preventDefault();if(!busy)setSettingsOpen(false);}}
           onCancel={event=>{if(event.target!==event.currentTarget)return;event.preventDefault();if(!busy)setSettingsOpen(false);}}
           onClose={event=>{if(event.target!==event.currentTarget)return;setSettingsOpen(false);settingsTrigger.current?.focus();}}>
           <div className={styles.settingsHeading}><Settings2 size={19} aria-hidden="true"/><div><h2 id="zoho-settings-title">Integration setup</h2><p id="zoho-settings-description" className="mt-1 text-xs text-muted-foreground">Connection, publication policy and privacy · {connection?.name || 'No source selected'}</p></div><Button type="button" variant="outline" size="sm" disabled={busy || settingsRefreshing} onClick={refreshSettings}><RefreshCw aria-hidden="true" size={14} className={settingsRefreshing?'mr-2 animate-spin motion-reduce:animate-none':'mr-2'} />{settingsRefreshing?'Refreshing settings…':'Refresh settings'}</Button><button type="button" autoFocus aria-label="Close integration settings" disabled={busy} onClick={()=>setSettingsOpen(false)} className="ml-auto rounded-lg p-2 hover:bg-muted disabled:opacity-50"><X aria-hidden="true" size={18}/></button></div>

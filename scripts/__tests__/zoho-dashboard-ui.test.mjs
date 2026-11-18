@@ -946,6 +946,45 @@ test('settings open as a named modal while source switching stays near the overv
  }finally{await f.close();}
 });
 
+test('settings Escape dismisses from a focused control and restores the opener',async()=>{
+ const f=await fixture();try{
+  const opener=f.button('Integration settings');
+  await f.act(()=>opener.click());
+  const close=f.w.document.querySelector('[aria-label="Close integration settings"]');
+  await f.act(()=>{close.focus();close.dispatchEvent(new f.w.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));});
+  assert.equal(f.w.document.querySelector('#zoho-connection-settings').open,false);
+  assert.equal(f.w.document.body.style.overflow,'');
+  assert.equal(f.w.document.activeElement,opener);
+  assert.equal(f.state.posts.length,0);
+ }finally{await f.close();}
+});
+
+test('returning to Overview revalidates completed execution counts without a manual refresh',async()=>{
+ const f=await fixture();try{
+  await f.approve();
+  await f.act(()=>f.button('Overview').click());
+  await f.act(()=>f.button('Approvals').click());
+  f.state.complete=true;
+  const reads=f.state.reads.filter(view=>view==='summary').length;
+  await f.act(()=>f.button('Overview').click());
+  const cards=[...f.w.document.querySelectorAll('[aria-label="Job openings totals for selected source"] article')];
+  assert.equal(cards.find(card=>card.textContent.includes('Completed')).querySelector('strong').textContent,'1');
+  assert.equal(f.state.reads.filter(view=>view==='summary').length,reads+1);
+  assert.equal(f.state.posts.length,1);
+ }finally{await f.close();}
+});
+
+test('job descriptions decode plain entities and structure Zoho arrow bullets without executing source markup',async()=>{
+ const f=await fixture();try{
+  f.state.jobFields={description:'Requirements Key Responsibilities  Prepare reports.  Coordinate teams. 3. Required Tools &amp; Technical Skills  Excel &amp; Power Query.'};
+  await f.act(()=>f.button('Refresh status').click());
+  await f.act(()=>f.button('Audit job 999').click());
+  const panel=f.w.document.querySelector('[aria-label="Record review"]');
+  assert.deepEqual([...panel.querySelectorAll('li')].map(item=>item.textContent),['Prepare reports.','Coordinate teams.','Excel & Power Query.']);
+  assert.ok([...panel.querySelectorAll('h5')].some(h=>h.textContent==='3. Required Tools & Technical Skills'));
+ }finally{await f.close();}
+});
+
 test('discovery actions follow start, queued pause, resume, running stop and restart without approving records',async()=>{
  const f=await fixture({candidate:true,discoveryAvailable:true});try{
   const explain=()=>f.act(()=>{const field=f.w.document.querySelector('[aria-label="Discovery control reason"]');Object.getOwnPropertyDescriptor(f.w.HTMLInputElement.prototype,'value').set.call(field,'Operator testing control');field.dispatchEvent(new f.w.Event('input',{bubbles:true}));});
