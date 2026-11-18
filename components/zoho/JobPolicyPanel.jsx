@@ -35,10 +35,6 @@ function MappingRows({ title, entries, destinations, disabled, onChange }) {
 
 export default function JobPolicyPanel({ connectionId, onSaved, refreshVersion = 0 }) {
   const [snapshot, setSnapshot] = useState(null);
-  const [surface,setSurface]=useState(null);
-  const [surfaceBusy,setSurfaceBusy]=useState(false);
-  const [surfaceError,setSurfaceError]=useState('');
-  const surfaceRequest=useRef(0);
   const [reload, setReload] = useState(0);
   const [statusRows, setStatusRows] = useState([]);
   const [employmentRows, setEmploymentRows] = useState([]);
@@ -62,7 +58,7 @@ export default function JobPolicyPanel({ connectionId, onSaved, refreshVersion =
   useEffect(() => {
     const current = ++generation.current;
     const controller = new AbortController();
-    setSurface(null);setSurfaceBusy(false);setSurfaceError('');surfaceRequest.current++;setSnapshot(null); setReviewed(false); setReason(''); setError(''); setBusy(true);
+    setSnapshot(null); setReviewed(false); setReason(''); setError(''); setBusy(true);
     if (!connectionId) { setBusy(false); return; }
     (async () => {
       try {
@@ -78,25 +74,14 @@ export default function JobPolicyPanel({ connectionId, onSaved, refreshVersion =
     })();
     return () => { controller.abort(); generation.current++; };
   }, [connectionId, reload]);
-  async function loadSurface(offset=0) {
-    const current=generation.current, request=++surfaceRequest.current;
-    setSurfaceBusy(true);setSurfaceError('');
-    try {
-      const query=new URLSearchParams({view:'job_surface',connectionId,fingerprint:snapshot.triggerFingerprint,offset:String(offset)});
-      const response=await fetch(`${API}?${query}`,{credentials:'same-origin',cache:'no-store'});
-      const result=await browserResponse(response);
-      if(current===generation.current&&request===surfaceRequest.current)setSurface(result.surface);
-    }catch(error){if(current===generation.current&&request===surfaceRequest.current){setSurfaceError(error.message);setReviewed(false);}}
-    finally{if(current===generation.current&&request===surfaceRequest.current)setSurfaceBusy(false);}
-  }
   async function save(event) {
     event.preventDefault(); setError('');setRefreshWarning('');
     const current = generation.current;
     try {
       const parsed = jobPolicySchema.safeParse({ connectionId, expectedConfigRevision: snapshot.configRevision,
         statusMap: toMap(statusRows), employmentMap: toMap(employmentRows), enabled, noEmailReviewed: reviewed,
-        triggerFingerprint: snapshot.triggerFingerprint, reason });
-      if (!parsed.success) throw new Error('Set unique exact source mappings, a review reason of at least 20 characters and review no-email effects before enabling.');
+        reason });
+      if (!parsed.success) throw new Error('Set unique exact source mappings, a reason of at least 3 characters and confirm the source mappings before enabling.');
       setBusy(true);
       const response = await fetch(API, { method: 'POST', credentials: 'same-origin', cache: 'no-store',
         headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'configure_job_policy', input: parsed.data }) });
@@ -123,25 +108,10 @@ export default function JobPolicyPanel({ connectionId, onSaved, refreshVersion =
         <MappingRows title="Job status" entries={statusRows} destinations={['open', 'closed', 'draft']} disabled={busy} onChange={setStatusRows} />
         <MappingRows title="Employment type" entries={employmentRows} destinations={['job', 'internship', 'contract']} disabled={busy} onChange={setEmploymentRows} />
       </div>
-      <details className="rounded-xl border border-border p-4" onToggle={event=>{if(event.target===event.currentTarget&&event.currentTarget.open&&!surface&&!surfaceBusy)loadSurface();}}><summary className="cursor-pointer text-sm font-medium">Review database executable surface</summary>
-        <p className="mt-3 text-xs leading-5 text-muted-foreground">Inspect the listed defaults, rules, constraints, functions, triggers and cross-schema helpers and their downstream effects before attesting that job writes cannot send email. This catalog fingerprint detects changes; external and transitive effects still require review.</p>
-        <p className="mt-3 break-all font-mono text-xs">{snapshot.triggerFingerprint || 'Executable catalog unavailable; saving is blocked.'}</p>
-        {snapshot.surfaceCount != null && <p className="mt-2 text-xs text-muted-foreground">{snapshot.surfaceCount} executable catalog entries</p>}
-        <p className="mt-2 text-xs text-muted-foreground">The fingerprint covers the complete catalog, including cross-schema dependencies. This inspector shows ten entries per page. Long definitions are abbreviated; inspect their full definitions and downstream behavior in the database before attesting.</p>
-        <dl className="mt-2 flex flex-wrap gap-3 text-xs">{Object.entries(snapshot.surfaceKinds||{}).map(([kind,count])=><div key={kind}><dt>{kind}</dt><dd>{count}</dd></div>)}</dl>
-        {surfaceError&&<p role="alert" className="mt-3 text-sm text-destructive">{surfaceError}</p>}
-        {surfaceBusy&&<p role="status" className="mt-3 text-sm">Loading catalog page…</p>}
-        {surface?.items?.map((entry,index)=><div key={`${surface.offset}:${index}`} className="mt-4 border-t border-border pt-3"><p className="text-xs font-medium">{entry.kind}: {entry.name}</p><pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-words text-xs">{entry.definition}</pre>{entry.truncated&&<p className="text-xs text-amber-800 dark:text-amber-200">Abbreviated definition. Review the full object in the database.</p>}</div>)}
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <Button type="button" variant="outline" size="sm" disabled={surfaceBusy||!surface||surface.offset===0} onClick={()=>loadSurface(Math.max(0,surface.offset-10))}>Previous catalog page</Button>
-          <Button type="button" variant="outline" size="sm" disabled={surfaceBusy||Boolean(surface&&surface.nextOffset==null)} onClick={()=>loadSurface(surface?.nextOffset||0)}>{surface?'Next catalog page':'Load catalog page'}</Button>
-          {surface&&<span className="text-xs">{surface.offset+1}–{Math.min(surface.offset+10,surface.total)} of {surface.total}</span>}
-        </div>
-      </details>
-      <label className="flex items-start gap-3 text-sm"><input type="checkbox" checked={reviewed} disabled={busy} onChange={event => setReviewed(event.target.checked)} /><span>I reviewed these database effects and their dependencies and confirmed that these job writes send no email.</span></label>
-      <label className="flex items-start gap-3 text-sm"><input type="checkbox" checked={enabled} disabled={busy} onChange={event => setEnabled(event.target.checked)} /><span>Allow this reviewed publication policy to be used by approved job writes.</span></label>
-      <label className="block text-sm font-medium">Policy review reason<textarea value={reason} disabled={busy} minLength={20} maxLength={500} onChange={event => setReason(event.target.value)} className="mt-2 min-h-20 w-full rounded-lg border border-border bg-background p-3 text-sm" /></label>
-      <Button type="submit" disabled={busy || Boolean(surfaceError) || !snapshot.triggerFingerprint || reason.trim().length < 20 || (enabled && !reviewed)}>{busy ? 'Saving…' : 'Save reviewed policy'}</Button>
+      <label className="flex items-start gap-3 text-sm"><input type="checkbox" checked={reviewed} disabled={busy} onChange={event => setReviewed(event.target.checked)} /><span>I reviewed these status and employment mappings. Approved job imports send no emails.</span></label>
+      <label className="flex items-start gap-3 text-sm"><input type="checkbox" checked={enabled} disabled={busy} onChange={event => setEnabled(event.target.checked)} /><span>Enable job imports using these mappings. Each job still requires approval.</span></label>
+      <label className="block text-sm font-medium">Change reason<textarea value={reason} disabled={busy} minLength={3} maxLength={500} onChange={event => setReason(event.target.value)} className="mt-2 min-h-20 w-full rounded-lg border border-border bg-background p-3 text-sm" /></label>
+      <Button type="submit" disabled={busy || reason.trim().length < 3 || (enabled && !reviewed)}>{busy ? 'Saving…' : 'Save mappings'}</Button>
     </form>}
   </section>;
 }

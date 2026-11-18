@@ -59,6 +59,7 @@ export default function ZohoRecruitPage() {
   const [liveDiscovery, setLiveDiscovery] = useState(null);
   const [discoveryRequest, setDiscoveryRequest] = useState(null);
   const [historyUpdatedAt, setHistoryUpdatedAt] = useState(null);
+  const [discoveryReadError, setDiscoveryReadError] = useState(null);
   const [executions, setExecutions] = useState([]);
   const [deferred, setDeferred] = useState([]);
   const [pendingHistoryConnection, setPendingHistoryConnection] = useState('');
@@ -202,7 +203,8 @@ export default function ZohoRecruitPage() {
   const discoveryPaused=progress?.phase==='paused';
   const sourceDiscoveries = tabs.map(tab => ({...tab, progress:discoveryProgress(statusRuns, discoveryRequest, connectionId, tab.id)}))
     .filter(item => item.progress?.active || item.progress?.phase === 'paused');
-  const sourceActivity = sourceDiscoveries.map(item => `${item.label}: ${discoveryTiming(item.progress).waiting?'Waiting to retry':item.progress.active?'Discovery in progress':'Discovery paused'}`).join(' · ');
+  const discoveryStatusError = discoveryReadError?.connectionId === connectionId ? discoveryReadError.message : '';
+  const sourceActivity = discoveryStatusError ? 'Discovery status unavailable' : sourceDiscoveries.map(item => `${item.label}: ${discoveryTiming(item.progress).waiting?'Waiting to retry':item.progress.active?'Discovery in progress':'Discovery paused'}`).join(' · ');
   useEffect(()=>{setReviewErrors({});},[connectionId,connection?.status,connection?.configRevision]);
   // Re-render at the next expiry even when discovery/execution polling is idle.
   useEffect(() => {
@@ -304,7 +306,14 @@ export default function ZohoRecruitPage() {
   }
 
   const loadSummary = useCallback(async () => {
-    const result = await api();
+    const source = activeConnection.current;
+    const generation = historyGeneration.current;
+    let result;
+    try { result = await api(); }
+    catch (error) {
+      if (source && activeConnection.current === source && generation === historyGeneration.current) setDiscoveryReadError({ connectionId: source, message: error.message });
+      throw error;
+    }
     setSnapshot(result);
     setConnectionId(previous => {
       let requested='';try{requested=new URL(window.location.href).searchParams.get('source')||window.sessionStorage.getItem('zoho-selected-source')||'';}catch{}
@@ -399,12 +408,12 @@ export default function ZohoRecruitPage() {
           const merge=previous=>items.length<limit?items:[...items,...previous.filter(item=>
             !items.some(fresh=>fresh.id===item.id)&&(item[timestamp]<boundary[timestamp]||
               (item[timestamp]===boundary[timestamp]&&item.id<boundary.id)))];
-          if(kind==='runs'){setRuns(merge);if(result.latestRuns)setLiveDiscovery({connectionId,latestRuns:result.latestRuns,captures:result.captures || []});setHistoryUpdatedAt(Date.now());}
+          if(kind==='runs'){setDiscoveryReadError(null);setRuns(merge);if(result.latestRuns)setLiveDiscovery({connectionId,latestRuns:result.latestRuns,captures:result.captures || []});setHistoryUpdatedAt(Date.now());}
           if(kind==='executions')setExecutions(merge);if(kind==='deferred')setDeferred(merge);
           setHistoryMore(previous=>({...previous,[kind]:items.length===(kind==='deferred'?50:20)}));
           setHistoryErrors(previous=>({...previous,[kind]:''}));
           if(kind==='executions')setPendingHistoryConnection(current=>current===connectionId?'':current);
-        }catch(error){if(generation===historyGeneration.current&&activeConnection.current===connectionId)setHistoryErrors(previous=>({...previous,[kind]:error.message}));throw error;}
+        }catch(error){if(generation===historyGeneration.current&&activeConnection.current===connectionId){setHistoryErrors(previous=>({...previous,[kind]:error.message}));if(kind==='runs')setDiscoveryReadError({connectionId,message:error.message});}throw error;}
       }));
       const failed=results.find(result=>result.status==='rejected');if(failed)throw failed.reason;
     } catch (e) {
@@ -458,7 +467,7 @@ export default function ZohoRecruitPage() {
     setRuns([]);
     setExecutions([]);
     setDeferred([]);
-    setHistoryErrors({});setHistoryMore({});setHistoryUpdatedAt(null);
+    setHistoryErrors({});setHistoryMore({});setHistoryUpdatedAt(null);setDiscoveryReadError(null);
     loadRuns().catch(e => setError(e.message));
     return () => { historyGeneration.current++; };
   }, [loadRuns]);
@@ -786,7 +795,7 @@ export default function ZohoRecruitPage() {
         </section>
         <section id={`zoho-panel-${module==='Candidates'?'Job_Openings':'Candidates'}`} role="tabpanel" aria-labelledby={`zoho-tab-${module==='Candidates'?'Job_Openings':'Candidates'}`} hidden />
         <section id={`zoho-panel-${module}`} role="tabpanel" aria-labelledby={`zoho-tab-${module}`} tabIndex={0} aria-busy={recordsLoading} hidden={!recordSection} className={styles.sectionPanel}>
-          <DiscoveryProgress capture={captures?.find(item => item.module === module && item.config_revision === connection?.configRevision)} checkpointKnown={captures !== undefined} connection={connection} progress={progress} errorText={progress?.run?.last_error ? discoveryErrorText(progress.run.last_error) : ''} updatedAt={historyUpdatedAt} pollDelay={pollDelay} onViewHistory={()=>activateSection('history',true)} />
+          <DiscoveryProgress statusError={discoveryStatusError} capture={captures?.find(item => item.module === module && item.config_revision === connection?.configRevision)} checkpointKnown={captures !== undefined} connection={connection} progress={progress} errorText={progress?.run?.last_error ? discoveryErrorText(progress.run.last_error) : ''} updatedAt={historyUpdatedAt} pollDelay={pollDelay} onViewHistory={()=>activateSection('history',true)} />
           {module === 'Job_Openings' && <JobIndexProgress key={connectionId} connectionId={connectionId} active={recordSection} api={api} />}
         <div ref={workspaceRoot} className={styles.workspace}>
           <div className={styles.workspaceMain}>

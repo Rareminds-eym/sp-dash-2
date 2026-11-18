@@ -18,21 +18,6 @@ async function fixture(component,fetcher){
  const button=text=>[...w.document.querySelectorAll('button')].find(b=>b.textContent.trim()===text);
  return {w,act,requests,button,async close(){await act(()=>w.root.unmount());w.close();}};
 }
-test('catalog definitions are fetched only on expansion and paging replaces the bounded list',async()=>{
- const f=await fixture('JobPolicyPanel',(url)=>{
-  const query=new URL(url,'http://localhost').searchParams;
-  if(query.get('view')==='job_surface'){const offset=Number(query.get('offset'));return Response.json({surface:{offset,total:15000,nextOffset:offset+10,items:Array.from({length:10},(_,i)=>({kind:'routine',name:'fixture_'+(offset+i),definition:'CREATE FUNCTION fixture_'+(offset+i)}))}});}
-  return Response.json({policy:{configRevision:1,triggerFingerprint:'a'.repeat(64),surfaceCount:15000,surfaceKinds:{routine:1000},policy:null}});
- });try{
-  assert.equal(f.requests.length,1);assert.equal(f.w.document.querySelectorAll('pre').length,0);
-  await f.act(()=>{f.w.document.querySelector('details').open=true;});
-  assert.equal(f.requests.length,2);assert.equal(f.w.document.querySelectorAll('pre').length,10);
-  await f.act(()=>f.button('Next catalog page').click());
-  assert.equal(f.w.document.querySelectorAll('pre').length,10);
-  assert.equal(f.w.document.querySelector('pre').textContent,'CREATE FUNCTION fixture_10');
-  assert.equal(new URL(f.requests.at(-1).url,'http://localhost').searchParams.get('offset'),'10');
- }finally{await f.close();}
-});
 test('global cleanup needs its own reason and confirmation before an audited command',async()=>{
  const posts=[];const f=await fixture('SourcePrivacyPanel',(_url,options)=>{
   if(options.method){posts.push(JSON.parse(options.body));return Response.json({result:{redacted:0}});}

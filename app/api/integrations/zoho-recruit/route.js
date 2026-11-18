@@ -7,7 +7,7 @@ import { integrationFailure } from '@/lib/zoho/diagnostics';
 import {operatorActions,operatorSnapshot,runOperatorAction,canonicalAdministrationPage} from '@/lib/zoho/operator-actions';
 import {operatorHistoryPage} from '@/lib/zoho/operator-history';
 import { z } from 'zod';
-import { configureJobPolicy, readJobPolicy, readJobSurfacePage } from '@/lib/zoho/job-policy';
+import { configureJobPolicy, readJobPolicy } from '@/lib/zoho/job-policy';
 import { previewCandidateReview, previewCandidateReviews } from '@/lib/zoho/candidate-review';
 import { recordHumanApproval } from '@/lib/zoho/approval-evidence';
 import { requireZohoAdmin } from '@/lib/zoho/admin';
@@ -70,7 +70,6 @@ async function handle(request) {
       }
       if (url.searchParams.get('view') === 'operations') return json({operations:await operatorSnapshot(supabaseAdmin,url.searchParams.get('connectionId'),auth.env,auth.user.id)});
       if (url.searchParams.get('view') === 'privacy') return json({ privacy: await service.privacy(url.searchParams.get('connectionId')) });
-      if (view === 'job_surface') return json({ surface: await readJobSurfacePage(supabaseAdmin,Object.fromEntries([...url.searchParams].filter(([key])=>key!=='view'))) });
       if (view === 'record_window') return json(await service.reviewWindow(Object.fromEntries([...url.searchParams].filter(([key])=>key!=='view'))));
       if (url.searchParams.get('view') === 'job_policy') return json({ policy: await readJobPolicy(supabaseAdmin, url.searchParams.get('connectionId')), emailPolicy: 'forbidden' });
       const historyInput=Object.fromEntries([...url.searchParams].filter(([key])=>key!=='view'));

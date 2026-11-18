@@ -8,12 +8,14 @@ const root=fileURLToPath(new URL('../../',import.meta.url));
 const dashRequire=createRequire(resolve(root,'package.json'));
 const appRequire=createRequire(resolve(root,'package.json'));
 const {build}=dashRequire('esbuild'), {JSDOM}=appRequire('jsdom');
-let bundle;
+let bundle, policyBundle;
 before(async()=>{
   const result=await build({stdin:{contents:`import React,{act} from 'react';import {createRoot} from 'react-dom/client';import Page from './components/pages/ZohoRecruitPage.jsx';window.auditAct=act;window.auditRoot=createRoot(document.getElementById('root'));window.auditMount=()=>window.auditRoot.render(React.createElement(Page));`,resolveDir:resolve(root),loader:'jsx'},bundle:true,write:false,outdir:resolve(root,'.wrangler/ui-test-build'),platform:'browser',format:'iife',jsx:'automatic',define:{'process.env.NODE_ENV':'"development"'},alias:{'@':resolve(root)},plugins:[{name:'test-only-panels',setup(build){
     build.onResolve({filter:/^(next\/link|@\/components\/(ui\/button|zoho\/(JobPolicyPanel|SourcePrivacyPanel|OperationsPanel|SyncSettings)))$/},args=>({path:args.path,namespace:'audit-stub'}));
     build.onLoad({filter:/.*/,namespace:'audit-stub'},args=>({contents:`import React from ${JSON.stringify(dashRequire.resolve('react'))};export const Button=React.forwardRef(({variant,size,...props},ref)=>React.createElement('button',{...props,ref}));export default function Stub({active}){return ${JSON.stringify(args.path.includes('/zoho/'))}?React.createElement('span',{'data-audit-panel':${JSON.stringify(args.path)},'data-audit-active':active}):null;}`,loader:'js',resolveDir:resolve(root)}));
   }}]});bundle=result.outputFiles.find(file=>file.path.endsWith('.js')).text;
+  const policy=await build({stdin:{contents:`import React,{act} from 'react';import {createRoot} from 'react-dom/client';import Panel from './components/zoho/JobPolicyPanel.jsx';window.auditAct=act;window.auditRoot=createRoot(document.getElementById('root'));window.auditMount=()=>window.auditRoot.render(React.createElement(Panel,{connectionId:'a5700000-0000-4000-8000-000000000001',onSaved:async()=>{}}));`,resolveDir:resolve(root),loader:'jsx'},bundle:true,write:false,outdir:resolve(root,'.wrangler/ui-test-build'),platform:'browser',format:'iife',jsx:'automatic',define:{'process.env.NODE_ENV':'"development"'},alias:{'@':resolve(root)}});
+  policyBundle=policy.outputFiles.find(file=>file.path.endsWith('.js')).text;
 });
 
 const id='a5700000-0000-4000-8000-000000000001';
@@ -72,8 +74,8 @@ async function fixture({ initialSection = 'records', initialUrl = 'http://localh
     else if(url.searchParams.get('view')==='job_policy') {
       const connectionId=url.searchParams.get('connectionId');
       const configRevision=sources?.find(source=>source.id===connectionId)?.configRevision||1;
-      data={policy:{connectionId,configRevision,emailPolicy:'forbidden',triggerFingerprint:'f'.repeat(64),
-        policy:{enabled:true,noEmailReviewed:true,triggerFingerprint:'f'.repeat(64),statusMap:{'In-progress':'open',Inactive:'closed','On-Hold':'draft'},employmentMap:{'Full time':'job'}},
+      data={policy:{connectionId,configRevision,emailPolicy:'forbidden',
+        policy:{enabled:true,noEmailReviewed:true,statusMap:{'In-progress':'open',Inactive:'closed','On-Hold':'draft'},employmentMap:{'Full time':'job'}},
         publishing:{entitlementReady:true,remainingSlots:null,activeTargetIds:[]},...state.jobContext}};
     }
     else if(url.searchParams.get('view')==='execution_progress') {
@@ -1384,7 +1386,7 @@ test('bulk job approval reviews all staged job pages and queues eligible jobs af
    validation_errors:i===0?['location mapping is required.']:[],proposed_data:{title:`Engineer ${i}`,company_name:'Example client',location:i===0?'':'Chennai',department:'',description:'<h3>Responsibilities</h3><p>Review this job description</p><ul><li>Own delivery.</li></ul><script>evil()</script>',employment_type:'Full time',source_status:i===1?'Inactive':'In-progress',application_link:''}}));
   f.w.fetch=async(input,options={})=>{
    const url=new URL(input,'http://localhost');
-   if(url.searchParams.get('view')==='job_policy')return Response.json({policy:{connectionId:id,configRevision:1,emailPolicy:'forbidden',publishing:{entitlementReady:true,remainingSlots:null,activeTargetIds:[]},triggerFingerprint:'b'.repeat(64),policy:{enabled:true,noEmailReviewed:true,triggerFingerprint:'b'.repeat(64),statusMap:{'In-progress':'open',Inactive:'closed'},employmentMap:{'Full time':'job'}}}});
+   if(url.searchParams.get('view')==='job_policy')return Response.json({policy:{connectionId:id,configRevision:1,emailPolicy:'forbidden',publishing:{entitlementReady:true,remainingSlots:null,activeTargetIds:[]},policy:{enabled:true,noEmailReviewed:true,statusMap:{'In-progress':'open',Inactive:'closed'},employmentMap:{'Full time':'job'}}}});
    if(url.searchParams.get('view')==='records'&&url.searchParams.get('state')==='pending_approval'){
     assert.equal(url.searchParams.get('module'),'Job_Openings');assert.equal(url.searchParams.get('search'),null);
     const offset=url.searchParams.has('beforeId')?rows.findIndex(row=>row.id===url.searchParams.get('beforeId'))+1:0;
@@ -1555,4 +1557,37 @@ test('a mobile review releases its page scroll lock when a refreshed record disa
   assert.equal(f.w.document.querySelectorAll('[inert]').length,0);
   assert.equal(f.w.document.body.style.overflow,'','An invisible review drawer must not lock page scrolling');
  }finally{await f.close();}
+});
+
+
+test('job mapping panel loads and saves without a catalogue inspector or fingerprint',async()=>{
+ const dom=new JSDOM('<div id="root"></div>',{url:'http://localhost/',runScripts:'outside-only',pretendToBeVisual:true});
+ const w=dom.window;w.IS_REACT_ACT_ENVIRONMENT=true;w.TextEncoder=TextEncoder;
+ w.MessageChannel=class { constructor(){this.port1={onmessage:null};this.port2={postMessage:()=>setTimeout(()=>this.port1.onmessage?.(),0)};} };
+ const posts=[],reads=[];
+ w.fetch=async(input,init={})=>{
+  if(init.method==='POST'){posts.push(JSON.parse(init.body));return Response.json({result:{requiresRediscovery:true}});}
+  reads.push(String(input));
+  return Response.json({policy:{connectionId:id,configRevision:1,emailPolicy:'forbidden',policy:{enabled:true,noEmailReviewed:true,
+   statusMap:{'In-progress':'open'},employmentMap:{'Full time':'job'}}}});
+ };
+ try{
+  w.eval(policyBundle);
+  await w.auditAct(async()=>{w.auditMount();await new Promise(done=>setTimeout(done,20));});
+  assert.match(w.document.body.textContent,/Save mappings/);
+  assert.doesNotMatch(w.document.body.textContent,/executable surface|catalog|fingerprint/i);
+  await w.auditAct(async()=>{
+   const textarea=w.document.querySelector('textarea');
+   Object.getOwnPropertyDescriptor(w.HTMLTextAreaElement.prototype,'value').set.call(textarea,'Update mappings');
+   textarea.dispatchEvent(new w.Event('input',{bubbles:true}));
+   w.document.querySelector('input[type="checkbox"]').click();
+  });
+  const save=[...w.document.querySelectorAll('button')].find(button=>button.textContent==='Save mappings');
+  assert.equal(save.disabled,false);
+  await w.auditAct(async()=>{w.document.querySelector('form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await new Promise(done=>setTimeout(done,20));});
+  assert.equal(posts.length,1);assert.equal(posts[0].action,'configure_job_policy');
+  assert.equal(Object.hasOwn(posts[0].input,'triggerFingerprint'),false);
+  assert.equal(posts[0].input.reason,'Update mappings');
+  assert.ok(reads.every(url=>!url.includes('job_surface')));
+ }finally{if(w.auditRoot)await w.auditAct(()=>w.auditRoot.unmount());w.close();}
 });

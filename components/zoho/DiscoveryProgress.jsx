@@ -2,29 +2,30 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowRight, Ban, CalendarDays, CheckCircle2, Clock3, Database, Download, History, Layers, LoaderCircle, AlertCircle } from 'lucide-react';
 
-import { discoveryTiming, formatDiscoveryDuration } from '@/lib/zoho/discovery-progress';
+import { discoveryTiming, formatDiscoveryDuration, discoveryPresentation } from '@/lib/zoho/discovery-progress';
 import styles from './DiscoveryProgress.module.css';
 
-export default function DiscoveryProgress({ progress, connection, errorText, updatedAt, pollDelay = 3000, onViewHistory, capture, checkpointKnown = false }) {
+export default function DiscoveryProgress({ progress, connection, errorText, updatedAt, pollDelay = 3000, onViewHistory, capture, checkpointKnown = false, statusError = '' }) {
+  const { active, unavailable, title: presentationTitle } = discoveryPresentation(progress, statusError);
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
-    if (!progress?.active) return;
+    if (!active) return;
     setNow(Date.now());
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, [progress?.active, progress?.startedAt]);
+  }, [active, progress?.startedAt]);
   if (!progress) return null;
-  const { active, phase, title, run } = progress;
+  const { phase, title, run } = progress;
   const historical = !active && phase !== 'paused' && connection?.status === 'connected' &&
     Number.isInteger(connection.configRevision) && Number.isInteger(run?.config_revision) &&
     run.config_revision !== connection.configRevision;
   const startedAt = Date.parse(progress.startedAt);
   const elapsed = Number.isFinite(startedAt) ? Math.max(0, Math.floor((now - startedAt) / 1000)) : 0;
   const timing = discoveryTiming(progress, now);
-  const waiting = timing.waiting;
-  const Icon = historical ? History : waiting ? Clock3 : active ? LoaderCircle : phase === 'completed' ? CheckCircle2 : AlertCircle;
-  const heading = historical ? 'Fresh discovery required' : waiting ? 'Waiting to retry' : title;
-  const tone = historical || waiting || ['paused','incomplete','completed_with_exceptions','cancelled'].includes(phase) ? 'amber' : active ? 'violet' : phase === 'completed' ? 'green' : 'rose';
+  const waiting = !unavailable && timing.waiting;
+  const Icon = unavailable ? AlertCircle : historical ? History : waiting ? Clock3 : active ? LoaderCircle : phase === 'completed' ? CheckCircle2 : AlertCircle;
+  const heading = unavailable ? presentationTitle : historical ? 'Fresh discovery required' : waiting ? 'Waiting to retry' : title;
+  const tone = unavailable || historical || waiting || ['paused','incomplete','completed_with_exceptions','cancelled'].includes(phase) ? 'amber' : active ? 'violet' : phase === 'completed' ? 'green' : 'rose';
   const scanDate = Date.parse(progress.startedAt || run?.scan_started_at || run?.created_at);
   const hasScanDate = Number.isFinite(scanDate);
   const checkedDate = new Date(updatedAt ?? NaN);
@@ -41,7 +42,7 @@ export default function DiscoveryProgress({ progress, connection, errorText, upd
       <span data-tone={tone} className={styles.statusIcon}><Icon aria-hidden="true" size={22} className={active && !waiting ? styles.spinning : undefined}/></span>
       <div className={styles.headingText}>
           <h2 className={styles.title}><span role="status" aria-live="polite">{heading}</span></h2>
-          <p className={styles.description}>{historical ? 'The previous scan used older source settings. Run a new discovery to use the latest configuration.' : phase === 'submitting' ? 'Saving your request. Candidates and jobs will only be staged for review.'
+          <p className={styles.description}>{unavailable ? 'Current discovery status could not be checked. The counts below are from the last successful check and do not confirm whether the scan is running or stopped.' : historical ? 'The previous scan used older source settings. Run a new discovery to use the latest configuration.' : phase === 'submitting' ? 'Saving your request. Candidates and jobs will only be staged for review.'
             : phase === 'queued' ? timing.description
             : phase === 'running' ? (run?.transport === 'bulk' ? 'The background processor is preparing and staging the bulk export. Its checkpoint survives restarts.' : 'Reading saved records, including both conversion states. Total size is not known yet.')
             : phase === 'completed' ? 'Staging finished. Review each record before approving account or job creation.'
@@ -58,6 +59,8 @@ export default function DiscoveryProgress({ progress, connection, errorText, upd
     {waiting && <p className={styles.retry}>{!timing.validRetry ? 'Waiting for retry scheduling' : timing.remainingSeconds > 0 ? `Retry eligible in ${formatDiscoveryDuration(timing.remainingSeconds)}` : 'Retry eligible now · waiting for the background processor'}</p>}
     <p className="mb-3 text-xs text-muted-foreground">{progress.mode || (run?.modified_since ? 'Incremental discovery' : 'Full reconciliation')}{run?.modified_since ? ` · changes since ${new Date(run.modified_since).toLocaleString()}` : ''}{run?.capture_complete ? ' · Source capture complete; approval and execution are tracked separately.' : ''}</p>
     <p className="mb-2 text-xs text-muted-foreground">This scan only · accumulated records and approved execution are tracked separately.</p>
+    {unavailable && <p role="alert" className={styles.warning}>{statusError}</p>}
+    {unavailable && <p className="mb-2 text-xs text-muted-foreground">Last confirmed scan counts</p>}
     <dl className={styles.metrics}>
       {metrics.map(({value,label,Icon:MetricIcon}) => <div key={label} className={styles.metric}>
         <dt><span className={styles.metricIcon}><MetricIcon aria-hidden="true" size={21}/></span>{label}</dt>
@@ -70,7 +73,7 @@ export default function DiscoveryProgress({ progress, connection, errorText, upd
     {!historical && (errorText || progress.message) && <p className={run?.last_error === 'BULK_COVERAGE_VERIFY' ? 'mt-3 text-xs text-muted-foreground' : waiting ? styles.warning : styles.error}>{errorText || progress.message}</p>}
     {waiting && <p className={styles.budgetHelp}>These counts apply to this scan; the shared budget also includes earlier scans and both record types. Connector usage replenishes over a rolling 24 hours, rather than at midnight. See Advanced → Shared API budget for the current allocation and refill times. Starting another scan does not reset usage.</p>}
     <footer className={styles.footer}>
-      <p className={styles.scanSummary}><CalendarDays aria-hidden="true" size={18}/><span>{active && hasCheckedDate ? <>Last checked <time dateTime={checkedDate.toISOString()}>{checkedDate.toLocaleTimeString()}</time> · checking about every {Math.round(pollDelay / 1000)} seconds while visible</> : <>{historical?'Previous scan:':run?'Scan started:':'Request started:'} {hasScanDate?<time dateTime={new Date(scanDate).toISOString()}>{new Date(scanDate).toLocaleString()}</time>:'Date unavailable'} · {(progress.staged??0).toLocaleString()} staged</>}</span></p>
+      <p className={styles.scanSummary}><CalendarDays aria-hidden="true" size={18}/><span>{unavailable ? <>Last successful check: {hasCheckedDate ? <time dateTime={checkedDate.toISOString()}>{checkedDate.toLocaleTimeString()}</time> : 'Not yet confirmed'} · retrying status checks about every {Math.round(pollDelay / 1000)} seconds while visible</> : active && hasCheckedDate ? <>Last checked <time dateTime={checkedDate.toISOString()}>{checkedDate.toLocaleTimeString()}</time> · checking about every {Math.round(pollDelay / 1000)} seconds while visible</> : <>{historical?'Previous scan:':run?'Scan started:':'Request started:'} {hasScanDate?<time dateTime={new Date(scanDate).toISOString()}>{new Date(scanDate).toLocaleString()}</time>:'Date unavailable'} · {(progress.staged??0).toLocaleString()} staged</>}</span></p>
       {onViewHistory && <button type="button" className={styles.historyLink} onClick={onViewHistory}>View discovery history<ArrowRight aria-hidden="true" size={17}/></button>}
     </footer>
   </section>;

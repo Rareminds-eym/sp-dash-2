@@ -13,7 +13,7 @@ test('new sources prefill exact defaults without authorizing writes or overwriti
  const w=dom.window;w.IS_REACT_ACT_ENVIRONMENT=true;w.ResizeObserver=class{observe(){}unobserve(){}disconnect(){}};w.HTMLElement.prototype.scrollIntoView=function(){};
  w.MessageChannel=class{constructor(){this.port1={onmessage:null};this.port2={postMessage:()=>setTimeout(()=>this.port1.onmessage?.(),0)};}};
  let policy=null,posts=0;
- w.fetch=async(url,options={})=>{if(options.method){posts++;return Response.json({});}return Response.json({policy:{policy,configRevision:1,triggerFingerprint:'a'.repeat(64)}});};
+ w.fetch=async(url,options={})=>{if(options.method){posts++;return Response.json({});}return Response.json({policy:{policy,configRevision:1}});};
  const act=async(fn)=>w.act(async()=>{await fn();await new Promise(r=>setTimeout(r,10));});
  try{
   w.eval(built.outputFiles.find(file=>file.path.endsWith('.js')).text);await act(()=>w.mount());
@@ -39,7 +39,7 @@ test('a saved policy reloads and retains its refresh warning when related record
  const w=dom.window;w.IS_REACT_ACT_ENVIRONMENT=true;w.ResizeObserver=class{observe(){}unobserve(){}disconnect(){}};w.HTMLElement.prototype.scrollIntoView=function(){};
  w.MessageChannel=class{constructor(){this.port1={onmessage:null};this.port2={postMessage:()=>setTimeout(()=>this.port1.onmessage?.(),0)};}};
  let gets=0,posts=0;
- w.fetch=async(url,options={})=>{if(options.method){posts++;return Response.json({result:{}});}gets++;return Response.json({policy:{policy:{statusMap:{Open:'open'},employmentMap:{Full:'job'},enabled:false},configRevision:gets,triggerFingerprint:'a'.repeat(64),triggerSurface:[]}});};
+ w.fetch=async(url,options={})=>{if(options.method){posts++;return Response.json({result:{}});}gets++;return Response.json({policy:{policy:{statusMap:{Open:'open'},employmentMap:{Full:'job'},enabled:false},configRevision:gets}});};
  const act=async(fn)=>w.act(async()=>{await fn();await new Promise(r=>setTimeout(r,10));});
  try{
   w.eval(built.outputFiles.find(file=>file.path.endsWith('.js')).text);await act(()=>w.mount());
