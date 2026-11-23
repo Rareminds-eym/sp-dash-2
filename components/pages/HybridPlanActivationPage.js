@@ -745,7 +745,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
     }, [rows])
 
     function openUpgradeDialog(org) {
-        const editing = org.plan_code === 'hybrid' && ['active', 'pending'].includes(org.status)
+        const editing = org.is_hybrid === true && ['active', 'pending'].includes(org.status)
         try {
             setUpgradeForm(editing ? hydrateHybridTerms(org) : TERMS_INITIAL)
         } catch (error) {
@@ -781,7 +781,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
         // (update terms in place) instead of POST (create a new row — which
         // would be rejected by the "already has an active" guard).
         const isExistingHybrid =
-            upgradeDialog.org?.plan_code === 'hybrid' &&
+            upgradeDialog.org?.is_hybrid === true &&
             (upgradeDialog.org?.status === 'active' || upgradeDialog.org?.status === 'pending')
         const httpMethod = isExistingHybrid ? 'PATCH' : 'POST'
 
@@ -1128,7 +1128,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
                                     <SelectItem value="none">No Subscription</SelectItem>
                                     {planOptions.map((code) => (
                                         <SelectItem key={code} value={code} className="capitalize">
-                                            {code === 'hybrid' ? '✨ Hybrid Plan' : code}
+                                            {rows.some((r) => r.plan_code === code && r.is_hybrid) ? '✨ Hybrid Plan' : code}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -1192,7 +1192,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
                                     </TableHeader>
                                     <TableBody>
                                         {rows.map((org) => {
-                                            const isHybrid = org.plan_code === 'hybrid'
+                                            const isHybrid = org.is_hybrid === true
                                             const hasActiveSub = org.status === 'active' || org.status === 'pending'
                                             const orgTypeObj = ORG_TYPES.find((t) => t.value === org.organization_type)
                                             const TypeIcon = orgTypeObj?.icon || Building2
@@ -1957,18 +1957,18 @@ export default function HybridPlanActivationPage({ currentUser }) {
                     <div className="p-6 bg-gradient-to-r from-card via-muted/30 to-card border-b">
                         <div className="flex items-center gap-2 mb-1">
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">
-                                {upgradeDialog.org?.plan_code === 'hybrid' && (upgradeDialog.org?.status === 'active' || upgradeDialog.org?.status === 'pending')
+                                {upgradeDialog.org?.is_hybrid === true && (upgradeDialog.org?.status === 'active' || upgradeDialog.org?.status === 'pending')
                                     ? 'Edit Commercial Terms'
                                     : 'Subscription Upgrade'}
                             </span>
                         </div>
                         <DialogTitle className="text-xl font-bold tracking-tight">
-                            {upgradeDialog.org?.plan_code === 'hybrid' && (upgradeDialog.org?.status === 'active' || upgradeDialog.org?.status === 'pending')
+                            {upgradeDialog.org?.is_hybrid === true && (upgradeDialog.org?.status === 'active' || upgradeDialog.org?.status === 'pending')
                                 ? `Edit Hybrid Terms for ${upgradeDialog.org?.organization_name}`
                                 : `Activate Hybrid Terms for ${upgradeDialog.org?.organization_name}`}
                         </DialogTitle>
                         <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                            {upgradeDialog.org?.plan_code === 'hybrid' && (upgradeDialog.org?.status === 'active' || upgradeDialog.org?.status === 'pending')
+                            {upgradeDialog.org?.is_hybrid === true && (upgradeDialog.org?.status === 'active' || upgradeDialog.org?.status === 'pending')
                                 ? 'Update negotiated pricing, seat allocation, and feature entitlements for this active Hybrid subscription.'
                                 : 'Apply sales-negotiated pricing, seat allocation, and custom feature entitlements to this existing organization.'}
                         </DialogDescription>
@@ -2154,14 +2154,14 @@ export default function HybridPlanActivationPage({ currentUser }) {
                                 {upgradeSubmitting ? (
                                     <>
                                         <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                                        {upgradeDialog.org?.plan_code === 'hybrid' && (upgradeDialog.org?.status === 'active' || upgradeDialog.org?.status === 'pending')
+                                        {upgradeDialog.org?.is_hybrid === true && (upgradeDialog.org?.status === 'active' || upgradeDialog.org?.status === 'pending')
                                             ? 'Saving Changes...'
                                             : 'Activating Subscription...'}
                                     </>
                                 ) : (
                                     <>
                                         <Sparkles className="h-3.5 w-3.5" />
-                                        {upgradeDialog.org?.plan_code === 'hybrid' && (upgradeDialog.org?.status === 'active' || upgradeDialog.org?.status === 'pending')
+                                        {upgradeDialog.org?.is_hybrid === true && (upgradeDialog.org?.status === 'active' || upgradeDialog.org?.status === 'pending')
                                             ? 'Save Updated Terms'
                                             : 'Activate Hybrid Plan'}
                                     </>
