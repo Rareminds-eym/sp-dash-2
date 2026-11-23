@@ -104,6 +104,7 @@ const initialNavigation = [
     ]
   },
   { name: 'Sales Dashboard', icon: IndianRupee, href: '/sales-dashboard' },
+  { name: 'Subscriptions', icon: FileText, href: '/subscriptions' },
   {
     name: 'Educator',
     icon: GraduationCap,

@@ -165,7 +165,7 @@ export async function loginAction(email, password) {
     }
 
     if (!user.isEmailVerified) {
-      console.warn('[SSO Login Action] User email not verified:', user.email)
+      console.warn('[SSO Login Action] User email not verified')
     }
 
     // Set cookies
@@ -197,7 +197,6 @@ export async function loginAction(email, password) {
     if (process.env.NODE_ENV !== 'production') {
       console.log('[SSO Login Action] Successful login:', {
         userId: user.id,
-        email: user.email,
         roles: user.roles
       })
     }
