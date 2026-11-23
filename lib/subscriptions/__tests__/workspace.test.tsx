@@ -117,10 +117,16 @@ describe('routed subscription workspace', () => {
     await act(async () => { form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
   }
   it('shows real empty inventory and exposes authoring/current sections', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ schemaVersion: 1, plans: [], features: [] })));
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (path: string) => {
+      if (path.endsWith('/catalog')) return Response.json({ schemaVersion: 1, plans: [], features: [] });
+      if (path.endsWith('/published')) return Response.json({ schemaVersion: 1, actorId: id, productId: id,
+        tax: { kind: 'gst', rateBasisPoints: 1800, priceDisplay: 'exclusive' }, plans: [], nextCursor: null });
+      throw new Error(`Unexpected test request: ${path}`);
+    }));
     await act(async () => root.render(<SubscriptionWorkspace />));
     expect(container.textContent).toContain('No canonical plans are available');
     expect(container.textContent).toContain('No features are registered');
+    expect(container.textContent).toContain('No published offers on this page.');
     await act(async () => [...container.querySelectorAll('button')].find(button => button.textContent === 'Current & usage')!.click());
     expect(container.textContent).toContain('Explicit subscription UUID');
     expect(container.textContent).toContain('does not grant access');
