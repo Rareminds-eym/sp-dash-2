@@ -43,6 +43,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
+import { hydrateHybridTerms } from '@/lib/hybrid-terms'
 import {
     AlertCircle,
     AlertTriangle,
@@ -266,7 +267,7 @@ function UnitEconomicsCard({ planAmount, seatCount, billingCycle }) {
                         {amount > 0 ? formatCurrency(amount) : '₹0'}
                     </p>
                     <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {billingCycle === 'yearly' ? 'Per annum' : billingCycle === 'monthly' ? 'Per month' : 'Perpetual'}
+                        {['yearly', 'annual'].includes(billingCycle) ? 'Per annum' : billingCycle === 'monthly' ? 'Per month' : 'Perpetual'}
                     </p>
                 </div>
 
@@ -444,7 +445,7 @@ function EnhancedFeatureSelector({ role, featureKeys = [], loading, selected = [
             </div>
 
             {/* Grouped feature items */}
-            <div className="max-h-72 overflow-y-auto space-y-4 pr-1">
+            <div className="relative max-h-72 overflow-y-auto space-y-4 pr-1">
                 {Object.keys(grouped).length === 0 ? (
                     <p className="text-xs text-muted-foreground text-center py-4">
                         No features match &quot;{searchTerm}&quot;
@@ -652,6 +653,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
     const isAuthorized = userRoles.some((role) => ADMIN_ROLES.includes(role))
 
     const [rows, setRows] = useState([])
+    const [metrics, setMetrics] = useState(null)
     const [loading, setLoading] = useState(true)
     const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 })
 
@@ -702,6 +704,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
     const fetchOrganizations = useCallback(
         async (page = 1) => {
             setLoading(true)
+            setMetrics(null)
             try {
                 const params = new URLSearchParams({ page: String(page), limit: String(pagination.limit) })
                 if (filters.search) params.set('search', filters.search)
@@ -712,6 +715,8 @@ export default function HybridPlanActivationPage({ currentUser }) {
                 const data = await response.json()
                 if (!response.ok) throw new Error(data.error || 'Failed to load organizations')
 
+                if (!data.summary || !['total', 'hybridCount', 'totalSeats', 'totalDealValue'].every(key => Number.isFinite(data.summary[key]))) throw new Error('Organization summary is unavailable')
+                setMetrics(data.summary)
                 setRows(data.data || [])
                 setPagination(data.pagination || { page: 1, limit: 20, total: 0, totalPages: 0 })
             } catch (err) {
@@ -739,25 +744,14 @@ export default function HybridPlanActivationPage({ currentUser }) {
         return Array.from(codes)
     }, [rows])
 
-    // Executive Metrics
-    const metrics = useMemo(() => {
-        const total = pagination.total || rows.length
-        const hybridCount = rows.filter(
-            (r) => r.plan_code === 'hybrid' && (r.status === 'active' || r.status === 'pending')
-        ).length
-        const totalSeats = rows.reduce((acc, r) => acc + (Number(r.seat_count) || 0), 0)
-        const totalDealValue = rows.reduce((acc, r) => acc + (Number(r.plan_amount) || 0), 0)
-
-        return {
-            total,
-            hybridCount,
-            totalSeats,
-            totalDealValue,
-        }
-    }, [rows, pagination.total])
-
     function openUpgradeDialog(org) {
-        setUpgradeForm(TERMS_INITIAL)
+        const editing = org.is_hybrid === true && ['active', 'pending'].includes(org.status)
+        try {
+            setUpgradeForm(editing ? hydrateHybridTerms(org) : TERMS_INITIAL)
+        } catch (error) {
+            toast({ title: 'Cannot edit terms', description: error.message, variant: 'destructive' })
+            return
+        }
         setUpgradeTab('commercials')
         setUpgradeDialog({ open: true, org })
         const role = ORG_TYPE_TO_ADMIN_ROLE[org?.organization_type]
@@ -787,7 +781,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
         // (update terms in place) instead of POST (create a new row — which
         // would be rejected by the "already has an active" guard).
         const isExistingHybrid =
-            upgradeDialog.org?.plan_code === 'hybrid' &&
+            upgradeDialog.org?.is_hybrid === true &&
             (upgradeDialog.org?.status === 'active' || upgradeDialog.org?.status === 'pending')
         const httpMethod = isExistingHybrid ? 'PATCH' : 'POST'
 
@@ -801,7 +795,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
                     seat_count: seats,
                     billing_cycle: upgradeForm.billingCycle,
                     features: upgradeForm.features,
-                    notes: upgradeForm.notes || undefined,
+                    notes: upgradeForm.notes,
                 }),
             })
             const data = await response.json()
@@ -1033,7 +1027,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div className="space-y-1">
                             <p className="text-xs font-medium text-muted-foreground">Total Institutions</p>
-                            <p className="text-2xl font-bold tracking-tight">{metrics.total.toLocaleString()}</p>
+                            <p className="text-2xl font-bold tracking-tight">{metrics ? metrics.total.toLocaleString() : '—'}</p>
                             <p className="text-[11px] text-muted-foreground flex items-center gap-1">
                                 <Building2 className="h-3 w-3" /> All active accounts
                             </p>
@@ -1049,7 +1043,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
                         <div className="space-y-1">
                             <p className="text-xs font-medium text-muted-foreground">Active Hybrid Plans</p>
                             <p className="text-2xl font-bold tracking-tight text-primary">
-                                {metrics.hybridCount.toLocaleString()}
+                                {metrics ? metrics.hybridCount.toLocaleString() : '—'}
                             </p>
                             <p className="text-[11px] text-muted-foreground flex items-center gap-1">
                                 <Sparkles className="h-3 w-3 text-primary" /> Sales-negotiated
@@ -1066,7 +1060,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
                         <div className="space-y-1">
                             <p className="text-xs font-medium text-muted-foreground">Contracted Seats</p>
                             <p className="text-2xl font-bold tracking-tight">
-                                {metrics.totalSeats.toLocaleString()}
+                                {metrics ? metrics.totalSeats.toLocaleString() : '—'}
                             </p>
                             <p className="text-[11px] text-muted-foreground flex items-center gap-1">
                                 <Users className="h-3 w-3" /> Provisioned capacity
@@ -1083,7 +1077,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
                         <div className="space-y-1">
                             <p className="text-xs font-medium text-muted-foreground">Contract Pipeline Value</p>
                             <p className="text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">
-                                {formatCurrency(metrics.totalDealValue)}
+                                {metrics ? formatCurrency(metrics.totalDealValue) : '—'}
                             </p>
                             <p className="text-[11px] text-muted-foreground flex items-center gap-1">
                                 <TrendingUp className="h-3 w-3 text-emerald-500" /> Billed &amp; contracted
@@ -1134,7 +1128,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
                                     <SelectItem value="none">No Subscription</SelectItem>
                                     {planOptions.map((code) => (
                                         <SelectItem key={code} value={code} className="capitalize">
-                                            {code === 'hybrid' ? '✨ Hybrid Plan' : code}
+                                            {rows.some((r) => r.plan_code === code && r.is_hybrid) ? '✨ Hybrid Plan' : code}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -1186,6 +1180,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
                                     <TableHeader className="bg-muted/40">
                                         <TableRow>
                                             <TableHead className="font-semibold">Organization</TableHead>
+                                            <TableHead className="font-semibold">Admin Email</TableHead>
                                             <TableHead className="font-semibold">Type</TableHead>
                                             <TableHead className="font-semibold">Active Plan</TableHead>
                                             <TableHead className="font-semibold">Status</TableHead>
@@ -1197,7 +1192,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
                                     </TableHeader>
                                     <TableBody>
                                         {rows.map((org) => {
-                                            const isHybrid = org.plan_code === 'hybrid'
+                                            const isHybrid = org.is_hybrid === true
                                             const hasActiveSub = org.status === 'active' || org.status === 'pending'
                                             const orgTypeObj = ORG_TYPES.find((t) => t.value === org.organization_type)
                                             const TypeIcon = orgTypeObj?.icon || Building2
@@ -1226,6 +1221,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
                                                         </div>
                                                     </TableCell>
 
+                                                    <TableCell className="text-sm">{org.admin_email || 'Email unavailable'}</TableCell>
                                                     <TableCell>
                                                         <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border text-xs font-medium bg-background capitalize">
                                                             <TypeIcon className="h-3.5 w-3.5 text-muted-foreground" />
@@ -1961,18 +1957,18 @@ export default function HybridPlanActivationPage({ currentUser }) {
                     <div className="p-6 bg-gradient-to-r from-card via-muted/30 to-card border-b">
                         <div className="flex items-center gap-2 mb-1">
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">
-                                {upgradeDialog.org?.plan_code === 'hybrid' && (upgradeDialog.org?.status === 'active' || upgradeDialog.org?.status === 'pending')
+                                {upgradeDialog.org?.is_hybrid === true && (upgradeDialog.org?.status === 'active' || upgradeDialog.org?.status === 'pending')
                                     ? 'Edit Commercial Terms'
                                     : 'Subscription Upgrade'}
                             </span>
                         </div>
                         <DialogTitle className="text-xl font-bold tracking-tight">
-                            {upgradeDialog.org?.plan_code === 'hybrid' && (upgradeDialog.org?.status === 'active' || upgradeDialog.org?.status === 'pending')
+                            {upgradeDialog.org?.is_hybrid === true && (upgradeDialog.org?.status === 'active' || upgradeDialog.org?.status === 'pending')
                                 ? `Edit Hybrid Terms for ${upgradeDialog.org?.organization_name}`
                                 : `Activate Hybrid Terms for ${upgradeDialog.org?.organization_name}`}
                         </DialogTitle>
                         <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                            {upgradeDialog.org?.plan_code === 'hybrid' && (upgradeDialog.org?.status === 'active' || upgradeDialog.org?.status === 'pending')
+                            {upgradeDialog.org?.is_hybrid === true && (upgradeDialog.org?.status === 'active' || upgradeDialog.org?.status === 'pending')
                                 ? 'Update negotiated pricing, seat allocation, and feature entitlements for this active Hybrid subscription.'
                                 : 'Apply sales-negotiated pricing, seat allocation, and custom feature entitlements to this existing organization.'}
                         </DialogDescription>
@@ -2089,7 +2085,7 @@ export default function HybridPlanActivationPage({ currentUser }) {
                                             Billing Cadence
                                         </Label>
                                         <Select
-                                            value={upgradeForm.billingCycle}
+                                            value={upgradeForm.billingCycle === 'annual' ? 'yearly' : upgradeForm.billingCycle}
                                             onValueChange={(v) => setUpgradeForm((f) => ({ ...f, billingCycle: v }))}
                                         >
                                             <SelectTrigger id="up-cycle" className="h-9 text-xs bg-muted/20">
@@ -2158,14 +2154,14 @@ export default function HybridPlanActivationPage({ currentUser }) {
                                 {upgradeSubmitting ? (
                                     <>
                                         <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                                        {upgradeDialog.org?.plan_code === 'hybrid' && (upgradeDialog.org?.status === 'active' || upgradeDialog.org?.status === 'pending')
+                                        {upgradeDialog.org?.is_hybrid === true && (upgradeDialog.org?.status === 'active' || upgradeDialog.org?.status === 'pending')
                                             ? 'Saving Changes...'
                                             : 'Activating Subscription...'}
                                     </>
                                 ) : (
                                     <>
                                         <Sparkles className="h-3.5 w-3.5" />
-                                        {upgradeDialog.org?.plan_code === 'hybrid' && (upgradeDialog.org?.status === 'active' || upgradeDialog.org?.status === 'pending')
+                                        {upgradeDialog.org?.is_hybrid === true && (upgradeDialog.org?.status === 'active' || upgradeDialog.org?.status === 'pending')
                                             ? 'Save Updated Terms'
                                             : 'Activate Hybrid Plan'}
                                     </>

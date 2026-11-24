@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 import { GraduationCap, Plus, Download, FileUp, ChevronDown, FileSpreadsheet, BookOpen } from 'lucide-react'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Badge } from '@/components/ui/badge'
 import {
     DropdownMenu,
@@ -30,6 +30,8 @@ export default function CourseManagementPage() {
 
     // Course list state
     const [courses, setCourses] = useState([])
+    const courseRequestRef = useRef(0)
+    const [categories, setCategories] = useState([])
     const [loadingCourses, setLoadingCourses] = useState(true)
     const [searchQuery, setSearchQuery] = useState('')
     const debouncedSearchQuery = useDebounce(searchQuery, 500)
@@ -169,7 +171,7 @@ export default function CourseManagementPage() {
         if (debouncedSearchQuery) params.append('search', debouncedSearchQuery)
         if (filterUniversity !== 'all') params.append('university', filterUniversity)
         if (filterCategory !== 'all') params.append('category', filterCategory)
-        if (filterStatus !== 'all') params.append('approval_status', filterStatus)
+        if (filterStatus !== 'all') params.append(['Active', 'Upcoming', 'Draft', 'Archived'].includes(filterStatus) ? 'status' : 'approval_status', filterStatus)
 
             const response = await fetch(`/api/courses?${params.toString()}`, { cache: 'no-store' })
             const data = await response.json()
@@ -241,15 +243,15 @@ export default function CourseManagementPage() {
         }
     }
 
-    // Fetch approved universities on mount
-    useEffect(() => {
-        const fetchUniversities = async () => {
+    // Use the actual course catalog values for both dropdowns.
+    const fetchCourseFilterOptions = async () => {
             try {
-                const response = await fetch('/api/universities?approval_status=approved&limit=1000')
+                const response = await fetch('/api/courses?filter_options=true', { cache: 'no-store' })
                 const data = await response.json()
 
                 if (response.ok && data.data) {
-                    setUniversities(data.data)
+                    setUniversities(data.data.universities.map(name => ({ id: name, name })))
+                    setCategories(data.data.categories)
                 } else {
                     console.error('Failed to fetch universities:', data.error)
                 }
@@ -258,13 +260,15 @@ export default function CourseManagementPage() {
             } finally {
                 setLoadingUniversities(false)
             }
-        }
+    }
 
-        fetchUniversities()
+    useEffect(() => {
+        fetchCourseFilterOptions()
     }, [])
 
     // Fetch courses
     const fetchCourses = async (pageNum = 1, append = false) => {
+        const requestId = ++courseRequestRef.current
         try {
             setLoadingCourses(true)
 
@@ -282,7 +286,7 @@ export default function CourseManagementPage() {
             if (debouncedSearchQuery) params.append('search', debouncedSearchQuery)
             if (filterUniversity !== 'all') params.append('university', filterUniversity)
             if (filterCategory !== 'all') params.append('category', filterCategory)
-            if (filterStatus !== 'all') params.append('approval_status', filterStatus)
+            if (filterStatus !== 'all') params.append(['Active', 'Upcoming', 'Draft', 'Archived'].includes(filterStatus) ? 'status' : 'approval_status', filterStatus)
 
             const response = await fetch(`/api/courses?${params.toString()}`, {
                 cache: 'no-store',
@@ -292,6 +296,8 @@ export default function CourseManagementPage() {
                 }
             })
             const data = await response.json()
+
+            if (requestId !== courseRequestRef.current) return
 
             if (response.ok && data.data) {
                 if (append) {
@@ -315,6 +321,7 @@ export default function CourseManagementPage() {
                 })
             }
         } catch (error) {
+            if (requestId !== courseRequestRef.current) return
             console.error('Error fetching courses:', error)
             toast({
                 title: 'Error',
@@ -322,7 +329,7 @@ export default function CourseManagementPage() {
                 variant: 'destructive'
             })
         } finally {
-            setLoadingCourses(false)
+            if (requestId === courseRequestRef.current) setLoadingCourses(false)
         }
     }
 
@@ -385,6 +392,7 @@ export default function CourseManagementPage() {
         })
         setEditingCourse(null)
         fetchCourses(1, false)
+        fetchCourseFilterOptions()
     }
 
     const getStatusBadge = (status) => {
@@ -526,6 +534,7 @@ export default function CourseManagementPage() {
                 sortBy={sortBy}
                 setSortBy={setSortBy}
                 universities={universities}
+                categories={categories}
                 loadingUniversities={loadingUniversities}
                 viewMode={viewMode}
                 setViewMode={setViewMode}

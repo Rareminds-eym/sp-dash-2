@@ -15,6 +15,7 @@ export function CourseFilters({
     sortBy,
     setSortBy,
     universities,
+    categories = [],
     loadingUniversities,
     viewMode,
     setViewMode,
@@ -55,11 +56,9 @@ export function CourseFilters({
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Categories</SelectItem>
-                        <SelectItem value="Computer Science">Computer Science</SelectItem>
-                        <SelectItem value="Business">Business</SelectItem>
-                        <SelectItem value="Engineering">Engineering</SelectItem>
-                        <SelectItem value="Data Science">Data Science</SelectItem>
-                        <SelectItem value="Design">Design</SelectItem>
+                        {categories.map(category => (
+                            <SelectItem key={category} value={category}>{category}</SelectItem>
+                        ))}
                     </SelectContent>
                 </Select>
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -68,10 +67,13 @@ export function CourseFilters({
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="Active">Active</SelectItem>
+                        <SelectItem value="Upcoming">Upcoming</SelectItem>
+                        <SelectItem value="Draft">Draft</SelectItem>
+                        <SelectItem value="Archived">Archived</SelectItem>
                         <SelectItem value="approved">Approved</SelectItem>
                         <SelectItem value="pending">Pending</SelectItem>
                         <SelectItem value="rejected">Rejected</SelectItem>
-                        <SelectItem value="Draft">Draft</SelectItem>
                     </SelectContent>
                 </Select>
                 <Select value={sortBy} onValueChange={setSortBy}>

@@ -11,6 +11,7 @@ export interface CourseUploadMessage {
   contentHash: string;
   resourceType: string;
   uploadTarget: 'resource' | 'course-image';
+  thumbnailUrl?: string;
   uploaderId: string;
 }
 
