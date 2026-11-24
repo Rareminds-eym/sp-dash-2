@@ -4,6 +4,10 @@ compatibility_date = "2026-09-25"
 compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
 workers_dev = false
 preview_urls = false
+# next-themes serializes its initializer into an inline browser script. Name
+# preservation injects __name calls whose helper stays in the Worker scope.
+# https://opennext.js.org/cloudflare/howtos/keep_names
+keep_names = false
 
 [vars]
 ENVIRONMENT = "production"
@@ -353,9 +357,19 @@ dead_letter_queue = "zoho-recruit-approved-qa-dlq"
 # Provision the environment-specific Zoho queues and DLQs before deploying this
 # configuration. Remote code profiles stay disabled until migration, credential and
 # tenant/no-email preflight passes. Preview profiles disable all Zoho operations.
-# Zoho credentials/keys: ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_TOKEN_ENCRYPTION_KEY,
-# ZOHO_TOKEN_ENCRYPTION_KEYS, ZOHO_TOKEN_ENCRYPTION_ACTIVE_KEY_ID,
-# ZOHO_DISCOVERY_DB_TOKEN (signed, expiring zoho_discovery role JWT).
+# Required Zoho secrets (configure independently for each deployment):
+#   wrangler secret put ZOHO_CLIENT_ID --env qa
+#   wrangler secret put ZOHO_CLIENT_SECRET --env qa
+#   wrangler secret put ZOHO_TOKEN_ENCRYPTION_KEY --env qa
+# The encryption key is base64-encoded, cryptographically random 32-byte AES material.
+# For rotation, optionally use ZOHO_TOKEN_ENCRYPTION_KEYS (JSON keyring) together
+# with ZOHO_TOKEN_ENCRYPTION_ACTIVE_KEY_ID. Keep old keys while tokens depend on them.
+# Discovery also requires:
+#   wrangler secret put ZOHO_DISCOVERY_DB_TOKEN --env qa
+#   wrangler secret put NEXT_PUBLIC_SUPABASE_ANON_KEY --env qa
+# ZOHO_DISCOVERY_DB_TOKEN is a signed, expiring zoho_discovery role JWT.
+# Replace --env qa with --env dev for development; omit it for production.
+# OAuth callbacks and processing switches are code-owned in lib/zoho/config.js.
 # Discovery additionally uses NEXT_PUBLIC_SUPABASE_ANON_KEY as gateway API key.
 # It never falls back to the host service-role credential. Rotate the reader JWT
 # before expiry; readiness fails closed with less than a minute remaining.
@@ -397,3 +411,63 @@ entrypoint = "ZohoCandidateProvisioner"
 binding = "ZOHO_CANDIDATE_DESTINATION"
 service = "sso-api-qa"
 entrypoint = "ZohoCandidateProvisioner"
+
+[[services]]
+binding = "EMBEDDING_SERVICE"
+service = "embedding-api"
+entrypoint = "EmbeddingService"
+
+[[env.dev.services]]
+binding = "EMBEDDING_SERVICE"
+service = "embedding-api-dev"
+entrypoint = "EmbeddingService"
+
+[[env.dev.previews.services]]
+binding = "EMBEDDING_SERVICE"
+service = "embedding-api-dev"
+entrypoint = "EmbeddingService"
+
+[[env.qa.services]]
+binding = "EMBEDDING_SERVICE"
+service = "embedding-api-qa"
+entrypoint = "EmbeddingService"
+
+[[services]]
+binding = "JOB_INDEX_SERVICE"
+service = "sp-dash-2"
+entrypoint = "JobIndexService"
+
+[[env.dev.services]]
+binding = "JOB_INDEX_SERVICE"
+service = "sp-dash-2"
+entrypoint = "JobIndexService"
+
+[[env.dev.previews.services]]
+binding = "JOB_INDEX_SERVICE"
+service = "sp-dash-2"
+entrypoint = "JobIndexService"
+
+[[env.qa.services]]
+binding = "JOB_INDEX_SERVICE"
+service = "sp-dash-2-qa"
+entrypoint = "JobIndexService"
+
+[[migrations]]
+tag = "job-index-app-v1"
+new_sqlite_classes = ["JobIndexCoordinator"]
+
+[[durable_objects.bindings]]
+name = "JOB_INDEX_COORDINATOR"
+class_name = "JobIndexCoordinator"
+
+[[env.dev.durable_objects.bindings]]
+name = "JOB_INDEX_COORDINATOR"
+class_name = "JobIndexCoordinator"
+
+[[env.qa.durable_objects.bindings]]
+name = "JOB_INDEX_COORDINATOR"
+class_name = "JobIndexCoordinator"
+
+[[env.dev.previews.durable_objects.bindings]]
+name = "JOB_INDEX_COORDINATOR"
+class_name = "JobIndexCoordinator"

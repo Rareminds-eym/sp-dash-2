@@ -1,0 +1,84 @@
+.card {
+  container-type:inline-size;
+  min-width:0;
+  padding:16px 16px 0;
+  border:1px solid #e9e8f6;
+  border-radius:14px;
+  background:linear-gradient(115deg,#fff,#fdfcff);
+  color:#151b32;
+  box-shadow:0 8px 30px #5945a008;
+}
+.heading { display:flex;align-items:flex-start;gap:12px; }
+.headingText { min-width:0;flex:1; }
+.title { margin:0;font-size:18px;font-weight:700;line-height:25px;letter-spacing:-.2px; }
+.description { margin-top:3px;color:#666b80;font-size:13px;line-height:19px; }
+.statusIcon { display:grid;place-items:center;width:40px;height:40px;flex-shrink:0;border-radius:11px;background:var(--tile);color:var(--tone); }
+.statusIcon svg { width:22px;height:22px; }
+.statusIcon[data-tone=amber] { --tile:#fff7ec;--tone:#df8700;--icon:#fff2df;--divider:#eddfca; }
+.statusIcon[data-tone=violet] { --tile:#f4f0ff;--tone:#7040fa;--icon:#ede7ff;--divider:#ddd6ef; }
+.statusIcon[data-tone=green] { --tile:#eefaf4;--tone:#05995b;--icon:#e4f6ed;--divider:#cfe6dc; }
+.statusIcon[data-tone=rose] { --tile:#fff1f6;--tone:#ce2156;--icon:#fce5ef;--divider:#ecd4df; }
+.elapsed { flex-shrink:0;padding:6px 10px;border:1px solid #e4dcff;border-radius:8px;background:#f3efff;color:#7040dd;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums; }
+.metrics { display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin:16px 0 0; }
+.metric { --tile:#f5f5f8;--tone:#656278;--icon:#ebebf1;--divider:#dddde6;display:grid;position:relative;min-width:0;min-height:80px;align-content:center;gap:4px;padding:12px 12px 12px 74px;border-radius:11px;background:var(--tile); }
+.metric::after { content:'';position:absolute;left:60px;top:16px;bottom:16px;width:1px;background:var(--divider); }
+.metric dt { grid-row:2;font-size:13px;font-weight:500;line-height:18px;color:#30374e;overflow-wrap:anywhere; }
+.metric dd { grid-row:1;margin:0;font-size:26px;font-weight:750;line-height:29px;letter-spacing:-.4px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere; }
+.metricIcon { position:absolute;left:12px;top:50%;display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:var(--icon);color:var(--tone);transform:translateY(-50%); }
+.metricIcon svg { width:21px;height:21px; }
+.footer { display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px;padding:12px 0;border-top:1px solid #eceaf5; }
+.scanSummary { display:flex;align-items:center;gap:9px;min-width:0;color:#666b80;font-size:13px;font-weight:500;line-height:19px; }
+.scanSummary svg { width:18px;height:18px;flex-shrink:0;color:#85899a; }
+.historyLink { display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:38px;flex-shrink:0;border-radius:8px;color:#7040fa;font-size:13px;font-weight:600; }
+.historyLink svg { width:17px;height:17px; }
+.historyLink:hover { color:#5628d2;text-decoration:underline;text-underline-offset:4px; }
+.historyLink:focus-visible { outline:2px solid #7040fa;outline-offset:4px; }
+.activityBar { height:5px;overflow:hidden;margin-top:16px;border-radius:20px;background:#e9dfff; }
+.activityBar>div { width:100%;height:100%;border-radius:inherit;background:#9162f9;animation:pulse 1.7s ease-in-out infinite; }
+.spinning { animation:spin 1.3s linear infinite; }
+.retry,.warning { margin-top:12px;font-size:13px;line-height:19px;color:#9c6100; }
+.retry { font-weight:600;font-variant-numeric:tabular-nums; }
+.error { margin-top:12px;color:#c32650;font-size:13px;line-height:19px; }
+.budgetHelp { margin-top:10px;color:#666b80;font-size:12px;line-height:18px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+@keyframes pulse { 50% { opacity:.45; } }
+@media(prefers-reduced-motion:reduce) { .spinning,.activityBar>div { animation:none; } }
+@container(max-width:940px) {
+  .metrics { gap:12px; }
+  .metric { padding-left:66px; }
+  .metricIcon { left:10px;width:32px;height:32px; }
+  .metric::after { left:53px; }
+}
+@container(max-width:720px) { .metrics { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@container(max-width:540px) {
+  .heading { gap:12px;flex-wrap:wrap; }
+  .headingText { flex-basis:calc(100% - 50px); }
+  .statusIcon { width:38px;height:38px;border-radius:10px; }
+  .elapsed { margin-left:50px; }
+  .metrics { grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:16px; }
+  .metric:last-child { grid-column:1 / -1; }
+  .metric { padding:10px 10px 10px 62px;min-height:76px; }
+  .metricIcon { width:32px;height:32px;left:8px; }
+  .metric::after { left:50px;top:14px;bottom:14px; }
+  .metric dt { font-size:12px;line-height:17px; }
+  .metric dd { font-size:24px;line-height:27px; }
+  .footer { align-items:flex-start;flex-direction:column;gap:8px; }
+  .historyLink { justify-content:space-between;width:100%;min-height:44px; }
+}
+@container(max-width:230px) { .metrics { grid-template-columns:1fr; }.metric:last-child { grid-column:auto; } }
+@media(max-width:600px) { .card { padding:16px 16px 0; } }
+:global(.dark) .card { background:linear-gradient(115deg,#191621,#1e192b);border-color:#393046;color:#eee9fc;box-shadow:none; }
+:global(.dark) .description,:global(.dark) .scanSummary,:global(.dark) .budgetHelp { color:#b9b2cb; }
+:global(.dark) .metric { --tile:#24212e;--tone:#c0b9d1;--icon:#302c3c;--divider:#443e52; }
+:global(.dark) .metric dt { color:#ddd5e9; }
+:global(.dark) .footer { border-color:#393046; }
+:global(.dark) .statusIcon[data-tone=amber] { --tile:#30271c;--tone:#f6bd61;--icon:#3c2d1d;--divider:#51422c; }
+:global(.dark) .statusIcon[data-tone=violet] { --tile:#29233e;--tone:#b59aff;--icon:#33294c;--divider:#49405e; }
+:global(.dark) .statusIcon[data-tone=green] { --tile:#192e29;--tone:#6ed5a0;--icon:#203a31;--divider:#334c42; }
+:global(.dark) .statusIcon[data-tone=rose] { --tile:#352332;--tone:#f48caf;--icon:#42283a;--divider:#573848; }
+:global(.dark) .elapsed { background:#302543;border-color:#4b386a;color:#d2b5ff; }
+:global(.dark) .retry,:global(.dark) .warning { color:#f0c778; }
+:global(.dark) .error { color:#fb96b1; }
+:global(.dark) .historyLink { color:#b79bff; }
+:global(.dark) .historyLink:hover { color:#d1bfff; }
+:global(.dark) .activityBar { background:#35294b; }

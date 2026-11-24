@@ -1,0 +1,6 @@
+/* Zoho page chrome only. The shared navigation drawer is intentionally untouched. */
+.shell { background:linear-gradient(115deg,#f8f6ff,#f2efff 65%,#f6f4ff);color:#211a3c; }
+.shell [data-dashboard-main] { padding:24px; }
+.shell :where(a,button):focus-visible { outline:2px solid #7c3aed;outline-offset:2px; }
+:global(.dark) .shell { background:linear-gradient(120deg,#15111f,#1a1428);color:#eee8fc; }
+@media(max-width:600px){.shell [data-dashboard-main] { padding:20px 12px; }}
