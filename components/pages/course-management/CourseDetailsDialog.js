@@ -7,7 +7,6 @@ import {
     Calendar, 
     Award, 
     User, 
-    Building2,
     Target,
     FileText,
     ChevronDown,
@@ -17,6 +16,21 @@ import {
     AlertCircle
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+
+const COURSE_SETTING_FIELDS = [
+  { key: 'status', label: 'Course status' },
+  { key: 'approval_status', label: 'Content approval' },
+  { key: 'skill_type', label: 'Skill type' },
+  { key: 'classification', label: 'Course classification' },
+  { key: 'plan_type', label: 'Required access plan' },
+  { key: 'course_type', label: 'Course type' },
+];
+
+function courseSettingLabel(value) {
+  if (!value) return 'Not specified';
+  const labels = { soft: 'Soft skills', technical: 'Technical skills', freemium: 'Freemium', digital_health_ai: 'Digital Health & AI' };
+  return labels[value] || value.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+}
 
 export function CourseDetailsDialog({ course, open, onOpenChange }) {
     const [imageError, setImageError] = useState(false)
@@ -193,12 +207,6 @@ export function CourseDetailsDialog({ course, open, onOpenChange }) {
                                 <h2 className="text-2xl font-bold leading-tight line-clamp-2">
                                     {course.name}
                                 </h2>
-                                {course.university && (
-                                    <div className="flex items-center gap-1.5 mt-2 text-white/80 text-sm">
-                                        <Building2 className="h-4 w-4" />
-                                        <span>{course.university}</span>
-                                    </div>
-                                )}
                             </div>
                         </div>
                     </div>
@@ -213,6 +221,15 @@ export function CourseDetailsDialog({ course, open, onOpenChange }) {
                         <InfoCard icon={BookOpen} label="Category" value={course.category} color="purple" />
                         <InfoCard icon={Calendar} label="Created" value={course.created_at ? new Date(course.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null} color="slate" />
                     </div>
+
+                    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                        {COURSE_SETTING_FIELDS.filter(field => !['category', 'university'].includes(field.key)).map(field => (
+                            <div key={field.key}>
+                                <dt className="text-xs text-muted-foreground">{field.label}</dt>
+                                <dd className="mt-1 font-medium text-gray-900 dark:text-white">{courseSettingLabel(course[field.key])}</dd>
+                            </div>
+                        ))}
+                    </dl>
 
                     {/* Educator Info */}
                     {course.educator_name && (

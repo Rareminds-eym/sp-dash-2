@@ -1,42 +1,35 @@
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { logAudit } from '@/lib/services/auditService';
-import { createRLSClient, getUserContext } from '@/lib/supabase-rls';
+import { requirePlatformAdmin } from '@/lib/platform-admin';
 import { NextResponse } from 'next/server';
 
 
 
 export async function POST(request) {
   try {
-    const { supabase: rlsClient, user, error: authError } = await createRLSClient(request);
-    
-    if (!user || authError) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    
-    const userContext = await getUserContext(rlsClient, user);
-    
-    if (!userContext) {
-      return NextResponse.json({ error: 'User context not found' }, { status: 403 });
-    }
-    
+    const auth = await requirePlatformAdmin(request, ['super_admin', 'admin']);
+    if (auth.error) return auth.error;
+    const userContext = { id: auth.user.id };
+
     const body = await request.json();
     const { targetUserId, actorId, note } = body;
 
-    // Update user status using RLS client
-    const { error: updateError } = await rlsClient
+    // Update user status using the authorized server client
+    const { error: updateError } = await supabaseAdmin
       .from('users')
       .update({ isActive: true })
       .eq('id', targetUserId);
 
     if (updateError) throw updateError;
 
-    // Log verification using RLS client
-    const { error: verifyError } = await rlsClient
+    // Log verification using the authorized server client
+    const { error: verifyError } = await supabaseAdmin
       .from('verifications')
       .insert({
         targetTable: 'users',
         targetId: targetUserId,
         action: 'activate',
-        performedBy: actorId || userContext.id,
+        performedBy: userContext.id,
         note: note || 'User activated'
       });
 
