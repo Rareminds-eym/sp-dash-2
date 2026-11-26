@@ -6,7 +6,7 @@ const COOKIE_ACCESS = isSecure ? '__Host-sso_access_token' : 'sso_access_token'
 const COOKIE_USER = isSecure ? '__Host-sso_user' : 'sso_user'
 const COOKIE_REFRESH = isSecure ? '__Host-sso_refresh_token' : 'sso_refresh_token'
 
-const protectedRoutes = ['/dashboard', '/users', '/passports', '/recruiters', '/reports', '/audit-logs', '/integrations', '/settings', '/course-management', '/student-dashboard', '/sales-dashboard', '/educator-subscriptions', '/lte-course-upload', '/organizations', '/approvals', '/educators', '/educator']
+const protectedRoutes = ['/dashboard', '/users', '/passports', '/recruiters', '/reports', '/audit-logs', '/integrations', '/settings', '/course-management', '/student-dashboard', '/sales-dashboard', '/educator-subscriptions', '/lte-course-upload', '/organizations', '/approvals', '/educators', '/educator', '/promo-codes']
 
 export function middleware(req) {
   // Server Actions include session checks and refresh. They must be able to
